@@ -1,0 +1,42 @@
+# dependencies
+node_modules/
+
+# build / deploy
+dist/
+.output/
+.vercel/
+.nitro/
+.wrangler/
+.cache/
+coverage/
+playwright-report/
+test-results/
+
+# env & secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# logs & OS
+*.log
+npm-debug.log*
+.DS_Store
+Thumbs.db
+
+# editor
+.idea/
+.vscode/
+*.swp
+
+# local / generated work product (not the game)
+artifacts/
+screenshots/
+.grok/
+AGENTS.md
+AGENTS.project.md
+/tmp/
+
+# vite / tanstack
+routeTree.gen.ts.bak
