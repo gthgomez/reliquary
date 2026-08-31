@@ -6,7 +6,7 @@ let music: GainNode | null = null;
 let sfx: GainNode | null = null;
 let musicTimer: number | null = null;
 let muted = false;
-let musicOn = true;
+const musicOn = true;
 
 export function unlockAudio(): void {
   if (!ctx) {

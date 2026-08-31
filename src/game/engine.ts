@@ -1,6 +1,5 @@
 import {
   currentStats,
-  expToNext,
   healFull,
   ITEMS,
   makeBeast,
@@ -8,10 +7,16 @@ import {
   SKILLS,
   SPECIES,
   typeMod,
-} from "./content";
-import { BLOCKED, ENCOUNTER_TILES, GROUND_TILE, MAPS } from "./maps";
-import { sfxPlay, startMusic, unlockAudio } from "./audio";
-import { hasSave, loadSave, writeSave } from "./save";
+} from "./content.ts";
+import { BLOCKED, ENCOUNTER_TILES, GROUND_TILE, MAPS } from "./maps.ts";
+import { sfxPlay, startMusic, unlockAudio } from "./audio.ts";
+import { hasSave, loadSave, writeSave } from "./save.ts";
+import { mathRandom, type RandomSource } from "./rng.ts";
+import { captureChance, captureSucceeds, storeCapturedBeast } from "./systems/capture.ts";
+import { accuracySucceeds, healBeast, playerActsFirst, spendSkillMp, statusSucceeds } from "./systems/combat.ts";
+import { purchaseItem, sellItem } from "./systems/economy.ts";
+import { awardExperience } from "./systems/progression.ts";
+import { applyStatus, tickStatus as tickBeastStatus } from "./systems/status.ts";
 import type {
   BattleState,
   Beast,
@@ -21,7 +26,7 @@ import type {
   Mode,
   Skill,
   Snapshot,
-} from "./types";
+} from "./types.ts";
 
 export const TILE = 32;
 export const VIEW_W = 12;
@@ -120,7 +125,18 @@ export class ReliquaryGame {
 	animFn: (() => void) | null = null;
 	encounterLock = false;
 	hasSave = false;
-	constructor() {
+	lifecycle: "constructed" | "booted" | "stopped" = "constructed";
+	private readonly random: RandomSource;
+	private bootToken = 0;
+	private visibilityHandler = (): void => {
+		if (document.visibilityState === "hidden") {
+			this.keys.clear();
+			this.persist();
+		}
+	};
+	private probe: NonNullable<Window["__controlsTest"]> | null = null;
+	constructor(options: { random?: RandomSource } = {}) {
+		this.random = options.random ?? mathRandom;
 		this.snap = this.buildSnap();
 		this.hasSave = hasSave();
 	}
@@ -167,8 +183,10 @@ export class ReliquaryGame {
 			items: ITEMS
 		};
 	}
-	started = false;
-	private async loadImages(): Promise<void> {
+	get started(): boolean {
+		return this.lifecycle === "booted";
+	}
+	private async loadImages(token: number): Promise<void> {
 		const paths = collectPaths();
 		let done = 0;
 		await Promise.all(paths.map(([key, src]) => new Promise<void>((resolve) => {
@@ -187,26 +205,42 @@ export class ReliquaryGame {
 			};
 			img.src = src;
 		})));
+		if (token !== this.bootToken || this.lifecycle !== "booted") return;
 		this.loadProgress = 1;
 		this.emit();
 	}
 	async boot(canvas: HTMLCanvasElement): Promise<void> {
+		if (this.lifecycle === "booted") return;
+		const token = ++this.bootToken;
 		this.canvas = canvas;
 		canvas.width = this.viewW * TILE;
 		canvas.height = this.viewH * TILE;
-		if (this.started) {
-			await this.loadImages();
-			return;
-		}
-		this.started = true;
+		this.lifecycle = "booted";
+		this.lastTs = 0;
 		this.mode = "title";
 		this.emit();
 		this.raf = requestAnimationFrame(this.loop);
 		this.bindInput();
 		this.installProbe();
-		await this.loadImages();
+		await this.loadImages(token);
 	}
 	destroy(): void {
+		this.bootToken += 1;
+		if (this.lifecycle === "booted") {
+			cancelAnimationFrame(this.raf);
+			this.raf = 0;
+			window.removeEventListener("keydown", this.onKeyDown);
+			window.removeEventListener("keyup", this.onKeyUp);
+			window.removeEventListener("blur", this.onBlur);
+			document.removeEventListener("visibilitychange", this.visibilityHandler);
+			if (window.__controlsTest === this.probe) delete window.__controlsTest;
+		}
+		this.lifecycle = "stopped";
+		this.keys.clear();
+		this.injected = null;
+		this.lastTs = 0;
+		this.animWait = 0;
+		this.animFn = null;
 		this.canvas = null;
 	}
 	cw(): number {
@@ -244,12 +278,7 @@ export class ReliquaryGame {
 		window.addEventListener("keydown", this.onKeyDown);
 		window.addEventListener("keyup", this.onKeyUp);
 		window.addEventListener("blur", this.onBlur);
-		document.addEventListener("visibilitychange", () => {
-			if (document.visibilityState === "hidden") {
-				this.keys.clear();
-				this.persist();
-			}
-		});
+		document.addEventListener("visibilitychange", this.visibilityHandler);
 	}
 	private onKeyDown = (e: KeyboardEvent): void => {
 		if ((new Set([
@@ -295,7 +324,7 @@ export class ReliquaryGame {
 		this.injected = codes.length ? codes : null;
 	}
 	private installProbe(): void {
-		window.__controlsTest = {
+		this.probe = {
 			getYaw: () => YAW[this.dir],
 			getSpeed: () => this.moving ? 1 : this.mode === "world" && this.wantDir() != null ? .5 : 0,
 			setKeys: (codes) => this.setKeys(codes),
@@ -316,7 +345,7 @@ export class ReliquaryGame {
 			},
 			startWild: () => {
 				if (!this.party.length) {
-					this.party = [makeBeast("emberkit", 5)];
+					this.party = [makeBeast("emberkit", 5, { random: this.random })];
 					this.flags.starter = true;
 					this.caught.emberkit = true;
 					this.seen.emberkit = true;
@@ -325,6 +354,7 @@ export class ReliquaryGame {
 				this.startWild();
 			}
 		};
+		window.__controlsTest = this.probe;
 	}
 	startNew(): void {
 		unlockAudio();
@@ -391,7 +421,7 @@ export class ReliquaryGame {
 	}
 	persist(): void {
 		writeSave({
-			version: 1,
+			version: 2,
 			playerName: this.playerName,
 			mapId: this.mapId,
 			x: this.tx,
@@ -438,6 +468,7 @@ export class ReliquaryGame {
 		return null;
 	}
 	private loop = (ts: number): void => {
+		if (this.lifecycle !== "booted") return;
 		const dt = Math.min(.1, this.lastTs ? (ts - this.lastTs) / 1e3 : .016);
 		this.lastTs = ts;
 		this.playTime += dt;
@@ -509,7 +540,7 @@ export class ReliquaryGame {
 		const g = this.groundAt(this.tx, this.ty);
 		if (ENCOUNTER_TILES.has(g) && this.party.length && this.quietBell <= 0 && !this.encounterLock) {
 			const rate = this.map().encounterRate;
-			if (Math.random() < rate) this.startWild();
+			if (this.random() < rate) this.startWild();
 		}
 	}
 	private warp(to: string, x: number, y: number, dir: Dir): void {
@@ -784,7 +815,7 @@ export class ReliquaryGame {
 		const sp = SPECIES[id];
 		if (!sp) return;
 		this.openDialog(sp.name, [`${sp.name}, the ${sp.epithet}. ${sp.description}`, "Speak the pact? (A bind · B wait)"], () => {
-			const b = makeBeast(id, 5, { nickname: sp.name });
+			const b = makeBeast(id, 5, { nickname: sp.name, random: this.random });
 			this.party = [b];
 			this.caught[id] = true;
 			this.seen[id] = true;
@@ -817,7 +848,7 @@ export class ReliquaryGame {
 		const table = this.map().encounters;
 		if (!table.length) return;
 		const total = table.reduce((s, e) => s + e.w, 0);
-		let r = Math.random() * total;
+		let r = this.random() * total;
 		let pick = table[0];
 		for (const e of table) {
 			r -= e.w;
@@ -826,8 +857,8 @@ export class ReliquaryGame {
 				break;
 			}
 		}
-		const level = pick.min + Math.floor(Math.random() * (pick.max - pick.min + 1));
-		const foe = makeBeast(pick.species, level);
+		const level = pick.min + Math.floor(this.random() * (pick.max - pick.min + 1));
+		const foe = makeBeast(pick.species, level, { random: this.random });
 		this.seen[pick.species] = true;
 		this.encounterLock = true;
 		sfxPlay.encounter();
@@ -852,9 +883,9 @@ export class ReliquaryGame {
 	}
 	private startWarden(): void {
 		const foes = [
-			makeBeast("ironnewt", 12),
-			makeBeast("chapelite", 13),
-			makeBeast("keepdrake", 15)
+			makeBeast("ironnewt", 12, { random: this.random }),
+			makeBeast("chapelite", 13, { random: this.random }),
+			makeBeast("keepdrake", 15, { random: this.random })
 		];
 		foes.forEach((f) => {
 			this.seen[f.speciesId] = true;
@@ -988,7 +1019,7 @@ export class ReliquaryGame {
 		const me = currentStats(this.party[b.playerIndex]!);
 		const foe = currentStats(b.foes[b.foeIndex]!);
 		const chance = .4 + (me.spd - foe.spd) / 200;
-		if (Math.random() < chance) {
+		if (this.random() < chance) {
 			b.log = ["You break from the grass."];
 			b.escaped = true;
 			b.phase = "win";
@@ -1003,20 +1034,17 @@ export class ReliquaryGame {
 		const b = this.battle!;
 		const me = this.party[b.playerIndex]!;
 		const foe = b.foes[b.foeIndex]!;
-		const myS = currentStats(me);
-		const foS = currentStats(foe);
-		const playerFirst = myS.spd + Math.random() * 8 >= foS.spd + Math.random() * 8 || act.type === "item" || act.type === "switch" || act.type === "bind";
+		const playerFirst = playerActsFirst(me, foe, this.random) || act.type === "item" || act.type === "switch" || act.type === "bind";
 		const doPlayer = () => {
 			if (me.hp <= 0) return;
 			if (act.type === "strike") this.useSkill(me, foe, false, basicStrike(me), true);
 			else if (act.type === "skill") {
 				const sk = SKILLS[act.skill!];
 				if (!sk) return;
-				if (me.mp < sk.mp) {
+				if (!spendSkillMp(me, sk)) {
 					b.log = [`${me.nickname} hasn't the breath.`];
 					return;
 				}
-				me.mp -= sk.mp;
 				this.useSkill(me, foe, false, sk, true);
 			} else if (act.type === "item") this.useItem(act.item!, me, true);
 			else if (act.type === "bind") this.tryCatch(act.item!);
@@ -1062,23 +1090,20 @@ export class ReliquaryGame {
 		const aS = currentStats(atk);
 		const dS = currentStats(def);
 		const sp = SPECIES[atk.speciesId];
-		if (skill.accuracy < 100 && Math.random() * 100 > skill.accuracy + aS.lck / 20) {
+		if (!accuracySucceeds(skill, atk, this.random)) {
 			if (logIt) b.log = [`${atk.nickname}'s ${skill.name} misses.`];
 			sfxPlay.fail();
 			return;
 		}
 		if (skill.kind === "heal") {
-			const cap = aS.hp;
-			const heal = Math.floor(skill.power * (aS.mag / 40));
-			atk.hp = Math.min(cap, atk.hp + heal);
+			const heal = healBeast(atk, skill.power * (aS.mag / 40));
 			b.log = [`${atk.nickname} mends for ${heal}.`];
 			sfxPlay.heal();
 			return;
 		}
 		if (skill.kind === "ward" || skill.kind === "hex" && skill.power === 0) {
 			if (skill.status) {
-				def.status = skill.status;
-				def.statusTurns = 3;
+					applyStatus(def, skill.status);
 				b.log = [`${skill.name}: ${def.nickname} is ${skill.status}.`];
 			}
 			sfxPlay.menu();
@@ -1090,8 +1115,8 @@ export class ReliquaryGame {
 		let dmg = Math.floor((2 * atk.level / 5 + 2) * skill.power * atkStat / Math.max(1, defStat) / 50) + 2;
 		const stab = sp.elements.includes(skill.element) ? 1.25 : 1;
 		const tmod = typeMod(skill.element, SPECIES[def.speciesId].elements);
-		const crit = Math.random() < .06 + aS.lck / 400;
-		dmg = Math.max(1, Math.floor(dmg * stab * tmod * (crit ? 1.6 : 1) * (.85 + Math.random() * .15)));
+		const crit = this.random() < .06 + aS.lck / 400;
+		dmg = Math.max(1, Math.floor(dmg * stab * tmod * (crit ? 1.6 : 1) * (.85 + this.random() * .15)));
 		if (def.status === "ward") dmg = Math.floor(dmg * .7);
 		if (atk.status === "bless") dmg = Math.floor(dmg * 1.15);
 		def.hp = Math.max(0, def.hp - dmg);
@@ -1099,9 +1124,8 @@ export class ReliquaryGame {
 		if (tmod > 1.2) line += " It bites deep.";
 		else if (tmod < .8) line += " It glances.";
 		if (crit) line += " A true cut.";
-		if (skill.status && Math.random() * 100 < (skill.statusChance ?? 0) && def.hp > 0) {
-			def.status = skill.status;
-			def.statusTurns = 3;
+		if (skill.status && statusSucceeds(skill.statusChance ?? 0, this.random) && def.hp > 0) {
+				applyStatus(def, skill.status);
 			line += ` ${def.nickname} is ${skill.status}.`;
 		}
 		b.log = [line];
@@ -1135,10 +1159,7 @@ export class ReliquaryGame {
 	}
 	private tickStatus(b: Beast): void {
 		if (!b.status) return;
-		if (b.status === "burn") b.hp = Math.max(1, b.hp - Math.floor(currentStats(b).hp * .06));
-		if (b.status === "soak") b.mp = Math.max(0, b.mp - 2);
-		b.statusTurns -= 1;
-		if (b.statusTurns <= 0) b.status = null;
+		tickBeastStatus(b);
 	}
 	private foeDown(): void {
 		const b = this.battle!;
@@ -1185,36 +1206,14 @@ export class ReliquaryGame {
 		this.emit();
 	}
 	private grantXp(b: Beast, xp: number): void {
-		b.exp += xp;
-		let guard = 0;
-		while (b.exp >= expToNext(b.level) && b.level < 40 && guard < 10) {
-			b.exp -= expToNext(b.level);
-			b.level += 1;
-			guard += 1;
-			const sp = SPECIES[b.speciesId];
-			const before = currentStats({
-				...b,
-				level: b.level - 1
-			});
-			const after = currentStats(b);
-			b.hp += after.hp - before.hp;
-			b.mp += after.mp - before.mp;
-			const learned = sp.learnset.find((l) => l.level === b.level);
-			if (learned && !b.skills.includes(learned.skill)) {
-				if (b.skills.length < 4) b.skills.push(learned.skill);
-				else b.skills[3] = learned.skill;
-				this.toastMsg(`${b.nickname} learned ${SKILLS[learned.skill]?.name}.`);
-			}
-			if (sp.evolves && b.level >= sp.evolves.level && b.speciesId === sp.id) {
-				const into = sp.evolves.into;
-				b.speciesId = into;
-				b.nickname = SPECIES[into].name;
-				this.caught[into] = true;
-				this.seen[into] = true;
-				sfxPlay.level();
-				this.toastMsg(`${sp.name} becomes ${SPECIES[into].name}!`);
-			} else sfxPlay.level();
+		const progression = awardExperience(b, xp);
+		for (const skill of progression.learnedSkills) this.toastMsg(`${b.nickname} learned ${SKILLS[skill]?.name}.`);
+		if (progression.evolvedFrom && progression.evolvedInto) {
+			this.caught[progression.evolvedInto] = true;
+			this.seen[progression.evolvedInto] = true;
+			this.toastMsg(`${SPECIES[progression.evolvedFrom]?.name} becomes ${SPECIES[progression.evolvedInto]?.name}!`);
 		}
+		if (progression.levelsGained > 0) sfxPlay.level();
 	}
 	private tryCatch(stone: string): void {
 		const b = this.battle!;
@@ -1228,18 +1227,15 @@ export class ReliquaryGame {
 		this.inventory[stone] -= 1;
 		const foe = b.foes[0];
 		const sp = SPECIES[foe.speciesId];
-		const max = currentStats(foe).hp;
 		const stoneB = ITEMS[stone]?.stone ?? 1;
-		const statusB = foe.status ? 1.4 : 1;
-		const a = (3 * max - 2 * foe.hp) * sp.catchRate * stoneB * statusB / (3 * max);
-		const chance = Math.min(.95, a / 255);
+		const chance = captureChance(foe, sp.catchRate, stoneB);
 		sfxPlay.catch();
 		b.catchStone = stone;
 		b.phase = "catch";
 		b.shake = 0;
 		this.emit();
 		const shakes = chance > .7 ? 3 : chance > .4 ? 2 : 1;
-		const succeed = Math.random() < chance;
+		const succeed = captureSucceeds(foe, sp.catchRate, stoneB, this.random);
 		const step = (n: number): void => {
 			if (!this.battle) return;
 			this.battle.shake = n;
@@ -1248,8 +1244,9 @@ export class ReliquaryGame {
 			else if (succeed) {
 				this.caught[foe.speciesId] = true;
 				this.seen[foe.speciesId] = true;
-				if (this.party.length < 4) this.party.push(foe);
-				else this.box.push(foe);
+				const stored = storeCapturedBeast(this.party, this.box, foe);
+				this.party = stored.party;
+				this.box = stored.box;
 				healFull(foe);
 				this.battle.log = [`${sp.name} accepts the compact.`];
 				this.battle.phase = "win";
@@ -1286,7 +1283,7 @@ export class ReliquaryGame {
 		this.inventory[id] -= 1;
 		const st = currentStats(target);
 		if (def.kind === "heal") {
-			target.hp = Math.min(st.hp, target.hp + (def.power ?? 40));
+			healBeast(target, def.power ?? 40);
 			sfxPlay.heal();
 		} else if (def.kind === "ether") {
 			target.mp = Math.min(st.mp, target.mp + (def.power ?? 30));
@@ -1338,12 +1335,13 @@ export class ReliquaryGame {
 			const id = SHOP_STOCK[this.shopIndex];
 			if (!id) return;
 			const it = ITEMS[id]!;
-			if (this.gold < it.price) {
+			const result = purchaseItem(this.gold, this.inventory, it, SHOP_STOCK);
+			if (!result.ok) {
 				this.toastMsg("Not enough crowns.");
 				sfxPlay.fail();
 			} else {
-				this.gold -= it.price;
-				this.give(id, 1);
+				this.gold = result.gold;
+				this.inventory = result.inventory;
 				sfxPlay.confirm();
 				this.toastMsg(`Bought ${it.name}.`);
 			}
@@ -1351,8 +1349,10 @@ export class ReliquaryGame {
 			const id = Object.keys(this.inventory).filter((id) => (this.inventory[id] ?? 0) > 0 && ITEMS[id])[this.shopIndex];
 			if (!id) return;
 			const it = ITEMS[id]!;
-			this.inventory[id] -= 1;
-			this.gold += Math.floor(it.price / 2);
+			const result = sellItem(this.gold, this.inventory, it);
+			if (!result.ok) return;
+			this.gold = result.gold;
+			this.inventory = result.inventory;
 			sfxPlay.confirm();
 			this.toastMsg(`Sold ${it.name}.`);
 		}

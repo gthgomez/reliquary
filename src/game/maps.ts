@@ -1,4 +1,4 @@
-import type { MapDef, MapObj } from "./types";
+import type { MapDef, MapObj } from "./types.ts";
 
 function tree(id: string, x: number, y: number): MapObj {
   return { id, sprite: "tree", x, y, w: 2, h: 2, foot: 1, solid: true };

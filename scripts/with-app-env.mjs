@@ -111,7 +111,18 @@ function main(argv) {
     process.exit(2);
   }
   const env = mergeAppEnv(readAppEnv(projectRoot()), process.env);
-  const child = spawn(command, args, { stdio: "inherit", env });
+  // Node's spawn does not resolve npm's `.cmd` shims on Windows when shell is
+  // false. Keep the wrapper shell-free, but select the platform shim explicitly
+  // so `npm run dev/build/preview` works on both Windows and POSIX hosts.
+  let executable = command;
+  let childArgs = args;
+  if (process.platform === "win32" && command === "vite") {
+    // Avoid spawning npm's `.cmd` shim directly: Node reports EINVAL for that
+    // path in some Windows hosts. Vite's JS entry is the same CLI target.
+    executable = process.execPath;
+    childArgs = [join(projectRoot(), "node_modules", "vite", "bin", "vite.js"), ...args];
+  }
+  const child = spawn(executable, childArgs, { stdio: "inherit", env });
   // The dev server is long-running and is stopped by signalling this wrapper.
   for (const signal of ["SIGINT", "SIGTERM", "SIGHUP"]) {
     process.on(signal, () => child.kill(signal));

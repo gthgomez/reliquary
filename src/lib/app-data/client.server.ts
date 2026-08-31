@@ -211,7 +211,9 @@ function tokenIdentityKey(token: string): string {
             .digest("base64url");
         }
       }
-    } catch {}
+    } catch {
+      // Tokens without a decodable claims payload still receive a stable key.
+    }
   }
   return createHash("sha256").update(token).digest("base64url");
 }
