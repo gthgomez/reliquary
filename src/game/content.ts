@@ -6,7 +6,8 @@ import type {
   Species,
   Stats,
   Temperament,
-} from "./types";
+} from "./types.ts";
+import { mathRandom, type RandomSource } from "./rng.ts";
 
 export const ELEMENTS: Record<
   ElementId,
@@ -227,14 +228,14 @@ export function nextUid(): string {
   return `b${Date.now().toString(36)}${uidSeq}`;
 }
 
-export function rollIvs(): Stats {
-  const r = () => 1 + Math.floor(Math.random() * 15);
+export function rollIvs(random: RandomSource = mathRandom): Stats {
+  const r = () => 1 + Math.floor(random() * 15);
   return { hp: r(), mp: r(), atk: r(), def: r(), mag: r(), res: r(), spd: r(), lck: r() };
 }
 
-export function randomTemperament(): Temperament {
+export function randomTemperament(random: RandomSource = mathRandom): Temperament {
   const keys = Object.keys(TEMPERAMENTS) as Temperament[];
-  return keys[Math.floor(Math.random() * keys.length)]!;
+  return keys[Math.floor(random() * keys.length)]!;
 }
 
 export function calcStats(species: Species, level: number, ivs: Stats, temperament: Temperament): Stats {
@@ -263,11 +264,12 @@ export function skillsForLevel(species: Species, level: number): string[] {
   return learned.slice(-4);
 }
 
-export function makeBeast(speciesId: string, level: number, opts?: { temperament?: Temperament; ivs?: Stats; nickname?: string }): Beast {
+export function makeBeast(speciesId: string, level: number, opts?: { temperament?: Temperament; ivs?: Stats; nickname?: string; random?: RandomSource }): Beast {
   const sp = SPECIES[speciesId];
   if (!sp) throw new Error(`Unknown species ${speciesId}`);
-  const ivs = opts?.ivs ?? rollIvs();
-  const temperament = opts?.temperament ?? randomTemperament();
+  const random = opts?.random ?? mathRandom;
+  const ivs = opts?.ivs ?? rollIvs(random);
+  const temperament = opts?.temperament ?? randomTemperament(random);
   const stats = calcStats(sp, level, ivs, temperament);
   return {
     uid: nextUid(),
