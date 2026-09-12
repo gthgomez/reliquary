@@ -13,16 +13,11 @@ import {
   VictoryScreen,
 } from "./ui/Overlays";
 
-let game: ReliquaryGame | null = null;
-function getGame(): ReliquaryGame {
-  if (!game) game = new ReliquaryGame();
-  return game;
-}
-
 export function GameApp() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
-  const g = getGame();
+  const gameRef = useRef<ReliquaryGame | null>(null);
+  const g = gameRef.current ?? (gameRef.current = new ReliquaryGame());
   const snap = useSyncExternalStore(g.subscribe, g.getSnapshot, g.getSnapshot);
 
   useEffect(() => {
@@ -45,6 +40,7 @@ export function GameApp() {
     return () => {
       ro.disconnect();
       g.destroy();
+      if (window.__reliquary?.confirm === g.confirm) delete window.__reliquary;
     };
     // boot once per mount
     // eslint-disable-next-line react-hooks/exhaustive-deps

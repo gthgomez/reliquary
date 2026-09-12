@@ -200,10 +200,6 @@ export interface GameSave {
   caught: Record<string, boolean>;
 }
 
-export const SAVE_VERSION = 1;
-export const SAVE_KEY = "reliquary.save.v1";
-export const SAVE_BACKUP = "reliquary.save.v1.bak";
-
 export interface DialogView {
   speaker: string;
   text: string;
