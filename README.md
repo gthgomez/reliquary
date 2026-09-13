@@ -11,7 +11,7 @@ keyboard/touch controls.
 
 **Status:** active prototype / gameplay foundation hardening.
 
-Copyright © 2026 Jonathan Gomez. All rights reserved. This is public source
+Copyright © 2026 Jonathan Gomez Aguilar. All rights reserved. This is public source
 visibility, not an open-source license. GitHub's Terms necessarily provide
 limited platform rights for accessing and using GitHub repository features;
 outside those limited rights, no general right is granted to copy, modify,
