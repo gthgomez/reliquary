@@ -45,7 +45,8 @@ smaller shipped derivative already committed.
 ## Raw sprite masters removed from the public repository
 
 A second pass removed the remaining 26 files over 1 MB (37,997,188 bytes total)
-from the working tree and purged them from git history on every ref:
+from the working tree and purged them from git history on `main`, on the
+`codex/reliquary-hardening` branch, and on the `v0.1.0` tag:
 
 - `assets/sprites/**/raw-sheet*.png` (23 files, 32,735,851 bytes) — the
   full-resolution Imagine source sheets that `scripts/process-game-assets.py`
@@ -73,3 +74,13 @@ Masters for these files should be retained in private storage, outside this
 public repository. This could not be verified from the repository itself, and
 the earlier "masters now live in private storage" note in the previous section
 should be read as a requirement rather than a confirmed fact.
+
+### Known incomplete: `refs/pull/1/head`
+
+The purge is not yet complete. The blobs remain reachable through
+`refs/pull/1/head` (PR #1, closed unmerged), which GitHub rejects writes to
+("deny updating a hidden ref"). All 37 blobs removed across the first two
+passes — 26 here plus the 11 removed earlier — were confirmed still fetchable
+from that ref. Clearing it requires a GitHub Support request; until then these
+art files remain publicly downloadable and the history rewrite should be
+treated as partial.
