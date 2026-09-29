@@ -42,7 +42,34 @@ No image was recompressed or re-encoded in this change; every removed file was
 provably unreferenced by runtime, build, and test code, and each had a
 smaller shipped derivative already committed.
 
-Still present and unresolved: `assets/tiles/{cave,wall,wood}-raw.png` and the
-`assets/sprites/**/raw-sheet*.png` family are in the same category and remain
-flagged above. They are under the 2 MB threshold and were out of scope for this
-pass; they should be migrated to private storage before commercial release.
+## Raw sprite masters removed from the public repository
+
+A second pass removed the remaining 26 files over 1 MB (37,997,188 bytes total)
+from the working tree and purged them from git history on every ref:
+
+- `assets/sprites/**/raw-sheet*.png` (23 files, 32,735,851 bytes) — the
+  full-resolution Imagine source sheets that `scripts/process-game-assets.py`
+  writes into `assets/sprites/<name>/` and then feeds to
+  `generate2dsprite.py process`. They are pipeline intermediates, not runtime
+  assets. `scripts/recook-sprites.py` reads `assets/sprites/beasts/raw-sheet.png`
+  for its own re-slice, so the generator scripts depend on these paths; the true
+  masters are the `.jpg` files in the external `artifacts/imagine_images`
+  directory, which are not in this repository.
+- `assets/tiles/{cave,wall,wood}-raw.png` (5,261,337 bytes) — the last three
+  `*-raw.png` tile masters. `make_tile()` in `scripts/process-game-assets.py`
+  resizes from the external source art, never from `TILES/<key>-raw.png`, so
+  nothing reads these files.
+
+Evidence that removal is safe: the engine preloads 78 paths, all rooted at
+`/game/` (`src/game/engine.ts:1522-1581`, plus `src/game/ui/Overlays.tsx`),
+which map to `public/game/{tiles,sprites,props,bg,ui}`. A search of `src/`,
+`server/`, and `migrations/` finds no reference to `assets` at all, and the Vite
+build uses the default `publicDir`, so `assets/` is never served or bundled. All
+78 runtime paths were confirmed present in the working tree before and after
+the deletion. No image was recompressed or re-encoded; each removed file had a
+smaller shipped derivative already committed under `public/game/`.
+
+Masters for these files should be retained in private storage, outside this
+public repository. This could not be verified from the repository itself, and
+the earlier "masters now live in private storage" note in the previous section
+should be read as a requirement rather than a confirmed fact.
