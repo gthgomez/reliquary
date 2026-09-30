@@ -97,12 +97,28 @@ export function writeSave(save: GameSave, target: SaveStorage | null = browserSt
   if (!target) return false;
   const normalized = { ...save, version: SAVE_VERSION } as GameSave;
   if (!GameSaveSchema.safeParse(normalized).success || !validateSemantics(normalized)) return false;
+  let hadLegacySlots = false;
   try {
+    // Rotate only a *validated* prior save into the backup slot. A corrupt or
+    // unreadable primary must never destroy the last valid recovery copy.
     const previous = target.getItem(SAVE_KEY) ?? target.getItem(LEGACY_SAVE_KEY);
-    if (previous !== null) target.setItem(SAVE_BACKUP, previous);
+    hadLegacySlots = target.getItem(LEGACY_SAVE_KEY) !== null || target.getItem(LEGACY_SAVE_BACKUP) !== null;
+    if (previous !== null && parseSave(previous) !== null) {
+      target.setItem(SAVE_BACKUP, previous);
+    }
     target.setItem(SAVE_KEY, JSON.stringify(normalized));
+    // The new primary is durable; stale legacy slots may now be reclaimed.
+    if (hadLegacySlots) {
+      for (const key of [LEGACY_SAVE_KEY, LEGACY_SAVE_BACKUP]) {
+        try { target.removeItem(key); } catch { /* keep going: primary is durable */ }
+      }
+    }
     return true;
-  } catch { return false; }
+  } catch {
+    // A failed write leaves the previous state (validated backup and/or old
+    // primary) in place so loadSave can still recover the last good save.
+    return false;
+  }
 }
 
 export function hasSave(source: SaveStorage | null = browserStorage()): boolean {

@@ -48,6 +48,67 @@ test("a valid backup recovers when the primary record is bad", () => {
   assert.equal(loadSave(store)?.playerName, "Rowan");
 });
 
+test("a corrupt primary never overwrites the only good backup when the new primary write fails", () => {
+  const store = new MemoryStorage();
+  const save = validSave();
+  assert.equal(writeSave(save, store), true);
+  assert.equal(writeSave({ ...save, gold: 180 }, store), true); // rotates the validated prior save into the backup
+  // Fault sequence: corrupt primary, valid backup, then a failing new primary write.
+  store.data.set(SAVE_KEY, "{broken");
+  store.failOn = SAVE_KEY;
+  assert.equal(writeSave({ ...save, gold: 999 }, store), false);
+  store.failOn = null;
+  // The corrupt primary must not have been rotated into the backup slot.
+  assert.equal(loadSave(store)?.gold, save.gold);
+});
+
+test("a corrupt primary is not validated for backup rotation", () => {
+  const store = new MemoryStorage();
+  const save = validSave();
+  store.data.set(SAVE_KEY, "{broken");
+  assert.equal(writeSave({ ...save, gold: 77 }, store), true);
+  // The good backup written by the successful save is not the corrupt primary.
+  assert.equal(loadSave(store)?.gold, 77);
+  assert.notEqual(store.data.get(SAVE_BACKUP), "{broken");
+});
+
+test("loadSave falls back to legacy slots and survives read failures", () => {
+  const store = new MemoryStorage();
+  const legacy = { ...validSave(), version: 1 } as GameSave;
+  store.data.set(LEGACY_SAVE_KEY, JSON.stringify(legacy));
+  assert.equal(loadSave(store)?.playerName, "Rowan");
+  store.data.delete(LEGACY_SAVE_KEY);
+  store.data.set(SAVE_KEY, JSON.stringify(validSave()));
+  const reader: SaveStorage = {
+    getItem: (key) => { if (key === SAVE_KEY) throw new Error("read failure"); return store.getItem(key); },
+    setItem: (key, value) => store.setItem(key, value),
+    removeItem: (key) => store.removeItem(key),
+  };
+  assert.equal(loadSave(reader), null);
+});
+
+test("duplicate creature IDs and unknown content fail semantic validation", () => {
+  const save = validSave();
+  const dup = validSave();
+  dup.party[0] = { ...save.party[0]!, uid: save.party[0]!.uid };
+  assert.equal(parseSave(JSON.stringify({ ...save, box: [dup.party[0]!] })), null);
+  assert.equal(parseSave(JSON.stringify({ ...save, inventory: { "not-an-item": 1 } })), null);
+  assert.equal(parseSave(JSON.stringify({ ...save, caught: { "not-a-species": true } })), null);
+});
+
+test("legacy keys are removed only after a validated new save is durable", () => {
+  const store = new MemoryStorage();
+  const legacy = { ...validSave(), version: 1 } as GameSave;
+  store.data.set(LEGACY_SAVE_KEY, JSON.stringify(legacy));
+  store.failOn = SAVE_KEY;
+  assert.equal(writeSave(validSave(), store), false);
+  // Write failed: old keys must survive.
+  assert.equal(parseSave(store.data.get(LEGACY_SAVE_KEY)!)?.playerName, "Rowan");
+  store.failOn = null;
+  assert.equal(writeSave(validSave(), store), true);
+  assert.equal(store.data.has(LEGACY_SAVE_KEY), false);
+});
+
 test("a failed backup write preserves the last-known-good primary", () => {
   const store = new MemoryStorage();
   const original = validSave();
