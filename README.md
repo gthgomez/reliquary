@@ -56,5 +56,6 @@ separate written agreement.
 - [Architecture](docs/ARCHITECTURE.md)
 - [Content system](docs/CONTENT_SYSTEM.md)
 - [Asset provenance](docs/ASSET_PROVENANCE.md)
+- [Publication and removal status](docs/security/publication-status.md)
 - [Security and public-repository notes](docs/SECURITY.md)
 - [Brand-risk note](docs/BRAND_RISK.md)
