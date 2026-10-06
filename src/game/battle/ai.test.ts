@@ -21,9 +21,15 @@ test("uses a heal when below a third of max HP and MP allows", () => {
   assert.equal(chosen.id, "mossmend");
 });
 
-test("falls back when no skill is legal", () => {
+test("uses the first skill when none is eligible, preserving original fallback", () => {
   const foe = beast("emberkit");
   foe.mp = 0;
   const chosen = chooseFoeSkill(foe, SPECIES.briarling.elements, [SKILLS.cinder], SKILLS.nip);
+  assert.equal(chosen.id, "cinder");
+});
+
+test("uses the fallback skill when the skill list is empty", () => {
+  const foe = beast("emberkit");
+  const chosen = chooseFoeSkill(foe, SPECIES.briarling.elements, [], SKILLS.nip);
   assert.equal(chosen.id, "nip");
 });

@@ -13,7 +13,7 @@ export function chooseFoeSkill(
     const heal = skills.find((s) => s.kind === "heal" && foe.mp >= s.mp);
     if (heal) return heal;
   }
-  let best = fallback;
+  let best = skills[0] ?? fallback;
   let bestScore = -1;
   for (const s of skills) {
     if (s.mp > foe.mp || s.kind === "heal") continue;
