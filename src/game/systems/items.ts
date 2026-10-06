@@ -27,7 +27,9 @@ export function validateItemUse(
     ? party.findIndex((b) => b.hp <= 0)
     : activeIndex;
   const targetIndex = requestedTarget ?? fallback;
-  if (targetIndex < 0 || targetIndex >= party.length) return { ok: false, reason: "no-target" };
+  if (!Number.isInteger(targetIndex) || targetIndex < 0 || targetIndex >= party.length) {
+    return { ok: false, reason: "no-target" };
+  }
   const target = party[targetIndex]!;
   if (item.kind === "revive") {
     return target.hp > 0 ? { ok: false, reason: "invalid-target" } : { ok: true, targetIndex, consume: true };

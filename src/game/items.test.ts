@@ -47,3 +47,33 @@ test("sigils and key items are never usable as consumables", () => {
     ok: false, reason: "unusable",
   });
 });
+
+test("out-of-range and negative requested targets are rejected", () => {
+  const alive = beast("emberkit");
+  assert.deepEqual(validateItemUse(ITEMS.tonic, [alive], 0, true, 5), {
+    ok: false, reason: "no-target",
+  });
+  assert.deepEqual(validateItemUse(ITEMS.tonic, [alive], 0, true, -1), {
+    ok: false, reason: "no-target",
+  });
+});
+
+test("non-integer requested targets never throw and are rejected", () => {
+  const alive = beast("emberkit");
+  assert.deepEqual(validateItemUse(ITEMS.tonic, [alive], 0, true, 0.5), {
+    ok: false, reason: "no-target",
+  });
+  assert.deepEqual(validateItemUse(ITEMS.tonic, [alive], 0, true, Number.NaN), {
+    ok: false, reason: "no-target",
+  });
+});
+
+test("ether and status items heal-check the shared living-target branch", () => {
+  const alive = beast("emberkit");
+  assert.deepEqual(validateItemUse(ITEMS.etherdrop, [alive], 0, true, 0), {
+    ok: true, targetIndex: 0, consume: true,
+  });
+  assert.deepEqual(validateItemUse(ITEMS.salve, [alive], 0, true, 0), {
+    ok: true, targetIndex: 0, consume: true,
+  });
+});
