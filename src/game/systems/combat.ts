@@ -36,7 +36,9 @@ export function resolveElementalDamage(
   const stab = attackerElements.includes(skill.element) ? 1.25 : 1;
   const multiplier = typeMod(skill.element, defenderElements);
   const critical = random() < .06 + aStats.lck / 400;
-  const damage = Math.max(1, Math.floor(base * stab * multiplier * (critical ? 1.6 : 1) * (.85 + random() * .15)));
+  let damage = Math.max(1, Math.floor(base * stab * multiplier * (critical ? 1.6 : 1) * (.85 + random() * .15)));
+  if (defender.status === "ward") damage = Math.floor(damage * .7);
+  if (attacker.status === "bless") damage = Math.floor(damage * 1.15);
   return { hit: true, critical, damage, multiplier };
 }
 

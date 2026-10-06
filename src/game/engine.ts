@@ -13,7 +13,7 @@ import { sfxPlay, startMusic, unlockAudio } from "./audio.ts";
 import { hasSave, loadSave, writeSave } from "./save.ts";
 import { mathRandom, type RandomSource } from "./rng.ts";
 import { captureChance, captureSucceeds, storeCapturedBeast } from "./systems/capture.ts";
-import { accuracySucceeds, healBeast, playerActsFirst, spendSkillMp, statusSucceeds } from "./systems/combat.ts";
+import { accuracySucceeds, healBeast, playerActsFirst, resolveElementalDamage, spendSkillMp, statusSucceeds } from "./systems/combat.ts";
 import { purchaseItem, sellItem } from "./systems/economy.ts";
 import { awardExperience } from "./systems/progression.ts";
 import { applyStatus, tickStatus as tickBeastStatus } from "./systems/status.ts";
@@ -1105,48 +1105,54 @@ export class ReliquaryGame {
 	private useSkill(atk: Beast, def: Beast, foeSide: boolean, skill: Skill, logIt: boolean): void {
 		const b = this.battle!;
 		const aS = currentStats(atk);
-		const dS = currentStats(def);
-		const sp = SPECIES[atk.speciesId];
-		if (!accuracySucceeds(skill, atk, this.random)) {
-			if (logIt) b.log = [`${atk.nickname}'s ${skill.name} misses.`];
-			sfxPlay.fail();
-			return;
-		}
 		if (skill.kind === "heal") {
+			if (!accuracySucceeds(skill, atk, this.random)) {
+				if (logIt) b.log = [`${atk.nickname}'s ${skill.name} misses.`];
+				sfxPlay.fail();
+				return;
+			}
 			const heal = healBeast(atk, skill.power * (aS.mag / 40));
 			b.log = [`${atk.nickname} mends for ${heal}.`];
 			sfxPlay.heal();
 			return;
 		}
 		if (skill.kind === "ward" || skill.kind === "hex" && skill.power === 0) {
+			if (!accuracySucceeds(skill, atk, this.random)) {
+				if (logIt) b.log = [`${atk.nickname}'s ${skill.name} misses.`];
+				sfxPlay.fail();
+				return;
+			}
 			if (skill.status) {
-					applyStatus(def, skill.status);
+				applyStatus(def, skill.status);
 				b.log = [`${skill.name}: ${def.nickname} is ${skill.status}.`];
 			}
 			sfxPlay.menu();
 			return;
 		}
-		const phys = skill.kind === "strike";
-		const atkStat = phys ? aS.atk : aS.mag;
-		const defStat = phys ? dS.def : dS.res;
-		let dmg = Math.floor((2 * atk.level / 5 + 2) * skill.power * atkStat / Math.max(1, defStat) / 50) + 2;
-		const stab = sp.elements.includes(skill.element) ? 1.25 : 1;
-		const tmod = typeMod(skill.element, SPECIES[def.speciesId].elements);
-		const crit = this.random() < .06 + aS.lck / 400;
-		dmg = Math.max(1, Math.floor(dmg * stab * tmod * (crit ? 1.6 : 1) * (.85 + this.random() * .15)));
-		if (def.status === "ward") dmg = Math.floor(dmg * .7);
-		if (atk.status === "bless") dmg = Math.floor(dmg * 1.15);
-		def.hp = Math.max(0, def.hp - dmg);
-		let line = `${atk.nickname} uses ${skill.name}! ${dmg} harm.`;
-		if (tmod > 1.2) line += " It bites deep.";
-		else if (tmod < .8) line += " It glances.";
-		if (crit) line += " A true cut.";
+		const resolution = resolveElementalDamage(
+			atk,
+			def,
+			skill,
+			SPECIES[atk.speciesId]!.elements,
+			SPECIES[def.speciesId]!.elements,
+			this.random,
+		);
+		if (!resolution.hit) {
+			if (logIt) b.log = [`${atk.nickname}'s ${skill.name} misses.`];
+			sfxPlay.fail();
+			return;
+		}
+		def.hp = Math.max(0, def.hp - resolution.damage);
+		let line = `${atk.nickname} uses ${skill.name}! ${resolution.damage} harm.`;
+		if (resolution.multiplier > 1.2) line += " It bites deep.";
+		else if (resolution.multiplier < 0.8) line += " It glances.";
+		if (resolution.critical) line += " A true cut.";
 		if (skill.status && statusSucceeds(skill.statusChance ?? 0, this.random) && def.hp > 0) {
-				applyStatus(def, skill.status);
+			applyStatus(def, skill.status);
 			line += ` ${def.nickname} is ${skill.status}.`;
 		}
 		b.log = [line];
-		if (crit) sfxPlay.crit();
+		if (resolution.critical) sfxPlay.crit();
 		else sfxPlay.hit();
 	}
 	private foeTurn(foe: Beast, me: Beast): void {
