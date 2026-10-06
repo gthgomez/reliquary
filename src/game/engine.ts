@@ -596,6 +596,7 @@ export class ReliquaryGame {
 			return;
 		}
 		if (this.battle) {
+			if (this.battle.phase === "party" && this.battle.pendingSwitch) return;
 			if (this.battle.phase === "skills" || this.battle.phase === "items" || this.battle.phase === "party" || this.battle.phase === "bind") {
 				this.battle.phase = "command";
 				this.battle.menuIndex = 0;
@@ -1006,11 +1007,21 @@ export class ReliquaryGame {
 		}
 		if (b.phase === "party") {
 			const idx = b.menuIndex;
-			if (!this.party[idx] || this.party[idx].hp <= 0 || idx === b.playerIndex) return;
-			this.playerAction({
-				type: "switch",
-				index: idx
-			});
+			const target = this.party[idx];
+			if (!target || target.hp <= 0) return;
+			if (idx === b.playerIndex) return;
+			if (b.pendingSwitch) {
+				b.playerIndex = idx;
+				b.pendingSwitch = false;
+				b.phase = "command";
+				b.menuIndex = 0;
+				this.menuIndex = 0;
+				b.log = [`${this.party[idx]!.nickname} steps forward.`];
+				sfxPlay.confirm();
+				this.emit();
+				return;
+			}
+			this.playerAction({ type: "switch", index: idx });
 		}
 	}
 	usableItems(): string[] {
@@ -1048,7 +1059,7 @@ export class ReliquaryGame {
 					return;
 				}
 				this.useSkill(me, foe, false, sk, true);
-			} else if (act.type === "item") this.useItem(act.item!, me, true);
+			} else if (act.type === "item") this.useItem(act.item!, this.party[b.playerIndex]!, true);
 			else if (act.type === "bind") this.tryCatch(act.item!);
 			else if (act.type === "switch") {
 				b.playerIndex = act.index!;
@@ -1056,8 +1067,9 @@ export class ReliquaryGame {
 			}
 		};
 		const doFoe = () => {
-			if (foe.hp <= 0 || b.phase === "catch" || b.escaped) return;
-			this.foeTurn(foe, me);
+			const active = this.party[b.playerIndex]!;
+			if (foe.hp <= 0 || b.phase === "catch" || b.escaped || active.hp <= 0) return;
+			this.foeTurn(foe, active);
 		};
 		if (playerFirst) {
 			doPlayer();
@@ -1067,10 +1079,13 @@ export class ReliquaryGame {
 				return;
 			}
 			doFoe();
-			if (me.hp <= 0) this.playerDown();
+			if (this.party[b.playerIndex]!.hp <= 0) {
+				this.playerDown();
+				return;
+			}
 		} else {
 			doFoe();
-			if (me.hp <= 0) {
+			if (this.party[b.playerIndex]!.hp <= 0) {
 				this.playerDown();
 				return;
 			}
@@ -1082,7 +1097,7 @@ export class ReliquaryGame {
 			b.phase = "command";
 			b.menuIndex = 0;
 			this.menuIndex = 0;
-			this.tickStatus(me);
+			this.tickStatus(this.party[b.playerIndex]!);
 			this.tickStatus(foe);
 		}
 		this.emit();
@@ -1194,12 +1209,15 @@ export class ReliquaryGame {
 	}
 	private playerDown(): void {
 		const b = this.battle!;
+		const fallen = this.party[b.playerIndex]!;
 		sfxPlay.faint();
 		const next = this.party.findIndex((p) => p.hp > 0);
 		if (next >= 0) {
-			b.log = [`${this.party[b.playerIndex]!.nickname} cannot stand.`, "Choose another."];
+			b.log = [`${fallen.nickname} cannot stand.`, "Choose another."];
 			b.phase = "party";
-			b.playerIndex = next;
+			b.pendingSwitch = true;
+			b.menuIndex = next;
+			this.menuIndex = next;
 			this.emit();
 			return;
 		}
