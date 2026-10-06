@@ -391,6 +391,25 @@ export function BattleHud({ game, snap }: { game: ReliquaryGame; snap: Snapshot 
           ))}
         </ul>
       ) : null}
+      {b.phase === "item-target" ? (
+        <ul className="cmd">
+          {snap.party.map((p, i) => (
+            <li key={p.uid}>
+              <button
+                type="button"
+                className={i === b.menuIndex ? "active" : ""}
+                onClick={() => {
+                  game.menuIndex = i;
+                  if (game.battle) game.battle.menuIndex = i;
+                  game.confirm();
+                }}
+              >
+                {p.nickname} <em>{p.hp} hp</em>
+              </button>
+            </li>
+          ))}
+        </ul>
+      ) : null}
       {b.phase === "win" || b.phase === "lose" ? (
         <button type="button" className="btn-primary" onClick={() => game.confirm()}>
           {b.phase === "win" ? "Continue" : "Wake"}

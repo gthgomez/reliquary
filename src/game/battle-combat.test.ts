@@ -42,7 +42,7 @@ function battleGame(party: Beast[], foes: Beast[], random: () => number): Reliqu
   g.mode = "battle";
   g.battle = {
     kind: "wild", bg: "grass", playerIndex: 0, foes, foeIndex: 0, log: [],
-    phase: "command", menuIndex: 0, shake: 0, catchStone: null,
+    phase: "command", menuIndex: 0, pendingItem: null, shake: 0, catchStone: null,
     pendingXp: 0, escaped: false, canFlee: true, pendingSwitch: false,
   } satisfies BattleState;
   return g;
