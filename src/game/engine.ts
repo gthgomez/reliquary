@@ -10,7 +10,7 @@ import {
 } from "./content.ts";
 import { BLOCKED, ENCOUNTER_TILES, GROUND_TILE, MAPS } from "./maps.ts";
 import { sfxPlay, startMusic, unlockAudio } from "./audio.ts";
-import { hasSave, loadSave, writeSave } from "./save.ts";
+import { hasSave, loadSave, writeSave, type SaveStorage } from "./save.ts";
 import { mathRandom, type RandomSource } from "./rng.ts";
 import { captureChance, captureSucceeds, storeCapturedBeast } from "./systems/capture.ts";
 import { accuracySucceeds, healBeast, playerActsFirst, resolveElementalDamage, spendSkillMp, statusSucceeds } from "./systems/combat.ts";
@@ -126,6 +126,7 @@ export class ReliquaryGame {
 	encounterLock = false;
 	hasSave = false;
 	lifecycle: "constructed" | "booted" | "stopped" = "constructed";
+	private readonly storage?: SaveStorage | null;
 	private readonly random: RandomSource;
 	private bootToken = 0;
 	private visibilityHandler = (): void => {
@@ -135,10 +136,11 @@ export class ReliquaryGame {
 		}
 	};
 	private probe: NonNullable<Window["__controlsTest"]> | null = null;
-	constructor(options: { random?: RandomSource } = {}) {
+	constructor(options: { random?: RandomSource; storage?: SaveStorage | null } = {}) {
 		this.random = options.random ?? mathRandom;
+		this.storage = options.storage;
 		this.snap = this.buildSnap();
-		this.hasSave = hasSave();
+		this.hasSave = hasSave(this.storage);
 	}
 	subscribe = (fn: () => void): (() => void) => {
 		this.listeners.add(fn);
@@ -419,8 +421,8 @@ export class ReliquaryGame {
 		this.seen = s.seen;
 		this.caught = s.caught;
 	}
-	persist(): void {
-		writeSave({
+	persist(): boolean {
+		const ok = writeSave({
 			version: 2,
 			playerName: this.playerName,
 			mapId: this.mapId,
@@ -435,8 +437,9 @@ export class ReliquaryGame {
 			flags: this.flags,
 			seen: this.seen,
 			caught: this.caught
-		});
-		this.hasSave = true;
+		}, this.storage);
+		if (ok) this.hasSave = true;
+		return ok;
 	}
 	private map(): MapDef {
 		return MAPS[this.mapId]!;
@@ -1397,9 +1400,14 @@ export class ReliquaryGame {
 			else if (c === "Reliquary") this.menu = "reliquary";
 			else if (c === "Pack") this.menu = "items";
 			else if (c === "Save") {
-				this.persist();
-				sfxPlay.save();
-				this.toastMsg("The lantern is written.");
+				const ok = this.persist();
+				if (ok) {
+					sfxPlay.save();
+					this.toastMsg("The lantern is written.");
+				} else {
+					sfxPlay.fail();
+					this.toastMsg("The lantern will not take the ink. Try again.");
+				}
 				this.menu = null;
 			} else this.menu = null;
 			this.menuIndex = 0;
