@@ -77,3 +77,15 @@ test("ether and status items heal-check the shared living-target branch", () => 
     ok: true, targetIndex: 0, consume: true,
   });
 });
+
+test("ether and status items reject a fainted target", () => {
+  const alive = beast("emberkit");
+  const fallen = beast("mirewhelp");
+  fallen.hp = 0;
+  assert.deepEqual(validateItemUse(ITEMS.etherdrop, [alive, fallen], 0, true, 1), {
+    ok: false, reason: "invalid-target",
+  });
+  assert.deepEqual(validateItemUse(ITEMS.salve, [alive, fallen], 0, true, 1), {
+    ok: false, reason: "invalid-target",
+  });
+});

@@ -1009,10 +1009,14 @@ export class ReliquaryGame {
 				this.emit();
 				return;
 			}
+			// This validation and the one inside useItem run synchronously on the same
+			// state (playerAction invokes useItem with no await in between), so their
+			// verdicts cannot disagree.
 			const plan = validateItemUse(ITEMS[id], this.party, b.playerIndex, true, b.menuIndex);
 			if (!plan.ok) {
+				const fieldName = ITEMS[id]?.name ?? "That item";
 				const message = plan.reason === "field-only"
-					? "The Quiet Bell cannot be heard here."
+					? `${fieldName} cannot be heard here.`
 					: plan.reason === "invalid-target"
 						? "That pact-beast cannot take it."
 						: plan.reason === "no-target"
@@ -1457,7 +1461,8 @@ export class ReliquaryGame {
 		if (this.menu === "items") {
 			const id = this.usableItems()[this.menuIndex];
 			if (!id) return;
-			this.useItem(id, false);
+			const ok = this.useItem(id, false);
+			if (!ok) this.toastMsg("That pact-beast cannot take it.");
 			this.emit();
 		}
 	}

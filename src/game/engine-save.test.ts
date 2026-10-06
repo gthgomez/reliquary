@@ -46,6 +46,7 @@ test("a failed save neither reports success nor falsely marks hasSave", () => {
   assert.equal(g.hasSave, false, "hasSave must not be set when the write failed");
   assert.equal(store.data.has(SAVE_KEY), false);
   assert.notEqual(g.toast, "The lantern is written.");
+  assert.equal(g.toast, "The lantern will not take the ink. Try again.");
 });
 
 test("hasSave reflects an existing durable save at construction", () => {

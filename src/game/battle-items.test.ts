@@ -61,11 +61,17 @@ test("revive targets a fainted creature and is consumed only once valid", () => 
   assert.equal(g.battle!.phase, "item-target");
 
   // Invalid: target the living lead.
+  const foe = g.battle!.foes[g.battle!.foeIndex]!;
+  const active = g.party[g.battle!.playerIndex]!;
+  const foeHpBefore = foe.hp;
+  const activeHpBefore = active.hp;
   g.menuIndex = 0;
   g.battle!.menuIndex = 0;
   g.confirm();
   assert.equal(g.inventory.phoenix_ash, 1, "invalid target must not consume the item");
   assert.equal(g.battle!.phase, "item-target", "stays for another choice");
+  assert.equal(foe.hp, foeHpBefore, "the foe takes no action on an invalid target");
+  assert.equal(active.hp, activeHpBefore, "no counterattack runs on an invalid target");
 
   // Valid: target the fainted creature.
   g.menuIndex = 1;
@@ -85,12 +91,18 @@ test("healing a fainted creature does not consume the item", () => {
   g.menuIndex = g.usableItems().indexOf("tonic");
   g.battle!.menuIndex = g.menuIndex;
   g.confirm();
+  const foe = g.battle!.foes[g.battle!.foeIndex]!;
+  const active = g.party[g.battle!.playerIndex]!;
+  const foeHpBefore = foe.hp;
+  const activeHpBefore = active.hp;
   g.menuIndex = 1; // fainted target
   g.battle!.menuIndex = 1;
   g.confirm();
 
   assert.equal(g.inventory.tonic, 3);
   assert.equal(g.battle!.phase, "item-target");
+  assert.equal(foe.hp, foeHpBefore, "the foe takes no action on an invalid target");
+  assert.equal(active.hp, activeHpBefore, "no counterattack runs on an invalid target");
 });
 
 test("cancelling item-target returns to the command menu", () => {
