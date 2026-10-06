@@ -9,8 +9,10 @@ let muted = false;
 const musicOn = true;
 
 export function unlockAudio(): void {
+  if (typeof window === "undefined") return;
+  const AC = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+  if (!AC) return;
   if (!ctx) {
-    const AC = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
     ctx = new AC({ latencyHint: "interactive" });
     master = ctx.createGain();
     music = ctx.createGain();
