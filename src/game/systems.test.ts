@@ -30,6 +30,38 @@ test("physical and spell damage respect accuracy, weakness, resistance, and dual
   assert.ok(currentStats(dual).hp > 0);
 });
 
+test("ward and bless statuses scale resolved damage deterministically", () => {
+  const attacker = beast("emberkit");
+  const defender = beast("mothwisp");
+  const skill = SKILLS.cinder;
+  const resolve = () =>
+    resolveElementalDamage(
+      attacker,
+      defender,
+      skill,
+      SPECIES.emberkit.elements,
+      SPECIES.mothwisp.elements,
+      sequenceRandom([.99, .5]),
+    );
+
+  const base = resolve();
+  assert.ok(base.damage > 0);
+  assert.equal(base.critical, false);
+
+  defender.status = "ward";
+  assert.equal(resolve().damage, Math.floor(base.damage * .7));
+
+  defender.status = null;
+  attacker.status = "bless";
+  assert.equal(resolve().damage, Math.floor(base.damage * 1.15));
+
+  defender.status = "ward";
+  assert.equal(resolve().damage, Math.floor(Math.floor(base.damage * .7) * 1.15));
+
+  attacker.status = null;
+  defender.status = null;
+});
+
 test("capture chance improves as a foe is weakened and uses deterministic RNG", () => {
   const foe = beast("mirewhelp");
   const full = captureChance(foe, SPECIES.mirewhelp.catchRate, ITEMS.common_sigil.stone ?? 1);
