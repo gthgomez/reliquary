@@ -9,6 +9,7 @@ import {
 } from "./content.ts";
 import { ENCOUNTER_TILES, GROUND_TILE, MAPS } from "./maps.ts";
 import { DIRS, YAW, facingOffset, isOccupied } from "./world/movement.ts";
+import { CHEST_LOOT, SIGN_TEXT, WARP_TABLE, findInteractionTarget } from "./world/interactions.ts";
 import { sfxPlay, startMusic, unlockAudio } from "./audio.ts";
 import { hasSave, loadSave, writeSave, type SaveStorage } from "./save.ts";
 import { mathRandom, type RandomSource } from "./rng.ts";
@@ -634,31 +635,19 @@ export class ReliquaryGame {
 		const off = facingOffset(this.dir);
 		const fx = this.tx + off.x;
 		const fy = this.ty + off.y;
-		const m = this.map();
-		const npc = m.npcs.find((n) => n.x === fx && n.y === fy);
+		const { npc, object } = findInteractionTarget(this.map(), fx, fy);
 		if (npc) {
 			this.talk(npc.talk, npc.name);
 			return;
 		}
-		const obj = m.objects.find((o) => fx >= o.x && fx < o.x + o.w && fy >= o.y && fy < o.y + o.h);
-		if (obj?.interact) {
-			this.handleInteract(obj.interact);
+		if (object?.interact) {
+			this.handleInteract(object.interact);
 			return;
 		}
 	}
 	private handleInteract(id: string): void {
-		const warps: Record<string, [string, number, number]> = {
-			enter_home: ["home", 5, 6],
-			enter_guild: ["guild_in", 6, 8],
-			enter_inn: ["inn_in", 6, 7],
-			enter_shop: ["shop_in", 5, 6],
-			enter_cave: ["ashenbarrow", 9, 16],
-			enter_hall: ["warden_hall", 7, 10],
-			enter_keep_inn: ["keep_inn", 6, 7],
-			enter_keep_shop: ["keep_shop", 5, 6],
-		};
-		if (warps[id]) {
-			const [to, x, y] = warps[id]!;
+		if (WARP_TABLE[id]) {
+			const [to, x, y] = WARP_TABLE[id]!;
 			this.warp(to, x, y, 3);
 			return;
 		}
@@ -685,16 +674,7 @@ export class ReliquaryGame {
 			return;
 		}
 		if (id.startsWith("sign_")) {
-			const signs: Record<string, string> = {
-				sign_road: "BRIAR ROAD — north to Wildwood, east to Mirefen. Bind what you must.",
-				sign_grove: "BINDING GROVE — first pacts are spoken here.",
-				sign_grove_inner: "Choose with care. A first pact is a first name.",
-				sign_briar: "Keep to the path after dusk. The grass remembers hunger.",
-				sign_wildwood: "WILDWOOD — Ashenbarrow in the stone. Thornkeep beyond the trees.",
-				sign_mire: "MIREFEN — watch your step. The peat is older than the keep.",
-				sign_keep: "THORNKEEP — Warden Cael holds the first Mark.",
-			};
-			this.openDialog("Sign", [signs[id] ?? "The letters have worn away."]);
+			this.openDialog("Sign", [SIGN_TEXT[id] ?? "The letters have worn away."]);
 			return;
 		}
 		if (id.startsWith("chest_")) {
@@ -703,13 +683,7 @@ export class ReliquaryGame {
 				return;
 			}
 			this.flags[id] = true;
-			const loot: Record<string, [string, number]> = {
-				chest_briar: ["thorn_sigil", 1],
-				chest_wood: ["greater_tonic", 2],
-				chest_mire: ["relic_sigil", 1],
-				chest_cave: ["phoenix_ash", 1],
-			};
-			const [item, n] = loot[id] ?? ["tonic", 1];
+			const [item, n] = CHEST_LOOT[id] ?? ["tonic", 1];
 			this.give(item, n);
 			sfxPlay.confirm();
 			this.openDialog("", [`Inside: ${ITEMS[item]?.name ?? item} ×${n}.`]);
