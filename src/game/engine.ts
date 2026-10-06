@@ -15,6 +15,7 @@ import { mathRandom, type RandomSource } from "./rng.ts";
 import { captureChance, captureSucceeds, storeCapturedBeast } from "./systems/capture.ts";
 import { accuracySucceeds, healBeast, playerActsFirst, resolveElementalDamage, spendSkillMp, statusSucceeds } from "./systems/combat.ts";
 import { purchaseItem, sellItem } from "./systems/economy.ts";
+import { validateItemUse } from "./systems/items.ts";
 import { awardExperience } from "./systems/progression.ts";
 import { applyStatus, tickStatus as tickBeastStatus } from "./systems/status.ts";
 import type {
@@ -600,7 +601,8 @@ export class ReliquaryGame {
 		}
 		if (this.battle) {
 			if (this.battle.phase === "party" && this.battle.pendingSwitch) return;
-			if (this.battle.phase === "skills" || this.battle.phase === "items" || this.battle.phase === "party" || this.battle.phase === "bind") {
+			if (this.battle.phase === "skills" || this.battle.phase === "items" || this.battle.phase === "item-target" || this.battle.phase === "party" || this.battle.phase === "bind") {
+				this.battle.pendingItem = null;
 				this.battle.phase = "command";
 				this.battle.menuIndex = 0;
 				sfxPlay.cancel();
@@ -650,6 +652,7 @@ export class ReliquaryGame {
 			"thorn_sigil",
 			"relic_sigil"
 		].filter((s) => (this.inventory[s] ?? 0) > 0).length;
+		if (b.phase === "item-target") return this.party.length;
 		if (b.phase === "party") return this.party.length;
 		return 0;
 	}
@@ -991,11 +994,43 @@ export class ReliquaryGame {
 		if (b.phase === "items") {
 			const it = this.usableItems()[b.menuIndex];
 			if (!it) return;
-			this.playerAction({
-				type: "item",
-				item: it
-			});
+			b.phase = "item-target";
+			b.pendingItem = it;
+			b.menuIndex = 0;
+			this.menuIndex = 0;
+			sfxPlay.confirm();
+			this.emit();
 			return;
+		}
+		if (b.phase === "item-target") {
+			const id = b.pendingItem;
+			if (!id) {
+				b.phase = "command";
+				this.emit();
+				return;
+			}
+			const plan = validateItemUse(ITEMS[id], this.party, b.playerIndex, true, b.menuIndex);
+			if (!plan.ok) {
+				const message = plan.reason === "field-only"
+					? "The Quiet Bell cannot be heard here."
+					: plan.reason === "invalid-target"
+						? "That pact-beast cannot take it."
+						: plan.reason === "no-target"
+							? "There is no one to use it on."
+							: "Nothing happens.";
+				b.log = [message];
+				sfxPlay.fail();
+				if (plan.reason === "field-only" || plan.reason === "no-target" || plan.reason === "unusable") {
+					b.pendingItem = null;
+					b.phase = "command";
+					b.menuIndex = 0;
+					this.menuIndex = 0;
+				}
+				this.emit();
+				return;
+			}
+			b.pendingItem = null;
+			this.playerAction({ type: "item", item: id, index: plan.targetIndex });
 		}
 		if (b.phase === "bind") {
 			const st = [
@@ -1064,7 +1099,7 @@ export class ReliquaryGame {
 					return;
 				}
 				this.useSkill(me, foe, false, sk, true);
-			} else if (act.type === "item") this.useItem(act.item!, this.party[b.playerIndex]!, true);
+			} else if (act.type === "item") this.useItem(act.item!, true, act.index);
 			else if (act.type === "bind") this.tryCatch(act.item!);
 			else if (act.type === "switch") {
 				b.playerIndex = act.index!;
@@ -1301,29 +1336,31 @@ export class ReliquaryGame {
 		if (foe.hp > 0 && me.hp > 0) this.foeTurn(foe, me);
 		if (me.hp <= 0) this.playerDown();
 	}
-	private useItem(id: string, target: Beast, inBattle: boolean): void {
+	private useItem(id: string, inBattle: boolean, requestedTarget?: number): boolean {
 		const def = ITEMS[id];
-		if (!def || (this.inventory[id] ?? 0) <= 0) return;
-		if (def.kind === "field") {
-			this.inventory[id] -= 1;
-			this.quietBell = def.power ?? 80;
-			this.toastMsg("The grass stills.");
-			if (inBattle && this.battle) this.battle.log = ["The Quiet Bell cannot be heard here."];
-			return;
-		}
+		const plan = validateItemUse(def, this.party, this.battle?.playerIndex ?? 0, inBattle, requestedTarget);
+		if (!plan.ok) return false;
 		this.inventory[id] -= 1;
-		const st = currentStats(target);
-		if (def.kind === "heal") {
-			healBeast(target, def.power ?? 40);
-			sfxPlay.heal();
-		} else if (def.kind === "ether") {
-			target.mp = Math.min(st.mp, target.mp + (def.power ?? 30));
-			sfxPlay.heal();
-		} else if (def.kind === "status") target.status = null;
-		else if (def.kind === "revive") {
-			if (target.hp <= 0) target.hp = Math.floor(st.hp * ((def.power ?? 50) / 100));
+		if (plan.targetIndex < 0) {
+			this.quietBell = def!.power ?? 80;
+			this.toastMsg("The grass stills.");
+			return true;
 		}
-		if (this.battle) this.battle.log = [`${def.name} on ${target.nickname}.`];
+		const target = this.party[plan.targetIndex]!;
+		const st = currentStats(target);
+		if (def!.kind === "heal") {
+			healBeast(target, def!.power ?? 40);
+			sfxPlay.heal();
+		} else if (def!.kind === "ether") {
+			target.mp = Math.min(st.mp, target.mp + (def!.power ?? 30));
+			sfxPlay.heal();
+		} else if (def!.kind === "status") {
+			target.status = null;
+		} else if (def!.kind === "revive") {
+			target.hp = Math.floor(st.hp * ((def!.power ?? 50) / 100));
+		}
+		if (this.battle) this.battle.log = [`${def!.name} on ${target.nickname}.`];
+		return true;
 	}
 	private endBattle(victory: boolean): void {
 		this.battle = null;
@@ -1419,8 +1456,7 @@ export class ReliquaryGame {
 		if (this.menu === "items") {
 			const id = this.usableItems()[this.menuIndex];
 			if (!id) return;
-			const live = this.party[0];
-			if (live) this.useItem(id, live, false);
+			this.useItem(id, false);
 			this.emit();
 		}
 	}
