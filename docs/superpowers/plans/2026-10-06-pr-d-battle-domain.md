@@ -36,7 +36,7 @@ the first step of Phase 3; the full battle reducer migration continues in PR-E.
 **Interfaces produced (consumed by PR-E):**
 - `BattleAction`, `BattleEvent` (actions.ts)
 - `createWildBattle`, `createTrialBattle`, `activeBeast`, `activeFoe` (state.ts)
-- `chooseFoeSkill(foe, targetElements, skills, fallback, rng): Skill` (ai.ts)
+- `chooseFoeSkill(foe, targetElements, skills, fallback): Skill` (ai.ts)
 - `resolveAttack(attacker, defender, skill, rng): AttackOutcome` (resolution.ts)
 - `reduceAttack(attacker, defender, skill, rng): { defenderHp, events }` (reducer.ts)
 
@@ -253,10 +253,16 @@ test("uses a heal when below a third of max HP and MP allows", () => {
   assert.equal(chosen.id, "mossmend");
 });
 
-test("falls back when no skill is legal", () => {
+test("uses the first skill when none is eligible, preserving original fallback", () => {
   const foe = beast("emberkit");
   foe.mp = 0;
   const chosen = chooseFoeSkill(foe, SPECIES.briarling.elements, [SKILLS.cinder], SKILLS.nip);
+  assert.equal(chosen.id, "cinder");
+});
+
+test("uses the fallback skill when the skill list is empty", () => {
+  const foe = beast("emberkit");
+  const chosen = chooseFoeSkill(foe, SPECIES.briarling.elements, [], SKILLS.nip);
   assert.equal(chosen.id, "nip");
 });
 ```
@@ -287,7 +293,7 @@ export function chooseFoeSkill(
     const heal = skills.find((s) => s.kind === "heal" && foe.mp >= s.mp);
     if (heal) return heal;
   }
-  let best = fallback;
+  let best = skills[0] ?? fallback;
   let bestScore = -1;
   for (const s of skills) {
     if (s.mp > foe.mp || s.kind === "heal") continue;
