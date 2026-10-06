@@ -6,12 +6,12 @@ import {
   SHOP_STOCK,
   SKILLS,
   SPECIES,
-  typeMod,
 } from "./content.ts";
 import { BLOCKED, ENCOUNTER_TILES, GROUND_TILE, MAPS } from "./maps.ts";
 import { sfxPlay, startMusic, unlockAudio } from "./audio.ts";
 import { hasSave, loadSave, writeSave, type SaveStorage } from "./save.ts";
 import { mathRandom, type RandomSource } from "./rng.ts";
+import { chooseFoeSkill } from "./battle/ai.ts";
 import { createTrialBattle, createWildBattle } from "./battle/state.ts";
 import { captureChance, captureSucceeds, storeCapturedBeast } from "./systems/capture.ts";
 import { accuracySucceeds, healBeast, playerActsFirst, resolveElementalDamage, spendSkillMp, statusSucceeds } from "./systems/combat.ts";
@@ -1169,27 +1169,8 @@ export class ReliquaryGame {
 		else sfxPlay.hit();
 	}
 	private foeTurn(foe: Beast, me: Beast): void {
-		const skills = foe.skills.map((id) => SKILLS[id]).filter(Boolean);
-		const foS = currentStats(foe);
-		if (foe.hp < foS.hp * .35) {
-			const heal = skills.find((s) => s.kind === "heal" && foe.mp >= s.mp);
-			if (heal) {
-				foe.mp -= heal.mp;
-				this.useSkill(foe, foe, true, heal, true);
-				return;
-			}
-		}
-		const myEls = SPECIES[me.speciesId].elements;
-		let best = skills[0] ?? SKILLS.nip;
-		let bestS = -1;
-		for (const s of skills) {
-			if (s.mp > foe.mp || s.kind === "heal") continue;
-			const score = s.power * typeMod(s.element, myEls);
-			if (score > bestS) {
-				bestS = score;
-				best = s;
-			}
-		}
+		const skills = foe.skills.map((id) => SKILLS[id]).filter(Boolean) as Skill[];
+		const best = chooseFoeSkill(foe, SPECIES[me.speciesId]!.elements, skills, SKILLS.nip);
 		if (best.mp) foe.mp = Math.max(0, foe.mp - best.mp);
 		this.useSkill(foe, me, true, best, true);
 	}
