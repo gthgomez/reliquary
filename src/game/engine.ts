@@ -1031,6 +1031,7 @@ export class ReliquaryGame {
 			}
 			b.pendingItem = null;
 			this.playerAction({ type: "item", item: id, index: plan.targetIndex });
+			return;
 		}
 		if (b.phase === "bind") {
 			const st = [

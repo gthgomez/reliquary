@@ -104,3 +104,28 @@ test("cancelling item-target returns to the command menu", () => {
   assert.equal(g.battle!.pendingItem, null);
   assert.equal(g.inventory.tonic, 1);
 });
+
+test("a valid item use that faints the active creature still prompts a replacement", () => {
+  const active = beast("emberkit", 1);
+  active.hp = 1;
+  const backup = beast("mirewhelp", 12);
+  const foe = beast("mothwisp", 200);
+  foe.skills = ["cinder"];
+  foe.mp = 100;
+  const g = battleGame([active, backup], [foe], { tonic: 1 });
+
+  openBattle(g, 2); // Item
+  g.menuIndex = g.usableItems().indexOf("tonic");
+  g.battle!.menuIndex = g.menuIndex;
+  g.confirm(); // -> item-target
+  assert.equal(g.battle!.phase, "item-target");
+
+  g.menuIndex = 0; // living active
+  g.battle!.menuIndex = 0;
+  g.confirm(); // valid use consumes the item, then the foe KOs the active
+
+  assert.equal(g.inventory.tonic, 0, "valid use consumes the item");
+  assert.equal(active.hp, 0, "the foe's counterattack faints the active creature");
+  assert.equal(g.battle!.phase, "party", "must wait for the player to choose a replacement");
+  assert.equal(g.battle!.pendingSwitch, true, "must not silently substitute a creature");
+});
