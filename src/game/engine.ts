@@ -7,7 +7,8 @@ import {
   SKILLS,
   SPECIES,
 } from "./content.ts";
-import { BLOCKED, ENCOUNTER_TILES, GROUND_TILE, MAPS } from "./maps.ts";
+import { ENCOUNTER_TILES, GROUND_TILE, MAPS } from "./maps.ts";
+import { DIRS, YAW, facingOffset, isOccupied } from "./world/movement.ts";
 import { sfxPlay, startMusic, unlockAudio } from "./audio.ts";
 import { hasSave, loadSave, writeSave, type SaveStorage } from "./save.ts";
 import { mathRandom, type RandomSource } from "./rng.ts";
@@ -44,34 +45,6 @@ type Dialog = {
   onDone?: () => void;
 };
 
-const DIRS: Record<Dir, { x: number; y: number; name: string }> = {
-	0: {
-		x: 0,
-		y: 1,
-		name: "down"
-	},
-	1: {
-		x: -1,
-		y: 0,
-		name: "left"
-	},
-	2: {
-		x: 1,
-		y: 0,
-		name: "right"
-	},
-	3: {
-		x: 0,
-		y: -1,
-		name: "up"
-	}
-};
-const YAW: Record<Dir, number> = {
-	0: 0,
-	1: Math.PI / 2,
-	2: -Math.PI / 2,
-	3: Math.PI
-};
 const WALK_MS = 160;
 export class ReliquaryGame {
 	mode: Mode = "title";
@@ -453,17 +426,7 @@ export class ReliquaryGame {
 		return m.ground[y]![x]!;
 	}
 	private occupied(x: number, y: number): boolean {
-		const m = this.map();
-		const g = this.groundAt(x, y);
-		if (BLOCKED.has(g)) return true;
-		for (const o of m.objects) {
-			if (!o.solid) continue;
-			if (this.flags.starter && o.id.startsWith("st_")) continue;
-			const fy = o.y + o.h - o.foot;
-			if (x >= o.x && x < o.x + o.w && y >= fy && y < o.y + o.h) return true;
-		}
-		for (const n of m.npcs) if (n.x === x && n.y === y) return true;
-		return false;
+		return isOccupied(this.map(), this.flags, x, y);
 	}
 	private wantDir(): Dir | null {
 		const k = this.held();
@@ -517,8 +480,9 @@ export class ReliquaryGame {
 			return;
 		}
 		this.dir = d;
-		const nx = this.tx + DIRS[d].x;
-		const ny = this.ty + DIRS[d].y;
+		const off = facingOffset(d);
+		const nx = this.tx + off.x;
+		const ny = this.ty + off.y;
 		const warp = this.map().warps.find((w) => w.x === nx && w.y === ny);
 		if (warp) {
 			if (!this.flags.starter && (warp.to === "briar_road" || this.mapId === "elderhall" && ny <= 0)) {
@@ -667,8 +631,9 @@ export class ReliquaryGame {
 		this.emit();
 	}
 	private interact(): void {
-		const fx = this.tx + DIRS[this.dir].x;
-		const fy = this.ty + DIRS[this.dir].y;
+		const off = facingOffset(this.dir);
+		const fx = this.tx + off.x;
+		const fy = this.ty + off.y;
 		const m = this.map();
 		const npc = m.npcs.find((n) => n.x === fx && n.y === fy);
 		if (npc) {
