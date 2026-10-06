@@ -10,6 +10,7 @@ import {
 import { ENCOUNTER_TILES, GROUND_TILE, MAPS } from "./maps.ts";
 import { DIRS, YAW, facingOffset, isOccupied } from "./world/movement.ts";
 import { CHEST_LOOT, SIGN_TEXT, WARP_TABLE, findInteractionTarget } from "./world/interactions.ts";
+import { npcDialogue } from "./story/interactions.ts";
 import { sfxPlay, startMusic, unlockAudio } from "./audio.ts";
 import { hasSave, loadSave, writeSave, type SaveStorage } from "./save.ts";
 import { mathRandom, type RandomSource } from "./rng.ts";
@@ -690,31 +691,9 @@ export class ReliquaryGame {
 		}
 	}
 	private talk(id: string, name: string): void {
-		if (id === "maren" || id === "maren_guild") {
-			if (!this.flags.starter) {
-				this.openDialog(name, ["The Crown cracked. We did not. That is the whole of our order.", "Walk west to the Binding Grove. Three beasts have waited the night. Speak a pact. Then the road is yours."]);
-				return;
-			}
-			if (!this.flags.trial) {
-				this.openDialog(name, ["Good. A pact is a name you intend to keep.", "Bind what you can on Briar Road. When you are ready, take the Wildwood north to Thornkeep. Warden Cael will test the compact."]);
-				return;
-			}
-			this.openDialog(name, ["The Thorn Sigil sits well on you. The Hollow Crown is still a rumor with teeth — but that is a later road.", "Rest. Bind. Walk. That is the work."]);
-			return;
-		}
-		if (id === "guard") {
-			this.openDialog(name, [this.flags.starter ? "Road's open. If the grass sings, you already know what that means." : "Not without a pact-beast. Maren's in the Chapter, or the Grove west of town."]);
-			return;
-		}
-		if (id === "lise") {
-			this.openDialog(name, ["Inns take crowns. Shrines take nothing but a moment. I know which I'd trust.", "If you see my cousin on the road, tell her the well's still sweet."]);
-			return;
-		}
-		if (id === "innkeep") {
-			this.openDialog(name, ["Fifteen crowns for a clean bed and a whole lantern. Rest?"], () => this.offerInn());
-			return;
-		}
-		if (id === "shopkeep") {
+		const d = npcDialogue(id, this.flags);
+		if (!d) return;
+		if (d.effect === "shop") {
 			this.mode = "shop";
 			this.shopMode = "buy";
 			this.shopIndex = 0;
@@ -722,27 +701,8 @@ export class ReliquaryGame {
 			this.emit();
 			return;
 		}
-		if (id === "wayfarer") {
-			this.openDialog(name, ["Tall grass means a fight. That's the old compact, gone feral.", "Sigil stones bind. Common ones break often. Thorn ones less. Don't throw them at a full-health wyrm."]);
-			return;
-		}
-		if (id === "reedcutter") {
-			this.openDialog(name, ["Fenwitch walks the peat when the mist sits low. Pale eyes. Don't follow them off the bridge."]);
-			return;
-		}
-		if (id === "cael" || id === "cael_trial") {
-			if (this.flags.trial) {
-				this.openDialog(name, ["You already keep the Thorn Mark. Don't make me bored."]);
-				return;
-			}
-			if (!this.flags.starter) {
-				this.openDialog(name, ["Come back with a pact, green lantern."]);
-				return;
-			}
-			this.openDialog(name, ["Warden Cael. I keep Thornkeep's road.", "Show me the compact is not a hobby. Three of mine against yours. Bind or break."], () => this.startWarden());
-			return;
-		}
-		if (id === "keep_guard") this.openDialog(name, ["Hall's through the east cottage. Cael doesn't like small talk."]);
+		const onDone = d.effect === "offerInn" ? () => this.offerInn() : d.effect === "startWarden" ? () => this.startWarden() : undefined;
+		this.openDialog(d.speaker || name, d.pages, onDone);
 	}
 	private offerInn(): void {
 		if (this.gold < 15) {
