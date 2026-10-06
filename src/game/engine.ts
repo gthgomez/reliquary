@@ -12,6 +12,7 @@ import { BLOCKED, ENCOUNTER_TILES, GROUND_TILE, MAPS } from "./maps.ts";
 import { sfxPlay, startMusic, unlockAudio } from "./audio.ts";
 import { hasSave, loadSave, writeSave, type SaveStorage } from "./save.ts";
 import { mathRandom, type RandomSource } from "./rng.ts";
+import { createTrialBattle, createWildBattle } from "./battle/state.ts";
 import { captureChance, captureSucceeds, storeCapturedBeast } from "./systems/capture.ts";
 import { accuracySucceeds, healBeast, playerActsFirst, resolveElementalDamage, spendSkillMp, statusSucceeds } from "./systems/combat.ts";
 import { purchaseItem, sellItem } from "./systems/economy.ts";
@@ -869,23 +870,7 @@ export class ReliquaryGame {
 		this.seen[pick.species] = true;
 		this.encounterLock = true;
 		sfxPlay.encounter();
-		this.battle = {
-			kind: "wild",
-			bg: this.map().battleBg,
-			playerIndex: this.firstAble(),
-			foes: [foe],
-			foeIndex: 0,
-			log: [`A wild ${SPECIES[foe.speciesId].name} steps from the ${this.map().battleBg}.`],
-			phase: "command",
-			menuIndex: 0,
-			pendingItem: null,
-			pendingSwitch: false,
-			shake: 0,
-			catchStone: null,
-			pendingXp: 0,
-			escaped: false,
-			canFlee: true
-		};
+		this.battle = createWildBattle(foe, this.map().battleBg, this.firstAble());
 		this.mode = "battle";
 		this.menuIndex = 0;
 		this.emit();
@@ -900,24 +885,7 @@ export class ReliquaryGame {
 			this.seen[f.speciesId] = true;
 		});
 		sfxPlay.encounter();
-		this.battle = {
-			kind: "trial",
-			bg: "keep",
-			playerIndex: this.firstAble(),
-			foes,
-			foeIndex: 0,
-			trainerName: "Warden Cael",
-			log: ["Warden Cael sends out Ironnewt."],
-			phase: "command",
-			menuIndex: 0,
-			pendingItem: null,
-			pendingSwitch: false,
-			shake: 0,
-			catchStone: null,
-			pendingXp: 0,
-			escaped: false,
-			canFlee: false
-		};
+		this.battle = createTrialBattle(foes, this.firstAble(), "Warden Cael");
 		this.mode = "battle";
 		this.emit();
 	}
