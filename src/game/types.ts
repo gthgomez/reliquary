@@ -176,6 +176,8 @@ export interface BattleState {
     | "lose"
     | "catch";
   menuIndex: number;
+  /** True while the player must replace a fainted active creature. */
+  pendingSwitch: boolean;
   shake: number;
   catchStone: string | null;
   pendingXp: number;
