@@ -33,3 +33,17 @@ test("ward applies a status without damage", () => {
   assert.equal(defender.status, "ward");
   assert.equal(outcome.damage, 0);
 });
+
+test("a damaging hit that also applies status emits harm and status messages", () => {
+  const attacker = beast("emberkit");
+  const defender = beast("mothwisp");
+  // Draws: accuracy, crit, variance, then status chance (Scorch is 100% burn).
+  const outcome = resolveAttack(attacker, defender, SKILLS.scorch, sequenceRandom([.5, .99, .5, .5]));
+  assert.ok(outcome.damage > 0);
+  assert.equal(outcome.statusApplied, "burn");
+  const messages = outcome.events.filter((e) => e.kind === "message").map((e) => e.text);
+  assert.equal(messages.length, 2);
+  const joined = messages.join(" ");
+  assert.match(joined, /harm\./);
+  assert.match(joined, /is burn\./);
+});

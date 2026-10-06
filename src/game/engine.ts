@@ -1120,9 +1120,10 @@ export class ReliquaryGame {
 		const b = this.battle!;
 		const outcome = resolveAttack(atk, def, skill, this.random);
 		const messages = outcome.events.filter((e) => e.kind === "message").map((e) => e.text);
-		if (messages.length) b.log = messages;
-		if (!outcome.hit && !messages.length && logIt) b.log = [`${atk.nickname}'s ${skill.name} misses.`];
-		if (outcome.events.some((e) => e.kind === "miss")) sfxPlay.fail();
+		const missed = outcome.events.some((e) => e.kind === "miss");
+		if (messages.length && (logIt || !missed)) b.log = [messages.join(" ")];
+		else if (missed && logIt) b.log = [`${atk.nickname}'s ${skill.name} misses.`];
+		if (missed) sfxPlay.fail();
 		else if (outcome.events.some((e) => e.kind === "heal")) sfxPlay.heal();
 		else if (outcome.events.some((e) => e.kind === "hit" && e.critical)) sfxPlay.crit();
 		else if (outcome.events.some((e) => e.kind === "hit")) sfxPlay.hit();
