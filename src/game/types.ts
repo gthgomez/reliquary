@@ -169,6 +169,7 @@ export interface BattleState {
     | "command"
     | "skills"
     | "items"
+    | "item-target"
     | "party"
     | "bind"
     | "anim"
@@ -176,6 +177,8 @@ export interface BattleState {
     | "lose"
     | "catch";
   menuIndex: number;
+  /** Item id awaiting a target choice in the "item-target" phase. */
+  pendingItem: string | null;
   /** True while the player must replace a fainted active creature. */
   pendingSwitch: boolean;
   shake: number;
