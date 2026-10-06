@@ -1,4 +1,4 @@
-import { accuracySucceeds, healBeast, resolveElementalDamage, statusSucceeds } from "../systems/combat.ts";
+import { accuracySucceeds, healBeast, isNonDamagingSkill, resolveElementalDamage, statusSucceeds } from "../systems/combat.ts";
 import { applyStatus } from "../systems/status.ts";
 import { currentStats, SPECIES } from "../content.ts";
 import type { Beast, Skill, StatusId } from "../types.ts";
@@ -17,10 +17,13 @@ export type AttackOutcome = {
 export function resolveAttack(attacker: Beast, defender: Beast, skill: Skill, rng: RandomSource): AttackOutcome {
   const events: BattleEvent[] = [];
   const outcome: AttackOutcome = { damage: 0, healed: 0, hit: false, critical: false, statusApplied: null, events };
+  const miss = () => {
+    events.push({ kind: "miss" }, { kind: "message", text: `${attacker.nickname}'s ${skill.name} misses.` });
+  };
 
   if (skill.kind === "heal") {
     if (!accuracySucceeds(skill, attacker, rng)) {
-      events.push({ kind: "miss" });
+      miss();
       return outcome;
     }
     const aS = currentStats(attacker);
@@ -30,9 +33,9 @@ export function resolveAttack(attacker: Beast, defender: Beast, skill: Skill, rn
     return outcome;
   }
 
-  if (skill.kind === "ward" || skill.kind === "hex" && skill.power === 0) {
+  if (isNonDamagingSkill(skill)) {
     if (!accuracySucceeds(skill, attacker, rng)) {
-      events.push({ kind: "miss" });
+      miss();
       return outcome;
     }
     outcome.hit = true;
@@ -49,7 +52,7 @@ export function resolveAttack(attacker: Beast, defender: Beast, skill: Skill, rn
     SPECIES[attacker.speciesId]!.elements, SPECIES[defender.speciesId]!.elements, rng,
   );
   if (!result.hit) {
-    events.push({ kind: "miss" }, { kind: "message", text: `${attacker.nickname}'s ${skill.name} misses.` });
+    miss();
     return outcome;
   }
   defender.hp = Math.max(0, defender.hp - result.damage);

@@ -12,7 +12,7 @@ import { sfxPlay, startMusic, unlockAudio } from "./audio.ts";
 import { hasSave, loadSave, writeSave, type SaveStorage } from "./save.ts";
 import { mathRandom, type RandomSource } from "./rng.ts";
 import { chooseFoeSkill } from "./battle/ai.ts";
-import { resolveAttack } from "./battle/resolution.ts";
+import { reduceAttack } from "./battle/reducer.ts";
 import { createTrialBattle, createWildBattle } from "./battle/state.ts";
 import { captureChance, captureSucceeds, storeCapturedBeast } from "./systems/capture.ts";
 import { healBeast, playerActsFirst, spendSkillMp } from "./systems/combat.ts";
@@ -1118,11 +1118,10 @@ export class ReliquaryGame {
 	}
 	private useSkill(atk: Beast, def: Beast, _foeSide: boolean, skill: Skill, logIt: boolean): void {
 		const b = this.battle!;
-		const outcome = resolveAttack(atk, def, skill, this.random);
+		const outcome = reduceAttack(atk, def, skill, this.random).outcome;
 		const messages = outcome.events.filter((e) => e.kind === "message").map((e) => e.text);
 		const missed = outcome.events.some((e) => e.kind === "miss");
 		if (messages.length && (logIt || !missed)) b.log = [messages.join(" ")];
-		else if (missed && logIt) b.log = [`${atk.nickname}'s ${skill.name} misses.`];
 		if (missed) sfxPlay.fail();
 		else if (outcome.events.some((e) => e.kind === "heal")) sfxPlay.heal();
 		else if (outcome.events.some((e) => e.kind === "hit" && e.critical)) sfxPlay.crit();
