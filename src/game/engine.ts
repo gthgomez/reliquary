@@ -7,7 +7,12 @@ import {
   SKILLS,
   SPECIES,
 } from "./content.ts";
-import { BLOCKED, ENCOUNTER_TILES, GROUND_TILE, MAPS } from "./maps.ts";
+import { ENCOUNTER_TILES, MAPS } from "./maps.ts";
+import { YAW, facingOffset, isOccupied } from "./world/movement.ts";
+import { TILE, collectPaths, drawBattle, drawWorld } from "./runtime/renderer.ts";
+export { TILE } from "./runtime/renderer.ts";
+import { CHEST_LOOT, SIGN_TEXT, WARP_TABLE, findInteractionTarget } from "./world/interactions.ts";
+import { npcDialogue } from "./story/interactions.ts";
 import { sfxPlay, startMusic, unlockAudio } from "./audio.ts";
 import { hasSave, loadSave, writeSave, type SaveStorage } from "./save.ts";
 import { mathRandom, type RandomSource } from "./rng.ts";
@@ -31,7 +36,6 @@ import type {
   Snapshot,
 } from "./types.ts";
 
-export const TILE = 32;
 export const VIEW_W = 12;
 export const VIEW_H = 9;
 export const VIEW_W_PORT = 10;
@@ -44,34 +48,6 @@ type Dialog = {
   onDone?: () => void;
 };
 
-const DIRS: Record<Dir, { x: number; y: number; name: string }> = {
-	0: {
-		x: 0,
-		y: 1,
-		name: "down"
-	},
-	1: {
-		x: -1,
-		y: 0,
-		name: "left"
-	},
-	2: {
-		x: 1,
-		y: 0,
-		name: "right"
-	},
-	3: {
-		x: 0,
-		y: -1,
-		name: "up"
-	}
-};
-const YAW: Record<Dir, number> = {
-	0: 0,
-	1: Math.PI / 2,
-	2: -Math.PI / 2,
-	3: Math.PI
-};
 const WALK_MS = 160;
 export class ReliquaryGame {
 	mode: Mode = "title";
@@ -453,17 +429,7 @@ export class ReliquaryGame {
 		return m.ground[y]![x]!;
 	}
 	private occupied(x: number, y: number): boolean {
-		const m = this.map();
-		const g = this.groundAt(x, y);
-		if (BLOCKED.has(g)) return true;
-		for (const o of m.objects) {
-			if (!o.solid) continue;
-			if (this.flags.starter && o.id.startsWith("st_")) continue;
-			const fy = o.y + o.h - o.foot;
-			if (x >= o.x && x < o.x + o.w && y >= fy && y < o.y + o.h) return true;
-		}
-		for (const n of m.npcs) if (n.x === x && n.y === y) return true;
-		return false;
+		return isOccupied(this.map(), this.flags, x, y);
 	}
 	private wantDir(): Dir | null {
 		const k = this.held();
@@ -517,8 +483,9 @@ export class ReliquaryGame {
 			return;
 		}
 		this.dir = d;
-		const nx = this.tx + DIRS[d].x;
-		const ny = this.ty + DIRS[d].y;
+		const off = facingOffset(d);
+		const nx = this.tx + off.x;
+		const ny = this.ty + off.y;
 		const warp = this.map().warps.find((w) => w.x === nx && w.y === ny);
 		if (warp) {
 			if (!this.flags.starter && (warp.to === "briar_road" || this.mapId === "elderhall" && ny <= 0)) {
@@ -667,33 +634,22 @@ export class ReliquaryGame {
 		this.emit();
 	}
 	private interact(): void {
-		const fx = this.tx + DIRS[this.dir].x;
-		const fy = this.ty + DIRS[this.dir].y;
-		const m = this.map();
-		const npc = m.npcs.find((n) => n.x === fx && n.y === fy);
+		const off = facingOffset(this.dir);
+		const fx = this.tx + off.x;
+		const fy = this.ty + off.y;
+		const { npc, object } = findInteractionTarget(this.map(), fx, fy);
 		if (npc) {
 			this.talk(npc.talk, npc.name);
 			return;
 		}
-		const obj = m.objects.find((o) => fx >= o.x && fx < o.x + o.w && fy >= o.y && fy < o.y + o.h);
-		if (obj?.interact) {
-			this.handleInteract(obj.interact);
+		if (object?.interact) {
+			this.handleInteract(object.interact);
 			return;
 		}
 	}
 	private handleInteract(id: string): void {
-		const warps: Record<string, [string, number, number]> = {
-			enter_home: ["home", 5, 6],
-			enter_guild: ["guild_in", 6, 8],
-			enter_inn: ["inn_in", 6, 7],
-			enter_shop: ["shop_in", 5, 6],
-			enter_cave: ["ashenbarrow", 9, 16],
-			enter_hall: ["warden_hall", 7, 10],
-			enter_keep_inn: ["keep_inn", 6, 7],
-			enter_keep_shop: ["keep_shop", 5, 6],
-		};
-		if (warps[id]) {
-			const [to, x, y] = warps[id]!;
+		if (WARP_TABLE[id]) {
+			const [to, x, y] = WARP_TABLE[id]!;
 			this.warp(to, x, y, 3);
 			return;
 		}
@@ -720,16 +676,7 @@ export class ReliquaryGame {
 			return;
 		}
 		if (id.startsWith("sign_")) {
-			const signs: Record<string, string> = {
-				sign_road: "BRIAR ROAD — north to Wildwood, east to Mirefen. Bind what you must.",
-				sign_grove: "BINDING GROVE — first pacts are spoken here.",
-				sign_grove_inner: "Choose with care. A first pact is a first name.",
-				sign_briar: "Keep to the path after dusk. The grass remembers hunger.",
-				sign_wildwood: "WILDWOOD — Ashenbarrow in the stone. Thornkeep beyond the trees.",
-				sign_mire: "MIREFEN — watch your step. The peat is older than the keep.",
-				sign_keep: "THORNKEEP — Warden Cael holds the first Mark.",
-			};
-			this.openDialog("Sign", [signs[id] ?? "The letters have worn away."]);
+			this.openDialog("Sign", [SIGN_TEXT[id] ?? "The letters have worn away."]);
 			return;
 		}
 		if (id.startsWith("chest_")) {
@@ -738,44 +685,16 @@ export class ReliquaryGame {
 				return;
 			}
 			this.flags[id] = true;
-			const loot: Record<string, [string, number]> = {
-				chest_briar: ["thorn_sigil", 1],
-				chest_wood: ["greater_tonic", 2],
-				chest_mire: ["relic_sigil", 1],
-				chest_cave: ["phoenix_ash", 1],
-			};
-			const [item, n] = loot[id] ?? ["tonic", 1];
+			const [item, n] = CHEST_LOOT[id] ?? ["tonic", 1];
 			this.give(item, n);
 			sfxPlay.confirm();
 			this.openDialog("", [`Inside: ${ITEMS[item]?.name ?? item} ×${n}.`]);
 		}
 	}
 	private talk(id: string, name: string): void {
-		if (id === "maren" || id === "maren_guild") {
-			if (!this.flags.starter) {
-				this.openDialog(name, ["The Crown cracked. We did not. That is the whole of our order.", "Walk west to the Binding Grove. Three beasts have waited the night. Speak a pact. Then the road is yours."]);
-				return;
-			}
-			if (!this.flags.trial) {
-				this.openDialog(name, ["Good. A pact is a name you intend to keep.", "Bind what you can on Briar Road. When you are ready, take the Wildwood north to Thornkeep. Warden Cael will test the compact."]);
-				return;
-			}
-			this.openDialog(name, ["The Thorn Sigil sits well on you. The Hollow Crown is still a rumor with teeth — but that is a later road.", "Rest. Bind. Walk. That is the work."]);
-			return;
-		}
-		if (id === "guard") {
-			this.openDialog(name, [this.flags.starter ? "Road's open. If the grass sings, you already know what that means." : "Not without a pact-beast. Maren's in the Chapter, or the Grove west of town."]);
-			return;
-		}
-		if (id === "lise") {
-			this.openDialog(name, ["Inns take crowns. Shrines take nothing but a moment. I know which I'd trust.", "If you see my cousin on the road, tell her the well's still sweet."]);
-			return;
-		}
-		if (id === "innkeep") {
-			this.openDialog(name, ["Fifteen crowns for a clean bed and a whole lantern. Rest?"], () => this.offerInn());
-			return;
-		}
-		if (id === "shopkeep") {
+		const d = npcDialogue(id, this.flags);
+		if (!d) return;
+		if (d.effect === "shop") {
 			this.mode = "shop";
 			this.shopMode = "buy";
 			this.shopIndex = 0;
@@ -783,27 +702,8 @@ export class ReliquaryGame {
 			this.emit();
 			return;
 		}
-		if (id === "wayfarer") {
-			this.openDialog(name, ["Tall grass means a fight. That's the old compact, gone feral.", "Sigil stones bind. Common ones break often. Thorn ones less. Don't throw them at a full-health wyrm."]);
-			return;
-		}
-		if (id === "reedcutter") {
-			this.openDialog(name, ["Fenwitch walks the peat when the mist sits low. Pale eyes. Don't follow them off the bridge."]);
-			return;
-		}
-		if (id === "cael" || id === "cael_trial") {
-			if (this.flags.trial) {
-				this.openDialog(name, ["You already keep the Thorn Mark. Don't make me bored."]);
-				return;
-			}
-			if (!this.flags.starter) {
-				this.openDialog(name, ["Come back with a pact, green lantern."]);
-				return;
-			}
-			this.openDialog(name, ["Warden Cael. I keep Thornkeep's road.", "Show me the compact is not a hobby. Three of mine against yours. Bind or break."], () => this.startWarden());
-			return;
-		}
-		if (id === "keep_guard") this.openDialog(name, ["Hall's through the east cottage. Cael doesn't like small talk."]);
+		const onDone = d.effect === "offerInn" ? () => this.offerInn() : d.effect === "startWarden" ? () => this.startWarden() : undefined;
+		this.openDialog(d.speaker || name, d.pages, onDone);
 	}
 	private offerInn(): void {
 		if (this.gold < 15) {
@@ -1385,114 +1285,16 @@ export class ReliquaryGame {
 		ctx.fillRect(0, 0, this.cw(), this.ch());
 		if (this.mode === "boot" || this.mode === "title" || this.mode === "victory") return;
 		if (this.mode === "battle") {
-			this.drawBattle(ctx);
+			drawBattle({ ctx, battle: this.battle!, party: this.party, images: this.images, cw: this.cw(), ch: this.ch() });
 			return;
 		}
-		this.drawWorld(ctx);
-	}
-	private drawWorld(ctx: CanvasRenderingContext2D): void {
-		const m = this.map();
-		const mw = m.ground[0]?.length ?? 0;
-		const mh = m.ground.length;
-		const camX = Math.max(0, Math.min(this.px - (this.viewW / 2 - 0.5) * TILE, Math.max(0, mw * TILE - this.cw())));
-		const camY = Math.max(0, Math.min(this.py - (this.viewH / 2 - 0.5) * TILE, Math.max(0, mh * TILE - this.ch())));
-		const x0 = Math.max(0, Math.floor(camX / TILE) - 1);
-		const y0 = Math.max(0, Math.floor(camY / TILE) - 1);
-		const x1 = Math.min(mw, x0 + this.viewW + 3);
-		const y1 = Math.min(mh, y0 + this.viewH + 3);
-		for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) {
-			const g = m.ground[y]![x]!;
-			const tileName = GROUND_TILE[g] ?? "grass";
-			const img = this.images[`tile_${tileName}`];
-			const dx = Math.floor(x * TILE - camX);
-			const dy = Math.floor(y * TILE - camY);
-			if (img) ctx.drawImage(img, dx, dy, TILE, TILE);
-			else {
-				ctx.fillStyle = tileName === "water" ? "#3d6e8a" : tileName === "wall" ? "#3a342e" : "#3d4a38";
-				ctx.fillRect(dx, dy, TILE, TILE);
-			}
-			if (g === ",") {
-				const tg = this.images.prop_tallgrass;
-				if (tg) ctx.drawImage(tg, dx, dy, TILE, TILE);
-				else {
-					ctx.fillStyle = "rgba(40,70,40,0.35)";
-					ctx.fillRect(dx, dy, TILE, TILE);
-				}
-			}
-		}
-		const list: { y: number; draw: () => void }[] = [];
-		for (const o of m.objects) {
-			if (this.flags.starter && o.id.startsWith("st_")) continue;
-			list.push({
-				y: (o.y + o.h) * TILE,
-				draw: () => {
-					const img = this.images[`prop_${o.sprite}`] || this.images[`sprite_${o.sprite}`] || this.images[`npc_${o.sprite}`];
-					const dx = o.x * TILE - camX;
-					const dy = o.y * TILE - camY;
-					const dw = o.w * TILE;
-					const dh = o.h * TILE;
-					if (img) ctx.drawImage(img, dx, dy, dw, dh);
-				}
-			});
-		}
-		for (const n of m.npcs) list.push({
-			y: (n.y + 1) * TILE,
-			draw: () => {
-				const img = this.images[`npc_${n.sprite}`];
-				const dx = n.x * TILE - camX;
-				const dw = TILE;
-				const dh = TILE * 1.25;
-				const dy = n.y * TILE + TILE - dh - camY;
-				if (img) ctx.drawImage(img, dx, dy, dw, dh);
-			}
+		drawWorld({
+			ctx, map: this.map(), images: this.images, flags: this.flags,
+			px: this.px, py: this.py, dir: this.dir, moving: this.moving, walkFrame: this.walkFrame,
+			viewW: this.viewW, viewH: this.viewH, cw: this.cw(), ch: this.ch()
 		});
-		list.push({
-			y: this.py + TILE,
-			draw: () => {
-				const frame = this.moving ? this.walkFrame : 0;
-				const key = `player_${DIRS[this.dir].name}${frame}`;
-				const img = this.images[key] || this.images.player_down0;
-				const dx = this.px - camX;
-				const dw = TILE;
-				const dh = TILE * 1.5;
-				const dy = this.py + TILE - dh - camY;
-				if (img) ctx.drawImage(img, dx, dy, dw, dh);
-				else {
-					ctx.fillStyle = "#c4a574";
-					ctx.fillRect(dx + 8, dy + 8, 16, 20);
-				}
-			}
-		});
-		list.sort((a, b) => a.y - b.y);
-		for (const s of list) s.draw();
 	}
-	private drawBattle(ctx: CanvasRenderingContext2D): void {
-		const b = this.battle!;
-		if (!b) return;
-		const bg = this.images[`bg_${b.bg}`] || this.images.bg_grass;
-		if (bg) ctx.drawImage(bg, 0, 0, this.cw(), this.ch());
-		else {
-			ctx.fillStyle = "#2c3d32";
-			ctx.fillRect(0, 0, this.cw(), this.ch());
-		}
-		const foe = b.foes[b.foeIndex]!;
-		if (foe && foe.hp > 0) {
-			const img = this.images[`sprite_${foe.speciesId}`];
-			const shake = b.phase === "catch" ? Math.sin(b.shake * 8) * 6 : 0;
-			if (img) ctx.drawImage(img, this.cw() / 2 - 56 + shake, 18, 120, 120);
-		}
-		const me = this.party[b.playerIndex]!;
-		if (me) {
-			const img = this.images[`sprite_${me.speciesId}`];
-			if (img) {
-				ctx.save();
-				ctx.translate(this.cw() * 0.23, this.ch() - 70);
-				ctx.scale(-.7, .7);
-				ctx.drawImage(img, -60, -60, 120, 120);
-				ctx.restore();
-			}
-		}
-	}
+
 };
 function basicStrike(b: Beast): Skill {
 	return {
@@ -1505,66 +1307,6 @@ function basicStrike(b: Beast): Skill {
 		mp: 0,
 		desc: "A plain blow."
 	};
-}
-function collectPaths(): [string, string][] {
-	const out: [string, string][] = [];
-	for (const t of [
-		"grass",
-		"dirt",
-		"water",
-		"cobble",
-		"wood",
-		"cave",
-		"marsh",
-		"wall"
-	]) out.push([`tile_${t}`, `/game/tiles/${t}.png`]);
-	for (const d of [
-		"down",
-		"left",
-		"right",
-		"up"
-	]) for (let i = 0; i < 4; i++) out.push([`player_${d}${i}`, `/game/sprites/player/${d}${i}.png?v=4`]);
-	for (const id of Object.keys(SPECIES)) out.push([`sprite_${id}`, `/game/sprites/${id}.png`]);
-	for (const n of [
-		"elder",
-		"innkeep",
-		"shopkeep",
-		"warden",
-		"guard",
-		"traveler"
-	]) out.push([`npc_${n}`, `/game/sprites/npc/${n}.png`]);
-	for (const p of [
-		"tree",
-		"cottage",
-		"inn",
-		"shop",
-		"shrine",
-		"sign",
-		"barrel",
-		"crate",
-		"shrub",
-		"boulder",
-		"fence",
-		"tallgrass",
-		"pot",
-		"well",
-		"bed",
-		"table",
-		"chair",
-		"bookshelf",
-		"hearth",
-		"counter"
-	]) out.push([`prop_${p}`, `/game/props/${p}.png`]);
-	for (const bg of [
-		"grass",
-		"forest",
-		"cave",
-		"marsh",
-		"keep"
-	]) out.push([`bg_${bg}`, `/game/bg/bg_${bg}.jpg`]);
-	out.push(["bg_title", "/game/bg/title.jpg"]);
-	out.push(["ui_panel", "/game/ui/panel.png"]);
-	return out;
 }
 
 export type { Snapshot } from "./types";
