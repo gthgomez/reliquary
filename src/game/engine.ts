@@ -7,8 +7,10 @@ import {
   SKILLS,
   SPECIES,
 } from "./content.ts";
-import { ENCOUNTER_TILES, GROUND_TILE, MAPS } from "./maps.ts";
-import { DIRS, YAW, facingOffset, isOccupied } from "./world/movement.ts";
+import { ENCOUNTER_TILES, MAPS } from "./maps.ts";
+import { YAW, facingOffset, isOccupied } from "./world/movement.ts";
+import { TILE, collectPaths, drawBattle, drawWorld } from "./runtime/renderer.ts";
+export { TILE } from "./runtime/renderer.ts";
 import { CHEST_LOOT, SIGN_TEXT, WARP_TABLE, findInteractionTarget } from "./world/interactions.ts";
 import { npcDialogue } from "./story/interactions.ts";
 import { sfxPlay, startMusic, unlockAudio } from "./audio.ts";
@@ -34,7 +36,6 @@ import type {
   Snapshot,
 } from "./types.ts";
 
-export const TILE = 32;
 export const VIEW_W = 12;
 export const VIEW_H = 9;
 export const VIEW_W_PORT = 10;
@@ -1284,114 +1285,16 @@ export class ReliquaryGame {
 		ctx.fillRect(0, 0, this.cw(), this.ch());
 		if (this.mode === "boot" || this.mode === "title" || this.mode === "victory") return;
 		if (this.mode === "battle") {
-			this.drawBattle(ctx);
+			drawBattle({ ctx, battle: this.battle!, party: this.party, images: this.images, cw: this.cw(), ch: this.ch() });
 			return;
 		}
-		this.drawWorld(ctx);
-	}
-	private drawWorld(ctx: CanvasRenderingContext2D): void {
-		const m = this.map();
-		const mw = m.ground[0]?.length ?? 0;
-		const mh = m.ground.length;
-		const camX = Math.max(0, Math.min(this.px - (this.viewW / 2 - 0.5) * TILE, Math.max(0, mw * TILE - this.cw())));
-		const camY = Math.max(0, Math.min(this.py - (this.viewH / 2 - 0.5) * TILE, Math.max(0, mh * TILE - this.ch())));
-		const x0 = Math.max(0, Math.floor(camX / TILE) - 1);
-		const y0 = Math.max(0, Math.floor(camY / TILE) - 1);
-		const x1 = Math.min(mw, x0 + this.viewW + 3);
-		const y1 = Math.min(mh, y0 + this.viewH + 3);
-		for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) {
-			const g = m.ground[y]![x]!;
-			const tileName = GROUND_TILE[g] ?? "grass";
-			const img = this.images[`tile_${tileName}`];
-			const dx = Math.floor(x * TILE - camX);
-			const dy = Math.floor(y * TILE - camY);
-			if (img) ctx.drawImage(img, dx, dy, TILE, TILE);
-			else {
-				ctx.fillStyle = tileName === "water" ? "#3d6e8a" : tileName === "wall" ? "#3a342e" : "#3d4a38";
-				ctx.fillRect(dx, dy, TILE, TILE);
-			}
-			if (g === ",") {
-				const tg = this.images.prop_tallgrass;
-				if (tg) ctx.drawImage(tg, dx, dy, TILE, TILE);
-				else {
-					ctx.fillStyle = "rgba(40,70,40,0.35)";
-					ctx.fillRect(dx, dy, TILE, TILE);
-				}
-			}
-		}
-		const list: { y: number; draw: () => void }[] = [];
-		for (const o of m.objects) {
-			if (this.flags.starter && o.id.startsWith("st_")) continue;
-			list.push({
-				y: (o.y + o.h) * TILE,
-				draw: () => {
-					const img = this.images[`prop_${o.sprite}`] || this.images[`sprite_${o.sprite}`] || this.images[`npc_${o.sprite}`];
-					const dx = o.x * TILE - camX;
-					const dy = o.y * TILE - camY;
-					const dw = o.w * TILE;
-					const dh = o.h * TILE;
-					if (img) ctx.drawImage(img, dx, dy, dw, dh);
-				}
-			});
-		}
-		for (const n of m.npcs) list.push({
-			y: (n.y + 1) * TILE,
-			draw: () => {
-				const img = this.images[`npc_${n.sprite}`];
-				const dx = n.x * TILE - camX;
-				const dw = TILE;
-				const dh = TILE * 1.25;
-				const dy = n.y * TILE + TILE - dh - camY;
-				if (img) ctx.drawImage(img, dx, dy, dw, dh);
-			}
+		drawWorld({
+			ctx, map: this.map(), images: this.images, flags: this.flags,
+			px: this.px, py: this.py, dir: this.dir, moving: this.moving, walkFrame: this.walkFrame,
+			viewW: this.viewW, viewH: this.viewH, cw: this.cw(), ch: this.ch()
 		});
-		list.push({
-			y: this.py + TILE,
-			draw: () => {
-				const frame = this.moving ? this.walkFrame : 0;
-				const key = `player_${DIRS[this.dir].name}${frame}`;
-				const img = this.images[key] || this.images.player_down0;
-				const dx = this.px - camX;
-				const dw = TILE;
-				const dh = TILE * 1.5;
-				const dy = this.py + TILE - dh - camY;
-				if (img) ctx.drawImage(img, dx, dy, dw, dh);
-				else {
-					ctx.fillStyle = "#c4a574";
-					ctx.fillRect(dx + 8, dy + 8, 16, 20);
-				}
-			}
-		});
-		list.sort((a, b) => a.y - b.y);
-		for (const s of list) s.draw();
 	}
-	private drawBattle(ctx: CanvasRenderingContext2D): void {
-		const b = this.battle!;
-		if (!b) return;
-		const bg = this.images[`bg_${b.bg}`] || this.images.bg_grass;
-		if (bg) ctx.drawImage(bg, 0, 0, this.cw(), this.ch());
-		else {
-			ctx.fillStyle = "#2c3d32";
-			ctx.fillRect(0, 0, this.cw(), this.ch());
-		}
-		const foe = b.foes[b.foeIndex]!;
-		if (foe && foe.hp > 0) {
-			const img = this.images[`sprite_${foe.speciesId}`];
-			const shake = b.phase === "catch" ? Math.sin(b.shake * 8) * 6 : 0;
-			if (img) ctx.drawImage(img, this.cw() / 2 - 56 + shake, 18, 120, 120);
-		}
-		const me = this.party[b.playerIndex]!;
-		if (me) {
-			const img = this.images[`sprite_${me.speciesId}`];
-			if (img) {
-				ctx.save();
-				ctx.translate(this.cw() * 0.23, this.ch() - 70);
-				ctx.scale(-.7, .7);
-				ctx.drawImage(img, -60, -60, 120, 120);
-				ctx.restore();
-			}
-		}
-	}
+
 };
 function basicStrike(b: Beast): Skill {
 	return {
@@ -1404,66 +1307,6 @@ function basicStrike(b: Beast): Skill {
 		mp: 0,
 		desc: "A plain blow."
 	};
-}
-function collectPaths(): [string, string][] {
-	const out: [string, string][] = [];
-	for (const t of [
-		"grass",
-		"dirt",
-		"water",
-		"cobble",
-		"wood",
-		"cave",
-		"marsh",
-		"wall"
-	]) out.push([`tile_${t}`, `/game/tiles/${t}.png`]);
-	for (const d of [
-		"down",
-		"left",
-		"right",
-		"up"
-	]) for (let i = 0; i < 4; i++) out.push([`player_${d}${i}`, `/game/sprites/player/${d}${i}.png?v=4`]);
-	for (const id of Object.keys(SPECIES)) out.push([`sprite_${id}`, `/game/sprites/${id}.png`]);
-	for (const n of [
-		"elder",
-		"innkeep",
-		"shopkeep",
-		"warden",
-		"guard",
-		"traveler"
-	]) out.push([`npc_${n}`, `/game/sprites/npc/${n}.png`]);
-	for (const p of [
-		"tree",
-		"cottage",
-		"inn",
-		"shop",
-		"shrine",
-		"sign",
-		"barrel",
-		"crate",
-		"shrub",
-		"boulder",
-		"fence",
-		"tallgrass",
-		"pot",
-		"well",
-		"bed",
-		"table",
-		"chair",
-		"bookshelf",
-		"hearth",
-		"counter"
-	]) out.push([`prop_${p}`, `/game/props/${p}.png`]);
-	for (const bg of [
-		"grass",
-		"forest",
-		"cave",
-		"marsh",
-		"keep"
-	]) out.push([`bg_${bg}`, `/game/bg/bg_${bg}.jpg`]);
-	out.push(["bg_title", "/game/bg/title.jpg"]);
-	out.push(["ui_panel", "/game/ui/panel.png"]);
-	return out;
 }
 
 export type { Snapshot } from "./types";
