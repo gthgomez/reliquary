@@ -6,18 +6,20 @@ import {
   SHOP_STOCK,
   SKILLS,
   SPECIES,
-  typeMod,
 } from "./content.ts";
 import { BLOCKED, ENCOUNTER_TILES, GROUND_TILE, MAPS } from "./maps.ts";
 import { sfxPlay, startMusic, unlockAudio } from "./audio.ts";
 import { hasSave, loadSave, writeSave, type SaveStorage } from "./save.ts";
 import { mathRandom, type RandomSource } from "./rng.ts";
+import { chooseFoeSkill } from "./battle/ai.ts";
+import { reduceAttack } from "./battle/reducer.ts";
+import { createTrialBattle, createWildBattle } from "./battle/state.ts";
 import { captureChance, captureSucceeds, storeCapturedBeast } from "./systems/capture.ts";
-import { accuracySucceeds, healBeast, playerActsFirst, resolveElementalDamage, spendSkillMp, statusSucceeds } from "./systems/combat.ts";
+import { healBeast, playerActsFirst, spendSkillMp } from "./systems/combat.ts";
 import { purchaseItem, sellItem } from "./systems/economy.ts";
 import { validateItemUse } from "./systems/items.ts";
 import { awardExperience } from "./systems/progression.ts";
-import { applyStatus, tickStatus as tickBeastStatus } from "./systems/status.ts";
+import { tickStatus as tickBeastStatus } from "./systems/status.ts";
 import type {
   BattleState,
   Beast,
@@ -869,23 +871,7 @@ export class ReliquaryGame {
 		this.seen[pick.species] = true;
 		this.encounterLock = true;
 		sfxPlay.encounter();
-		this.battle = {
-			kind: "wild",
-			bg: this.map().battleBg,
-			playerIndex: this.firstAble(),
-			foes: [foe],
-			foeIndex: 0,
-			log: [`A wild ${SPECIES[foe.speciesId].name} steps from the ${this.map().battleBg}.`],
-			phase: "command",
-			menuIndex: 0,
-			pendingItem: null,
-			pendingSwitch: false,
-			shake: 0,
-			catchStone: null,
-			pendingXp: 0,
-			escaped: false,
-			canFlee: true
-		};
+		this.battle = createWildBattle(foe, this.map().battleBg, this.firstAble());
 		this.mode = "battle";
 		this.menuIndex = 0;
 		this.emit();
@@ -900,24 +886,7 @@ export class ReliquaryGame {
 			this.seen[f.speciesId] = true;
 		});
 		sfxPlay.encounter();
-		this.battle = {
-			kind: "trial",
-			bg: "keep",
-			playerIndex: this.firstAble(),
-			foes,
-			foeIndex: 0,
-			trainerName: "Warden Cael",
-			log: ["Warden Cael sends out Ironnewt."],
-			phase: "command",
-			menuIndex: 0,
-			pendingItem: null,
-			pendingSwitch: false,
-			shake: 0,
-			catchStone: null,
-			pendingXp: 0,
-			escaped: false,
-			canFlee: false
-		};
+		this.battle = createTrialBattle(foes, this.firstAble(), "Warden Cael");
 		this.mode = "battle";
 		this.emit();
 	}
@@ -1147,81 +1116,21 @@ export class ReliquaryGame {
 		}
 		this.emit();
 	}
-	private useSkill(atk: Beast, def: Beast, foeSide: boolean, skill: Skill, logIt: boolean): void {
+	private useSkill(atk: Beast, def: Beast, _foeSide: boolean, skill: Skill, logIt: boolean): void {
 		const b = this.battle!;
-		const aS = currentStats(atk);
-		if (skill.kind === "heal") {
-			if (!accuracySucceeds(skill, atk, this.random)) {
-				if (logIt) b.log = [`${atk.nickname}'s ${skill.name} misses.`];
-				sfxPlay.fail();
-				return;
-			}
-			const heal = healBeast(atk, skill.power * (aS.mag / 40));
-			b.log = [`${atk.nickname} mends for ${heal}.`];
-			sfxPlay.heal();
-			return;
-		}
-		if (skill.kind === "ward" || skill.kind === "hex" && skill.power === 0) {
-			if (!accuracySucceeds(skill, atk, this.random)) {
-				if (logIt) b.log = [`${atk.nickname}'s ${skill.name} misses.`];
-				sfxPlay.fail();
-				return;
-			}
-			if (skill.status) {
-				applyStatus(def, skill.status);
-				b.log = [`${skill.name}: ${def.nickname} is ${skill.status}.`];
-			}
-			sfxPlay.menu();
-			return;
-		}
-		const resolution = resolveElementalDamage(
-			atk,
-			def,
-			skill,
-			SPECIES[atk.speciesId]!.elements,
-			SPECIES[def.speciesId]!.elements,
-			this.random,
-		);
-		if (!resolution.hit) {
-			if (logIt) b.log = [`${atk.nickname}'s ${skill.name} misses.`];
-			sfxPlay.fail();
-			return;
-		}
-		def.hp = Math.max(0, def.hp - resolution.damage);
-		let line = `${atk.nickname} uses ${skill.name}! ${resolution.damage} harm.`;
-		if (resolution.multiplier > 1.2) line += " It bites deep.";
-		else if (resolution.multiplier < 0.8) line += " It glances.";
-		if (resolution.critical) line += " A true cut.";
-		if (skill.status && statusSucceeds(skill.statusChance ?? 0, this.random) && def.hp > 0) {
-			applyStatus(def, skill.status);
-			line += ` ${def.nickname} is ${skill.status}.`;
-		}
-		b.log = [line];
-		if (resolution.critical) sfxPlay.crit();
-		else sfxPlay.hit();
+		const outcome = reduceAttack(atk, def, skill, this.random).outcome;
+		const messages = outcome.events.filter((e) => e.kind === "message").map((e) => e.text);
+		const missed = outcome.events.some((e) => e.kind === "miss");
+		if (messages.length && (logIt || !missed)) b.log = [messages.join(" ")];
+		if (missed) sfxPlay.fail();
+		else if (outcome.events.some((e) => e.kind === "heal")) sfxPlay.heal();
+		else if (outcome.events.some((e) => e.kind === "hit" && e.critical)) sfxPlay.crit();
+		else if (outcome.events.some((e) => e.kind === "hit")) sfxPlay.hit();
+		else sfxPlay.menu();
 	}
 	private foeTurn(foe: Beast, me: Beast): void {
-		const skills = foe.skills.map((id) => SKILLS[id]).filter(Boolean);
-		const foS = currentStats(foe);
-		if (foe.hp < foS.hp * .35) {
-			const heal = skills.find((s) => s.kind === "heal" && foe.mp >= s.mp);
-			if (heal) {
-				foe.mp -= heal.mp;
-				this.useSkill(foe, foe, true, heal, true);
-				return;
-			}
-		}
-		const myEls = SPECIES[me.speciesId].elements;
-		let best = skills[0] ?? SKILLS.nip;
-		let bestS = -1;
-		for (const s of skills) {
-			if (s.mp > foe.mp || s.kind === "heal") continue;
-			const score = s.power * typeMod(s.element, myEls);
-			if (score > bestS) {
-				bestS = score;
-				best = s;
-			}
-		}
+		const skills = foe.skills.map((id) => SKILLS[id]).filter(Boolean) as Skill[];
+		const best = chooseFoeSkill(foe, SPECIES[me.speciesId]!.elements, skills, SKILLS.nip);
 		if (best.mp) foe.mp = Math.max(0, foe.mp - best.mp);
 		this.useSkill(foe, me, true, best, true);
 	}

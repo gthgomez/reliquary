@@ -13,6 +13,11 @@ export function accuracySucceeds(skill: Skill, attacker: Beast, random: RandomSo
   return skill.accuracy >= 100 || random() * 100 <= skill.accuracy + currentStats(attacker).lck / 20;
 }
 
+/** Skills that apply a status/effect instead of dealing elemental damage. */
+export function isNonDamagingSkill(skill: Skill): boolean {
+  return skill.kind === "ward" || skill.kind === "hex" && skill.power === 0;
+}
+
 /** Resolve the elemental/stab calculation used by the engine. */
 export function resolveElementalDamage(
   attacker: Beast,
@@ -25,7 +30,7 @@ export function resolveElementalDamage(
   if (!accuracySucceeds(skill, attacker, random)) {
     return { hit: false, critical: false, damage: 0, multiplier: 1 };
   }
-  if (skill.kind === "heal" || skill.kind === "ward" || skill.kind === "hex" && skill.power === 0) {
+  if (skill.kind === "heal" || isNonDamagingSkill(skill)) {
     return { hit: true, critical: false, damage: 0, multiplier: 1 };
   }
   const aStats = currentStats(attacker);

@@ -36,9 +36,9 @@ the first step of Phase 3; the full battle reducer migration continues in PR-E.
 **Interfaces produced (consumed by PR-E):**
 - `BattleAction`, `BattleEvent` (actions.ts)
 - `createWildBattle`, `createTrialBattle`, `activeBeast`, `activeFoe` (state.ts)
-- `chooseFoeSkill(foe, targetElements, skills, fallback, rng): Skill` (ai.ts)
+- `chooseFoeSkill(foe, targetElements, skills, fallback): Skill` (ai.ts)
 - `resolveAttack(attacker, defender, skill, rng): AttackOutcome` (resolution.ts)
-- `reduceAttack(attacker, defender, skill, rng): { defenderHp, events }` (reducer.ts)
+- `reduceAttack(attacker, defender, skill, rng): { defenderHp: number; outcome: AttackOutcome }` (reducer.ts)
 
 **Invariants:** RNG draw order is preserved exactly (PR-B's oracle and the
 `systems.test.ts` ward/bless assertions must stay green). No gameplay change.
@@ -253,10 +253,16 @@ test("uses a heal when below a third of max HP and MP allows", () => {
   assert.equal(chosen.id, "mossmend");
 });
 
-test("falls back when no skill is legal", () => {
+test("uses the first skill when none is eligible, preserving original fallback", () => {
   const foe = beast("emberkit");
   foe.mp = 0;
   const chosen = chooseFoeSkill(foe, SPECIES.briarling.elements, [SKILLS.cinder], SKILLS.nip);
+  assert.equal(chosen.id, "cinder");
+});
+
+test("uses the fallback skill when the skill list is empty", () => {
+  const foe = beast("emberkit");
+  const chosen = chooseFoeSkill(foe, SPECIES.briarling.elements, [], SKILLS.nip);
   assert.equal(chosen.id, "nip");
 });
 ```
@@ -287,7 +293,7 @@ export function chooseFoeSkill(
     const heal = skills.find((s) => s.kind === "heal" && foe.mp >= s.mp);
     if (heal) return heal;
   }
-  let best = fallback;
+  let best = skills[0] ?? fallback;
   let bestScore = -1;
   for (const s of skills) {
     if (s.mp > foe.mp || s.kind === "heal") continue;
@@ -343,8 +349,8 @@ events instead of performing logs/audio, and have the engine consume it.
 
 **Files:**
 - Create: `src/game/battle/resolution.ts`, `src/game/battle/reducer.ts`
-- Test: `src/game/battle/resolution.test.ts`
-- Modify: `src/game/engine.ts` `useSkill`
+- Test: `src/game/battle/resolution.test.ts`, `src/game/battle/reducer.test.ts`
+- Modify: `src/game/engine.ts` `useSkill` (now imports `reduceAttack`)
 
 - [ ] **Step 1: Write the failing test**
 
@@ -396,7 +402,7 @@ Expected: FAIL — module not found.
 `src/game/battle/resolution.ts`:
 
 ```ts
-import { accuracySucceeds, healBeast, resolveElementalDamage, statusSucceeds } from "../systems/combat.ts";
+import { accuracySucceeds, healBeast, isNonDamagingSkill, resolveElementalDamage, statusSucceeds } from "../systems/combat.ts";
 import { applyStatus } from "../systems/status.ts";
 import { currentStats, SPECIES } from "../content.ts";
 import type { Beast, Skill, StatusId } from "../types.ts";
@@ -415,10 +421,13 @@ export type AttackOutcome = {
 export function resolveAttack(attacker: Beast, defender: Beast, skill: Skill, rng: RandomSource): AttackOutcome {
   const events: BattleEvent[] = [];
   const outcome: AttackOutcome = { damage: 0, healed: 0, hit: false, critical: false, statusApplied: null, events };
+  const miss = () => {
+    events.push({ kind: "miss" }, { kind: "message", text: `${attacker.nickname}'s ${skill.name} misses.` });
+  };
 
   if (skill.kind === "heal") {
     if (!accuracySucceeds(skill, attacker, rng)) {
-      events.push({ kind: "miss" });
+      miss();
       return outcome;
     }
     const aS = currentStats(attacker);
@@ -428,9 +437,9 @@ export function resolveAttack(attacker: Beast, defender: Beast, skill: Skill, rn
     return outcome;
   }
 
-  if (skill.kind === "ward" || skill.kind === "hex" && skill.power === 0) {
+  if (isNonDamagingSkill(skill)) {
     if (!accuracySucceeds(skill, attacker, rng)) {
-      events.push({ kind: "miss" });
+      miss();
       return outcome;
     }
     outcome.hit = true;
@@ -447,7 +456,7 @@ export function resolveAttack(attacker: Beast, defender: Beast, skill: Skill, rn
     SPECIES[attacker.speciesId]!.elements, SPECIES[defender.speciesId]!.elements, rng,
   );
   if (!result.hit) {
-    events.push({ kind: "miss" }, { kind: "message", text: `${attacker.nickname}'s ${skill.name} misses.` });
+    miss();
     return outcome;
   }
   defender.hp = Math.max(0, defender.hp - result.damage);
@@ -487,19 +496,57 @@ export function reduceAttack(
 }
 ```
 
-- [ ] **Step 4: Make `engine.useSkill` consume `resolveAttack`**
+- [ ] **Step 4: Write the reducer test**
 
-Replace the body of `useSkill` with an adapter that calls `resolveAttack` and
+`src/game/battle/reducer.test.ts` asserts `reduceAttack` returns the mutated
+`defenderHp` and the same events as `resolveAttack` for the same RNG sequence:
+
+```ts
+import assert from "node:assert/strict";
+import { test } from "node:test";
+import { makeBeast, SKILLS } from "../content.ts";
+import { sequenceRandom } from "../rng.ts";
+import { reduceAttack } from "./reducer.ts";
+import { resolveAttack } from "./resolution.ts";
+
+const IVS = { hp: 8, mp: 8, atk: 8, def: 8, mag: 8, res: 8, spd: 8, lck: 8 };
+const beast = (id: string, level = 18) =>
+  makeBeast(id, level, { temperament: "calm", ivs: IVS });
+
+test("reduceAttack returns the mutated defenderHp and the same events as resolveAttack", () => {
+  const attacker = beast("emberkit");
+  const viaReducer = beast("mothwisp");
+  const viaResolve = beast("mothwisp");
+  const before = viaReducer.hp;
+  const seq = [.99, .5];
+
+  const { defenderHp, outcome } = reduceAttack(attacker, viaReducer, SKILLS.cinder, sequenceRandom(seq));
+  const expected = resolveAttack(attacker, viaResolve, SKILLS.cinder, sequenceRandom(seq));
+
+  assert.ok(defenderHp < before);
+  assert.equal(defenderHp, viaReducer.hp);
+  assert.equal(defenderHp, viaResolve.hp);
+  assert.equal(outcome.damage, expected.damage);
+  assert.deepEqual(outcome.events, expected.events);
+});
+```
+
+Run: `node --experimental-strip-types --test src/game/battle/reducer.test.ts`
+Expected: PASS.
+
+- [ ] **Step 5: Make `engine.useSkill` consume `reduceAttack`**
+
+Replace the body of `useSkill` with an adapter that calls `reduceAttack` and
 maps events to `b.log` and sfx:
 
 ```ts
 private useSkill(atk: Beast, def: Beast, _foeSide: boolean, skill: Skill, logIt: boolean): void {
   const b = this.battle!;
-  const outcome = resolveAttack(atk, def, skill, this.random);
+  const outcome = reduceAttack(atk, def, skill, this.random).outcome;
   const messages = outcome.events.filter((e) => e.kind === "message").map((e) => e.text);
-  if (messages.length) b.log = messages;
-  if (!outcome.hit && !messages.length && logIt) b.log = [`${atk.nickname}'s ${skill.name} misses.`];
-  if (outcome.events.some((e) => e.kind === "miss")) sfxPlay.fail();
+  const missed = outcome.events.some((e) => e.kind === "miss");
+  if (messages.length && (logIt || !missed)) b.log = [messages.join(" ")];
+  if (missed) sfxPlay.fail();
   else if (outcome.events.some((e) => e.kind === "heal")) sfxPlay.heal();
   else if (outcome.events.some((e) => e.kind === "hit" && e.critical)) sfxPlay.crit();
   else if (outcome.events.some((e) => e.kind === "hit")) sfxPlay.hit();
@@ -507,13 +554,19 @@ private useSkill(atk: Beast, def: Beast, _foeSide: boolean, skill: Skill, logIt:
 }
 ```
 
-- [ ] **Step 5: Run tests and full gate**
+> `reduceAttack` is the production entry point (`engine.useSkill` imports it,
+> not `resolveAttack`). The adapter joins all message events into a single
+> `battle.log` entry so the HUD (`log[log.length - 1]`) shows the full line,
+> including a damaging hit that also applies a status.
+
+- [ ] **Step 6: Run tests and full gate**
 
 The existing `battle-combat.test.ts` and `systems.test.ts` must stay green
 (RNG order preserved). Run:
 
 ```bash
 node --experimental-strip-types --test src/game/battle/resolution.test.ts
+node --experimental-strip-types --test src/game/battle/reducer.test.ts
 node --experimental-strip-types --test src/game/battle-combat.test.ts
 npm run typecheck && npm run lint && npm test && npm run validate:content && npm run build
 ```
@@ -521,10 +574,10 @@ npm run typecheck && npm run lint && npm test && npm run validate:content && npm
 Expected: all PASS. If `battle-combat.test.ts` fails, the RNG order or damage
 mapping drifted — fix the adapter, not the test.
 
-- [ ] **Step 6: Commit**
+- [ ] **Step 7: Commit**
 
 ```bash
-git add src/game/battle/resolution.ts src/game/battle/reducer.ts src/game/battle/resolution.test.ts src/game/engine.ts
+git add src/game/battle/resolution.ts src/game/battle/reducer.ts src/game/battle/resolution.test.ts src/game/battle/reducer.test.ts src/game/engine.ts
 git commit -m "refactor(battle): route engine attacks through a pure resolution/reducer"
 ```
 
