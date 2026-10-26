@@ -21,11 +21,14 @@ export function unlockAudio(): void {
     music.connect(master);
     sfx.connect(master);
     master.connect(ctx.destination);
+
+    // Audio is shared by the game mounts; register once, not once per gesture.
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible" && ctx?.state === "suspended") void ctx.resume();
+      if (document.visibilityState === "hidden" && ctx?.state === "running") void ctx.suspend();
+    });
   }
   if (ctx.state === "suspended") void ctx.resume();
-  document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "visible" && ctx?.state === "suspended") void ctx.resume();
-  });
 }
 
 export function setMuted(v: boolean): void {

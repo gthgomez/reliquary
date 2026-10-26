@@ -9,7 +9,7 @@ import {
   typeMod,
 } from "./content.ts";
 import { BLOCKED, ENCOUNTER_TILES, GROUND_TILE, MAPS } from "./maps.ts";
-import { sfxPlay, startMusic, unlockAudio } from "./audio.ts";
+import { sfxPlay, startMusic, stopMusic, unlockAudio } from "./audio.ts";
 import { hasSave, loadSave, writeSave } from "./save.ts";
 import { mathRandom, type RandomSource } from "./rng.ts";
 import { captureChance, captureSucceeds, storeCapturedBeast } from "./systems/capture.ts";
@@ -70,6 +70,7 @@ const YAW: Record<Dir, number> = {
 	3: Math.PI
 };
 const WALK_MS = 160;
+const CONTROL_KEYS = new Set(["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "KeyW", "KeyA", "KeyS", "KeyD", "KeyZ", "KeyX", "KeyC", "KeyM", "Enter", "Space", "Escape", "ShiftLeft"]);
 export class ReliquaryGame {
 	mode: Mode = "title";
 	loadProgress = 0;
@@ -239,6 +240,7 @@ export class ReliquaryGame {
 			if (window.__controlsTest === this.probe) delete window.__controlsTest;
 		}
 		this.lifecycle = "stopped";
+		stopMusic();
 		this.keys.clear();
 		this.injected = null;
 		this.lastTs = 0;
@@ -285,25 +287,12 @@ export class ReliquaryGame {
 		document.addEventListener("visibilitychange", this.visibilityHandler);
 	}
 	private onKeyDown = (e: KeyboardEvent): void => {
-		if ((new Set([
-			"ArrowUp",
-			"ArrowDown",
-			"ArrowLeft",
-			"ArrowRight",
-			"KeyW",
-			"KeyA",
-			"KeyS",
-			"KeyD",
-			"KeyZ",
-			"KeyX",
-			"KeyC",
-			"KeyM",
-			"Enter",
-			"Space",
-			"Escape",
-			"ShiftLeft"
-		])).has(e.code)) e.preventDefault();
+		const target = e.target;
+		if (target instanceof HTMLElement && target.closest("input, textarea, select, [contenteditable='true']")) return;
+		if (target instanceof HTMLElement && target.closest("button") && (e.code === "Enter" || e.code === "Space")) return;
+		if (CONTROL_KEYS.has(e.code)) e.preventDefault();
 		this.keys.add(e.code);
+		if (e.repeat && ["KeyZ", "Enter", "Space", "KeyX", "Escape", "ShiftLeft", "KeyM", "KeyC"].includes(e.code)) return;
 		if (e.code === "KeyZ" || e.code === "Enter" || e.code === "Space") this.confirm();
 		if (e.code === "KeyX" || e.code === "Escape" || e.code === "ShiftLeft") this.cancel();
 		if (e.code === "KeyM" || e.code === "KeyC") this.toggleMenu();
