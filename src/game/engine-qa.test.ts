@@ -186,7 +186,7 @@ test("arrow navigation moves focus to the selected menu button", async () => {
     game.mode = "world";
     game.menu = "root";
     let focused = 0;
-    const buttons = Array.from({ length: 5 }, (_, index) => ({
+    const buttons = Array.from({ length: 6 }, (_, index) => ({
       disabled: index === 1,
       focus: () => {
         focused = index;
