@@ -9,7 +9,7 @@ import {
   typeMod,
 } from "./content.ts";
 import { BLOCKED, ENCOUNTER_TILES, GROUND_TILE, MAPS } from "./maps.ts";
-import { sfxPlay, startMusic, unlockAudio } from "./audio.ts";
+import { sfxPlay, startMusic, stopMusic, unlockAudio } from "./audio.ts";
 import { hasSave, loadSave, writeSave } from "./save.ts";
 import { mathRandom, type RandomSource } from "./rng.ts";
 import { captureChance, captureSucceeds, storeCapturedBeast } from "./systems/capture.ts";
@@ -70,6 +70,7 @@ const YAW: Record<Dir, number> = {
 	3: Math.PI
 };
 const WALK_MS = 160;
+const CONTROL_KEYS = new Set(["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "KeyW", "KeyA", "KeyS", "KeyD", "KeyZ", "KeyX", "KeyC", "KeyM", "Enter", "Space", "Escape", "ShiftLeft"]);
 export class ReliquaryGame {
 	mode: Mode = "title";
 	loadProgress = 0;
@@ -128,10 +129,12 @@ export class ReliquaryGame {
 	lifecycle: "constructed" | "booted" | "stopped" = "constructed";
 	private readonly random: RandomSource;
 	private bootToken = 0;
+	private terrain: { map: MapDef; canvas: HTMLCanvasElement } | null = null;
 	private visibilityHandler = (): void => {
 		if (document.visibilityState === "hidden") {
 			this.keys.clear();
-			this.persist();
+			this.injected = null;
+			if (this.mode !== "title" && this.mode !== "boot") this.persist();
 		}
 	};
 	private probe: NonNullable<Window["__controlsTest"]> | null = null;
@@ -193,7 +196,9 @@ export class ReliquaryGame {
 			const img = new Image();
 			img.crossOrigin = "anonymous";
 			img.onload = () => {
+				if (token !== this.bootToken || this.lifecycle !== "booted") { resolve(); return; }
 				this.images[key] = img;
+				this.terrain = null;
 				done += 1;
 				this.loadProgress = done / paths.length;
 				resolve();
@@ -236,12 +241,14 @@ export class ReliquaryGame {
 			if (window.__controlsTest === this.probe) delete window.__controlsTest;
 		}
 		this.lifecycle = "stopped";
+		stopMusic();
 		this.keys.clear();
 		this.injected = null;
 		this.lastTs = 0;
 		this.animWait = 0;
 		this.animFn = null;
 		this.canvas = null;
+		this.terrain = null;
 	}
 	cw(): number {
 		return this.viewW * TILE;
@@ -281,25 +288,15 @@ export class ReliquaryGame {
 		document.addEventListener("visibilitychange", this.visibilityHandler);
 	}
 	private onKeyDown = (e: KeyboardEvent): void => {
-		if ((new Set([
-			"ArrowUp",
-			"ArrowDown",
-			"ArrowLeft",
-			"ArrowRight",
-			"KeyW",
-			"KeyA",
-			"KeyS",
-			"KeyD",
-			"KeyZ",
-			"KeyX",
-			"KeyC",
-			"KeyM",
-			"Enter",
-			"Space",
-			"Escape",
-			"ShiftLeft"
-		])).has(e.code)) e.preventDefault();
+		const target = e.target;
+		if (target instanceof HTMLElement && target.closest("input, textarea, select, [contenteditable='true']")) return;
+		if (target instanceof HTMLElement && target.closest("button") && (e.code === "Enter" || e.code === "Space")) {
+			if (e.repeat) e.preventDefault();
+			return;
+		}
+		if (CONTROL_KEYS.has(e.code)) e.preventDefault();
 		this.keys.add(e.code);
+		if (e.repeat && ["KeyZ", "Enter", "Space", "KeyX", "Escape", "ShiftLeft", "KeyM", "KeyC"].includes(e.code)) return;
 		if (e.code === "KeyZ" || e.code === "Enter" || e.code === "Space") this.confirm();
 		if (e.code === "KeyX" || e.code === "Escape" || e.code === "ShiftLeft") this.cancel();
 		if (e.code === "KeyM" || e.code === "KeyC") this.toggleMenu();
@@ -307,7 +304,16 @@ export class ReliquaryGame {
 		const down = e.code === "ArrowDown" || e.code === "KeyS";
 		if ((this.menu || this.battle || this.mode === "shop") && (up || down)) {
 			const max = this.menuLen();
-			if (max > 0) this.moveMenu(up ? -1 : 1, max);
+			if (max > 0) {
+				const direction = up ? -1 : 1;
+				this.moveMenu(direction, max);
+				const list = target instanceof HTMLElement ? target.closest("ul.cmd, ul.menu-list") : null;
+				const buttons = list?.querySelectorAll<HTMLButtonElement>("button");
+				if (buttons?.length === max) {
+					for (let i = 0; i < max && buttons[this.menuIndex]?.disabled; i++) this.moveMenu(direction, max);
+					buttons[this.menuIndex]?.focus();
+				}
+			}
 		}
 	};
 	private onKeyUp = (e: KeyboardEvent): void => {
@@ -361,6 +367,14 @@ export class ReliquaryGame {
 		startMusic();
 		sfxPlay.confirm();
 		this.playerName = "Rowan";
+		this.playTime = 0;
+		this.animWait = 0;
+		this.animFn = null;
+		this.quietBell = 0;
+		this.toast = null;
+		this.toastT = 0;
+		this.keys.clear();
+		this.injected = null;
 		this.mapId = "home";
 		this.tx = MAPS.home!.spawn.x;
 		this.ty = MAPS.home!.spawn.y;
@@ -419,8 +433,8 @@ export class ReliquaryGame {
 		this.seen = s.seen;
 		this.caught = s.caught;
 	}
-	persist(): void {
-		writeSave({
+	persist(): boolean {
+		const saved = writeSave({
 			version: 2,
 			playerName: this.playerName,
 			mapId: this.mapId,
@@ -436,7 +450,11 @@ export class ReliquaryGame {
 			seen: this.seen,
 			caught: this.caught
 		});
-		this.hasSave = true;
+		if (saved) {
+			this.hasSave = true;
+			this.emit();
+		} else this.toastMsg("Could not save. Keep this window open and retry.");
+		return saved;
 	}
 	private map(): MapDef {
 		return MAPS[this.mapId]!;
@@ -471,10 +489,10 @@ export class ReliquaryGame {
 		if (this.lifecycle !== "booted") return;
 		const dt = Math.min(.1, this.lastTs ? (ts - this.lastTs) / 1e3 : .016);
 		this.lastTs = ts;
-		this.playTime += dt;
+		if (this.mode !== "title" && this.mode !== "boot") this.playTime += dt;
 		if (this.toastT > 0) {
 			this.toastT -= dt;
-			if (this.toastT <= 0) this.toast = null;
+			if (this.toastT <= 0) { this.toast = null; this.emit(); }
 		}
 		if (this.animWait > 0) {
 			this.animWait -= dt;
@@ -596,6 +614,7 @@ export class ReliquaryGame {
 			return;
 		}
 		if (this.battle) {
+			if (this.battle.phase === "party" && this.party[this.battle.playerIndex]!.hp <= 0) return;
 			if (this.battle.phase === "skills" || this.battle.phase === "items" || this.battle.phase === "party" || this.battle.phase === "bind") {
 				this.battle.phase = "command";
 				this.battle.menuIndex = 0;
@@ -690,9 +709,9 @@ export class ReliquaryGame {
 		}
 		if (id === "shrine") {
 			this.party.forEach(healFull);
-			this.persist();
-			sfxPlay.save();
-			this.openDialog("Shrine", ["The old compact holds. Your beasts are whole. The lantern is written."]);
+			const saved = this.persist();
+			if (saved) sfxPlay.save();
+			this.openDialog("Shrine", [saved ? "The old compact holds. Your beasts are whole. The lantern is written." : "Your beasts are whole, but the lantern could not be written. Keep this window open and retry saving."]);
 			return;
 		}
 		if (id === "bed") {
@@ -1005,6 +1024,14 @@ export class ReliquaryGame {
 		if (b.phase === "party") {
 			const idx = b.menuIndex;
 			if (!this.party[idx] || this.party[idx].hp <= 0 || idx === b.playerIndex) return;
+			if (this.party[b.playerIndex]!.hp <= 0) {
+				b.playerIndex = idx;
+				b.phase = "command";
+				b.menuIndex = this.menuIndex = 0;
+				b.log = [`${this.party[idx]!.nickname} steps forward.`];
+				this.emit();
+				return;
+			}
 			this.playerAction({
 				type: "switch",
 				index: idx
@@ -1032,7 +1059,7 @@ export class ReliquaryGame {
 	}
 	private playerAction(act: { type: string; skill?: string; item?: string; index?: number }): void {
 		const b = this.battle!;
-		const me = this.party[b.playerIndex]!;
+		let me = this.party[b.playerIndex]!;
 		const foe = b.foes[b.foeIndex]!;
 		const playerFirst = playerActsFirst(me, foe, this.random) || act.type === "item" || act.type === "switch" || act.type === "bind";
 		const doPlayer = () => {
@@ -1050,6 +1077,7 @@ export class ReliquaryGame {
 			else if (act.type === "bind") this.tryCatch(act.item!);
 			else if (act.type === "switch") {
 				b.playerIndex = act.index!;
+				me = this.party[b.playerIndex]!;
 				b.log = [`${this.party[b.playerIndex]!.nickname} steps forward.`];
 			}
 		};
@@ -1065,7 +1093,7 @@ export class ReliquaryGame {
 				return;
 			}
 			doFoe();
-			if (me.hp <= 0) this.playerDown();
+			if (me.hp <= 0) { this.playerDown(); return; }
 		} else {
 			doFoe();
 			if (me.hp <= 0) {
@@ -1074,7 +1102,7 @@ export class ReliquaryGame {
 			}
 			doPlayer();
 			if (b.phase === "catch") return;
-			if (foe.hp <= 0) this.foeDown();
+			if (foe.hp <= 0) { this.foeDown(); return; }
 		}
 		if (b.phase !== "win" && b.phase !== "lose") {
 			b.phase = "command";
@@ -1103,8 +1131,9 @@ export class ReliquaryGame {
 		}
 		if (skill.kind === "ward" || skill.kind === "hex" && skill.power === 0) {
 			if (skill.status) {
-					applyStatus(def, skill.status);
-				b.log = [`${skill.name}: ${def.nickname} is ${skill.status}.`];
+				const target = skill.kind === "ward" ? atk : def;
+				applyStatus(target, skill.status);
+				b.log = [`${skill.name}: ${target.nickname} is ${skill.status}.`];
 			}
 			sfxPlay.menu();
 			return;
@@ -1144,7 +1173,7 @@ export class ReliquaryGame {
 			}
 		}
 		const myEls = SPECIES[me.speciesId].elements;
-		let best = skills[0] ?? SKILLS.nip;
+		let best = basicStrike(foe);
 		let bestS = -1;
 		for (const s of skills) {
 			if (s.mp > foe.mp || s.kind === "heal") continue;
@@ -1197,7 +1226,7 @@ export class ReliquaryGame {
 		if (next >= 0) {
 			b.log = [`${this.party[b.playerIndex]!.nickname} cannot stand.`, "Choose another."];
 			b.phase = "party";
-			b.playerIndex = next;
+			b.menuIndex = this.menuIndex = next;
 			this.emit();
 			return;
 		}
@@ -1371,9 +1400,10 @@ export class ReliquaryGame {
 			else if (c === "Reliquary") this.menu = "reliquary";
 			else if (c === "Pack") this.menu = "items";
 			else if (c === "Save") {
-				this.persist();
-				sfxPlay.save();
-				this.toastMsg("The lantern is written.");
+				if (this.persist()) {
+					sfxPlay.save();
+					this.toastMsg("The lantern is written.");
+				}
 				this.menu = null;
 			} else this.menu = null;
 			this.menuIndex = 0;
@@ -1409,33 +1439,40 @@ export class ReliquaryGame {
 		const mh = m.ground.length;
 		const camX = Math.max(0, Math.min(this.px - (this.viewW / 2 - 0.5) * TILE, Math.max(0, mw * TILE - this.cw())));
 		const camY = Math.max(0, Math.min(this.py - (this.viewH / 2 - 0.5) * TILE, Math.max(0, mh * TILE - this.ch())));
-		const x0 = Math.max(0, Math.floor(camX / TILE) - 1);
-		const y0 = Math.max(0, Math.floor(camY / TILE) - 1);
-		const x1 = Math.min(mw, x0 + this.viewW + 3);
-		const y1 = Math.min(mh, y0 + this.viewH + 3);
-		for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) {
+		if (this.terrain?.map !== m) {
+			const canvas = document.createElement("canvas");
+			canvas.width = mw * TILE;
+			canvas.height = mh * TILE;
+			const ground = canvas.getContext("2d");
+			if (!ground) return;
+			ground.imageSmoothingEnabled = false;
+			for (let y = 0; y < mh; y++) for (let x = 0; x < mw; x++) {
 			const g = m.ground[y]![x]!;
 			const tileName = GROUND_TILE[g] ?? "grass";
 			const img = this.images[`tile_${tileName}`];
-			const dx = Math.floor(x * TILE - camX);
-			const dy = Math.floor(y * TILE - camY);
-			if (img) ctx.drawImage(img, dx, dy, TILE, TILE);
+			const dx = x * TILE;
+			const dy = y * TILE;
+			if (img) ground.drawImage(img, dx, dy, TILE, TILE);
 			else {
-				ctx.fillStyle = tileName === "water" ? "#3d6e8a" : tileName === "wall" ? "#3a342e" : "#3d4a38";
-				ctx.fillRect(dx, dy, TILE, TILE);
+				ground.fillStyle = tileName === "water" ? "#3d6e8a" : tileName === "wall" ? "#3a342e" : "#3d4a38";
+				ground.fillRect(dx, dy, TILE, TILE);
 			}
 			if (g === ",") {
 				const tg = this.images.prop_tallgrass;
-				if (tg) ctx.drawImage(tg, dx, dy, TILE, TILE);
+				if (tg) ground.drawImage(tg, dx, dy, TILE, TILE);
 				else {
-					ctx.fillStyle = "rgba(40,70,40,0.35)";
-					ctx.fillRect(dx, dy, TILE, TILE);
+					ground.fillStyle = "rgba(40,70,40,0.35)";
+					ground.fillRect(dx, dy, TILE, TILE);
 				}
 			}
 		}
+			this.terrain = { map: m, canvas };
+		}
+		ctx.drawImage(this.terrain.canvas, Math.ceil(camX), Math.ceil(camY), this.cw(), this.ch(), 0, 0, this.cw(), this.ch());
 		const list: { y: number; draw: () => void }[] = [];
 		for (const o of m.objects) {
 			if (this.flags.starter && o.id.startsWith("st_")) continue;
+			if (o.x * TILE >= camX + this.cw() || (o.x + o.w) * TILE <= camX || o.y * TILE >= camY + this.ch() || (o.y + o.h) * TILE <= camY) continue;
 			list.push({
 				y: (o.y + o.h) * TILE,
 				draw: () => {
@@ -1448,7 +1485,9 @@ export class ReliquaryGame {
 				}
 			});
 		}
-		for (const n of m.npcs) list.push({
+		for (const n of m.npcs) {
+			if (n.x * TILE >= camX + this.cw() || (n.x + 1) * TILE <= camX || (n.y - .25) * TILE >= camY + this.ch() || (n.y + 1) * TILE <= camY) continue;
+			list.push({
 			y: (n.y + 1) * TILE,
 			draw: () => {
 				const img = this.images[`npc_${n.sprite}`];
@@ -1459,6 +1498,7 @@ export class ReliquaryGame {
 				if (img) ctx.drawImage(img, dx, dy, dw, dh);
 			}
 		});
+		}
 		list.push({
 			y: this.py + TILE,
 			draw: () => {

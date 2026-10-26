@@ -46,7 +46,8 @@ export const GameSaveV1Schema = z.object({ version: z.literal(1), ...saveFields 
 export const GameSaveSchema = z.object({ version: z.literal(SAVE_VERSION), ...saveFields }).strict();
 
 function browserStorage(): SaveStorage | null {
-  return typeof localStorage === "undefined" ? null : localStorage;
+  try { return typeof localStorage === "undefined" ? null : localStorage; }
+  catch { return null; }
 }
 
 function migrateParsed(value: unknown): GameSave | null {
