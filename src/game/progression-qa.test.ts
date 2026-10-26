@@ -11,6 +11,7 @@ test("a large lore award reaches the cap and traverses both evolutions", () => {
   assert.equal(beast.nickname, "Candle");
   assert.equal(result.evolvedFrom, "emberkit");
   assert.equal(result.evolvedInto, "crownwyrm");
+  assert.deepEqual(result.evolvedStages, ["pyrefox", "crownwyrm"]);
   assert.equal(beast.hp, currentStats(beast).hp);
 });
 

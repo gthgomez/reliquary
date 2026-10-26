@@ -137,6 +137,20 @@ test("practice trains a capable party creature and charges only on success", asy
   });
 });
 
+test("multiple evolutions in one award record every form in the Reliquary", async () => {
+  await withGame((game) => {
+    const beast = makeBeast("emberkit", 5);
+    (game as unknown as { grantXp(target: typeof beast, xp: number): void }).grantXp(
+      beast,
+      1_000_000,
+    );
+    assert.equal(game.caught.pyrefox, true);
+    assert.equal(game.caught.crownwyrm, true);
+    assert.equal(game.seen.pyrefox, true);
+    assert.equal(game.seen.crownwyrm, true);
+  });
+});
+
 test("failed persistence never advertises an available save", async () => {
   await withGame((game) => {
     assert.equal(game.hasSave, false);

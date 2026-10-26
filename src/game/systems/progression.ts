@@ -6,6 +6,7 @@ export type ProgressionResult = {
   learnedSkills: string[];
   evolvedFrom: string | null;
   evolvedInto: string | null;
+  evolvedStages: string[];
 };
 
 /** Apply XP without UI/audio side effects so progression can be verified headlessly. */
@@ -17,6 +18,7 @@ export function awardExperience(beast: Beast, xp: number): ProgressionResult {
     learnedSkills: [],
     evolvedFrom: null,
     evolvedInto: null,
+    evolvedStages: [],
   };
   beast.exp += xp;
   while (beast.exp >= expToNext(beast.level) && beast.level < 40) {
@@ -34,6 +36,7 @@ export function awardExperience(beast: Beast, xp: number): ProgressionResult {
     if (species.evolves && beast.level >= species.evolves.level && beast.speciesId === species.id) {
       result.evolvedFrom ??= species.id;
       result.evolvedInto = species.evolves.into;
+      result.evolvedStages.push(species.evolves.into);
       beast.speciesId = species.evolves.into;
       if (beast.nickname === species.name) beast.nickname = SPECIES[species.evolves.into]!.name;
     }

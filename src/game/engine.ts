@@ -662,8 +662,11 @@ export class ReliquaryGame {
 		const beast = this.party.find((item) => item.uid === uid);
 		if (!beast || beast.hp <= 0 || beast.level >= 40 || this.gold < 45) return;
 		this.gold -= 45;
+		this.toast = null;
+		this.toastT = 0;
 		this.grantXp(beast, 80);
-		if (this.persist()) this.toastMsg(`${beast.nickname} gained 80 lore from practice.`);
+		const announcement = this.toast;
+		if (this.persist() && !announcement) this.toastMsg(`${beast.nickname} gained 80 lore from practice.`);
 		this.emit();
 	}
 	transferBeast(uid: string, destination: "party" | "box"): void {
@@ -1266,8 +1269,10 @@ export class ReliquaryGame {
 		const progression = awardExperience(b, xp);
 		for (const skill of progression.learnedSkills) this.toastMsg(`${b.nickname} learned ${SKILLS[skill]?.name}.`);
 		if (progression.evolvedFrom && progression.evolvedInto) {
-			this.caught[progression.evolvedInto] = true;
-			this.seen[progression.evolvedInto] = true;
+			for (const speciesId of progression.evolvedStages) {
+				this.caught[speciesId] = true;
+				this.seen[speciesId] = true;
+			}
 			this.toastMsg(`${SPECIES[progression.evolvedFrom]?.name} becomes ${SPECIES[progression.evolvedInto]?.name}!`);
 		}
 		if (progression.levelsGained > 0) sfxPlay.level();
