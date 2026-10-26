@@ -95,7 +95,7 @@ const SCALE = [196, 220, 247, 294, 330, 392, 440];
 export function startMusic(): void {
   if (!ctx || !music || musicTimer != null || !musicOn) return;
   const tick = () => {
-    if (!ctx || !music || muted) {
+    if (!ctx || !music || muted || ctx.state !== "running") {
       musicTimer = window.setTimeout(tick, 900);
       return;
     }
