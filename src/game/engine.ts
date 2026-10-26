@@ -133,7 +133,8 @@ export class ReliquaryGame {
 	private visibilityHandler = (): void => {
 		if (document.visibilityState === "hidden") {
 			this.keys.clear();
-			this.persist();
+			this.injected = null;
+			if (this.mode !== "title" && this.mode !== "boot") this.persist();
 		}
 	};
 	private probe: NonNullable<Window["__controlsTest"]> | null = null;
@@ -354,6 +355,14 @@ export class ReliquaryGame {
 		startMusic();
 		sfxPlay.confirm();
 		this.playerName = "Rowan";
+		this.playTime = 0;
+		this.animWait = 0;
+		this.animFn = null;
+		this.quietBell = 0;
+		this.toast = null;
+		this.toastT = 0;
+		this.keys.clear();
+		this.injected = null;
 		this.mapId = "home";
 		this.tx = MAPS.home!.spawn.x;
 		this.ty = MAPS.home!.spawn.y;
@@ -412,8 +421,8 @@ export class ReliquaryGame {
 		this.seen = s.seen;
 		this.caught = s.caught;
 	}
-	persist(): void {
-		writeSave({
+	persist(): boolean {
+		const saved = writeSave({
 			version: 2,
 			playerName: this.playerName,
 			mapId: this.mapId,
@@ -429,7 +438,11 @@ export class ReliquaryGame {
 			seen: this.seen,
 			caught: this.caught
 		});
-		this.hasSave = true;
+		if (saved) {
+			this.hasSave = true;
+			this.emit();
+		} else this.toastMsg("Could not save. Keep this window open and retry.");
+		return saved;
 	}
 	private map(): MapDef {
 		return MAPS[this.mapId]!;
@@ -464,10 +477,10 @@ export class ReliquaryGame {
 		if (this.lifecycle !== "booted") return;
 		const dt = Math.min(.1, this.lastTs ? (ts - this.lastTs) / 1e3 : .016);
 		this.lastTs = ts;
-		this.playTime += dt;
+		if (this.mode !== "title" && this.mode !== "boot") this.playTime += dt;
 		if (this.toastT > 0) {
 			this.toastT -= dt;
-			if (this.toastT <= 0) this.toast = null;
+			if (this.toastT <= 0) { this.toast = null; this.emit(); }
 		}
 		if (this.animWait > 0) {
 			this.animWait -= dt;
@@ -683,9 +696,9 @@ export class ReliquaryGame {
 		}
 		if (id === "shrine") {
 			this.party.forEach(healFull);
-			this.persist();
-			sfxPlay.save();
-			this.openDialog("Shrine", ["The old compact holds. Your beasts are whole. The lantern is written."]);
+			const saved = this.persist();
+			if (saved) sfxPlay.save();
+			this.openDialog("Shrine", [saved ? "The old compact holds. Your beasts are whole. The lantern is written." : "Your beasts are whole, but the lantern could not be written. Keep this window open and retry saving."]);
 			return;
 		}
 		if (id === "bed") {
@@ -1364,9 +1377,10 @@ export class ReliquaryGame {
 			else if (c === "Reliquary") this.menu = "reliquary";
 			else if (c === "Pack") this.menu = "items";
 			else if (c === "Save") {
-				this.persist();
-				sfxPlay.save();
-				this.toastMsg("The lantern is written.");
+				if (this.persist()) {
+					sfxPlay.save();
+					this.toastMsg("The lantern is written.");
+				}
 				this.menu = null;
 			} else this.menu = null;
 			this.menuIndex = 0;
