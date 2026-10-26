@@ -6,17 +6,16 @@ test("repeated audio gestures install only one visibility listener", () => {
   const globals = globalThis as Record<string, unknown>;
   const before = [globals.window, globals.document];
   let listeners = 0;
-  let context: { state: string };
+  let state = "running";
   let oscillators = 0;
   let tick: () => void = () => {};
   const gain = () => ({ gain: { value: 0, setValueAtTime() {}, exponentialRampToValueAtTime() {} }, connect() {} });
   globals.window = {
     AudioContext: class {
-      state = "running";
+      get state() { return state; }
       currentTime = 0;
       destination = {};
       createGain = gain;
-      constructor() { context = this; }
       createOscillator() { oscillators++; return { frequency: { value: 0 }, connect() {}, start() {}, stop() {} }; }
     },
     setTimeout(callback: () => void) { tick = callback; return 1000000; },
@@ -29,11 +28,11 @@ test("repeated audio gestures install only one visibility listener", () => {
   try {
     for (let i = 0; i < 100; i++) unlockAudio();
     assert.equal(listeners, 1);
-    context!.state = "suspended";
+    state = "suspended";
     startMusic();
     for (let i = 0; i < 20; i++) tick();
     assert.equal(oscillators, 0, "suspended time must not accumulate notes");
-    context!.state = "running";
+    state = "running";
     tick();
     assert.ok(oscillators > 0);
   } finally {
