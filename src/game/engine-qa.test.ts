@@ -181,6 +181,32 @@ test("focused buttons keep native activation but suppress held Enter", async () 
   });
 });
 
+test("arrow navigation moves focus to the selected menu button", async () => {
+  await withGame((game, _frame, events) => {
+    game.mode = "world";
+    game.menu = "root";
+    let focused = 0;
+    const buttons = Array.from({ length: 5 }, (_, index) => ({
+      disabled: index === 1,
+      focus: () => {
+        focused = index;
+      },
+    }));
+    const list = { querySelectorAll: () => buttons };
+    const target = Object.assign(new HTMLElement(), {
+      closest: (selector: string) => (selector === "ul.cmd, ul.menu-list" ? list : null),
+    });
+    events.get("keydown")!({
+      target,
+      code: "ArrowDown",
+      repeat: false,
+      preventDefault() {},
+    } as unknown as Event);
+    assert.equal(game.menuIndex, 2);
+    assert.equal(focused, 2);
+  });
+});
+
 test("successful persistence advertises Continue and returns true", async () => {
   await withGame((game) => {
     const slots = new Map<string, string>();
