@@ -1,5 +1,13 @@
 import type { PointerEvent } from "react";
-import { currentStats, ELEMENTS, ITEMS, SKILLS, SPECIES, TEMPERAMENTS } from "../content";
+import {
+  currentStats,
+  expToNext,
+  ELEMENTS,
+  ITEMS,
+  SKILLS,
+  SPECIES,
+  TEMPERAMENTS,
+} from "../content";
 import type { ReliquaryGame } from "../engine";
 import type { Beast, Snapshot } from "../types";
 
@@ -238,6 +246,16 @@ function BeastCard({ beast }: { beast: Beast }) {
         </p>
         <Meter label="HP" value={beast.hp} max={st.hp} kind="hp" />
         <Meter label="MP" value={beast.mp} max={st.mp} kind="mp" />
+        {beast.level < 40 ? (
+          <Meter label="Lore" value={beast.exp} max={expToNext(beast.level)} kind="mp" />
+        ) : (
+          <p className="skills">Level cap reached</p>
+        )}
+        <p className="skills">
+          {sp.evolves
+            ? `Evolution: ${SPECIES[sp.evolves.into]?.name} at Lv ${sp.evolves.level}`
+            : "Mature form"}
+        </p>
         <p className="muted">
           {t.name} · {sp.epithet}
         </p>

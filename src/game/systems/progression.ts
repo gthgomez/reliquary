@@ -10,17 +10,20 @@ export type ProgressionResult = {
 
 /** Apply XP without UI/audio side effects so progression can be verified headlessly. */
 export function awardExperience(beast: Beast, xp: number): ProgressionResult {
-  if (!Number.isFinite(xp) || xp < 0) throw new Error("XP must be a nonnegative finite number");
-  const result: ProgressionResult = { levelsGained: 0, learnedSkills: [], evolvedFrom: null, evolvedInto: null };
+  if (!Number.isFinite(xp) || xp < 0 || !Number.isFinite(beast.exp + xp))
+    throw new Error("XP must be a nonnegative finite number");
+  const result: ProgressionResult = {
+    levelsGained: 0,
+    learnedSkills: [],
+    evolvedFrom: null,
+    evolvedInto: null,
+  };
   beast.exp += xp;
-  while (beast.exp >= expToNext(beast.level) && beast.level < 40 && result.levelsGained < 10) {
+  while (beast.exp >= expToNext(beast.level) && beast.level < 40) {
     beast.exp -= expToNext(beast.level);
     const before = currentStats(beast);
     beast.level += 1;
     result.levelsGained += 1;
-    const after = currentStats(beast);
-    beast.hp = Math.min(after.hp, beast.hp + after.hp - before.hp);
-    beast.mp = Math.min(after.mp, beast.mp + after.mp - before.mp);
     const species = SPECIES[beast.speciesId]!;
     const learned = species.learnset.find((entry) => entry.level === beast.level);
     if (learned && SKILLS[learned.skill] && !beast.skills.includes(learned.skill)) {
@@ -29,11 +32,14 @@ export function awardExperience(beast: Beast, xp: number): ProgressionResult {
       result.learnedSkills.push(learned.skill);
     }
     if (species.evolves && beast.level >= species.evolves.level && beast.speciesId === species.id) {
-      result.evolvedFrom = species.id;
+      result.evolvedFrom ??= species.id;
       result.evolvedInto = species.evolves.into;
       beast.speciesId = species.evolves.into;
-      beast.nickname = SPECIES[species.evolves.into]!.name;
+      if (beast.nickname === species.name) beast.nickname = SPECIES[species.evolves.into]!.name;
     }
+    const after = currentStats(beast);
+    if (beast.hp > 0) beast.hp = Math.max(1, Math.min(after.hp, beast.hp + after.hp - before.hp));
+    beast.mp = Math.max(0, Math.min(after.mp, beast.mp + after.mp - before.mp));
   }
   return result;
 }
