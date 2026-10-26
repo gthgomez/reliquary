@@ -1,4 +1,4 @@
-import type { PointerEvent } from "react";
+import type { PointerEvent, ReactNode } from "react";
 import {
   currentStats,
   expToNext,
@@ -152,8 +152,18 @@ export function MenuPanel({ game, snap }: { game: ReliquaryGame; snap: Snapshot 
       <div className="sheet sheet-wide">
         <h2>Party</h2>
         <div className="party-grid">
-          {snap.party.map((b) => (
-            <BeastCard key={b.uid} beast={b} />
+          {snap.party.map((b, index) => (
+            <BeastCard key={b.uid} beast={b}>
+              <button
+                type="button"
+                className="btn-ghost"
+                disabled={index === 0 || b.hp <= 0}
+                onClick={() => game.setLead(b.uid)}
+                aria-label={`Make ${b.nickname} lead`}
+              >
+                {index === 0 ? "Party lead" : "Make lead"}
+              </button>
+            </BeastCard>
           ))}
           {snap.party.length === 0 ? <p className="empty">No pact spoken yet.</p> : null}
         </div>
@@ -226,7 +236,7 @@ export function MenuPanel({ game, snap }: { game: ReliquaryGame; snap: Snapshot 
   return null;
 }
 
-function BeastCard({ beast }: { beast: Beast }) {
+function BeastCard({ beast, children }: { beast: Beast; children?: ReactNode }) {
   const sp = SPECIES[beast.speciesId]!;
   const st = currentStats(beast);
   const t = TEMPERAMENTS[beast.temperament];
@@ -260,6 +270,7 @@ function BeastCard({ beast }: { beast: Beast }) {
           {t.name} · {sp.epithet}
         </p>
         <p className="skills">{beast.skills.map((s) => SKILLS[s]?.name ?? s).join(" · ")}</p>
+        {children ? <div className="beast-actions">{children}</div> : null}
       </div>
     </article>
   );

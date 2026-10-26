@@ -16,6 +16,7 @@ import { captureChance, captureSucceeds, storeCapturedBeast } from "./systems/ca
 import { accuracySucceeds, healBeast, playerActsFirst, spendSkillMp, statusSucceeds } from "./systems/combat.ts";
 import { purchaseItem, sellItem } from "./systems/economy.ts";
 import { awardExperience } from "./systems/progression.ts";
+import { moveToLead } from "./systems/party.ts";
 import { applyStatus, tickStatus as tickBeastStatus } from "./systems/status.ts";
 import type {
   BattleState,
@@ -638,6 +639,14 @@ export class ReliquaryGame {
 	emitPublic = (): void => {
 		this.emit();
 	};
+	setLead(uid: string): void {
+		if (this.mode !== "world" || this.menu !== "party" || this.battle || this.dialog) return;
+		const party = moveToLead(this.party, uid);
+		if (!party) return;
+		this.party = party;
+		this.persist();
+		this.emit();
+	}
 	private menuLen(): number {
 		if (this.mode === "shop") {
 			if (this.shopMode === "buy") return SHOP_STOCK.length;
