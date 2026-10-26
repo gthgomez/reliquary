@@ -379,6 +379,34 @@
   border-radius: var(--radius-md);
   padding: 0.55rem;
 }
+.beast-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+.beast-actions .btn-ghost {
+  background: var(--color-ink);
+  color: var(--color-cream);
+}
+.rename-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+.rename-form label {
+  display: grid;
+  gap: 0.25rem;
+  width: 100%;
+}
+.rename-form input {
+  min-width: 0;
+  width: 100%;
+  padding: 0.5rem;
+  color: var(--color-ink);
+  background: var(--color-cream);
+  border: 1px solid var(--color-ink);
+}
 .beast-card img,
 .reliq-cell img {
   width: 72px;

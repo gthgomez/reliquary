@@ -16,6 +16,7 @@ import { captureChance, captureSucceeds, storeCapturedBeast } from "./systems/ca
 import { accuracySucceeds, healBeast, playerActsFirst, spendSkillMp, statusSucceeds } from "./systems/combat.ts";
 import { purchaseItem, sellItem } from "./systems/economy.ts";
 import { awardExperience } from "./systems/progression.ts";
+import { moveToLead, renameCreature, transferBeast } from "./systems/party.ts";
 import { applyStatus, tickStatus as tickBeastStatus } from "./systems/status.ts";
 import type {
   BattleState,
@@ -33,6 +34,7 @@ export const VIEW_W = 12;
 export const VIEW_H = 9;
 export const VIEW_W_PORT = 10;
 export const VIEW_H_PORT = 16;
+export const ROOT_MENU = ["Party", "Storage", "Reliquary", "Pack", "Save", "Close"] as const;
 
 type Dialog = {
   speaker: string;
@@ -647,12 +649,50 @@ export class ReliquaryGame {
 	emitPublic = (): void => {
 		this.emit();
 	};
+	setLead(uid: string): void {
+		if (this.mode !== "world" || this.menu !== "party" || this.battle || this.dialog) return;
+		const party = moveToLead(this.party, uid);
+		if (!party) return;
+		this.party = party;
+		this.persist();
+		this.emit();
+	}
+	renamePartyCreature(uid: string, value: string): void {
+		if (this.mode !== "world" || this.menu !== "party" || this.battle || this.dialog) return;
+		const original = this.party.find((beast) => beast.uid === uid);
+		const renamed = original && renameCreature(original, value);
+		if (!renamed) return;
+		this.party = this.party.map((beast) => beast.uid === uid ? renamed : beast);
+		this.persist();
+		this.emit();
+	}
+	trainCreature(uid: string): void {
+		if (this.mode !== "world" || this.menu !== "party" || this.battle || this.dialog) return;
+		const beast = this.party.find((item) => item.uid === uid);
+		if (!beast || beast.hp <= 0 || beast.level >= 40 || this.gold < 45) return;
+		this.gold -= 45;
+		this.toast = null;
+		this.toastT = 0;
+		this.grantXp(beast, 80);
+		const announcement = this.toast;
+		if (this.persist() && !announcement) this.toastMsg(`${beast.nickname} gained 80 lore from practice.`);
+		this.emit();
+	}
+	transferBeast(uid: string, destination: "party" | "box"): void {
+		if (this.mode !== "world" || this.menu !== "storage" || this.battle || this.dialog) return;
+		const result = transferBeast(this.party, this.box, uid, destination);
+		if (!result) { this.toastMsg("Keep a capable companion and leave room in your party."); return; }
+		this.party = result.party;
+		this.box = result.box;
+		this.persist();
+		this.emit();
+	}
 	private menuLen(): number {
 		if (this.mode === "shop") {
 			if (this.shopMode === "buy") return SHOP_STOCK.length;
 			return Object.keys(this.inventory).filter((id) => (this.inventory[id] ?? 0) > 0).length;
 		}
-		if (this.menu === "root") return 5;
+		if (this.menu === "root") return ROOT_MENU.length;
 		if (this.menu === "items") return this.usableItems().length;
 		if (this.menu === "party") return this.party.length;
 		const b = this.battle!;
@@ -1002,6 +1042,11 @@ export class ReliquaryGame {
 		if (b.phase === "items") {
 			const it = this.usableItems()[b.menuIndex];
 			if (!it) return;
+			if (!this.itemHasEffect(it, this.party[b.playerIndex]!, true)) {
+				b.log = ["That item would have no effect."];
+				this.emit();
+				return;
+			}
 			this.playerAction({
 				type: "item",
 				item: it
@@ -1039,7 +1084,7 @@ export class ReliquaryGame {
 		}
 	}
 	usableItems(): string[] {
-		return Object.keys(this.inventory).filter((id) => (this.inventory[id] ?? 0) > 0 && ITEMS[id] && ITEMS[id].kind !== "sigil" && ITEMS[id].kind !== "key");
+		return Object.keys(this.inventory).filter((id) => (this.inventory[id] ?? 0) > 0 && ITEMS[id] && ITEMS[id].kind !== "sigil" && ITEMS[id].kind !== "key" && (!this.battle || ITEMS[id].kind !== "field"));
 	}
 	private tryFlee(): void {
 		const b = this.battle!;
@@ -1238,8 +1283,10 @@ export class ReliquaryGame {
 		const progression = awardExperience(b, xp);
 		for (const skill of progression.learnedSkills) this.toastMsg(`${b.nickname} learned ${SKILLS[skill]?.name}.`);
 		if (progression.evolvedFrom && progression.evolvedInto) {
-			this.caught[progression.evolvedInto] = true;
-			this.seen[progression.evolvedInto] = true;
+			for (const speciesId of progression.evolvedStages) {
+				this.caught[speciesId] = true;
+				this.seen[speciesId] = true;
+			}
 			this.toastMsg(`${SPECIES[progression.evolvedFrom]?.name} becomes ${SPECIES[progression.evolvedInto]?.name}!`);
 		}
 		if (progression.levelsGained > 0) sfxPlay.level();
@@ -1282,10 +1329,12 @@ export class ReliquaryGame {
 				sfxPlay.catch();
 				this.emit();
 			} else {
-				this.battle.log = [`${sp.name} breaks the sigil.`];
+				const failedBind = `${sp.name} breaks the sigil.`;
+				this.battle.log = [failedBind];
 				this.battle.phase = "command";
 				sfxPlay.fail();
 				this.afterPlayer();
+				this.battle.log = [`${failedBind} ${this.battle.log.join(" ")}`];
 				this.emit();
 			}
 		};
@@ -1299,14 +1348,28 @@ export class ReliquaryGame {
 		if (foe.hp > 0 && me.hp > 0) this.foeTurn(foe, me);
 		if (me.hp <= 0) this.playerDown();
 	}
+	private itemHasEffect(id: string, target: Beast, inBattle: boolean): boolean {
+		const def = ITEMS[id];
+		if (!def || (this.inventory[id] ?? 0) <= 0) return false;
+		if (def.kind === "field") return !inBattle;
+		if (def.kind === "revive") return target.hp <= 0;
+		if (target.hp <= 0) return false;
+		if (def.kind === "heal") return target.hp < currentStats(target).hp;
+		if (def.kind === "ether") return target.mp < currentStats(target).mp;
+		if (def.kind === "status") return target.status !== null && ["burn", "soak", "bind", "daze"].includes(target.status);
+		return false;
+	}
 	private useItem(id: string, target: Beast, inBattle: boolean): void {
 		const def = ITEMS[id];
-		if (!def || (this.inventory[id] ?? 0) <= 0) return;
+		if (!def || !this.itemHasEffect(id, target, inBattle)) {
+			if (inBattle && this.battle) this.battle.log = ["That item would have no effect."];
+			else this.toastMsg("That item would have no effect.");
+			return;
+		}
 		if (def.kind === "field") {
 			this.inventory[id] -= 1;
 			this.quietBell = def.power ?? 80;
 			this.toastMsg("The grass stills.");
-			if (inBattle && this.battle) this.battle.log = ["The Quiet Bell cannot be heard here."];
 			return;
 		}
 		this.inventory[id] -= 1;
@@ -1389,14 +1452,9 @@ export class ReliquaryGame {
 	}
 	menuConfirm(): void {
 		if (this.menu === "root") {
-			const c = [
-				"Party",
-				"Reliquary",
-				"Pack",
-				"Save",
-				"Close"
-			][this.menuIndex];
+			const c = ROOT_MENU[this.menuIndex];
 			if (c === "Party") this.menu = "party";
+			else if (c === "Storage") this.menu = "storage";
 			else if (c === "Reliquary") this.menu = "reliquary";
 			else if (c === "Pack") this.menu = "items";
 			else if (c === "Save") {

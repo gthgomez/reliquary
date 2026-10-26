@@ -1,6 +1,16 @@
-import type { PointerEvent } from "react";
-import { currentStats, ELEMENTS, ITEMS, SKILLS, SPECIES, TEMPERAMENTS } from "../content";
+import type { PointerEvent, ReactNode } from "react";
+import { useState } from "react";
+import {
+  currentStats,
+  expToNext,
+  ELEMENTS,
+  ITEMS,
+  SKILLS,
+  SPECIES,
+  TEMPERAMENTS,
+} from "../content";
 import type { ReliquaryGame } from "../engine";
+import { ROOT_MENU } from "../engine";
 import type { Beast, Snapshot } from "../types";
 
 export function TitleScreen({ game, snap }: { game: ReliquaryGame; snap: Snapshot }) {
@@ -116,12 +126,11 @@ export function DialogBox({ snap, onAdvance }: { snap: Snapshot; onAdvance: () =
 export function MenuPanel({ game, snap }: { game: ReliquaryGame; snap: Snapshot }) {
   if (!snap.menu) return null;
   if (snap.menu === "root") {
-    const items = ["Party", "Reliquary", "Pack", "Save", "Close"];
     return (
       <div className="sheet">
         <h2>Lantern</h2>
         <ul className="menu-list">
-          {items.map((it, i) => (
+          {ROOT_MENU.map((it, i) => (
             <li key={it}>
               <button
                 type="button"
@@ -144,10 +153,75 @@ export function MenuPanel({ game, snap }: { game: ReliquaryGame; snap: Snapshot 
       <div className="sheet sheet-wide">
         <h2>Party</h2>
         <div className="party-grid">
-          {snap.party.map((b) => (
-            <BeastCard key={b.uid} beast={b} />
+          {snap.party.map((b, index) => (
+            <BeastCard key={b.uid} beast={b}>
+              <button
+                type="button"
+                className="btn-ghost"
+                disabled={index === 0 || b.hp <= 0}
+                onClick={() => game.setLead(b.uid)}
+                aria-label={`Make ${b.nickname} lead`}
+              >
+                {index === 0 ? "Party lead" : "Make lead"}
+              </button>
+              <RenameCreature game={game} beast={b} />
+              <button
+                type="button"
+                className="btn-ghost"
+                disabled={b.hp <= 0 || b.level >= 40 || snap.gold < 45}
+                onClick={() => game.trainCreature(b.uid)}
+                aria-label={`Practice with ${b.nickname} for 45 crowns`}
+              >
+                Practice · 45 cr
+              </button>
+            </BeastCard>
           ))}
           {snap.party.length === 0 ? <p className="empty">No pact spoken yet.</p> : null}
+        </div>
+        <button type="button" className="btn-ghost" onClick={() => game.cancel()}>
+          Back
+        </button>
+      </div>
+    );
+  }
+  if (snap.menu === "storage") {
+    return (
+      <div className="sheet sheet-wide">
+        <h2>Creature storage</h2>
+        <p className="sheet-sub">
+          Party {snap.party.length}/4 · Stored {snap.box.length}
+        </p>
+        <h3>Travelling companions</h3>
+        <div className="party-grid">
+          {snap.party.map((b) => (
+            <BeastCard key={b.uid} beast={b}>
+              <button
+                type="button"
+                className="btn-ghost"
+                onClick={() => game.transferBeast(b.uid, "box")}
+                aria-label={`Store ${b.nickname}`}
+              >
+                Store
+              </button>
+            </BeastCard>
+          ))}
+        </div>
+        <h3>Stored creatures</h3>
+        <div className="party-grid">
+          {snap.box.map((b) => (
+            <BeastCard key={b.uid} beast={b}>
+              <button
+                type="button"
+                className="btn-ghost"
+                disabled={snap.party.length >= 4}
+                onClick={() => game.transferBeast(b.uid, "party")}
+                aria-label={`Add ${b.nickname} to party`}
+              >
+                Add to party
+              </button>
+            </BeastCard>
+          ))}
+          {snap.box.length === 0 ? <p className="empty">No creatures in storage yet.</p> : null}
         </div>
         <button type="button" className="btn-ghost" onClick={() => game.cancel()}>
           Back
@@ -187,7 +261,10 @@ export function MenuPanel({ game, snap }: { game: ReliquaryGame; snap: Snapshot 
     );
   }
   if (snap.menu === "items") {
-    const ids = Object.keys(snap.inventory).filter((id) => (snap.inventory[id] ?? 0) > 0);
+    const ids = game.usableItems();
+    const stones = Object.keys(snap.inventory).filter(
+      (id) => (snap.inventory[id] ?? 0) > 0 && ITEMS[id]?.kind === "sigil",
+    );
     return (
       <div className="sheet">
         <h2>Pack</h2>
@@ -207,8 +284,14 @@ export function MenuPanel({ game, snap }: { game: ReliquaryGame; snap: Snapshot 
               </button>
             </li>
           ))}
-          {ids.length === 0 ? <li className="empty">The pack is empty.</li> : null}
+          {ids.length === 0 ? <li className="empty">No usable items.</li> : null}
         </ul>
+        {stones.length > 0 ? (
+          <p className="sheet-sub">
+            Binding stones:{" "}
+            {stones.map((id) => `${ITEMS[id]?.name} ×${snap.inventory[id]}`).join(" · ")}
+          </p>
+        ) : null}
         <button type="button" className="btn-ghost" onClick={() => game.cancel()}>
           Back
         </button>
@@ -218,7 +301,49 @@ export function MenuPanel({ game, snap }: { game: ReliquaryGame; snap: Snapshot 
   return null;
 }
 
-function BeastCard({ beast }: { beast: Beast }) {
+function RenameCreature({ game, beast }: { game: ReliquaryGame; beast: Beast }) {
+  const [name, setName] = useState(beast.nickname);
+  const [editing, setEditing] = useState(false);
+  if (!editing)
+    return (
+      <button
+        type="button"
+        className="btn-ghost"
+        onClick={() => {
+          setName(beast.nickname);
+          setEditing(true);
+        }}
+        aria-label={`Rename ${beast.nickname}`}
+      >
+        Rename
+      </button>
+    );
+  return (
+    <form
+      className="rename-form"
+      onSubmit={(event) => {
+        event.preventDefault();
+        if (name.trim()) {
+          game.renamePartyCreature(beast.uid, name);
+          setEditing(false);
+        }
+      }}
+    >
+      <label>
+        Creature name{" "}
+        <input value={name} maxLength={40} onChange={(event) => setName(event.target.value)} />
+      </label>
+      <button type="submit" className="btn-ghost" disabled={!name.trim()}>
+        Save name
+      </button>
+      <button type="button" className="btn-ghost" onClick={() => setEditing(false)}>
+        Cancel
+      </button>
+    </form>
+  );
+}
+
+function BeastCard({ beast, children }: { beast: Beast; children?: ReactNode }) {
   const sp = SPECIES[beast.speciesId]!;
   const st = currentStats(beast);
   const t = TEMPERAMENTS[beast.temperament];
@@ -238,10 +363,21 @@ function BeastCard({ beast }: { beast: Beast }) {
         </p>
         <Meter label="HP" value={beast.hp} max={st.hp} kind="hp" />
         <Meter label="MP" value={beast.mp} max={st.mp} kind="mp" />
+        {beast.level < 40 ? (
+          <Meter label="Lore" value={beast.exp} max={expToNext(beast.level)} kind="mp" />
+        ) : (
+          <p className="skills">Level cap reached</p>
+        )}
+        <p className="skills">
+          {sp.evolves
+            ? `Evolution: ${SPECIES[sp.evolves.into]?.name} at Lv ${sp.evolves.level}`
+            : "Mature form"}
+        </p>
         <p className="muted">
           {t.name} · {sp.epithet}
         </p>
         <p className="skills">{beast.skills.map((s) => SKILLS[s]?.name ?? s).join(" · ")}</p>
+        {children ? <div className="beast-actions">{children}</div> : null}
       </div>
     </article>
   );

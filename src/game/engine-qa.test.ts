@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { ReliquaryGame } from "./engine.ts";
-import { makeBeast } from "./content.ts";
+import { currentStats, makeBeast } from "./content.ts";
 import { SAVE_KEY } from "./save.ts";
 
 async function withGame(
@@ -107,6 +107,50 @@ test("keyboard repeat cannot toggle the menu repeatedly", async () => {
   });
 });
 
+test("the Storage menu entry opens storage", async () => {
+  await withGame((game) => {
+    game.mode = "world";
+    game.menu = "root";
+    game.menuIndex = 1;
+    game.menuConfirm();
+    assert.equal(game.menu, "storage");
+  });
+});
+
+test("practice trains a capable party creature and charges only on success", async () => {
+  await withGame((game) => {
+    const beast = makeBeast("emberkit", 5);
+    game.party = [beast];
+    game.mode = "battle";
+    game.menu = "party";
+    game.gold = 100;
+    game.trainCreature(beast.uid);
+    assert.equal(game.gold, 100);
+    assert.equal(beast.exp, 0);
+    game.mode = "world";
+    game.trainCreature(beast.uid);
+    assert.equal(game.gold, 55);
+    assert.ok(beast.exp > 0 || beast.level > 5);
+    beast.hp = 0;
+    game.trainCreature(beast.uid);
+    assert.equal(game.gold, 55);
+  });
+});
+
+test("multiple evolutions in one award record every form in the Reliquary", async () => {
+  await withGame((game) => {
+    const beast = makeBeast("emberkit", 5);
+    (game as unknown as { grantXp(target: typeof beast, xp: number): void }).grantXp(
+      beast,
+      1_000_000,
+    );
+    assert.equal(game.caught.pyrefox, true);
+    assert.equal(game.caught.crownwyrm, true);
+    assert.equal(game.seen.pyrefox, true);
+    assert.equal(game.seen.crownwyrm, true);
+  });
+});
+
 test("failed persistence never advertises an available save", async () => {
   await withGame((game) => {
     assert.equal(game.hasSave, false);
@@ -142,7 +186,7 @@ test("arrow navigation moves focus to the selected menu button", async () => {
     game.mode = "world";
     game.menu = "root";
     let focused = 0;
-    const buttons = Array.from({ length: 5 }, (_, index) => ({
+    const buttons = Array.from({ length: 6 }, (_, index) => ({
       disabled: index === 1,
       focus: () => {
         focused = index;
@@ -203,6 +247,56 @@ test("foe retaliation targets the incoming beast on a voluntary switch", async (
     });
     assert.equal(game.party[0]!.hp, outgoingHp);
     assert.ok(game.party[1]!.hp < incomingHp);
+  });
+});
+
+test("failed binding remains visible alongside the foe's response", async () => {
+  await withGame((game, frame) => {
+    game.party = [makeBeast("emberkit", 5)];
+    window.__controlsTest!.startWild!();
+    (game as unknown as { tryCatch(item: string): void }).tryCatch("common_sigil");
+    for (let ts = 100; ts <= 3000; ts += 100) frame(ts);
+    assert.match(game.battle!.log.join(" "), /breaks the sigil/);
+  });
+});
+
+test("items with no effect are not consumed and do not spend a battle turn", async () => {
+  await withGame((game) => {
+    const beast = makeBeast("emberkit", 5);
+    game.party = [beast];
+    const use = (id: string) =>
+      (
+        game as unknown as { useItem(item: string, target: typeof beast, inBattle: boolean): void }
+      ).useItem(id, beast, false);
+    const tonics = game.inventory.tonic!;
+    use("tonic");
+    assert.equal(game.inventory.tonic, tonics);
+    const salves = game.inventory.salve!;
+    use("salve");
+    assert.equal(game.inventory.salve, salves);
+    beast.status = "ward";
+    use("salve");
+    assert.equal(game.inventory.salve, salves);
+    assert.equal(beast.status, "ward");
+    beast.status = null;
+    game.inventory.phoenix_ash = 1;
+    use("phoenix_ash");
+    assert.equal(game.inventory.phoenix_ash, 1);
+    window.__controlsTest!.startWild!();
+    game.battle!.phase = "items";
+    game.battle!.menuIndex = game.usableItems().indexOf("tonic");
+    (game as unknown as { battleConfirm(): void }).battleConfirm();
+    assert.equal(game.inventory.tonic, tonics);
+    assert.equal(beast.hp, currentStats(beast).hp);
+    assert.equal(game.battle!.phase, "items");
+    beast.hp = 1;
+    use("tonic");
+    assert.equal(game.inventory.tonic, tonics - 1);
+    assert.equal(beast.hp, currentStats(beast).hp);
+    beast.hp = 0;
+    use("phoenix_ash");
+    assert.equal(game.inventory.phoenix_ash, 0);
+    assert.ok(beast.hp > 0);
   });
 });
 
