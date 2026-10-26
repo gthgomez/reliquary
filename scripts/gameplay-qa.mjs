@@ -60,14 +60,32 @@ try {
       seen: { emberkit: true, mirewhelp: true, mothwisp: true },
       caught: { emberkit: true, mirewhelp: true, mothwisp: true },
     };
-    await page.evaluate(
-      (value) => localStorage.setItem("reliquary.save.v2", JSON.stringify(value)),
-      fixture,
-    );
+    await page.addInitScript((value) => {
+      if (!sessionStorage.getItem("qa-fixture-loaded")) {
+        localStorage.setItem("reliquary.save.v2", JSON.stringify(value));
+        sessionStorage.setItem("qa-fixture-loaded", "yes");
+      }
+    }, fixture);
     await page.reload({ waitUntil: "networkidle" });
     await page.getByRole("button", { name: "Continue", exact: true }).click();
     await page.getByRole("button", { name: "Menu", exact: true }).click();
     await page.getByRole("button", { name: "Party", exact: true }).click();
+    await page.screenshot({ path: join(output, `${viewport.width}-party-before.png`) });
+    console.log(
+      JSON.stringify({
+        checkpoint: "party",
+        viewport,
+        text: await page.locator(".sheet").innerText(),
+        save: await page.evaluate(() => {
+          const value = JSON.parse(localStorage.getItem("reliquary.save.v2"));
+          return {
+            map: value.mapId,
+            party: value.party.map((beast) => beast.nickname),
+            box: value.box.length,
+          };
+        }),
+      }),
+    );
     await page.getByRole("button", { name: "Rename Emberkit" }).click();
     await page.getByLabel("Creature name").fill("Kindling");
     await page.getByRole("button", { name: "Save name" }).click();
