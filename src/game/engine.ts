@@ -128,6 +128,7 @@ export class ReliquaryGame {
 	lifecycle: "constructed" | "booted" | "stopped" = "constructed";
 	private readonly random: RandomSource;
 	private bootToken = 0;
+	private terrain: { map: MapDef; canvas: HTMLCanvasElement } | null = null;
 	private visibilityHandler = (): void => {
 		if (document.visibilityState === "hidden") {
 			this.keys.clear();
@@ -193,7 +194,9 @@ export class ReliquaryGame {
 			const img = new Image();
 			img.crossOrigin = "anonymous";
 			img.onload = () => {
+				if (token !== this.bootToken || this.lifecycle !== "booted") { resolve(); return; }
 				this.images[key] = img;
+				this.terrain = null;
 				done += 1;
 				this.loadProgress = done / paths.length;
 				resolve();
@@ -242,6 +245,7 @@ export class ReliquaryGame {
 		this.animWait = 0;
 		this.animFn = null;
 		this.canvas = null;
+		this.terrain = null;
 	}
 	cw(): number {
 		return this.viewW * TILE;
@@ -1409,33 +1413,40 @@ export class ReliquaryGame {
 		const mh = m.ground.length;
 		const camX = Math.max(0, Math.min(this.px - (this.viewW / 2 - 0.5) * TILE, Math.max(0, mw * TILE - this.cw())));
 		const camY = Math.max(0, Math.min(this.py - (this.viewH / 2 - 0.5) * TILE, Math.max(0, mh * TILE - this.ch())));
-		const x0 = Math.max(0, Math.floor(camX / TILE) - 1);
-		const y0 = Math.max(0, Math.floor(camY / TILE) - 1);
-		const x1 = Math.min(mw, x0 + this.viewW + 3);
-		const y1 = Math.min(mh, y0 + this.viewH + 3);
-		for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) {
+		if (this.terrain?.map !== m) {
+			const canvas = document.createElement("canvas");
+			canvas.width = mw * TILE;
+			canvas.height = mh * TILE;
+			const ground = canvas.getContext("2d");
+			if (!ground) return;
+			ground.imageSmoothingEnabled = false;
+			for (let y = 0; y < mh; y++) for (let x = 0; x < mw; x++) {
 			const g = m.ground[y]![x]!;
 			const tileName = GROUND_TILE[g] ?? "grass";
 			const img = this.images[`tile_${tileName}`];
-			const dx = Math.floor(x * TILE - camX);
-			const dy = Math.floor(y * TILE - camY);
-			if (img) ctx.drawImage(img, dx, dy, TILE, TILE);
+			const dx = x * TILE;
+			const dy = y * TILE;
+			if (img) ground.drawImage(img, dx, dy, TILE, TILE);
 			else {
-				ctx.fillStyle = tileName === "water" ? "#3d6e8a" : tileName === "wall" ? "#3a342e" : "#3d4a38";
-				ctx.fillRect(dx, dy, TILE, TILE);
+				ground.fillStyle = tileName === "water" ? "#3d6e8a" : tileName === "wall" ? "#3a342e" : "#3d4a38";
+				ground.fillRect(dx, dy, TILE, TILE);
 			}
 			if (g === ",") {
 				const tg = this.images.prop_tallgrass;
-				if (tg) ctx.drawImage(tg, dx, dy, TILE, TILE);
+				if (tg) ground.drawImage(tg, dx, dy, TILE, TILE);
 				else {
-					ctx.fillStyle = "rgba(40,70,40,0.35)";
-					ctx.fillRect(dx, dy, TILE, TILE);
+					ground.fillStyle = "rgba(40,70,40,0.35)";
+					ground.fillRect(dx, dy, TILE, TILE);
 				}
 			}
 		}
+			this.terrain = { map: m, canvas };
+		}
+		ctx.drawImage(this.terrain.canvas, Math.ceil(camX), Math.ceil(camY), this.cw(), this.ch(), 0, 0, this.cw(), this.ch());
 		const list: { y: number; draw: () => void }[] = [];
 		for (const o of m.objects) {
 			if (this.flags.starter && o.id.startsWith("st_")) continue;
+			if (o.x * TILE >= camX + this.cw() || (o.x + o.w) * TILE <= camX || o.y * TILE >= camY + this.ch() || (o.y + o.h) * TILE <= camY) continue;
 			list.push({
 				y: (o.y + o.h) * TILE,
 				draw: () => {
@@ -1448,7 +1459,9 @@ export class ReliquaryGame {
 				}
 			});
 		}
-		for (const n of m.npcs) list.push({
+		for (const n of m.npcs) {
+			if (n.x * TILE >= camX + this.cw() || (n.x + 1) * TILE <= camX || (n.y - .25) * TILE >= camY + this.ch() || (n.y + 1) * TILE <= camY) continue;
+			list.push({
 			y: (n.y + 1) * TILE,
 			draw: () => {
 				const img = this.images[`npc_${n.sprite}`];
@@ -1459,6 +1472,7 @@ export class ReliquaryGame {
 				if (img) ctx.drawImage(img, dx, dy, dw, dh);
 			}
 		});
+		}
 		list.push({
 			y: this.py + TILE,
 			draw: () => {
