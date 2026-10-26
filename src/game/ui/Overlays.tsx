@@ -165,6 +165,15 @@ export function MenuPanel({ game, snap }: { game: ReliquaryGame; snap: Snapshot 
                 {index === 0 ? "Party lead" : "Make lead"}
               </button>
               <RenameCreature game={game} beast={b} />
+              <button
+                type="button"
+                className="btn-ghost"
+                disabled={b.hp <= 0 || b.level >= 40 || snap.gold < 45}
+                onClick={() => game.trainCreature(b.uid)}
+                aria-label={`Practice with ${b.nickname} for 45 crowns`}
+              >
+                Practice · 45 cr
+              </button>
             </BeastCard>
           ))}
           {snap.party.length === 0 ? <p className="empty">No pact spoken yet.</p> : null}

@@ -117,6 +117,26 @@ test("the Storage menu entry opens storage", async () => {
   });
 });
 
+test("practice trains a capable party creature and charges only on success", async () => {
+  await withGame((game) => {
+    const beast = makeBeast("emberkit", 5);
+    game.party = [beast];
+    game.mode = "battle";
+    game.menu = "party";
+    game.gold = 100;
+    game.trainCreature(beast.uid);
+    assert.equal(game.gold, 100);
+    assert.equal(beast.exp, 0);
+    game.mode = "world";
+    game.trainCreature(beast.uid);
+    assert.equal(game.gold, 55);
+    assert.ok(beast.exp > 0 || beast.level > 5);
+    beast.hp = 0;
+    game.trainCreature(beast.uid);
+    assert.equal(game.gold, 55);
+  });
+});
+
 test("failed persistence never advertises an available save", async () => {
   await withGame((game) => {
     assert.equal(game.hasSave, false);
@@ -128,9 +148,18 @@ test("failed persistence never advertises an available save", async () => {
 
 test("focused buttons keep native activation but suppress held Enter", async () => {
   await withGame((_game, _frame, events) => {
-    const target = Object.assign(new HTMLElement(), { closest: (selector: string) => selector === "button" ? target : null });
+    const target = Object.assign(new HTMLElement(), {
+      closest: (selector: string) => (selector === "button" ? target : null),
+    });
     let prevented = 0;
-    const event = { target, code: "Enter", repeat: false, preventDefault() { prevented++; } };
+    const event = {
+      target,
+      code: "Enter",
+      repeat: false,
+      preventDefault() {
+        prevented++;
+      },
+    };
     events.get("keydown")!(event as unknown as Event);
     assert.equal(prevented, 0);
     events.get("keydown")!({ ...event, repeat: true } as unknown as Event);

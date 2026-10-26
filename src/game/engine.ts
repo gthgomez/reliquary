@@ -657,6 +657,15 @@ export class ReliquaryGame {
 		this.persist();
 		this.emit();
 	}
+	trainCreature(uid: string): void {
+		if (this.mode !== "world" || this.menu !== "party" || this.battle || this.dialog) return;
+		const beast = this.party.find((item) => item.uid === uid);
+		if (!beast || beast.hp <= 0 || beast.level >= 40 || this.gold < 45) return;
+		this.gold -= 45;
+		this.grantXp(beast, 80);
+		if (this.persist()) this.toastMsg(`${beast.nickname} gained 80 lore from practice.`);
+		this.emit();
+	}
 	transferBeast(uid: string, destination: "party" | "box"): void {
 		if (this.mode !== "world" || this.menu !== "storage" || this.battle || this.dialog) return;
 		const result = transferBeast(this.party, this.box, uid, destination);
@@ -1058,7 +1067,7 @@ export class ReliquaryGame {
 		}
 	}
 	usableItems(): string[] {
-		return Object.keys(this.inventory).filter((id) => (this.inventory[id] ?? 0) > 0 && ITEMS[id] && ITEMS[id].kind !== "sigil" && ITEMS[id].kind !== "key");
+		return Object.keys(this.inventory).filter((id) => (this.inventory[id] ?? 0) > 0 && ITEMS[id] && ITEMS[id].kind !== "sigil" && ITEMS[id].kind !== "key" && (!this.battle || ITEMS[id].kind !== "field"));
 	}
 	private tryFlee(): void {
 		const b = this.battle!;
@@ -1321,11 +1330,14 @@ export class ReliquaryGame {
 	private useItem(id: string, target: Beast, inBattle: boolean): void {
 		const def = ITEMS[id];
 		if (!def || (this.inventory[id] ?? 0) <= 0) return;
+		if (def.kind === "field" && inBattle) {
+			if (this.battle) this.battle.log = ["That item can only be used outside battle."];
+			return;
+		}
 		if (def.kind === "field") {
 			this.inventory[id] -= 1;
 			this.quietBell = def.power ?? 80;
 			this.toastMsg("The grass stills.");
-			if (inBattle && this.battle) this.battle.log = ["The Quiet Bell cannot be heard here."];
 			return;
 		}
 		this.inventory[id] -= 1;
