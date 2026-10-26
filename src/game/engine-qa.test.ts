@@ -107,6 +107,16 @@ test("keyboard repeat cannot toggle the menu repeatedly", async () => {
   });
 });
 
+test("the Storage menu entry opens storage", async () => {
+  await withGame((game) => {
+    game.mode = "world";
+    game.menu = "root";
+    game.menuIndex = 1;
+    game.menuConfirm();
+    assert.equal(game.menu, "storage");
+  });
+});
+
 test("failed persistence never advertises an available save", async () => {
   await withGame((game) => {
     assert.equal(game.hasSave, false);

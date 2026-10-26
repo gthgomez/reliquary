@@ -16,7 +16,7 @@ import { captureChance, captureSucceeds, storeCapturedBeast } from "./systems/ca
 import { accuracySucceeds, healBeast, playerActsFirst, spendSkillMp, statusSucceeds } from "./systems/combat.ts";
 import { purchaseItem, sellItem } from "./systems/economy.ts";
 import { awardExperience } from "./systems/progression.ts";
-import { moveToLead } from "./systems/party.ts";
+import { moveToLead, transferBeast } from "./systems/party.ts";
 import { applyStatus, tickStatus as tickBeastStatus } from "./systems/status.ts";
 import type {
   BattleState,
@@ -34,6 +34,7 @@ export const VIEW_W = 12;
 export const VIEW_H = 9;
 export const VIEW_W_PORT = 10;
 export const VIEW_H_PORT = 16;
+export const ROOT_MENU = ["Party", "Storage", "Reliquary", "Pack", "Save", "Close"] as const;
 
 type Dialog = {
   speaker: string;
@@ -647,12 +648,21 @@ export class ReliquaryGame {
 		this.persist();
 		this.emit();
 	}
+	transferBeast(uid: string, destination: "party" | "box"): void {
+		if (this.mode !== "world" || this.menu !== "storage" || this.battle || this.dialog) return;
+		const result = transferBeast(this.party, this.box, uid, destination);
+		if (!result) { this.toastMsg("Keep a capable companion and leave room in your party."); return; }
+		this.party = result.party;
+		this.box = result.box;
+		this.persist();
+		this.emit();
+	}
 	private menuLen(): number {
 		if (this.mode === "shop") {
 			if (this.shopMode === "buy") return SHOP_STOCK.length;
 			return Object.keys(this.inventory).filter((id) => (this.inventory[id] ?? 0) > 0).length;
 		}
-		if (this.menu === "root") return 5;
+		if (this.menu === "root") return ROOT_MENU.length;
 		if (this.menu === "items") return this.usableItems().length;
 		if (this.menu === "party") return this.party.length;
 		const b = this.battle!;
@@ -1389,14 +1399,9 @@ export class ReliquaryGame {
 	}
 	menuConfirm(): void {
 		if (this.menu === "root") {
-			const c = [
-				"Party",
-				"Reliquary",
-				"Pack",
-				"Save",
-				"Close"
-			][this.menuIndex];
+			const c = ROOT_MENU[this.menuIndex];
 			if (c === "Party") this.menu = "party";
+			else if (c === "Storage") this.menu = "storage";
 			else if (c === "Reliquary") this.menu = "reliquary";
 			else if (c === "Pack") this.menu = "items";
 			else if (c === "Save") {

@@ -9,6 +9,7 @@ import {
   TEMPERAMENTS,
 } from "../content";
 import type { ReliquaryGame } from "../engine";
+import { ROOT_MENU } from "../engine";
 import type { Beast, Snapshot } from "../types";
 
 export function TitleScreen({ game, snap }: { game: ReliquaryGame; snap: Snapshot }) {
@@ -124,12 +125,11 @@ export function DialogBox({ snap, onAdvance }: { snap: Snapshot; onAdvance: () =
 export function MenuPanel({ game, snap }: { game: ReliquaryGame; snap: Snapshot }) {
   if (!snap.menu) return null;
   if (snap.menu === "root") {
-    const items = ["Party", "Reliquary", "Pack", "Save", "Close"];
     return (
       <div className="sheet">
         <h2>Lantern</h2>
         <ul className="menu-list">
-          {items.map((it, i) => (
+          {ROOT_MENU.map((it, i) => (
             <li key={it}>
               <button
                 type="button"
@@ -166,6 +166,51 @@ export function MenuPanel({ game, snap }: { game: ReliquaryGame; snap: Snapshot 
             </BeastCard>
           ))}
           {snap.party.length === 0 ? <p className="empty">No pact spoken yet.</p> : null}
+        </div>
+        <button type="button" className="btn-ghost" onClick={() => game.cancel()}>
+          Back
+        </button>
+      </div>
+    );
+  }
+  if (snap.menu === "storage") {
+    return (
+      <div className="sheet sheet-wide">
+        <h2>Creature storage</h2>
+        <p className="sheet-sub">
+          Party {snap.party.length}/4 · Stored {snap.box.length}
+        </p>
+        <h3>Travelling companions</h3>
+        <div className="party-grid">
+          {snap.party.map((b) => (
+            <BeastCard key={b.uid} beast={b}>
+              <button
+                type="button"
+                className="btn-ghost"
+                onClick={() => game.transferBeast(b.uid, "box")}
+                aria-label={`Store ${b.nickname}`}
+              >
+                Store
+              </button>
+            </BeastCard>
+          ))}
+        </div>
+        <h3>Stored creatures</h3>
+        <div className="party-grid">
+          {snap.box.map((b) => (
+            <BeastCard key={b.uid} beast={b}>
+              <button
+                type="button"
+                className="btn-ghost"
+                disabled={snap.party.length >= 4}
+                onClick={() => game.transferBeast(b.uid, "party")}
+                aria-label={`Add ${b.nickname} to party`}
+              >
+                Add to party
+              </button>
+            </BeastCard>
+          ))}
+          {snap.box.length === 0 ? <p className="empty">No creatures in storage yet.</p> : null}
         </div>
         <button type="button" className="btn-ghost" onClick={() => game.cancel()}>
           Back
