@@ -1315,10 +1315,12 @@ export class ReliquaryGame {
 				sfxPlay.catch();
 				this.emit();
 			} else {
-				this.battle.log = [`${sp.name} breaks the sigil.`];
+				const failedBind = `${sp.name} breaks the sigil.`;
+				this.battle.log = [failedBind];
 				this.battle.phase = "command";
 				sfxPlay.fail();
 				this.afterPlayer();
+				this.battle.log = [`${failedBind} ${this.battle.log.join(" ")}`];
 				this.emit();
 			}
 		};

@@ -60,6 +60,10 @@ const report = { browser: browser.version(), events: [], errors: [] };
 try {
   const context = await browser.newContext({ viewport: { width: 1280, height: 800 } });
   const page = await context.newPage();
+  // Fix the random stream so the encounter and failed-bind path are reproducible.
+  await page.addInitScript(() => {
+    Math.random = () => 0.5;
+  });
   page.on("pageerror", (error) => report.errors.push(error.message));
   await page.goto(url, { waitUntil: "networkidle" });
   await page.getByRole("button", { name: "Start", exact: true }).click();
@@ -126,6 +130,9 @@ try {
   report.events.push(
     "Walked from Grove to Briar Road without warping the player via the test probe",
   );
+  await page.evaluate(() => {
+    Math.random = () => 0.05;
+  });
   position = await travel("briar_road", { x: 4, y: 22 }, true);
   for (let i = 0; i < 40 && position.mode !== "battle"; i++) {
     const target = { x: i % 2 ? 4 : 5, y: 22 };
@@ -133,6 +140,9 @@ try {
   }
   if (position.mode !== "battle")
     throw new Error("No wild encounter after bounded grass traversal");
+  await page.evaluate(() => {
+    Math.random = () => 0.99;
+  });
   await page.getByRole("button", { name: "Bind", exact: true }).click();
   await page.getByRole("button", { name: /Common Sigil/ }).click();
   await page.waitForFunction(
@@ -143,6 +153,8 @@ try {
     { timeout: 15000 },
   );
   const text = await page.locator(".battle-log").innerText();
+  if (!text.includes("breaks the sigil"))
+    throw new Error(`Expected the failed binding result in the battle log: ${text}`);
   report.events.push(`Natural wild encounter and binding attempt: ${text}`);
   await page.screenshot({ path: join(output, "natural-encounter.png") });
   console.log(JSON.stringify(report.events));

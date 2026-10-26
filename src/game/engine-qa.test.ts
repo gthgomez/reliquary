@@ -224,6 +224,16 @@ test("foe retaliation targets the incoming beast on a voluntary switch", async (
   });
 });
 
+test("failed binding remains visible alongside the foe's response", async () => {
+  await withGame((game, frame) => {
+    game.party = [makeBeast("emberkit", 5)];
+    window.__controlsTest!.startWild!();
+    (game as unknown as { tryCatch(item: string): void }).tryCatch("common_sigil");
+    for (let ts = 100; ts <= 3000; ts += 100) frame(ts);
+    assert.match(game.battle!.log.join(" "), /breaks the sigil/);
+  });
+});
+
 test("terrain is reused between frames and rebuilt when the map changes", async () => {
   await withGame((game, frame) => {
     let terrainDraws = 0;
