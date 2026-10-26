@@ -304,7 +304,16 @@ export class ReliquaryGame {
 		const down = e.code === "ArrowDown" || e.code === "KeyS";
 		if ((this.menu || this.battle || this.mode === "shop") && (up || down)) {
 			const max = this.menuLen();
-			if (max > 0) this.moveMenu(up ? -1 : 1, max);
+			if (max > 0) {
+				const direction = up ? -1 : 1;
+				this.moveMenu(direction, max);
+				const list = target instanceof HTMLElement ? target.closest("ul.cmd, ul.menu-list") : null;
+				const buttons = list?.querySelectorAll<HTMLButtonElement>("button");
+				if (buttons?.length === max) {
+					for (let i = 0; i < max && buttons[this.menuIndex]?.disabled; i++) this.moveMenu(direction, max);
+					buttons[this.menuIndex]?.focus();
+				}
+			}
 		}
 	};
 	private onKeyUp = (e: KeyboardEvent): void => {

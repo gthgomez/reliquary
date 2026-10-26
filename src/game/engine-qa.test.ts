@@ -118,13 +118,48 @@ test("failed persistence never advertises an available save", async () => {
 
 test("focused buttons keep native activation but suppress held Enter", async () => {
   await withGame((_game, _frame, events) => {
-    const target = Object.assign(new HTMLElement(), { closest: (selector: string) => selector === "button" ? target : null });
+    const target = Object.assign(new HTMLElement(), {
+      closest: (selector: string) => (selector === "button" ? target : null),
+    });
     let prevented = 0;
-    const event = { target, code: "Enter", repeat: false, preventDefault() { prevented++; } };
+    const event = {
+      target,
+      code: "Enter",
+      repeat: false,
+      preventDefault() {
+        prevented++;
+      },
+    };
     events.get("keydown")!(event as unknown as Event);
     assert.equal(prevented, 0);
     events.get("keydown")!({ ...event, repeat: true } as unknown as Event);
     assert.equal(prevented, 1);
+  });
+});
+
+test("arrow navigation moves focus to the selected menu button", async () => {
+  await withGame((game, _frame, events) => {
+    game.mode = "world";
+    game.menu = "root";
+    let focused = 0;
+    const buttons = Array.from({ length: 5 }, (_, index) => ({
+      disabled: index === 1,
+      focus: () => {
+        focused = index;
+      },
+    }));
+    const list = { querySelectorAll: () => buttons };
+    const target = Object.assign(new HTMLElement(), {
+      closest: (selector: string) => (selector === "ul.cmd, ul.menu-list" ? list : null),
+    });
+    events.get("keydown")!({
+      target,
+      code: "ArrowDown",
+      repeat: false,
+      preventDefault() {},
+    } as unknown as Event);
+    assert.equal(game.menuIndex, 2);
+    assert.equal(focused, 2);
   });
 });
 
