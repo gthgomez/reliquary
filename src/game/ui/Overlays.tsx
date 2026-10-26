@@ -261,7 +261,10 @@ export function MenuPanel({ game, snap }: { game: ReliquaryGame; snap: Snapshot 
     );
   }
   if (snap.menu === "items") {
-    const ids = Object.keys(snap.inventory).filter((id) => (snap.inventory[id] ?? 0) > 0);
+    const ids = game.usableItems();
+    const stones = Object.keys(snap.inventory).filter(
+      (id) => (snap.inventory[id] ?? 0) > 0 && ITEMS[id]?.kind === "sigil",
+    );
     return (
       <div className="sheet">
         <h2>Pack</h2>
@@ -281,8 +284,14 @@ export function MenuPanel({ game, snap }: { game: ReliquaryGame; snap: Snapshot 
               </button>
             </li>
           ))}
-          {ids.length === 0 ? <li className="empty">The pack is empty.</li> : null}
+          {ids.length === 0 ? <li className="empty">No usable items.</li> : null}
         </ul>
+        {stones.length > 0 ? (
+          <p className="sheet-sub">
+            Binding stones:{" "}
+            {stones.map((id) => `${ITEMS[id]?.name} ×${snap.inventory[id]}`).join(" · ")}
+          </p>
+        ) : null}
         <button type="button" className="btn-ghost" onClick={() => game.cancel()}>
           Back
         </button>

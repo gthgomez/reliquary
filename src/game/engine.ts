@@ -1033,6 +1033,11 @@ export class ReliquaryGame {
 		if (b.phase === "items") {
 			const it = this.usableItems()[b.menuIndex];
 			if (!it) return;
+			if (!this.itemHasEffect(it, this.party[b.playerIndex]!, true)) {
+				b.log = ["That item would have no effect."];
+				this.emit();
+				return;
+			}
 			this.playerAction({
 				type: "item",
 				item: it
@@ -1334,11 +1339,22 @@ export class ReliquaryGame {
 		if (foe.hp > 0 && me.hp > 0) this.foeTurn(foe, me);
 		if (me.hp <= 0) this.playerDown();
 	}
+	private itemHasEffect(id: string, target: Beast, inBattle: boolean): boolean {
+		const def = ITEMS[id];
+		if (!def || (this.inventory[id] ?? 0) <= 0) return false;
+		if (def.kind === "field") return !inBattle;
+		if (def.kind === "revive") return target.hp <= 0;
+		if (target.hp <= 0) return false;
+		if (def.kind === "heal") return target.hp < currentStats(target).hp;
+		if (def.kind === "ether") return target.mp < currentStats(target).mp;
+		if (def.kind === "status") return target.status !== null && ["burn", "soak", "bind", "daze"].includes(target.status);
+		return false;
+	}
 	private useItem(id: string, target: Beast, inBattle: boolean): void {
 		const def = ITEMS[id];
-		if (!def || (this.inventory[id] ?? 0) <= 0) return;
-		if (def.kind === "field" && inBattle) {
-			if (this.battle) this.battle.log = ["That item can only be used outside battle."];
+		if (!def || !this.itemHasEffect(id, target, inBattle)) {
+			if (inBattle && this.battle) this.battle.log = ["That item would have no effect."];
+			else this.toastMsg("That item would have no effect.");
 			return;
 		}
 		if (def.kind === "field") {

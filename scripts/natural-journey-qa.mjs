@@ -120,6 +120,23 @@ try {
   await page.keyboard.press("KeyZ");
   for (let i = 0; i < 4; i++) await page.locator("button.dialog").click();
   await page.getByText(/Emberkit \d+\/\d+/).waitFor();
+  await page.getByRole("button", { name: "Menu", exact: true }).click();
+  await page.getByRole("button", { name: "Pack", exact: true }).click();
+  const tonic = page.getByRole("button", { name: /Field Tonic/ });
+  const salve = page.getByRole("button", { name: /Salve/ });
+  const initialTonic = await tonic.innerText();
+  const initialSalve = await salve.innerText();
+  await tonic.click();
+  await salve.click();
+  if ((await tonic.innerText()) !== initialTonic || (await salve.innerText()) !== initialSalve)
+    throw new Error("No-effect item was consumed");
+  if (!(await page.getByText(/Binding stones:/).isVisible()))
+    throw new Error("Binding stones are missing from the Pack");
+  report.events.push(
+    "No-effect tonic and salve preserved their counts; binding stones remained visible",
+  );
+  await page.getByRole("button", { name: "Back", exact: true }).click();
+  await page.getByRole("button", { name: "Close", exact: true }).click();
   report.events.push(
     "Started, walked from home through Elderhall to the Grove, and chose Emberkit",
   );

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { ReliquaryGame } from "./engine.ts";
-import { makeBeast } from "./content.ts";
+import { currentStats, makeBeast } from "./content.ts";
 import { SAVE_KEY } from "./save.ts";
 
 async function withGame(
@@ -231,6 +231,46 @@ test("failed binding remains visible alongside the foe's response", async () => 
     (game as unknown as { tryCatch(item: string): void }).tryCatch("common_sigil");
     for (let ts = 100; ts <= 3000; ts += 100) frame(ts);
     assert.match(game.battle!.log.join(" "), /breaks the sigil/);
+  });
+});
+
+test("items with no effect are not consumed and do not spend a battle turn", async () => {
+  await withGame((game) => {
+    const beast = makeBeast("emberkit", 5);
+    game.party = [beast];
+    const use = (id: string) =>
+      (
+        game as unknown as { useItem(item: string, target: typeof beast, inBattle: boolean): void }
+      ).useItem(id, beast, false);
+    const tonics = game.inventory.tonic!;
+    use("tonic");
+    assert.equal(game.inventory.tonic, tonics);
+    const salves = game.inventory.salve!;
+    use("salve");
+    assert.equal(game.inventory.salve, salves);
+    beast.status = "ward";
+    use("salve");
+    assert.equal(game.inventory.salve, salves);
+    assert.equal(beast.status, "ward");
+    beast.status = null;
+    game.inventory.phoenix_ash = 1;
+    use("phoenix_ash");
+    assert.equal(game.inventory.phoenix_ash, 1);
+    window.__controlsTest!.startWild!();
+    game.battle!.phase = "items";
+    game.battle!.menuIndex = game.usableItems().indexOf("tonic");
+    (game as unknown as { battleConfirm(): void }).battleConfirm();
+    assert.equal(game.inventory.tonic, tonics);
+    assert.equal(beast.hp, currentStats(beast).hp);
+    assert.equal(game.battle!.phase, "items");
+    beast.hp = 1;
+    use("tonic");
+    assert.equal(game.inventory.tonic, tonics - 1);
+    assert.equal(beast.hp, currentStats(beast).hp);
+    beast.hp = 0;
+    use("phoenix_ash");
+    assert.equal(game.inventory.phoenix_ash, 0);
+    assert.ok(beast.hp > 0);
   });
 });
 
