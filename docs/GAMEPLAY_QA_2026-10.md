@@ -14,6 +14,8 @@ Raw frame intervals and screenshots are local task evidence in `D:/AgentData/evi
 
 The current combined candidate passed 73 serialized core tests, content validation, lint, typecheck and a production build. A first browser attempt exposed an invalid test fixture: the old page saved during reload and replaced the fixture. The fixture was corrected to initialize after navigation; the failure is retained in local evidence. A fresh independent review of the final gameplay candidate remains required.
 
+**VERIFIED, repeated rendered walking:** A second release-preview run instrumented the visible game canvas. At both viewport sizes, all 361 sampled frames contained a game-canvas draw and the rendered rate was 60.01 FPS; p95 was 16.8 ms, p99 was 16.9 ms desktop and 16.8 ms portrait, with zero intervals over 50 ms. Raw data and screenshots are in `D:/AgentData/evidence/reliquary/20261026/release-rendered-walking`. This remains a pair of six-second headless runs on one host, not a guarantee for a physical phone or an extended play session.
+
 ## Findings and actionable work
 
 | Priority | Finding and evidence                                                                                                                                                                                                             | Status / acceptance                                                                                                                                                                                                                 |

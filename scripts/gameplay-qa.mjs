@@ -22,6 +22,14 @@ try {
   ]) {
     const context = await browser.newContext({ viewport });
     const page = await context.newPage();
+    await page.addInitScript(() => {
+      window.__qaVisibleDraws = 0;
+      const drawImage = CanvasRenderingContext2D.prototype.drawImage;
+      CanvasRenderingContext2D.prototype.drawImage = function (...args) {
+        if (this.canvas.classList?.contains("game-canvas")) window.__qaVisibleDraws++;
+        return drawImage.apply(this, args);
+      };
+    });
     page.on("pageerror", (error) => report.errors.push(error.message));
     page.on("response", (response) => {
       if (response.status() >= 400)
@@ -130,13 +138,19 @@ try {
     await page.evaluate(() => window.__controlsTest.warp("elderhall", 12, 14));
     const walking = await page.evaluate(async () => {
       const intervals = [],
+        draws = [],
         positions = new Set();
       let start = 0,
-        last = 0;
+        last = 0,
+        previousDraws = window.__qaVisibleDraws;
       return await new Promise((resolve) => {
         function frame(ts) {
           if (!start) start = ts;
-          if (last) intervals.push(ts - last);
+          if (last) {
+            intervals.push(ts - last);
+            draws.push(window.__qaVisibleDraws - previousDraws);
+          }
+          previousDraws = window.__qaVisibleDraws;
           last = ts;
           const pos = window.__controlsTest.getPos();
           positions.add(`${pos.x},${pos.y}`);
@@ -147,6 +161,10 @@ try {
           resolve({
             frames: intervals.length,
             fps: (1000 * intervals.length) / intervals.reduce((a, b) => a + b, 0),
+            renderedFrames: draws.filter((count) => count > 0).length,
+            renderedFps:
+              (1000 * draws.filter((count) => count > 0).length) /
+              intervals.reduce((a, b) => a + b, 0),
             p95Ms: sorted[Math.floor(sorted.length * 0.95)],
             p99Ms: sorted[Math.floor(sorted.length * 0.99)],
             stallsOver50Ms: intervals.filter((ms) => ms > 50).length,
@@ -158,6 +176,7 @@ try {
       });
     });
     assert(walking.positions > 2, "walking sample did not traverse multiple tiles");
+    assert(walking.renderedFrames > 0, "walking sample did not draw to the game canvas");
     await page.evaluate(() => window.__controlsTest.startWild());
     await page.getByRole("button", { name: "Strike", exact: true }).waitFor();
     const overlap = await page.evaluate(() => {
