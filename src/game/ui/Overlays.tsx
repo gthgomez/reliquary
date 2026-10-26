@@ -23,7 +23,9 @@ export function TitleScreen({ game, snap }: { game: ReliquaryGame; snap: Snapsho
               </button>
             ) : null}
           </div>
-          <p className="title-hint">Arrows or WASD to walk · Z / Enter to speak · X / Esc back · M menu</p>
+          <p className="title-hint">
+            Arrows or WASD to walk · Z / Enter to speak · X / Esc back · M menu
+          </p>
         </div>
       </div>
     </div>
@@ -55,9 +57,17 @@ export function VictoryScreen({ game }: { game: ReliquaryGame }) {
           <p className="title-kicker">The Thorn Mark is yours</p>
           <h1 className="title-word">Reliquary</h1>
           <p className="title-tag">
-            Warden Cael has tested the compact and found it held. The Hollow Crown still waits west of the ash — a later road.
+            Warden Cael has tested the compact and found it held. The Hollow Crown still waits west
+            of the ash — a later road.
           </p>
-          <button type="button" className="btn-primary" onClick={() => { game.mode = "world"; game.emitPublic(); }}>
+          <button
+            type="button"
+            className="btn-primary"
+            onClick={() => {
+              game.mode = "world";
+              game.emitPublic();
+            }}
+          >
             Walk on
           </button>
         </div>
@@ -151,7 +161,8 @@ export function MenuPanel({ game, snap }: { game: ReliquaryGame; snap: Snapshot 
       <div className="sheet sheet-wide">
         <h2>Reliquary</h2>
         <p className="sheet-sub">
-          Bound {Object.keys(snap.caught).length} · Seen {Object.keys(snap.seen).length} of {ids.length}
+          Bound {Object.keys(snap.caught).length} · Seen {Object.keys(snap.seen).length} of{" "}
+          {ids.length}
         </p>
         <div className="reliq-grid">
           {ids.map((id) => {
@@ -230,9 +241,7 @@ function BeastCard({ beast }: { beast: Beast }) {
         <p className="muted">
           {t.name} · {sp.epithet}
         </p>
-        <p className="skills">
-          {beast.skills.map((s) => SKILLS[s]?.name ?? s).join(" · ")}
-        </p>
+        <p className="skills">{beast.skills.map((s) => SKILLS[s]?.name ?? s).join(" · ")}</p>
       </div>
     </article>
   );
@@ -281,40 +290,20 @@ export function BattleHud({ game, snap }: { game: ReliquaryGame; snap: Snapshot 
           <Meter label="HP" value={foe.hp} max={foS.hp} kind="hp" />
         </div>
       ) : null}
-      {me && meS ? (
-        <div className="battler me">
-          <strong>{me.nickname}</strong>
-          <span>Lv {me.level}</span>
-          <Meter label="HP" value={me.hp} max={meS.hp} kind="hp" />
-          <Meter label="MP" value={me.mp} max={meS.mp} kind="mp" />
-        </div>
-      ) : null}
-      <div className="battle-log">{b.log[b.log.length - 1]}</div>
-      {b.phase === "command" ? (
-        <ul className="cmd">
-          {cmds.map((c, i) => (
-            <li key={c}>
-              <button
-                type="button"
-                className={i === b.menuIndex ? "active" : ""}
-                onClick={() => {
-                  game.menuIndex = i;
-                  if (game.battle) game.battle.menuIndex = i;
-                  game.confirm();
-                }}
-              >
-                {c}
-              </button>
-            </li>
-          ))}
-        </ul>
-      ) : null}
-      {b.phase === "skills" && me ? (
-        <ul className="cmd">
-          {me.skills.map((sid, i) => {
-            const sk = SKILLS[sid];
-            return (
-              <li key={sid}>
+      <div className="battle-controls">
+        {me && meS ? (
+          <div className="battler me">
+            <strong>{me.nickname}</strong>
+            <span>Lv {me.level}</span>
+            <Meter label="HP" value={me.hp} max={meS.hp} kind="hp" />
+            <Meter label="MP" value={me.mp} max={meS.mp} kind="mp" />
+          </div>
+        ) : null}
+        <div className="battle-log">{b.log[b.log.length - 1]}</div>
+        {b.phase === "command" ? (
+          <ul className="cmd">
+            {cmds.map((c, i) => (
+              <li key={c}>
                 <button
                   type="button"
                   className={i === b.menuIndex ? "active" : ""}
@@ -324,37 +313,37 @@ export function BattleHud({ game, snap }: { game: ReliquaryGame; snap: Snapshot 
                     game.confirm();
                   }}
                 >
-                  {sk?.name} <em>{sk?.mp} mp</em>
+                  {c}
                 </button>
               </li>
-            );
-          })}
-        </ul>
-      ) : null}
-      {b.phase === "items" ? (
-        <ul className="cmd">
-          {game.usableItems().map((id, i) => (
-            <li key={id}>
-              <button
-                type="button"
-                className={i === b.menuIndex ? "active" : ""}
-                onClick={() => {
-                  game.menuIndex = i;
-                  if (game.battle) game.battle.menuIndex = i;
-                  game.confirm();
-                }}
-              >
-                {ITEMS[id]?.name} <em>×{snap.inventory[id]}</em>
-              </button>
-            </li>
-          ))}
-        </ul>
-      ) : null}
-      {b.phase === "bind" ? (
-        <ul className="cmd">
-          {["common_sigil", "thorn_sigil", "relic_sigil"]
-            .filter((s) => (snap.inventory[s] ?? 0) > 0)
-            .map((id, i) => (
+            ))}
+          </ul>
+        ) : null}
+        {b.phase === "skills" && me ? (
+          <ul className="cmd">
+            {me.skills.map((sid, i) => {
+              const sk = SKILLS[sid];
+              return (
+                <li key={sid}>
+                  <button
+                    type="button"
+                    className={i === b.menuIndex ? "active" : ""}
+                    onClick={() => {
+                      game.menuIndex = i;
+                      if (game.battle) game.battle.menuIndex = i;
+                      game.confirm();
+                    }}
+                  >
+                    {sk?.name} <em>{sk?.mp} mp</em>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        ) : null}
+        {b.phase === "items" ? (
+          <ul className="cmd">
+            {game.usableItems().map((id, i) => (
               <li key={id}>
                 <button
                   type="button"
@@ -369,33 +358,55 @@ export function BattleHud({ game, snap }: { game: ReliquaryGame; snap: Snapshot 
                 </button>
               </li>
             ))}
-        </ul>
-      ) : null}
-      {b.phase === "party" ? (
-        <ul className="cmd">
-          {snap.party.map((p, i) => (
-            <li key={p.uid}>
-              <button
-                type="button"
-                className={i === b.menuIndex ? "active" : ""}
-                disabled={p.hp <= 0}
-                onClick={() => {
-                  game.menuIndex = i;
-                  if (game.battle) game.battle.menuIndex = i;
-                  game.confirm();
-                }}
-              >
-                {p.nickname} <em>{p.hp} hp</em>
-              </button>
-            </li>
-          ))}
-        </ul>
-      ) : null}
-      {b.phase === "win" || b.phase === "lose" ? (
-        <button type="button" className="btn-primary" onClick={() => game.confirm()}>
-          {b.phase === "win" ? "Continue" : "Wake"}
-        </button>
-      ) : null}
+          </ul>
+        ) : null}
+        {b.phase === "bind" ? (
+          <ul className="cmd">
+            {["common_sigil", "thorn_sigil", "relic_sigil"]
+              .filter((s) => (snap.inventory[s] ?? 0) > 0)
+              .map((id, i) => (
+                <li key={id}>
+                  <button
+                    type="button"
+                    className={i === b.menuIndex ? "active" : ""}
+                    onClick={() => {
+                      game.menuIndex = i;
+                      if (game.battle) game.battle.menuIndex = i;
+                      game.confirm();
+                    }}
+                  >
+                    {ITEMS[id]?.name} <em>×{snap.inventory[id]}</em>
+                  </button>
+                </li>
+              ))}
+          </ul>
+        ) : null}
+        {b.phase === "party" ? (
+          <ul className="cmd">
+            {snap.party.map((p, i) => (
+              <li key={p.uid}>
+                <button
+                  type="button"
+                  className={i === b.menuIndex ? "active" : ""}
+                  disabled={p.hp <= 0}
+                  onClick={() => {
+                    game.menuIndex = i;
+                    if (game.battle) game.battle.menuIndex = i;
+                    game.confirm();
+                  }}
+                >
+                  {p.nickname} <em>{p.hp} hp</em>
+                </button>
+              </li>
+            ))}
+          </ul>
+        ) : null}
+        {b.phase === "win" || b.phase === "lose" ? (
+          <button type="button" className="btn-primary" onClick={() => game.confirm()}>
+            {b.phase === "win" ? "Continue" : "Wake"}
+          </button>
+        ) : null}
+      </div>
     </div>
   );
 }
@@ -410,10 +421,26 @@ export function ShopPanel({ game, snap }: { game: ReliquaryGame; snap: Snapshot 
       <h2>Chandler</h2>
       <p className="sheet-sub">{snap.gold} crowns</p>
       <div className="shop-tabs">
-        <button type="button" className={snap.shopMode === "buy" ? "active" : ""} onClick={() => { game.shopMode = "buy"; game.shopIndex = 0; game.emitPublic(); }}>
+        <button
+          type="button"
+          className={snap.shopMode === "buy" ? "active" : ""}
+          onClick={() => {
+            game.shopMode = "buy";
+            game.shopIndex = 0;
+            game.emitPublic();
+          }}
+        >
           Buy
         </button>
-        <button type="button" className={snap.shopMode === "sell" ? "active" : ""} onClick={() => { game.shopMode = "sell"; game.shopIndex = 0; game.emitPublic(); }}>
+        <button
+          type="button"
+          className={snap.shopMode === "sell" ? "active" : ""}
+          onClick={() => {
+            game.shopMode = "sell";
+            game.shopIndex = 0;
+            game.emitPublic();
+          }}
+        >
           Sell
         </button>
       </div>

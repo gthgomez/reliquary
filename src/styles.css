@@ -737,3 +737,39 @@
   color: var(--color-muted);
   margin: 0.4rem 0;
 }
+
+/* Keep variable-length logs, battler details and command rows in normal flow. */
+.battle-controls {
+  position: absolute;
+  left: 0.6rem;
+  right: 0.6rem;
+  bottom: 0.6rem;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.5rem;
+  max-height: 65%;
+  overflow-y: auto;
+  pointer-events: auto;
+}
+.battle-controls .battler.me,
+.battle-controls .battle-log,
+.battle-controls .cmd,
+.battle-controls .btn-primary {
+  position: static;
+  flex-shrink: 0;
+}
+.battle-controls .battler.me {
+  align-self: flex-start;
+}
+.battle-controls .battle-log {
+  width: 100%;
+}
+button:focus-visible {
+  outline: 2px solid var(--color-copper);
+  outline-offset: 3px;
+}
+button:disabled {
+  opacity: 0.55;
+  cursor: default;
+}

@@ -602,6 +602,7 @@ export class ReliquaryGame {
 			return;
 		}
 		if (this.battle) {
+			if (this.battle.phase === "party" && this.party[this.battle.playerIndex]!.hp <= 0) return;
 			if (this.battle.phase === "skills" || this.battle.phase === "items" || this.battle.phase === "party" || this.battle.phase === "bind") {
 				this.battle.phase = "command";
 				this.battle.menuIndex = 0;
@@ -1011,6 +1012,14 @@ export class ReliquaryGame {
 		if (b.phase === "party") {
 			const idx = b.menuIndex;
 			if (!this.party[idx] || this.party[idx].hp <= 0 || idx === b.playerIndex) return;
+			if (this.party[b.playerIndex]!.hp <= 0) {
+				b.playerIndex = idx;
+				b.phase = "command";
+				b.menuIndex = this.menuIndex = 0;
+				b.log = [`${this.party[idx]!.nickname} steps forward.`];
+				this.emit();
+				return;
+			}
 			this.playerAction({
 				type: "switch",
 				index: idx
@@ -1038,7 +1047,7 @@ export class ReliquaryGame {
 	}
 	private playerAction(act: { type: string; skill?: string; item?: string; index?: number }): void {
 		const b = this.battle!;
-		const me = this.party[b.playerIndex]!;
+		let me = this.party[b.playerIndex]!;
 		const foe = b.foes[b.foeIndex]!;
 		const playerFirst = playerActsFirst(me, foe, this.random) || act.type === "item" || act.type === "switch" || act.type === "bind";
 		const doPlayer = () => {
@@ -1056,6 +1065,7 @@ export class ReliquaryGame {
 			else if (act.type === "bind") this.tryCatch(act.item!);
 			else if (act.type === "switch") {
 				b.playerIndex = act.index!;
+				me = this.party[b.playerIndex]!;
 				b.log = [`${this.party[b.playerIndex]!.nickname} steps forward.`];
 			}
 		};
@@ -1071,7 +1081,7 @@ export class ReliquaryGame {
 				return;
 			}
 			doFoe();
-			if (me.hp <= 0) this.playerDown();
+			if (me.hp <= 0) { this.playerDown(); return; }
 		} else {
 			doFoe();
 			if (me.hp <= 0) {
@@ -1080,7 +1090,7 @@ export class ReliquaryGame {
 			}
 			doPlayer();
 			if (b.phase === "catch") return;
-			if (foe.hp <= 0) this.foeDown();
+			if (foe.hp <= 0) { this.foeDown(); return; }
 		}
 		if (b.phase !== "win" && b.phase !== "lose") {
 			b.phase = "command";
@@ -1109,8 +1119,9 @@ export class ReliquaryGame {
 		}
 		if (skill.kind === "ward" || skill.kind === "hex" && skill.power === 0) {
 			if (skill.status) {
-					applyStatus(def, skill.status);
-				b.log = [`${skill.name}: ${def.nickname} is ${skill.status}.`];
+				const target = skill.kind === "ward" ? atk : def;
+				applyStatus(target, skill.status);
+				b.log = [`${skill.name}: ${target.nickname} is ${skill.status}.`];
 			}
 			sfxPlay.menu();
 			return;
@@ -1150,7 +1161,7 @@ export class ReliquaryGame {
 			}
 		}
 		const myEls = SPECIES[me.speciesId].elements;
-		let best = skills[0] ?? SKILLS.nip;
+		let best = basicStrike(foe);
 		let bestS = -1;
 		for (const s of skills) {
 			if (s.mp > foe.mp || s.kind === "heal") continue;
@@ -1203,7 +1214,7 @@ export class ReliquaryGame {
 		if (next >= 0) {
 			b.log = [`${this.party[b.playerIndex]!.nickname} cannot stand.`, "Choose another."];
 			b.phase = "party";
-			b.playerIndex = next;
+			b.menuIndex = this.menuIndex = next;
 			this.emit();
 			return;
 		}
