@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { makeBeast } from "./content.ts";
-import { moveToLead, transferBeast } from "./systems/party.ts";
+import { moveToLead, renameCreature, transferBeast } from "./systems/party.ts";
 
 test("lead selection preserves creature identity and party order", () => {
   const party = [makeBeast("emberkit", 5), makeBeast("mirewhelp", 5), makeBeast("briarling", 5)];
@@ -12,6 +12,15 @@ test("lead selection preserves creature identity and party order", () => {
   assert.equal(moveToLead(party, "missing"), null);
   party[1]!.hp = 0;
   assert.equal(moveToLead(party, party[1]!.uid), null);
+});
+
+test("names are trimmed, bounded and keep the creature's identity and stats", () => {
+  const original = makeBeast("emberkit", 5);
+  const renamed = renameCreature(original, "  Cinder  ")!;
+  assert.deepEqual(renamed, { ...original, nickname: "Cinder" });
+  assert.equal(renameCreature(original, "  "), null);
+  assert.equal(renameCreature(original, "x".repeat(41)), null);
+  assert.equal(renameCreature(original, original.nickname), null);
 });
 
 test("storage transfers preserve identities and a capable party", () => {

@@ -1,4 +1,5 @@
 import type { PointerEvent, ReactNode } from "react";
+import { useState } from "react";
 import {
   currentStats,
   expToNext,
@@ -163,6 +164,7 @@ export function MenuPanel({ game, snap }: { game: ReliquaryGame; snap: Snapshot 
               >
                 {index === 0 ? "Party lead" : "Make lead"}
               </button>
+              <RenameCreature game={game} beast={b} />
             </BeastCard>
           ))}
           {snap.party.length === 0 ? <p className="empty">No pact spoken yet.</p> : null}
@@ -279,6 +281,48 @@ export function MenuPanel({ game, snap }: { game: ReliquaryGame; snap: Snapshot 
     );
   }
   return null;
+}
+
+function RenameCreature({ game, beast }: { game: ReliquaryGame; beast: Beast }) {
+  const [name, setName] = useState(beast.nickname);
+  const [editing, setEditing] = useState(false);
+  if (!editing)
+    return (
+      <button
+        type="button"
+        className="btn-ghost"
+        onClick={() => {
+          setName(beast.nickname);
+          setEditing(true);
+        }}
+        aria-label={`Rename ${beast.nickname}`}
+      >
+        Rename
+      </button>
+    );
+  return (
+    <form
+      className="rename-form"
+      onSubmit={(event) => {
+        event.preventDefault();
+        if (name.trim()) {
+          game.renamePartyCreature(beast.uid, name);
+          setEditing(false);
+        }
+      }}
+    >
+      <label>
+        Creature name{" "}
+        <input value={name} maxLength={40} onChange={(event) => setName(event.target.value)} />
+      </label>
+      <button type="submit" className="btn-ghost" disabled={!name.trim()}>
+        Save name
+      </button>
+      <button type="button" className="btn-ghost" onClick={() => setEditing(false)}>
+        Cancel
+      </button>
+    </form>
+  );
 }
 
 function BeastCard({ beast, children }: { beast: Beast; children?: ReactNode }) {

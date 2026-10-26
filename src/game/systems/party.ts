@@ -7,6 +7,12 @@ export function moveToLead(party: Beast[], uid: string): Beast[] | null {
   return [party[index]!, ...party.slice(0, index), ...party.slice(index + 1)];
 }
 
+export function renameCreature(beast: Beast, value: string): Beast | null {
+  const nickname = value.trim();
+  if (!nickname || nickname.length > 40 || nickname === beast.nickname) return null;
+  return { ...beast, nickname };
+}
+
 /** Keep one capable travelling companion and never exceed the four-beast party. */
 export function transferBeast(
   party: Beast[],

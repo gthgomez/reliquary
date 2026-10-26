@@ -16,7 +16,7 @@ import { captureChance, captureSucceeds, storeCapturedBeast } from "./systems/ca
 import { accuracySucceeds, healBeast, playerActsFirst, spendSkillMp, statusSucceeds } from "./systems/combat.ts";
 import { purchaseItem, sellItem } from "./systems/economy.ts";
 import { awardExperience } from "./systems/progression.ts";
-import { moveToLead, transferBeast } from "./systems/party.ts";
+import { moveToLead, renameCreature, transferBeast } from "./systems/party.ts";
 import { applyStatus, tickStatus as tickBeastStatus } from "./systems/status.ts";
 import type {
   BattleState,
@@ -645,6 +645,15 @@ export class ReliquaryGame {
 		const party = moveToLead(this.party, uid);
 		if (!party) return;
 		this.party = party;
+		this.persist();
+		this.emit();
+	}
+	renamePartyCreature(uid: string, value: string): void {
+		if (this.mode !== "world" || this.menu !== "party" || this.battle || this.dialog) return;
+		const original = this.party.find((beast) => beast.uid === uid);
+		const renamed = original && renameCreature(original, value);
+		if (!renamed) return;
+		this.party = this.party.map((beast) => beast.uid === uid ? renamed : beast);
 		this.persist();
 		this.emit();
 	}
