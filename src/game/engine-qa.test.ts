@@ -116,6 +116,18 @@ test("failed persistence never advertises an available save", async () => {
   });
 });
 
+test("focused buttons keep native activation but suppress held Enter", async () => {
+  await withGame((_game, _frame, events) => {
+    const target = Object.assign(new HTMLElement(), { closest: (selector: string) => selector === "button" ? target : null });
+    let prevented = 0;
+    const event = { target, code: "Enter", repeat: false, preventDefault() { prevented++; } };
+    events.get("keydown")!(event as unknown as Event);
+    assert.equal(prevented, 0);
+    events.get("keydown")!({ ...event, repeat: true } as unknown as Event);
+    assert.equal(prevented, 1);
+  });
+});
+
 test("successful persistence advertises Continue and returns true", async () => {
   await withGame((game) => {
     const slots = new Map<string, string>();

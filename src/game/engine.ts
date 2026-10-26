@@ -290,7 +290,10 @@ export class ReliquaryGame {
 	private onKeyDown = (e: KeyboardEvent): void => {
 		const target = e.target;
 		if (target instanceof HTMLElement && target.closest("input, textarea, select, [contenteditable='true']")) return;
-		if (target instanceof HTMLElement && target.closest("button") && (e.code === "Enter" || e.code === "Space")) return;
+		if (target instanceof HTMLElement && target.closest("button") && (e.code === "Enter" || e.code === "Space")) {
+			if (e.repeat) e.preventDefault();
+			return;
+		}
 		if (CONTROL_KEYS.has(e.code)) e.preventDefault();
 		this.keys.add(e.code);
 		if (e.repeat && ["KeyZ", "Enter", "Space", "KeyX", "Escape", "ShiftLeft", "KeyM", "KeyC"].includes(e.code)) return;
