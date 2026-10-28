@@ -190,52 +190,52 @@ export function MenuPanel({ game, snap }: { game: ReliquaryGame; snap: Snapshot 
       </div>
     );
   }
-  if (snap.menu === "party") {
-    if (snap.learnMenu) {
-      const beast = snap.party.find((b) => b.uid === snap.learnMenu!.uid);
-      const skill = SKILLS[snap.learnMenu.skill];
-      return (
-        <div className="sheet">
-          <h2>{skill?.name ?? snap.learnMenu.skill} beckons</h2>
-          <p className="sheet-sub">
-            {beast?.nickname ?? "Your companion"} could learn{" "}
-            {skill ? `${skill.name} — ${skill.desc}` : snap.learnMenu.skill}. Replacing a skill
-            sets it aside politely.
-          </p>
-          <ul className="menu-list">
-            {beast?.skills.map((existingId, i) => (
-              <li key={existingId}>
-                <button
-                  type="button"
-                  className={i === snap.menuIndex ? "active" : ""}
-                  onClick={() => {
-                    game.menuIndex = i;
-                    game.menuConfirm();
-                  }}
-                >
-                  Replace {SKILLS[existingId]?.name ?? existingId}
-                </button>
-              </li>
-            ))}
-            <li key="decline">
+  if ((snap.menu === "party" || snap.menu === "learn") && snap.learnMenu) {
+    const beast = snap.party.find((b) => b.uid === snap.learnMenu!.uid);
+    const skill = SKILLS[snap.learnMenu.skill];
+    return (
+      <div className="sheet">
+        <h2>{skill?.name ?? snap.learnMenu.skill} beckons</h2>
+        <p className="sheet-sub">
+          {beast?.nickname ?? "Your companion"} could learn{" "}
+          {skill ? `${skill.name} — ${skill.desc}` : snap.learnMenu.skill}. Replacing a skill
+          sets it aside politely.
+        </p>
+        <ul className="menu-list">
+          {beast?.skills.map((existingId, i) => (
+            <li key={existingId}>
               <button
                 type="button"
-                className={(beast?.skills.length ?? 0) === snap.menuIndex ? "active" : ""}
+                className={i === snap.menuIndex ? "active" : ""}
                 onClick={() => {
-                  game.menuIndex = beast?.skills.length ?? 0;
+                  game.menuIndex = i;
                   game.menuConfirm();
                 }}
               >
-                Decline — keep what it knows
+                Replace {SKILLS[existingId]?.name ?? existingId}
               </button>
             </li>
-          </ul>
-          <button type="button" className="btn-ghost" onClick={() => game.cancel()}>
-            Back
-          </button>
-        </div>
-      );
-    }
+          ))}
+          <li key="decline">
+            <button
+              type="button"
+              className={(beast?.skills.length ?? 0) === snap.menuIndex ? "active" : ""}
+              onClick={() => {
+                game.menuIndex = beast?.skills.length ?? 0;
+                game.menuConfirm();
+              }}
+            >
+              Decline — keep what it knows
+            </button>
+          </li>
+        </ul>
+        <button type="button" className="btn-ghost" onClick={() => game.cancel()}>
+          Back
+        </button>
+      </div>
+    );
+  }
+  if (snap.menu === "party") {
     return (
       <div className="sheet sheet-wide">
         <h2>Party</h2>
