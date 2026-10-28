@@ -532,6 +532,15 @@ test("storage cards are reachable and transfer through the action list", async (
   });
 });
 
+test("a continue whose save vanished says so before starting anew", async () => {
+  await withGame((game) => {
+    game.hasSave = true;
+    game.continueGame();
+    assert.match(game.getSnapshot().dialog!.text, /could not be read/);
+    assert.equal(game.hasSave, false);
+  });
+});
+
 test("terrain is reused between frames and rebuilt when the map changes", async () => {
   await withGame((game, frame) => {
     let terrainDraws = 0;

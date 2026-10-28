@@ -409,7 +409,7 @@ export class ReliquaryGame {
 		};
 		window.__controlsTest = this.probe;
 	}
-	startNew(): void {
+	startNew(notice?: string): void {
 		unlockAudio();
 		startMusic();
 		sfxPlay.confirm();
@@ -445,6 +445,7 @@ export class ReliquaryGame {
 		this.encounterLock = false;
 		this.mode = "world";
 		this.openDialog("???", [
+			...(notice ? [notice] : []),
 			"A lantern ticks on the sill. Morning in Elderhall smells of peat and bread.",
 			"You are Rowan, newly sworn Pactwarden. The Crown of Binding cracked a generation ago — beasts walk feral on the old roads.",
 			"Elder Maren is waiting at the Chapter house. Take the lantern. Walk."
@@ -455,7 +456,10 @@ export class ReliquaryGame {
 		startMusic();
 		const s = loadSave();
 		if (!s) {
-			this.startNew();
+			this.hasSave = false;
+			this.startNew(
+				"The last lantern fell silent — its story could not be read. This is a new beginning.",
+			);
 			return;
 		}
 		this.applySave(s);
