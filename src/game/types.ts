@@ -213,6 +213,18 @@ export interface LearnMenuView {
   skill: string;
 }
 
+export interface PackTargetOption {
+  uid: string;
+  nickname: string;
+  hp: string;
+  note: string;
+}
+
+export interface PackTargetView {
+  item: string;
+  targets: PackTargetOption[];
+}
+
 export interface Snapshot {
   mode: Mode;
   loadProgress: number;
@@ -232,6 +244,7 @@ export interface Snapshot {
   caught: Record<string, boolean>;
   dialog: DialogView | null;
   learnMenu: LearnMenuView | null;
+  packTarget: PackTargetView | null;
   menu: string | null;
   menuIndex: number;
   battle: BattleState | null;

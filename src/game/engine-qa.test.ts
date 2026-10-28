@@ -350,6 +350,87 @@ test("a queued offer survives save and reload", async () => {
   });
 });
 
+test("pack items with several eligible targets show a chooser with previews", async () => {
+  await withGame((game) => {
+    game.mode = "world";
+    game.menu = "items";
+    const lead = makeBeast("emberkit", 5);
+    const hurt = makeBeast("mirewhelp", 5);
+    lead.hp = Math.max(1, currentStats(lead).hp - 30);
+    hurt.hp = Math.max(1, currentStats(hurt).hp - 20);
+    game.party = [lead, hurt];
+    game.inventory.tonic = 2;
+    game.menuIndex = game.usableItems().indexOf("tonic");
+    game.menuConfirm();
+    assert.equal(game.menu, "itemTarget");
+    assert.deepEqual(
+      game.getSnapshot().packTarget!.targets.map((t) => t.uid),
+      [lead.uid, hurt.uid],
+    );
+    assert.match(game.getSnapshot().packTarget!.targets[1]!.note, /heal/i);
+    game.menuIndex = 1;
+    game.menuConfirm();
+    assert.equal(game.menu, "items");
+    assert.equal(hurt.hp, currentStats(hurt).hp);
+    assert.equal(game.inventory.tonic, 1);
+  });
+});
+
+test("a fainted non-lead beast can be woken from the pack by picking it", async () => {
+  await withGame((game) => {
+    game.mode = "world";
+    game.menu = "items";
+    const lead = makeBeast("emberkit", 5);
+    const downed = makeBeast("mirewhelp", 5);
+    const downedToo = makeBeast("briarling", 5);
+    downed.hp = 0;
+    downedToo.hp = 0;
+    game.party = [lead, downed, downedToo];
+    game.inventory.phoenix_ash = 1;
+    game.menuIndex = game.usableItems().indexOf("phoenix_ash");
+    game.menuConfirm();
+    assert.equal(game.menu, "itemTarget");
+    game.menuIndex = 0;
+    game.menuConfirm();
+    assert.ok(downed.hp > 0);
+    assert.equal(game.inventory.phoenix_ash, 0);
+  });
+});
+
+test("canceling a pack choice returns to the same item without spending it", async () => {
+  await withGame((game) => {
+    game.mode = "world";
+    game.menu = "items";
+    const hurt = makeBeast("emberkit", 5);
+    const also = makeBeast("briarling", 5);
+    hurt.hp -= 5;
+    also.hp -= 5;
+    game.party = [hurt, also];
+    game.inventory.tonic = 1;
+    game.menuIndex = game.usableItems().indexOf("tonic");
+    game.menuConfirm();
+    assert.equal(game.menu, "itemTarget");
+    game.cancel();
+    assert.equal(game.menu, "items");
+    assert.equal(game.inventory.tonic, 1);
+  });
+});
+
+test("a pack item useful to nobody is refused without consumption", async () => {
+  await withGame((game) => {
+    game.mode = "world";
+    game.menu = "items";
+    const lead = makeBeast("emberkit", 5);
+    game.party = [lead];
+    game.inventory.tonic = 1;
+    game.menuIndex = game.usableItems().indexOf("tonic");
+    game.menuConfirm();
+    assert.equal(game.menu, "items");
+    assert.equal(game.inventory.tonic, 1);
+    assert.match(game.getSnapshot().toast ?? "", /nothing/i);
+  });
+});
+
 test("terrain is reused between frames and rebuilt when the map changes", async () => {
   await withGame((game, frame) => {
     let terrainDraws = 0;

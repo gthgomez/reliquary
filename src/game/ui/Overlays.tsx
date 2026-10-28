@@ -323,6 +323,37 @@ export function MenuPanel({ game, snap }: { game: ReliquaryGame; snap: Snapshot 
     );
   }
   if (snap.menu === "items") {
+    if (snap.packTarget) {
+      return (
+        <div className="sheet">
+          <h2>Use {ITEMS[snap.packTarget.item]?.name ?? snap.packTarget.item}</h2>
+          <p className="sheet-sub">Choose a companion. Nothing is spent until you pick one.</p>
+          <ul className="menu-list">
+            {snap.packTarget.targets.map((target, i) => (
+              <li key={target.uid}>
+                <button
+                  type="button"
+                  className={i === snap.menuIndex ? "active" : ""}
+                  onClick={() => {
+                    game.menuIndex = i;
+                    game.menuConfirm();
+                  }}
+                >
+                  {target.nickname} <em>{target.hp}</em>
+                  <span className="muted"> — {target.note}</span>
+                </button>
+              </li>
+            ))}
+            {snap.packTarget.targets.length === 0 ? (
+              <li className="empty">Nobody here would benefit.</li>
+            ) : null}
+          </ul>
+          <button type="button" className="btn-ghost" onClick={() => game.cancel()}>
+            Back to the pack
+          </button>
+        </div>
+      );
+    }
     const ids = game.usableItems();
     const stones = Object.keys(snap.inventory).filter(
       (id) => (snap.inventory[id] ?? 0) > 0 && ITEMS[id]?.kind === "sigil",

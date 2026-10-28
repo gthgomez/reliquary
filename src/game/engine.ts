@@ -106,6 +106,7 @@ export class ReliquaryGame {
 	dialog: Dialog | null = null;
 	menu: string | null = null;
 	learnMenu: { uid: string; skill: string } | null = null;
+	packTarget: { item: string; uids: string[] } | null = null;
 	menuIndex = 0;
 	battle: BattleState | null = null;
 	toast: string | null = null;
@@ -185,6 +186,32 @@ export class ReliquaryGame {
 						const beast = this.party.find((item) => item.uid === this.learnMenu!.uid);
 						return beast ? { uid: beast.uid, nickname: beast.nickname, skill: this.learnMenu!.skill } : null;
 					})()
+					: null,
+			packTarget:
+				this.menu === "itemTarget" && this.packTarget
+					? {
+						item: this.packTarget.item,
+						targets: this.packTarget.uids
+							.map((uid) => this.party.find((beast) => beast.uid === uid))
+							.filter((beast): beast is Beast => Boolean(beast))
+							.map((beast) => {
+								const st = currentStats(beast);
+								const def = ITEMS[this.packTarget!.item]!;
+								const note = def.kind === "heal"
+									? `${def.name} — heals about ${def.power ?? 40} vitality`
+									: def.kind === "ether"
+										? `${def.name} — restores about ${def.power ?? 30} mist`
+										: def.kind === "status"
+											? `${def.name} — soothes ${beast.status ?? "an ailment"}`
+											: `${def.name} — wakes the fallen`;
+								return {
+									uid: beast.uid,
+									nickname: beast.nickname,
+									hp: `${beast.hp}/${st.hp}`,
+									note,
+								};
+							}),
+					}
 					: null,
 			menu: this.menu,
 			menuIndex: this.menuIndex,
@@ -644,8 +671,11 @@ export class ReliquaryGame {
 		if (this.menu) {
 			if (this.menu === "root") this.menu = null;
 			else if (this.menu === "learn") this.menu = "party";
-			else this.menu = "root";
-			this.menuIndex = 0;
+			else if (this.menu === "itemTarget") {
+				this.menu = "items";
+				const item = this.packTarget?.item;
+				this.menuIndex = item ? Math.max(0, this.usableItems().indexOf(item)) : 0;
+			} else this.menu = "root";
 			sfxPlay.cancel();
 			this.emit();
 		}
@@ -720,6 +750,7 @@ export class ReliquaryGame {
 			const beast = this.party.find((item) => item.uid === this.learnMenu?.uid);
 			return (beast?.skills.length ?? 0) + 1;
 		}
+		if (this.menu === "itemTarget") return this.packTarget?.uids.length ?? 0;
 		if (this.menu === "party") return this.party.length;
 		const b = this.battle!;
 		if (!b) return 0;
@@ -1537,9 +1568,34 @@ export class ReliquaryGame {
 		if (this.menu === "items") {
 			const id = this.usableItems()[this.menuIndex];
 			if (!id) return;
-			const live = this.party[0];
-			if (live) this.useItem(id, live, false);
+			this.packTarget = null;
+			const eligible: Beast[] = this.party.filter((beast) => this.itemHasEffect(id, beast, false));
+			if (!eligible.length) {
+				this.toastMsg("That would do nothing here.");
+				this.emit();
+				return;
+			}
+			if (eligible.length === 1) {
+				this.useItem(id, eligible[0]!, false);
+				this.emit();
+				return;
+			}
+			this.packTarget = { item: id, uids: eligible.map((beast) => beast.uid) };
+			this.menu = "itemTarget";
+			this.menuIndex = 0;
 			this.emit();
+			return;
+		}
+		if (this.menu === "itemTarget") {
+			const item = this.packTarget?.item;
+			const uid = this.packTarget?.uids[this.menuIndex];
+			const beast = this.party.find((member) => member.uid === uid);
+			this.packTarget = null;
+			this.menu = "items";
+			this.menuIndex = item ? Math.max(0, this.usableItems().indexOf(item)) : 0;
+			if (item && beast) this.useItem(item, beast, false);
+			this.emit();
+			return;
 		}
 	}
 	private draw(): void {
