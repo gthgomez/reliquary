@@ -225,6 +225,12 @@ export interface PackTargetView {
   targets: PackTargetOption[];
 }
 
+export interface CardMenuView {
+  uid: string;
+  nickname: string;
+  actions: string[];
+}
+
 export interface Snapshot {
   mode: Mode;
   loadProgress: number;
@@ -245,6 +251,7 @@ export interface Snapshot {
   dialog: DialogView | null;
   learnMenu: LearnMenuView | null;
   packTarget: PackTargetView | null;
+  cardMenu: CardMenuView | null;
   menu: string | null;
   menuIndex: number;
   battle: BattleState | null;

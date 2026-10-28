@@ -107,6 +107,7 @@ export class ReliquaryGame {
 	menu: string | null = null;
 	learnMenu: { uid: string; skill: string } | null = null;
 	packTarget: { item: string; uids: string[] } | null = null;
+	cardAction: { uid: string } | null = null;
 	menuIndex = 0;
 	battle: BattleState | null = null;
 	toast: string | null = null;
@@ -212,6 +213,13 @@ export class ReliquaryGame {
 								};
 							}),
 					}
+					: null,
+			cardMenu:
+				(this.menu === "party" || this.menu === "storage") && this.cardAction
+					? (() => {
+						const beast = this.party.concat(this.box).find((item) => item.uid === this.cardAction!.uid);
+						return beast ? { uid: beast.uid, nickname: beast.nickname, actions: this.cardActions() } : null;
+					})()
 					: null,
 			menu: this.menu,
 			menuIndex: this.menuIndex,
@@ -671,11 +679,19 @@ export class ReliquaryGame {
 		if (this.menu) {
 			if (this.menu === "root") this.menu = null;
 			else if (this.menu === "learn") this.menu = "party";
-			else if (this.menu === "itemTarget") {
+			else if (this.cardAction && (this.menu === "party" || this.menu === "storage")) {
+				const uid = this.cardAction.uid;
+				this.cardAction = null;
+				this.menuIndex = this.cardIndexOf(uid);
+				sfxPlay.cancel();
+				this.emit();
+				return;
+			} else if (this.menu === "itemTarget") {
 				this.menu = "items";
 				const item = this.packTarget?.item;
 				this.menuIndex = item ? Math.max(0, this.usableItems().indexOf(item)) : 0;
 			} else this.menu = "root";
+			this.menuIndex = 0;
 			sfxPlay.cancel();
 			this.emit();
 		}
@@ -691,7 +707,7 @@ export class ReliquaryGame {
 		this.emit();
 	};
 	setLead(uid: string): void {
-		if (this.mode !== "world" || this.menu !== "party" || this.battle || this.dialog) return;
+		if (this.mode !== "world" || (this.menu !== "party" && this.menu !== "storage") || this.battle || this.dialog) return;
 		const party = moveToLead(this.party, uid);
 		if (!party) return;
 		this.party = party;
@@ -699,11 +715,12 @@ export class ReliquaryGame {
 		this.emit();
 	}
 	renamePartyCreature(uid: string, value: string): void {
-		if (this.mode !== "world" || this.menu !== "party" || this.battle || this.dialog) return;
-		const original = this.party.find((beast) => beast.uid === uid);
+		if (this.mode !== "world" || (this.menu !== "party" && this.menu !== "storage") || this.battle || this.dialog) return;
+		const original = this.party.concat(this.box).find((beast) => beast.uid === uid);
 		const renamed = original && renameCreature(original, value);
 		if (!renamed) return;
 		this.party = this.party.map((beast) => beast.uid === uid ? renamed : beast);
+		this.box = this.box.map((beast) => beast.uid === uid ? renamed : beast);
 		this.persist();
 		this.emit();
 	}
@@ -719,7 +736,7 @@ export class ReliquaryGame {
 		this.emit();
 	}
 	trainCreature(uid: string): void {
-		if (this.mode !== "world" || this.menu !== "party" || this.battle || this.dialog) return;
+		if (this.mode !== "world" || (this.menu !== "party" && this.menu !== "storage") || this.battle || this.dialog) return;
 		const beast = this.party.find((item) => item.uid === uid);
 		if (!beast || beast.hp <= 0 || beast.level >= 40 || this.gold < 45) return;
 		this.gold -= 45;
@@ -751,7 +768,10 @@ export class ReliquaryGame {
 			return (beast?.skills.length ?? 0) + 1;
 		}
 		if (this.menu === "itemTarget") return this.packTarget?.uids.length ?? 0;
-		if (this.menu === "party") return this.party.length;
+		if (this.menu === "party" || this.menu === "storage") {
+			if (this.cardAction) return this.cardActions().length;
+			return this.menu === "party" ? this.party.length : this.party.length + this.box.length;
+		}
 		const b = this.battle!;
 		if (!b) return 0;
 		if (b.phase === "command") return b.canFlee ? 6 : 4;
@@ -1537,6 +1557,37 @@ export class ReliquaryGame {
 		}
 		this.emit();
 	}
+	cardIndexOf(uid: string): number {
+		if (this.menu === "party") return Math.max(0, this.party.findIndex((beast) => beast.uid === uid));
+		return Math.max(0, this.party.concat(this.box).findIndex((beast) => beast.uid === uid));
+	}
+	private cardActions(): string[] {
+		const uid = this.cardAction?.uid;
+		if (!uid) return [];
+		const partyIndex = this.party.findIndex((beast) => beast.uid === uid);
+		const beast = partyIndex >= 0 ? this.party[partyIndex]! : this.box.find((item) => item.uid === uid);
+		if (!beast) return [];
+		const actions: string[] = [];
+		if (this.menu === "storage" && partyIndex >= 0) {
+			if (beast.hp > 0 && beast.level < 40 && this.gold >= 45) actions.push("practice");
+			if (beast.pendingSkills?.length) actions.push("learn");
+		}
+		if (this.menu === "party" && partyIndex >= 0) {
+			if (partyIndex > 0 && beast.hp > 0) actions.push("lead");
+			if (beast.hp > 0 && beast.level < 40 && this.gold >= 45) actions.push("practice");
+			if (beast.pendingSkills?.length) actions.push("learn");
+		}
+		if (this.menu === "storage") {
+			if (partyIndex >= 0) actions.push("store");
+			else if (this.party.length < 4) actions.push("in");
+		}
+		actions.push("rename");
+		return actions;
+	}
+	requestRename(uid: string): void {
+		this.selectedUid = uid;
+		this.emit();
+	}
 	menuConfirm(): void {
 		if (this.menu === "root") {
 			const c = ROOT_MENU[this.menuIndex];
@@ -1552,6 +1603,49 @@ export class ReliquaryGame {
 				this.menu = null;
 			} else this.menu = null;
 			this.menuIndex = 0;
+			this.emit();
+			return;
+		}
+		if (this.menu === "party" || this.menu === "storage") {
+			if (!this.cardAction) {
+				const beast = this.menu === "party"
+					? this.party[this.menuIndex]
+					: this.party.concat(this.box)[this.menuIndex];
+				if (!beast) return;
+				this.cardAction = { uid: beast.uid };
+				this.menuIndex = 0;
+				sfxPlay.menu();
+				this.emit();
+				return;
+			}
+			const actions = this.cardActions();
+			const action = actions[this.menuIndex] ?? "";
+			const uid = this.cardAction.uid;
+			if (!action) {
+				this.cardAction = null;
+				this.menuIndex = this.cardIndexOf(uid);
+				this.emit();
+				return;
+			}
+			if (action === "learn") {
+				this.cardAction = null;
+				this.openLearnMenu(uid);
+				return;
+			}
+			if (action === "rename") {
+				this.cardAction = null;
+				this.requestRename(uid);
+				return;
+			}
+			if (action === "lead") this.setLead(uid);
+			else if (action === "practice") this.trainCreature(uid);
+			else if (action === "store") this.transferBeast(uid, "box");
+			else if (action === "in") this.transferBeast(uid, "party");
+			else this.cardAction = null;
+			this.menuIndex = this.menu === "party"
+				? this.party.findIndex((beast) => beast.uid === uid)
+				: this.party.concat(this.box).findIndex((beast) => beast.uid === uid);
+			this.cardAction = null;
 			this.emit();
 			return;
 		}

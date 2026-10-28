@@ -1,5 +1,5 @@
 import type { PointerEvent, ReactNode } from "react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   currentStats,
   expToNext,
@@ -130,6 +130,42 @@ export function DialogBox({ snap, onAdvance }: { snap: Snapshot; onAdvance: () =
 
 export function MenuPanel({ game, snap }: { game: ReliquaryGame; snap: Snapshot }) {
   if (!snap.menu) return null;
+  const actionLabels: Record<string, (nickname: string) => string> = {
+    lead: (n) => `Make ${n} lead`,
+    practice: () => "Practice · 45 cr",
+    learn: () => "Learn a new skill",
+    rename: () => "Rename",
+    store: (n) => `Store ${n}`,
+    in: (n) => `Add ${n} to the party`,
+  };
+  if ((snap.menu === "party" || snap.menu === "storage") && snap.cardMenu) {
+    const beast = [...snap.party, ...snap.box].find((b) => b.uid === snap.cardMenu!.uid);
+    return (
+      <div className="sheet">
+        <h2>{snap.cardMenu.nickname}</h2>
+        <p className="sheet-sub">Choose an action.</p>
+        <ul className="menu-list">
+          {snap.cardMenu.actions.map((action, i) => (
+            <li key={action}>
+              <button
+                type="button"
+                className={i === snap.menuIndex ? "active" : ""}
+                onClick={() => {
+                  game.menuIndex = i;
+                  game.menuConfirm();
+                }}
+              >
+                {actionLabels[action]?.(beast?.nickname ?? "") ?? action}
+              </button>
+            </li>
+          ))}
+        </ul>
+        <button type="button" className="btn-ghost" onClick={() => game.cancel()}>
+          Back
+        </button>
+      </div>
+    );
+  }
   if (snap.menu === "root") {
     return (
       <div className="sheet">
@@ -205,7 +241,7 @@ export function MenuPanel({ game, snap }: { game: ReliquaryGame; snap: Snapshot 
         <h2>Party</h2>
         <div className="party-grid">
           {snap.party.map((b, index) => (
-            <BeastCard key={b.uid} beast={b}>
+            <BeastCard key={b.uid} beast={b} selected={index === snap.menuIndex}>
               {b.pendingSkills?.length ? (
                 <button
                   type="button"
@@ -255,8 +291,8 @@ export function MenuPanel({ game, snap }: { game: ReliquaryGame; snap: Snapshot 
         </p>
         <h3>Travelling companions</h3>
         <div className="party-grid">
-          {snap.party.map((b) => (
-            <BeastCard key={b.uid} beast={b}>
+          {snap.party.map((b, index) => (
+            <BeastCard key={b.uid} beast={b} selected={index === snap.menuIndex}>
               <button
                 type="button"
                 className="btn-ghost"
@@ -270,8 +306,8 @@ export function MenuPanel({ game, snap }: { game: ReliquaryGame; snap: Snapshot 
         </div>
         <h3>Stored creatures</h3>
         <div className="party-grid">
-          {snap.box.map((b) => (
-            <BeastCard key={b.uid} beast={b}>
+          {snap.box.map((b, boxIndex) => (
+            <BeastCard key={b.uid} beast={b} selected={snap.party.length + boxIndex === snap.menuIndex}>
               <button
                 type="button"
                 className="btn-ghost"
@@ -397,6 +433,14 @@ export function MenuPanel({ game, snap }: { game: ReliquaryGame; snap: Snapshot 
 function RenameCreature({ game, beast }: { game: ReliquaryGame; beast: Beast }) {
   const [name, setName] = useState(beast.nickname);
   const [editing, setEditing] = useState(false);
+  useEffect(() => {
+    if (game.selectedUid === beast.uid) {
+      setName(beast.nickname);
+      setEditing(true);
+      game.selectedUid = null;
+      game.emitPublic();
+    }
+  }, [game.selectedUid, beast.uid, beast.nickname, game]);
   if (!editing)
     return (
       <button
@@ -424,7 +468,12 @@ function RenameCreature({ game, beast }: { game: ReliquaryGame; beast: Beast }) 
     >
       <label>
         Creature name{" "}
-        <input value={name} maxLength={40} onChange={(event) => setName(event.target.value)} />
+        <input
+          value={name}
+          maxLength={40}
+          autoFocus
+          onChange={(event) => setName(event.target.value)}
+        />
       </label>
       <button type="submit" className="btn-ghost" disabled={!name.trim()}>
         Save name
@@ -436,12 +485,12 @@ function RenameCreature({ game, beast }: { game: ReliquaryGame; beast: Beast }) 
   );
 }
 
-function BeastCard({ beast, children }: { beast: Beast; children?: ReactNode }) {
+function BeastCard({ beast, children, selected }: { beast: Beast; children?: ReactNode; selected?: boolean }) {
   const sp = SPECIES[beast.speciesId]!;
   const st = currentStats(beast);
   const t = TEMPERAMENTS[beast.temperament];
   return (
-    <article className="beast-card">
+    <article className={`beast-card${selected ? " beast-card-active" : ""}`}>
       <img src={`/game/sprites/${beast.speciesId}.png`} alt="" />
       <div>
         <h3>

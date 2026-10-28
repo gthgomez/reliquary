@@ -477,6 +477,61 @@ test("a bound grip acts last and cannot flee", async () => {
   });
 });
 
+test("party cards are reachable and act through directional confirm alone", async () => {
+  await withGame((game) => {
+    game.mode = "world";
+    game.menu = "party";
+    game.gold = 100;
+    const lead = makeBeast("emberkit", 5);
+    const second = makeBeast("mirewhelp", 5);
+    game.party = [lead, second];
+    // open the second card (its 1-based position), see the action list
+    game.menuIndex = 1;
+    game.menuConfirm();
+    assert.equal(game.cardAction!.uid, second.uid);
+    const view = game.getSnapshot().cardMenu!;
+    assert.equal(view.nickname, second.nickname);
+    assert.ok(view.actions.includes("lead"));
+    assert.ok(view.actions.includes("practice"));
+    assert.ok(view.actions.includes("rename"));
+    // make lead
+    game.menuIndex = view.actions.indexOf("lead");
+    game.menuConfirm();
+    assert.equal(game.party[0]!.uid, second.uid);
+    assert.equal(game.cardAction, null);
+    assert.equal(game.menuIndex, 0);
+  });
+});
+
+test("storage cards are reachable and transfer through the action list", async () => {
+  await withGame((game) => {
+    game.mode = "world";
+    game.menu = "storage";
+    const second = makeBeast("mirewhelp", 5);
+    const stored = makeBeast("briarling", 5);
+    game.party = [makeBeast("emberkit", 5), second];
+    game.box = [stored];
+    // combined list: party card index 0/1, box beast index 2
+    game.menuIndex = 2;
+    game.menuConfirm();
+    assert.equal(game.cardAction!.uid, stored.uid);
+    const view = game.getSnapshot().cardMenu!;
+    assert.ok(view.actions.includes("in"));
+    assert.ok(view.actions.includes("rename"));
+    game.menuIndex = view.actions.indexOf("in");
+    game.menuConfirm();
+    assert.equal(game.party.length, 3);
+    assert.deepEqual(game.party.map((beast) => beast.uid).includes(stored.uid), true);
+    // open the mirewhelp party card and store it
+    game.menuIndex = game.party.findIndex((beast) => beast.uid === second.uid);
+    game.menuConfirm();
+    game.menuIndex = game.getSnapshot().cardMenu!.actions.indexOf("store");
+    game.menuConfirm();
+    assert.equal(game.box.some((beast) => beast.uid === second.uid), true);
+    assert.equal(game.menuIndex, 2);
+  });
+});
+
 test("terrain is reused between frames and rebuilt when the map changes", async () => {
   await withGame((game, frame) => {
     let terrainDraws = 0;
