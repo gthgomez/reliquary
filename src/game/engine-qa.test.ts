@@ -331,3 +331,70 @@ test("terrain is reused between frames and rebuilt when the map changes", async 
     assert.ok(terrainDraws > first);
   });
 });
+
+test("the objective follows the chapter's flags in the snapshot", async () => {
+  await withGame((game) => {
+    assert.match(game.getSnapshot().objective ?? "", /Binding Grove/);
+    game.flags.starter = true;
+    game.emitPublic();
+    assert.match(game.getSnapshot().objective ?? "", /Wildwood/);
+    game.flags.trial = true;
+    game.emitPublic();
+    assert.match(game.getSnapshot().objective ?? "", /Hollow Crown/);
+  });
+});
+
+test("the inn names the A/B choice, charges on confirm, and skips on cancel", async () => {
+  await withGame((game) => {
+    game.mode = "world";
+    const talk = (id: string, name: string) =>
+      (game as unknown as { talk(id: string, name: string): void }).talk(id, name);
+    game.gold = 100;
+    talk("innkeep", "Innmother Cald");
+    assert.match(game.getSnapshot().dialog!.text, /A rest · B not now/);
+    game.confirm();
+    assert.equal(game.gold, 85);
+    game.party.forEach((beast) => {
+      assert.equal(beast.hp, currentStats(beast).hp);
+    });
+    game.cancel();
+    talk("innkeep", "Innmother Cald");
+    game.cancel();
+    assert.equal(game.gold, 85);
+    assert.equal(game.getSnapshot().dialog, null);
+    game.gold = 10;
+    talk("innkeep", "Innmother Cald");
+    game.confirm();
+    assert.match(game.getSnapshot().dialog!.text, /Crowns first/);
+    assert.equal(game.gold, 10);
+  });
+});
+
+test("Cael telegraphs the trial, advises a weak party, and only begins on confirm", async () => {
+  await withGame((game) => {
+    game.mode = "world";
+    const talk = (id: string, name: string) =>
+      (game as unknown as { talk(id: string, name: string): void }).talk(id, name);
+    game.flags.starter = true;
+    game.party = [makeBeast("emberkit", 5)];
+    talk("cael", "Warden Cael");
+    game.confirm();
+    assert.match(game.getSnapshot().dialog!.text, /a dozen and this goes lighter/);
+    assert.match(game.getSnapshot().dialog!.text, /Iron\. Chapel\. Drake/);
+    game.cancel();
+    assert.equal(game.getSnapshot().dialog, null);
+    assert.equal(game.battle, null);
+    talk("cael", "Warden Cael");
+    game.confirm();
+    game.confirm();
+    game.confirm();
+    assert.equal(game.battle!.kind, "trial");
+    game.battle = null;
+    game.mode = "world";
+    game.party = [makeBeast("emberkit", 12)];
+    talk("cael", "Warden Cael");
+    game.confirm();
+    assert.doesNotMatch(game.getSnapshot().dialog!.text, /seasons/);
+    assert.match(game.getSnapshot().dialog!.text, /Iron\. Chapel\. Drake/);
+  });
+});

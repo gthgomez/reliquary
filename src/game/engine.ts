@@ -17,6 +17,7 @@ import { accuracySucceeds, healBeast, playerActsFirst, spendSkillMp, statusSucce
 import { purchaseItem, sellItem } from "./systems/economy.ts";
 import { awardExperience } from "./systems/progression.ts";
 import { moveToLead, renameCreature, transferBeast } from "./systems/party.ts";
+import { currentObjective } from "./systems/objective.ts";
 import { applyStatus, tickStatus as tickBeastStatus } from "./systems/status.ts";
 import type {
   BattleState,
@@ -164,6 +165,7 @@ export class ReliquaryGame {
 			cssH: this.cssH,
 			mapName: MAPS[this.mapId]?.name ?? "",
 			region: MAPS[this.mapId]?.region ?? "",
+			objective: currentObjective(this.flags),
 			gold: this.gold,
 			party: this.party,
 			box: this.box,
@@ -822,7 +824,7 @@ export class ReliquaryGame {
 			return;
 		}
 		if (id === "innkeep") {
-			this.openDialog(name, ["Fifteen crowns for a clean bed and a whole lantern. Rest?"], () => this.offerInn());
+			this.openDialog(name, ["Fifteen crowns for a clean bed and a whole lantern. (A rest · B not now)"], () => this.offerInn());
 			return;
 		}
 		if (id === "shopkeep") {
@@ -850,7 +852,15 @@ export class ReliquaryGame {
 				this.openDialog(name, ["Come back with a pact, green lantern."]);
 				return;
 			}
-			this.openDialog(name, ["Warden Cael. I keep Thornkeep's road.", "Show me the compact is not a hobby. Three of mine against yours. Bind or break."], () => this.startWarden());
+			const strongest = this.party.reduce((max, beast) => Math.max(max, beast.level), 0);
+			const pages = ["Warden Cael. I keep Thornkeep's road."];
+			if (strongest < 12) {
+				pages.push(`Your beast has weathered ${strongest} season${strongest === 1 ? "" : "s"}. Come back after a dozen and this goes lighter. As you like — three of mine against yours: Iron. Chapel. Drake.`);
+			} else {
+				pages.push("Show me the compact is not a hobby. Three of mine against yours — Iron. Chapel. Drake. Bind or break.");
+			}
+			pages.push("(A begin · B later)");
+			this.openDialog(name, pages, () => this.startWarden());
 			return;
 		}
 		if (id === "keep_guard") this.openDialog(name, ["Hall's through the east cottage. Cael doesn't like small talk."]);

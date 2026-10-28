@@ -215,6 +215,7 @@ export interface Snapshot {
   cssH: number;
   mapName: string;
   region: string;
+  objective: string | null;
   gold: number;
   party: Beast[];
   box: Beast[];

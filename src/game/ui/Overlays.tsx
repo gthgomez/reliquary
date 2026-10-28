@@ -94,6 +94,11 @@ export function Hud({ snap, onMenu }: { snap: Snapshot; onMenu: () => void }) {
       <div className="hud-chip">
         <span className="hud-place">{snap.mapName}</span>
         <span className="hud-muted">{snap.region}</span>
+        {snap.objective ? (
+          <span className="hud-muted hud-objective" title={snap.objective}>
+            {snap.objective}
+          </span>
+        ) : null}
       </div>
       <div className="hud-chip">
         <span className="hud-gold">{snap.gold} cr</span>
@@ -129,6 +134,7 @@ export function MenuPanel({ game, snap }: { game: ReliquaryGame; snap: Snapshot 
     return (
       <div className="sheet">
         <h2>Lantern</h2>
+        {snap.objective ? <p className="sheet-sub">Objective — {snap.objective}</p> : null}
         <ul className="menu-list">
           {ROOT_MENU.map((it, i) => (
             <li key={it}>

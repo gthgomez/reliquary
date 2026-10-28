@@ -261,6 +261,12 @@
 .hud-gold {
   font-variant-numeric: tabular-nums;
 }
+.hud-objective {
+  max-width: 40rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .hud-menu {
   margin-left: auto;
   pointer-events: auto;
