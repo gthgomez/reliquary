@@ -29,8 +29,13 @@ export function awardExperience(beast: Beast, xp: number): ProgressionResult {
     const species = SPECIES[beast.speciesId]!;
     const learned = species.learnset.find((entry) => entry.level === beast.level);
     if (learned && SKILLS[learned.skill] && !beast.skills.includes(learned.skill)) {
-      if (beast.skills.length < 4) beast.skills.push(learned.skill);
-      else beast.skills[3] = learned.skill;
+      if (beast.skills.length < 4) {
+        beast.skills.push(learned.skill);
+      } else {
+        // A full list must never overwrite silently: queue the skill so the
+        // player can choose to learn (replacing something) or decline.
+        beast.pendingSkills = [...(beast.pendingSkills ?? []), learned.skill];
+      }
       result.learnedSkills.push(learned.skill);
     }
     if (species.evolves && beast.level >= species.evolves.level && beast.speciesId === species.id) {

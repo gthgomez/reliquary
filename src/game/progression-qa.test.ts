@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { currentStats, makeBeast } from "./content.ts";
+import { currentStats, expToNext, makeBeast } from "./content.ts";
 import { awardExperience } from "./systems/progression.ts";
 
 test("a large lore award reaches the cap and traverses both evolutions", () => {
@@ -22,4 +22,22 @@ test("lore never revives a fallen beast and invalid awards are rejected", () => 
   assert.equal(beast.hp, 0);
   assert.throws(() => awardExperience(beast, Infinity));
   assert.throws(() => awardExperience(beast, -1));
+});
+
+test("a fifth skill with a full list is queued, not silently overwritten", () => {
+  const beast = makeBeast("emberkit", 17);
+  assert.equal(beast.skills.length, 4);
+  const before = [...beast.skills];
+  const result = awardExperience(beast, expToNext(17));
+  assert.equal(result.learnedSkills[0], "flare");
+  assert.deepEqual(beast.skills, before);
+  assert.deepEqual(beast.pendingSkills, ["flare"]);
+});
+
+test("chained awards queue every deferred skill without losing any", () => {
+  const beast = makeBeast("emberkit", 17);
+  awardExperience(beast, 1_000_000);
+  assert.deepEqual(beast.skills, ["nip", "cinder", "scorch", "slash"]);
+  const known = new Set([...beast.skills, ...(beast.pendingSkills ?? [])]);
+  assert.ok(known.has("flare") && known.has("howl") && known.has("tempest"));
 });

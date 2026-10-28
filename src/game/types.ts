@@ -91,6 +91,7 @@ export interface Beast {
   ivs: Stats;
   temperament: Temperament;
   skills: string[];
+  pendingSkills?: string[];
   status: StatusId | null;
   statusTurns: number;
 }
@@ -206,6 +207,12 @@ export interface DialogView {
   last: boolean;
 }
 
+export interface LearnMenuView {
+  uid: string;
+  nickname: string;
+  skill: string;
+}
+
 export interface Snapshot {
   mode: Mode;
   loadProgress: number;
@@ -224,6 +231,7 @@ export interface Snapshot {
   seen: Record<string, boolean>;
   caught: Record<string, boolean>;
   dialog: DialogView | null;
+  learnMenu: LearnMenuView | null;
   menu: string | null;
   menuIndex: number;
   battle: BattleState | null;

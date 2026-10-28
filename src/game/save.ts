@@ -28,6 +28,7 @@ const beastSchema = z.object({
   hp: z.number().finite().nonnegative(), mp: z.number().finite().nonnegative(),
   ivs: statSchema, temperament: z.enum(["fierce", "warding", "keen", "sage", "stalwart", "lucid", "wild", "calm"]),
   skills: z.array(z.string().min(1)).max(4),
+  pendingSkills: z.array(z.string().min(1)).max(16).optional(),
   status: z.enum(["burn", "soak", "bind", "daze", "ward", "bless"]).nullable(),
   statusTurns: z.number().int().nonnegative(),
 }).strict();
@@ -67,6 +68,7 @@ function validateSemantics(save: GameSave): boolean {
     if (ids.has(beast.uid) || !SPECIES[beast.speciesId]) return false;
     ids.add(beast.uid);
     if (beast.skills.some((skill) => !SKILLS[skill])) return false;
+    if (beast.pendingSkills?.some((skill) => !SKILLS[skill])) return false;
     const stats = currentStats(beast);
     if (beast.hp > stats.hp || beast.mp > stats.mp) return false;
   }

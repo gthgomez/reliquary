@@ -155,12 +155,68 @@ export function MenuPanel({ game, snap }: { game: ReliquaryGame; snap: Snapshot 
     );
   }
   if (snap.menu === "party") {
+    if (snap.learnMenu) {
+      const beast = snap.party.find((b) => b.uid === snap.learnMenu!.uid);
+      const skill = SKILLS[snap.learnMenu.skill];
+      return (
+        <div className="sheet">
+          <h2>{skill?.name ?? snap.learnMenu.skill} beckons</h2>
+          <p className="sheet-sub">
+            {beast?.nickname ?? "Your companion"} could learn{" "}
+            {skill ? `${skill.name} — ${skill.desc}` : snap.learnMenu.skill}. Replacing a skill
+            sets it aside politely.
+          </p>
+          <ul className="menu-list">
+            {beast?.skills.map((existingId, i) => (
+              <li key={existingId}>
+                <button
+                  type="button"
+                  className={i === snap.menuIndex ? "active" : ""}
+                  onClick={() => {
+                    game.menuIndex = i;
+                    game.menuConfirm();
+                  }}
+                >
+                  Replace {SKILLS[existingId]?.name ?? existingId}
+                </button>
+              </li>
+            ))}
+            <li key="decline">
+              <button
+                type="button"
+                className={(beast?.skills.length ?? 0) === snap.menuIndex ? "active" : ""}
+                onClick={() => {
+                  game.menuIndex = beast?.skills.length ?? 0;
+                  game.menuConfirm();
+                }}
+              >
+                Decline — keep what it knows
+              </button>
+            </li>
+          </ul>
+          <button type="button" className="btn-ghost" onClick={() => game.cancel()}>
+            Back
+          </button>
+        </div>
+      );
+    }
     return (
       <div className="sheet sheet-wide">
         <h2>Party</h2>
         <div className="party-grid">
           {snap.party.map((b, index) => (
             <BeastCard key={b.uid} beast={b}>
+              {b.pendingSkills?.length ? (
+                <button
+                  type="button"
+                  className="btn-ghost"
+                  onClick={() => game.openLearnMenu(b.uid)}
+                  aria-label={`Teach ${b.nickname} ${SKILLS[b.pendingSkills[0]!]?.name ?? b.pendingSkills[0]}`}
+                >
+                  Learn {SKILLS[b.pendingSkills[0]!]?.name ?? b.pendingSkills[0]}
+                  {b.pendingSkills.length > 1 ? ` (${b.pendingSkills.length})` : ""}
+                </button>
+              ) : null}
               <button
                 type="button"
                 className="btn-ghost"

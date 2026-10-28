@@ -40,6 +40,17 @@ test("legacy v1 saves migrate without defaulting corrupt missing fields", () => 
   assert.equal(parseSave(JSON.stringify(missing)), null);
 });
 
+test("pending skill offers round-trip, and unknown offers are rejected", () => {
+  const store = new MemoryStorage();
+  const save = validSave();
+  save.party[0]!.pendingSkills = ["flare"];
+  assert.equal(writeSave(save, store), true);
+  assert.deepEqual(loadSave(store)?.party[0]?.pendingSkills, ["flare"]);
+  const corrupt = { ...validSave() };
+  corrupt.party[0]!.pendingSkills = ["no-such-skill"];
+  assert.equal(writeSave(corrupt, store), false);
+});
+
 test("a valid backup recovers when the primary record is bad", () => {
   const store = new MemoryStorage();
   const save = validSave();

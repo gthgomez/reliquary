@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { ReliquaryGame } from "./engine.ts";
+import { ReliquaryGame, TILE } from "./engine.ts";
 import { currentStats, makeBeast } from "./content.ts";
-import { SAVE_KEY } from "./save.ts";
+import { loadSave, SAVE_KEY } from "./save.ts";
 
 async function withGame(
   run: (
@@ -297,6 +297,56 @@ test("items with no effect are not consumed and do not spend a battle turn", asy
     use("phoenix_ash");
     assert.equal(game.inventory.phoenix_ash, 0);
     assert.ok(beast.hp > 0);
+  });
+});
+
+test("pending skill offers are taught by replace or decline, never silently", async () => {
+  await withGame((game) => {
+    game.mode = "world";
+    game.menu = "party";
+    game.gold = 0;
+    const beast = makeBeast("emberkit", 5);
+    beast.skills = ["nip", "cinder", "scorch", "slash"];
+    beast.pendingSkills = ["flare"];
+    game.party = [beast];
+    game.openLearnMenu(beast.uid);
+    assert.equal(game.menu, "learn");
+    assert.equal(game.menuIndex, 4);
+    game.menuIndex = 1;
+    game.menuConfirm();
+    assert.deepEqual(beast.skills, ["nip", "flare", "scorch", "slash"]);
+    assert.deepEqual(beast.pendingSkills, []);
+    assert.equal(game.menu, "party");
+    // decline path
+    beast.pendingSkills = ["howl"];
+    game.openLearnMenu(beast.uid);
+    game.menuIndex = 4;
+    game.menuConfirm();
+    assert.deepEqual(beast.pendingSkills, []);
+    assert.deepEqual(beast.skills, ["nip", "flare", "scorch", "slash"]);
+  });
+});
+
+test("a queued offer survives save and reload", async () => {
+  await withGame((game) => {
+    const slots = new Map<string, string>();
+    (globalThis as Record<string, unknown>).localStorage = {
+      getItem: (key: string) => slots.get(key) ?? null,
+      setItem: (key: string, value: string) => slots.set(key, value),
+      removeItem: (key: string) => slots.delete(key),
+    };
+    const beast = makeBeast("emberkit", 17);
+    beast.pendingSkills = ["flare"];
+    game.party = [beast];
+    game.mapId = "elderhall";
+    game.tx = 12; game.ty = 14; game.px = game.tx * TILE; game.py = game.ty * TILE;
+    assert.equal(game.persist(), true);
+    const load = loadSave({
+      getItem: (key: string) => slots.get(key) ?? null,
+      setItem() {},
+      removeItem() {},
+    })!;
+    assert.deepEqual(load.party[0]!.pendingSkills, ["flare"]);
   });
 });
 

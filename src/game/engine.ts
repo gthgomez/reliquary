@@ -105,6 +105,7 @@ export class ReliquaryGame {
 	caught: Record<string, boolean> = {};
 	dialog: Dialog | null = null;
 	menu: string | null = null;
+	learnMenu: { uid: string; skill: string } | null = null;
 	menuIndex = 0;
 	battle: BattleState | null = null;
 	toast: string | null = null;
@@ -177,7 +178,14 @@ export class ReliquaryGame {
 				speaker: this.dialog.speaker,
 				text: this.dialog.pages[this.dialog.index] ?? "",
 				last: this.dialog.index >= this.dialog.pages.length - 1
-			} : null,
+				} : null,
+			learnMenu:
+				this.menu === "learn" && this.learnMenu
+					? (() => {
+						const beast = this.party.find((item) => item.uid === this.learnMenu!.uid);
+						return beast ? { uid: beast.uid, nickname: beast.nickname, skill: this.learnMenu!.skill } : null;
+					})()
+					: null,
 			menu: this.menu,
 			menuIndex: this.menuIndex,
 			battle: this.battle,
@@ -635,6 +643,7 @@ export class ReliquaryGame {
 		}
 		if (this.menu) {
 			if (this.menu === "root") this.menu = null;
+			else if (this.menu === "learn") this.menu = "party";
 			else this.menu = "root";
 			this.menuIndex = 0;
 			sfxPlay.cancel();
@@ -668,6 +677,17 @@ export class ReliquaryGame {
 		this.persist();
 		this.emit();
 	}
+	openLearnMenu(uid: string): void {
+		if (this.mode !== "world" || this.menu !== "party" || this.battle || this.dialog) return;
+		const beast = this.party.find((item) => item.uid === uid);
+		const head = beast?.pendingSkills?.[0];
+		if (!beast || !head) return;
+		this.selectedUid = uid;
+		this.menu = "learn";
+		this.menuIndex = beast.skills.length;
+		this.learnMenu = { uid, skill: head };
+		this.emit();
+	}
 	trainCreature(uid: string): void {
 		if (this.mode !== "world" || this.menu !== "party" || this.battle || this.dialog) return;
 		const beast = this.party.find((item) => item.uid === uid);
@@ -696,6 +716,10 @@ export class ReliquaryGame {
 		}
 		if (this.menu === "root") return ROOT_MENU.length;
 		if (this.menu === "items") return this.usableItems().length;
+		if (this.menu === "learn") {
+			const beast = this.party.find((item) => item.uid === this.learnMenu?.uid);
+			return (beast?.skills.length ?? 0) + 1;
+		}
 		if (this.menu === "party") return this.party.length;
 		const b = this.battle!;
 		if (!b) return 0;
@@ -1475,6 +1499,38 @@ export class ReliquaryGame {
 				this.menu = null;
 			} else this.menu = null;
 			this.menuIndex = 0;
+			this.emit();
+			return;
+		}
+		if (this.menu === "learn") {
+			const beast = this.party.find((item) => item.uid === this.learnMenu?.uid);
+			const queue = beast?.pendingSkills ?? [];
+			const skill = queue[0];
+			if (!beast || !skill || skill !== this.learnMenu!.skill) {
+				this.menu = "party";
+				this.learnMenu = null;
+				this.emit();
+				return;
+			}
+			const learned = SKILLS[skill];
+			if (this.menuIndex < beast.skills.length) {
+				const replacedName = SKILLS[beast.skills[this.menuIndex]!]?.name ?? "old art";
+				beast.skills = beast.skills.map((existing, i) => (i === this.menuIndex ? skill : existing));
+				beast.pendingSkills = queue.slice(1);
+				this.toastMsg(`${beast.nickname} learned ${learned?.name ?? skill}, setting aside ${replacedName}.`);
+			} else {
+				beast.pendingSkills = queue.slice(1);
+				this.toastMsg(`${beast.nickname} keeps what it knows. ${learned?.name ?? skill} fades.`);
+			}
+			this.persist();
+			const next = beast.pendingSkills?.[0];
+			if (next) {
+				this.learnMenu = { uid: beast.uid, skill: next };
+				this.menuIndex = beast.skills.length;
+			} else {
+				this.learnMenu = null;
+				this.menu = "party";
+			}
 			this.emit();
 			return;
 		}
