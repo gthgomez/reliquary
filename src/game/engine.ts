@@ -18,7 +18,7 @@ import { purchaseItem, sellItem } from "./systems/economy.ts";
 import { awardExperience } from "./systems/progression.ts";
 import { moveToLead, renameCreature, transferBeast } from "./systems/party.ts";
 import { currentObjective } from "./systems/objective.ts";
-import { applyStatus, tickStatus as tickBeastStatus } from "./systems/status.ts";
+import { STATUS_ADJECTIVES, applyStatus, dazeFumbles, tickStatus as tickBeastStatus } from "./systems/status.ts";
 import type {
   BattleState,
   Beast,
@@ -891,7 +891,11 @@ export class ReliquaryGame {
 			return;
 		}
 		if (id === "wayfarer") {
-			this.openDialog(name, ["Tall grass means a fight. That's the old compact, gone feral.", "Sigil stones bind. Common ones break often. Thorn ones less. Don't throw them at a full-health wyrm."]);
+			this.openDialog(name, [
+				"Tall grass means a fight. That's the old compact, gone feral.",
+				"Sigil stones bind. Common ones break often. Thorn ones less. Don't throw them at a full-health wyrm.",
+				"Know the signs: burn eats vigor each turn. Soak drinks mist. Daze makes one grip in four fumble. Bind roots the legs — the bound beast acts last, and cannot flee.",
+			]);
 			return;
 		}
 		if (id === "reedcutter") {
@@ -1155,6 +1159,13 @@ export class ReliquaryGame {
 		const b = this.battle!;
 		const me = currentStats(this.party[b.playerIndex]!);
 		const foe = currentStats(b.foes[b.foeIndex]!);
+		if (this.party[b.playerIndex]!.status === "bind") {
+			const roots = "Roots hold fast — no escape.";
+			this.afterPlayer();
+			if (this.battle) this.battle.log = [roots, ...(this.battle.log ?? [])];
+			this.emit();
+			return;
+		}
 		const chance = .4 + (me.spd - foe.spd) / 200;
 		if (this.random() < chance) {
 			b.log = ["You break from the grass."];
@@ -1174,6 +1185,13 @@ export class ReliquaryGame {
 		const playerFirst = playerActsFirst(me, foe, this.random) || act.type === "item" || act.type === "switch" || act.type === "bind";
 		const doPlayer = () => {
 			if (me.hp <= 0) return;
+			if (act.type === "strike" || act.type === "skill") {
+				const name = act.type === "skill" ? SKILLS[act.skill!]?.name ?? act.skill : "Strike";
+				if (dazeFumbles(me, this.random)) {
+					b.log = [`${me.nickname}'s ${name} falters — it cannot find its bearings.`];
+					return;
+				}
+			}
 			if (act.type === "strike") this.useSkill(me, foe, false, basicStrike(me), true);
 			else if (act.type === "skill") {
 				const sk = SKILLS[act.skill!];
@@ -1243,7 +1261,7 @@ export class ReliquaryGame {
 			if (skill.status) {
 				const target = skill.kind === "ward" ? atk : def;
 				applyStatus(target, skill.status);
-				b.log = [`${skill.name}: ${target.nickname} is ${skill.status}.`];
+				b.log = [`${skill.name}: ${target.nickname} is ${STATUS_ADJECTIVES[skill.status]}.`];
 			}
 			sfxPlay.menu();
 			return;
@@ -1265,7 +1283,7 @@ export class ReliquaryGame {
 		if (crit) line += " A true cut.";
 		if (skill.status && statusSucceeds(skill.statusChance ?? 0, this.random) && def.hp > 0) {
 				applyStatus(def, skill.status);
-			line += ` ${def.nickname} is ${skill.status}.`;
+			line += ` ${def.nickname} is ${STATUS_ADJECTIVES[skill.status]}.`;
 		}
 		b.log = [line];
 		if (crit) sfxPlay.crit();
@@ -1274,6 +1292,10 @@ export class ReliquaryGame {
 	private foeTurn(foe: Beast, me: Beast): void {
 		const skills = foe.skills.map((id) => SKILLS[id]).filter(Boolean);
 		const foS = currentStats(foe);
+		if (dazeFumbles(foe, this.random)) {
+			this.battle!.log = [`${foe.nickname}'s grip fumbles — it cannot find its line.`];
+			return;
+		}
 		if (foe.hp < foS.hp * .35) {
 			const heal = skills.find((s) => s.kind === "heal" && foe.mp >= s.mp);
 			if (heal) {

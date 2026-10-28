@@ -1,4 +1,5 @@
 import { currentStats, typeMod } from "../content.ts";
+import { turnOrderSpeed } from "./status.ts";
 import type { Beast, ElementId, Skill } from "../types.ts";
 import type { RandomSource } from "../rng.ts";
 
@@ -57,5 +58,6 @@ export function healBeast(target: Beast, amount: number): number {
 }
 
 export function playerActsFirst(player: Beast, foe: Beast, random: RandomSource): boolean {
-  return currentStats(player).spd + random() * 8 >= currentStats(foe).spd + random() * 8;
+  // A bound beast always acts last; otherwise speed decides with a small tiebreak.
+  return turnOrderSpeed(player) + random() * 8 >= turnOrderSpeed(foe) + random() * 8;
 }

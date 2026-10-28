@@ -2,7 +2,9 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { ReliquaryGame, TILE } from "./engine.ts";
 import { currentStats, makeBeast } from "./content.ts";
+import { playerActsFirst } from "./systems/combat.ts";
 import { loadSave, SAVE_KEY } from "./save.ts";
+import type { Beast } from "./types.ts";
 
 async function withGame(
   run: (
@@ -428,6 +430,50 @@ test("a pack item useful to nobody is refused without consumption", async () => 
     assert.equal(game.menu, "items");
     assert.equal(game.inventory.tonic, 1);
     assert.match(game.getSnapshot().toast ?? "", /nothing/i);
+  });
+});
+
+test("a dazed grip fumbles one attack in four, deterministically", async () => {
+  await withGame((game) => {
+    game.party = [makeBeast("emberkit", 5)];
+    window.__controlsTest!.startWild!();
+    const foe = game.battle!.foes[0]!;
+    const raw = game as unknown as { foeTurn: (foe: Beast, me: Beast) => void; random: () => number };
+    foe.status = "daze";
+    foe.statusTurns = 3;
+    let fumbles = 0;
+    let total = 0;
+    for (const value of [0.1, 0.3, 0.6, 0.9, 0.2, 0.8]) {
+      raw.random = () => value;
+      total++;
+      raw.foeTurn(foe, game.party[0]!);
+      if (/fumbles/.test(game.battle!.log[0] ?? "")) fumbles++;
+    }
+    assert.equal(total, 6);
+    assert.equal(fumbles, 2);
+  });
+});
+
+test("a bound grip acts last and cannot flee", async () => {
+  await withGame((game) => {
+    game.party = [makeBeast("emberkit", 5)];
+    window.__controlsTest!.startWild!();
+    const me = game.party[0]!;
+    me.status = "bind";
+    me.statusTurns = 2;
+    // cannot flee
+    (game as unknown as { tryFlee(): void }).tryFlee();
+    assert.match(game.battle!.log[0] ?? "", /Roots hold fast/);
+    assert.ok(game.battle!.escaped !== true);
+    // always acts last even against a slow foe
+    const foe = game.battle!.foes[0]!;
+    let playerFirst = 0;
+    for (const value of [0.99]) {
+      (game as unknown as { random: () => number }).random = () => value;
+      const result = playerActsFirst(me, foe, () => value);
+      if (result) playerFirst++;
+    }
+    assert.equal(playerFirst, 0);
   });
 });
 
