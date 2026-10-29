@@ -302,6 +302,69 @@ test("items with no effect are not consumed and do not spend a battle turn", asy
   });
 });
 
+test("a queued offer never requests a rename and opens from the storage menu too", async () => {
+  await withGame((game) => {
+    game.mode = "world";
+    game.menu = "storage";
+    const beast = makeBeast("emberkit", 17);
+    beast.pendingSkills = ["flare"];
+    game.party = [beast];
+    game.selectedUid = null;
+    game.menuIndex = 0;
+    game.menuConfirm();
+    const actions = (game as unknown as { cardActions: () => string[] }).cardActions();
+    assert.ok(actions.includes("learn"));
+    game.menuIndex = actions.indexOf("learn");
+    game.menuConfirm();
+    assert.equal(game.menu, "learn");
+    assert.deepEqual(game.getSnapshot().learnMenu, { uid: beast.uid, nickname: beast.nickname, skill: "flare" });
+    assert.equal(game.selectedUid, null);
+    game.cancel();
+    assert.equal(game.menu, "storage");
+  });
+});
+
+test("closing the menu forgets a half-open card action", async () => {
+  await withGame((game) => {
+    game.mode = "world";
+    game.menu = "party";
+    const beast = makeBeast("emberkit", 5);
+    game.party = [beast];
+    game.gold = 500;
+    game.menuIndex = 0;
+    game.menuConfirm();
+    assert.deepEqual(game.cardAction, { uid: beast.uid });
+    game.toggleMenu();
+    assert.equal(game.cardAction, null);
+    assert.equal(game.menu, null);
+    game.toggleMenu();
+    game.menuIndex = 0;
+    game.menuConfirm();
+    assert.equal(game.menu, "party");
+    // The next confirm opens a card sheet instead of running a stale action.
+    game.menuConfirm();
+    assert.deepEqual(game.cardAction, { uid: beast.uid });
+    assert.equal(game.gold, 500);
+    assert.equal(beast.exp, 0);
+  });
+});
+
+test("a field item is used at once rather than asking which companion", async () => {
+  await withGame((game) => {
+    game.mode = "world";
+    game.menu = "items";
+    const lead = makeBeast("emberkit", 5);
+    const second = makeBeast("mothwisp", 5);
+    game.party = [lead, second];
+    game.inventory = { quiet_bell: 1 };
+    game.menuIndex = 0;
+    game.menuConfirm();
+    assert.equal(game.packTarget, null);
+    assert.equal(game.menu, "items");
+    assert.equal(game.inventory.quiet_bell, 0);
+  });
+});
+
 test("pending skill offers are taught by replace or decline, never silently", async () => {
   await withGame((game) => {
     game.mode = "world";

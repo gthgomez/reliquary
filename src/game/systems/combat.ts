@@ -58,6 +58,10 @@ export function healBeast(target: Beast, amount: number): number {
 }
 
 export function playerActsFirst(player: Beast, foe: Beast, random: RandomSource): boolean {
-  // A bound beast always acts last; otherwise speed decides with a small tiebreak.
+  // A bound beast always acts last, regardless of the speed tiebreak.
+  const playerBound = player.status === "bind";
+  const foeBound = foe.status === "bind";
+  if (playerBound !== foeBound) return foeBound;
+  if (playerBound) return true;
   return turnOrderSpeed(player) + random() * 8 >= turnOrderSpeed(foe) + random() * 8;
 }

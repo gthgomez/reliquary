@@ -3,7 +3,7 @@ import { test } from "node:test";
 import { ITEMS, SKILLS, SPECIES, currentStats, expToNext, makeBeast, typeMod } from "./content.ts";
 import { sequenceRandom } from "./rng.ts";
 import { captureChance, captureSucceeds, storeCapturedBeast } from "./systems/capture.ts";
-import { accuracySucceeds, healBeast, resolveElementalDamage, spendSkillMp, statusSucceeds } from "./systems/combat.ts";
+import { accuracySucceeds, healBeast, playerActsFirst, resolveElementalDamage, spendSkillMp, statusSucceeds } from "./systems/combat.ts";
 import { purchaseItem, sellItem } from "./systems/economy.ts";
 import { awardExperience } from "./systems/progression.ts";
 import { applyStatus, tickStatus } from "./systems/status.ts";
@@ -81,6 +81,18 @@ test("experience awards level up, learnset changes, and evolution while preservi
   assert.equal(ember.speciesId, "pyrefox");
   assert.ok(ember.hp >= beforeHp);
   assert.ok(ember.skills.includes("cinder"));
+});
+
+test("a bound beast acts last even against the slowest possible foe", () => {
+  const fast = beast("emberkit", 20);
+  const slow = beast("pebblet", 5);
+  const rolls = () => sequenceRandom([.99, .99]);
+  assert.equal(playerActsFirst(fast, slow, rolls()), true);
+  applyStatus(fast, "bind");
+  assert.equal(playerActsFirst(fast, slow, rolls()), false);
+  // Both bound: the speed tiebreak comes back into play.
+  applyStatus(slow, "bind");
+  assert.equal(playerActsFirst(fast, slow, rolls()), true);
 });
 
 test("world data is rectangular and every warp lands on a walkable tile", () => {

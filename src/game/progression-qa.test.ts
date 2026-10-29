@@ -29,9 +29,18 @@ test("a fifth skill with a full list is queued, not silently overwritten", () =>
   assert.equal(beast.skills.length, 4);
   const before = [...beast.skills];
   const result = awardExperience(beast, expToNext(17));
-  assert.equal(result.learnedSkills[0], "flare");
+  assert.equal(result.queuedSkills[0], "flare");
+  assert.deepEqual(result.learnedSkills, []);
   assert.deepEqual(beast.skills, before);
   assert.deepEqual(beast.pendingSkills, ["flare"]);
+});
+
+test("a queued skill is never offered twice", () => {
+  const beast = makeBeast("emberkit", 17);
+  awardExperience(beast, 1_000_000);
+  const declared = [...(beast.pendingSkills ?? [])];
+  awardExperience(beast, 1_000_000);
+  assert.deepEqual(beast.pendingSkills, declared);
 });
 
 test("chained awards queue every deferred skill without losing any", () => {

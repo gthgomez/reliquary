@@ -190,7 +190,7 @@ export function MenuPanel({ game, snap }: { game: ReliquaryGame; snap: Snapshot 
       </div>
     );
   }
-  if ((snap.menu === "party" || snap.menu === "learn") && snap.learnMenu) {
+  if (snap.learnMenu) {
     const beast = snap.party.find((b) => b.uid === snap.learnMenu!.uid);
     const skill = SKILLS[snap.learnMenu.skill];
     return (
@@ -199,7 +199,7 @@ export function MenuPanel({ game, snap }: { game: ReliquaryGame; snap: Snapshot 
         <p className="sheet-sub">
           {beast?.nickname ?? "Your companion"} could learn{" "}
           {skill ? `${skill.name} — ${skill.desc}` : snap.learnMenu.skill}. Replacing a skill
-          sets it aside politely.
+          retires it for good.
         </p>
         <ul className="menu-list">
           {beast?.skills.map((existingId, i) => (
@@ -229,6 +229,18 @@ export function MenuPanel({ game, snap }: { game: ReliquaryGame; snap: Snapshot 
             </button>
           </li>
         </ul>
+        <button type="button" className="btn-ghost" onClick={() => game.cancel()}>
+          Back
+        </button>
+      </div>
+    );
+  }
+  if (snap.menu === "learn") {
+    // Defensive: the engine only opens this menu with a queued offer, but a
+    // stale view must never render an empty sheet with live input.
+    return (
+      <div className="sheet">
+        <h2>No offer to consider</h2>
         <button type="button" className="btn-ghost" onClick={() => game.cancel()}>
           Back
         </button>
@@ -358,7 +370,7 @@ export function MenuPanel({ game, snap }: { game: ReliquaryGame; snap: Snapshot 
       </div>
     );
   }
-  if ((snap.menu === "items" || snap.menu === "itemTarget") && snap.packTarget) {
+  if (snap.packTarget) {
     return (
       <div className="sheet">
         <h2>Use {ITEMS[snap.packTarget.item]?.name ?? snap.packTarget.item}</h2>

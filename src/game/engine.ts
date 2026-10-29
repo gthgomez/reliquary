@@ -108,6 +108,7 @@ export class ReliquaryGame {
 	learnMenu: { uid: string; skill: string } | null = null;
 	packTarget: { item: string; uids: string[] } | null = null;
 	cardAction: { uid: string } | null = null;
+	private learnOrigin: "party" | "storage" = "party";
 	menuIndex = 0;
 	battle: BattleState | null = null;
 	toast: string | null = null;
@@ -682,7 +683,7 @@ export class ReliquaryGame {
 		}
 		if (this.menu) {
 			if (this.menu === "root") this.menu = null;
-			else if (this.menu === "learn") this.menu = "party";
+			else if (this.menu === "learn") this.menu = this.learnOrigin;
 			else if (this.cardAction && (this.menu === "party" || this.menu === "storage")) {
 				const uid = this.cardAction.uid;
 				this.cardAction = null;
@@ -702,7 +703,12 @@ export class ReliquaryGame {
 	};
 	toggleMenu = (): void => {
 		if (this.mode !== "world" || this.dialog || this.battle) return;
-		this.menu = this.menu ? null : "root";
+		if (this.menu) {
+			this.menu = null;
+			this.cardAction = null;
+			this.learnMenu = null;
+			this.packTarget = null;
+		} else this.menu = "root";
 		this.menuIndex = 0;
 		sfxPlay.menu();
 		this.emit();
@@ -729,11 +735,11 @@ export class ReliquaryGame {
 		this.emit();
 	}
 	openLearnMenu(uid: string): void {
-		if (this.mode !== "world" || this.menu !== "party" || this.battle || this.dialog) return;
+		if (this.mode !== "world" || (this.menu !== "party" && this.menu !== "storage") || this.battle || this.dialog) return;
 		const beast = this.party.find((item) => item.uid === uid);
 		const head = beast?.pendingSkills?.[0];
 		if (!beast || !head) return;
-		this.selectedUid = uid;
+		this.learnOrigin = this.menu;
 		this.menu = "learn";
 		this.menuIndex = beast.skills.length;
 		this.learnMenu = { uid, skill: head };
@@ -1207,12 +1213,14 @@ export class ReliquaryGame {
 		let me = this.party[b.playerIndex]!;
 		const foe = b.foes[b.foeIndex]!;
 		const playerFirst = playerActsFirst(me, foe, this.random) || act.type === "item" || act.type === "switch" || act.type === "bind";
+		let fumbleNotice: string | null = null;
 		const doPlayer = () => {
 			if (me.hp <= 0) return;
 			if (act.type === "strike" || act.type === "skill") {
 				const name = act.type === "skill" ? SKILLS[act.skill!]?.name ?? act.skill : "Strike";
 				if (dazeFumbles(me, this.random)) {
-					b.log = [`${me.nickname}'s ${name} falters — it cannot find its bearings.`];
+					fumbleNotice = `${me.nickname}'s ${name} falters — it cannot find its bearings.`;
+					b.log = [fumbleNotice];
 					return;
 				}
 			}
@@ -1263,6 +1271,7 @@ export class ReliquaryGame {
 			this.tickStatus(me);
 			this.tickStatus(foe);
 		}
+		if (fumbleNotice && !b.log.includes(fumbleNotice)) b.log = [fumbleNotice, ...b.log];
 		this.emit();
 	}
 	private useSkill(atk: Beast, def: Beast, foeSide: boolean, skill: Skill, logIt: boolean): void {
@@ -1393,6 +1402,8 @@ export class ReliquaryGame {
 	private grantXp(b: Beast, xp: number): void {
 		const progression = awardExperience(b, xp);
 		for (const skill of progression.learnedSkills) this.toastMsg(`${b.nickname} learned ${SKILLS[skill]?.name}.`);
+		for (const skill of progression.queuedSkills)
+			this.toastMsg(`${b.nickname} remembers ${SKILLS[skill]?.name} — open the Party card to decide.`);
 		if (progression.evolvedFrom && progression.evolvedInto) {
 			for (const speciesId of progression.evolvedStages) {
 				this.caught[speciesId] = true;
@@ -1646,9 +1657,7 @@ export class ReliquaryGame {
 			else if (action === "store") this.transferBeast(uid, "box");
 			else if (action === "in") this.transferBeast(uid, "party");
 			else this.cardAction = null;
-			this.menuIndex = this.menu === "party"
-				? this.party.findIndex((beast) => beast.uid === uid)
-				: this.party.concat(this.box).findIndex((beast) => beast.uid === uid);
+			this.menuIndex = this.cardIndexOf(uid);
 			this.cardAction = null;
 			this.emit();
 			return;
@@ -1658,8 +1667,8 @@ export class ReliquaryGame {
 			const queue = beast?.pendingSkills ?? [];
 			const skill = queue[0];
 			if (!beast || !skill || skill !== this.learnMenu!.skill) {
-				this.menu = "party";
 				this.learnMenu = null;
+				this.menu = this.learnOrigin;
 				this.emit();
 				return;
 			}
@@ -1668,7 +1677,7 @@ export class ReliquaryGame {
 				const replacedName = SKILLS[beast.skills[this.menuIndex]!]?.name ?? "old art";
 				beast.skills = beast.skills.map((existing, i) => (i === this.menuIndex ? skill : existing));
 				beast.pendingSkills = queue.slice(1);
-				this.toastMsg(`${beast.nickname} learned ${learned?.name ?? skill}, setting aside ${replacedName}.`);
+				this.toastMsg(`${beast.nickname} learned ${learned?.name ?? skill}, retiring ${replacedName}.`);
 			} else {
 				beast.pendingSkills = queue.slice(1);
 				this.toastMsg(`${beast.nickname} keeps what it knows. ${learned?.name ?? skill} fades.`);
@@ -1680,7 +1689,7 @@ export class ReliquaryGame {
 				this.menuIndex = beast.skills.length;
 			} else {
 				this.learnMenu = null;
-				this.menu = "party";
+				this.menu = this.learnOrigin;
 			}
 			this.emit();
 			return;
@@ -1689,6 +1698,18 @@ export class ReliquaryGame {
 			const id = this.usableItems()[this.menuIndex];
 			if (!id) return;
 			this.packTarget = null;
+			const def = ITEMS[id];
+			if (def?.kind === "field") {
+				if (!this.party[0]) {
+					this.toastMsg("That would do nothing here.");
+					this.emit();
+					return;
+				}
+				this.useItem(id, this.party[0], false);
+				this.persist();
+				this.emit();
+				return;
+			}
 			const eligible: Beast[] = this.party.filter((beast) => this.itemHasEffect(id, beast, false));
 			if (!eligible.length) {
 				this.toastMsg("That would do nothing here.");
