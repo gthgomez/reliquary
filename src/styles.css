@@ -367,6 +367,14 @@
   color: var(--color-copper);
   font-variant-numeric: tabular-nums;
 }
+.target-list button {
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: 0.4rem;
+}
+.target-list button .muted {
+  flex-basis: 100%;
+}
 
 .party-grid,
 .reliq-grid {

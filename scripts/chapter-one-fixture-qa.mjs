@@ -48,9 +48,6 @@ async function withFixture(name, viewport, fixture, run) {
     console.error(`WATCHDOG: scenario ${name} exceeded 180s`);
     process.exit(2);
   }, 180_000);
-  const step = (label) => console.error(`>>> ${name}: ${label}`);
-  const viewportValue = viewport;
-  void viewportValue;
   const context = await browser.newContext({ viewport });
   const page = await context.newPage();
   const extend = () => {
@@ -75,7 +72,9 @@ async function withFixture(name, viewport, fixture, run) {
     report.errors.push(`[${name}] ${String(error?.stack ?? error)}`);
     try {
       await page.screenshot({ path: join(output, `${name}-fail.png`) });
-    } catch {}
+    } catch {
+      // A failed diagnostic screenshot must not hide the original error.
+    }
     process.exitCode = 1;
   } finally {
     clearTimeout(watchdog);
@@ -180,21 +179,54 @@ try {
     },
   );
 
+  // E. The Pack target list renders with previews (desktop, and again via taps).
+  const leader = makeBeast("riverguard", 5);
+  const hurt = makeBeast("emberkit", 5);
+  hurt.hp = 12;
+  leader.hp = 20;
+  leader.status = "burn";
+  await withFixture("pack-target-ui", { width: 1280, height: 800 }, baseFixture([leader, hurt]), async (page) => {
+    await page.keyboard.press("KeyM");
+    await page.getByRole("button", { name: "Pack", exact: true }).click();
+    await page.getByRole("button", { name: /^Field Tonic\b/ }).first().click();
+    const sheet = await page.locator(".sheet").innerText();
+    assert(/Choose a companion/.test(sheet), `target sheet missing: ${sheet.slice(0, 100)}`);
+    await page.screenshot({ path: join(output, "pack-target.png") });
+    assertEq(
+      (await page.getByRole("button", { name: /heals about 40 vitality/ }).count()) >= 1,
+      true,
+      "target previews render",
+    );
+    const saved = await page.evaluate(() => JSON.parse(localStorage.getItem("reliquary.save.v2")));
+    assertEq(saved.inventory.tonic, 2, "nothing consumed while previewing");
+    await page.getByRole("button", { name: "Back to the pack" }).click();
+    // Choose from the list: the second beast is the wounded one.
+    await page.getByRole("button", { name: /^Field Tonic\b/ }).first().click();
+    await page.locator("ul.menu-list button").filter({ hasText: "Emberkit" }).click();
+    await page.waitForTimeout(400);
+    const after = await page.evaluate(() => JSON.parse(localStorage.getItem("reliquary.save.v2")));
+    assertEq(after.inventory.tonic, 1, "tonic consumed on the chosen target");
+    assert(after.party[1].hp > 7, "wounded emberkit healed");
+    report.scenarios.push("pack-target-ui: eligible targets, preview, tap-through");
+  });
+
   // D. The Warden trial from a prepared party — the trial milestone itself.
-  const champion = makeBeast("pyrefox", 16);
+  const champion = makeBeast("pyrefox", 17);
   champion.nickname = "Kindling";
   await withFixture(
     "warden-trial",
     { width: 1280, height: 800 },
-    baseFixture([champion, makeBeast("riverguard", 15), makeBeast("ironnewt", 14)], {
+    baseFixture([champion, makeBeast("riverguard", 17), makeBeast("ironnewt", 17), makeBeast("briarling", 16)], {
       map: "thornkeep",
       x: 11,
       y: 7,
       dir: 3,
       gold: 500,
-      inventory: { tonic: 4, greater_tonic: 2, phoenix_ash: 1, common_sigil: 3 },
+      inventory: { tonic: 8, greater_tonic: 4, phoenix_ash: 3, common_sigil: 3 },
     }),
     async (page, extend) => {
+      // A comfortable margin: the trial foes are level 12–15, so a 16–17
+      // party with eleven restorative items wins through ordinary play.
       // Four confirms: talk, three dialog pages (page 3 begins the trial).
       await page.keyboard.press("KeyZ");
       await page.keyboard.press("KeyZ");
@@ -223,14 +255,20 @@ try {
           await page.waitForTimeout(150);
           continue;
         }
-        const battleHud = await page.locator(".battle-ui").innerText().catch(() => "");
-        if (rounds % 10 === 0)
+        if (rounds % 10 === 0) {
+          const battleHud = await page.locator(".battle-ui").innerText().catch(() => "");
           console.log(`[warden-trial] round ${rounds}: cmd=${cmd} cont=${cont} dialog=${dialog} hud=${battleHud.slice(0, 80).replace(/\s+/g, " ")}`);
-        if (/Choose another\./.test(battleHud)) {
-          // Forced switch after a faint: send in a beast that can still fight.
-          const pick = page.locator(".battle-ui ul.cmd button").filter({ hasNotText: "0 hp" }).first();
-          await pick.click({ timeout: 5000 }).catch(() => {});
-          await page.waitForTimeout(200);
+        }
+        // Forced-switch phase: member rows read "<name> <hp> hp"; command,
+        // skill and item rows never do. Send in a beast that can still fight.
+        const activeName = (await page.locator(".battle-ui .battler.me strong").innerText().catch(() => "")).trim();
+        const memberRows = page.locator(".battle-ui ul.cmd button").filter({ hasText: /\d+ hp$/ });
+        const survivors = memberRows
+          .filter({ hasNotText: /\b0 hp$/ })
+          .filter({ hasNotText: activeName || "\u0000" });
+        if ((await survivors.count()) > 0) {
+          await survivors.first().click({ timeout: 4000 }).catch(() => {});
+          await page.waitForTimeout(250);
           continue;
         }
         if (!cmd) {
@@ -240,13 +278,13 @@ try {
         const hud = await page.locator(".battle-ui").innerText();
         const meHud = await page.locator(".battle-ui .battler.me").innerText().catch(() => "");
         const hp = /HP (\d+)\/(\d+)/.exec(meHud);
-        const lowHp = hp && Number(hp[1]) < Number(hp[2]) * 0.5;
+        const lowHp = hp && Number(hp[1]) < Number(hp[2]) * 0.6;
         if (lowHp && /Greater Tonic|Tonic/.test(hud)) {
-          await page.getByRole("button", { name: "Item", exact: true }).click();
-          await page.waitForTimeout(120);
-          await page.getByRole("button", { name: /Greater Tonic|^Tonic$/ }).first().click();
+          await page.getByRole("button", { name: "Item", exact: true }).click({ timeout: 4000 }).catch(() => {});
+          await page.waitForTimeout(150);
+          await page.getByRole("button", { name: /Greater Tonic|^Tonic$/ }).first().click({ timeout: 4000 }).catch(() => {});
         } else {
-          await page.getByRole("button", { name: "Strike", exact: true }).click();
+          await page.getByRole("button", { name: "Strike", exact: true }).click({ timeout: 4000 }).catch(() => {});
         }
         await page.waitForTimeout(250);
       }

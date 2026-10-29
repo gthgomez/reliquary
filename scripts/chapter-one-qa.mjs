@@ -269,6 +269,18 @@ try {
     throw new Error("reload lost the renamed companion");
   report.events.push("Saved and reloaded; renamed companion, gold and map survived");
   await page.screenshot({ path: join(output, "11-after-reload.png") });
+
+  // Portrait segment: every new menu must remain reachable by tapping.
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.keyboard.press("Escape");
+  await page.getByRole("button", { name: "Pack", exact: true }).click();
+  await page.locator(".sheet ul.menu-list button").first().waitFor({ timeout: 5000 });
+  await page.screenshot({ path: join(output, "12-portrait-pack.png") });
+  await page.keyboard.press("Escape");
+  await page.getByRole("button", { name: "Party", exact: true }).click();
+  await page.locator(".party-grid").waitFor({ timeout: 5000 });
+  await page.screenshot({ path: join(output, "13-portrait-party.png") });
+  report.events.push("Portrait viewport: pack sheet and party sheet reachable by tap");
   console.log(JSON.stringify(report.events, null, 1));
   await context.close();
 } catch (error) {

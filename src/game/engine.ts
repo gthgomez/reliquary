@@ -199,12 +199,12 @@ export class ReliquaryGame {
 								const st = currentStats(beast);
 								const def = ITEMS[this.packTarget!.item]!;
 								const note = def.kind === "heal"
-									? `${def.name} — heals about ${def.power ?? 40} vitality`
+									? `heals about ${def.power ?? 40} vitality`
 									: def.kind === "ether"
-										? `${def.name} — restores about ${def.power ?? 30} mist`
+										? `restores about ${def.power ?? 30} mist`
 										: def.kind === "status"
-											? `${def.name} — soothes ${beast.status ?? "an ailment"}`
-											: `${def.name} — wakes the fallen`;
+											? `soothes ${beast.status ?? "an ailment"}`
+											: "wakes the fallen";
 								return {
 									uid: beast.uid,
 									nickname: beast.nickname,
@@ -1697,6 +1697,7 @@ export class ReliquaryGame {
 			}
 			if (eligible.length === 1) {
 				this.useItem(id, eligible[0]!, false);
+				this.persist();
 				this.emit();
 				return;
 			}
@@ -1714,6 +1715,7 @@ export class ReliquaryGame {
 			this.menu = "items";
 			this.menuIndex = item ? Math.max(0, this.usableItems().indexOf(item)) : 0;
 			if (item && beast) this.useItem(item, beast, false);
+			this.persist();
 			this.emit();
 			return;
 		}
