@@ -81,6 +81,16 @@ export function parseSave(raw: string): GameSave | null {
   try { return migrateParsed(JSON.parse(raw)); } catch { return null; }
 }
 
+/**
+ * The one validation path for writing: schema and semantics must both hold
+ * before a save is persisted to storage or handed to the player as a file.
+ */
+export function serializeSave(save: GameSave): string | null {
+  const normalized = { ...save, version: SAVE_VERSION } as GameSave;
+  if (!GameSaveSchema.safeParse(normalized).success || !validateSemantics(normalized)) return null;
+  return JSON.stringify(normalized);
+}
+
 export function loadSave(source: SaveStorage | null = browserStorage()): GameSave | null {
   if (!source) return null;
   for (const key of [SAVE_KEY, SAVE_BACKUP, LEGACY_SAVE_KEY, LEGACY_SAVE_BACKUP]) {
@@ -98,8 +108,8 @@ export function loadSave(source: SaveStorage | null = browserStorage()): GameSav
 
 export function writeSave(save: GameSave, target: SaveStorage | null = browserStorage()): boolean {
   if (!target) return false;
-  const normalized = { ...save, version: SAVE_VERSION } as GameSave;
-  if (!GameSaveSchema.safeParse(normalized).success || !validateSemantics(normalized)) return false;
+  const text = serializeSave(save);
+  if (text === null) return false;
   let hadLegacySlots = false;
   try {
     // Rotate only a *validated* prior save into the backup slot. A corrupt or
@@ -109,7 +119,7 @@ export function writeSave(save: GameSave, target: SaveStorage | null = browserSt
     if (previous !== null && parseSave(previous) !== null) {
       target.setItem(SAVE_BACKUP, previous);
     }
-    target.setItem(SAVE_KEY, JSON.stringify(normalized));
+    target.setItem(SAVE_KEY, text);
     // The new primary is durable; stale legacy slots may now be reclaimed.
     if (hadLegacySlots) {
       for (const key of [LEGACY_SAVE_KEY, LEGACY_SAVE_BACKUP]) {

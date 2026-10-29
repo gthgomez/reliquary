@@ -261,6 +261,7 @@ export interface Snapshot {
   shopMode: "buy" | "sell";
   shopStock: string[];
   hasSave: boolean;
+  importTicket: number;
   items: Record<string, ItemDef>;
 }
 

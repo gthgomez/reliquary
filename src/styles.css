@@ -326,6 +326,9 @@
   max-height: min(70vh, 520px);
   overflow: auto;
 }
+.save-file-input {
+  display: none;
+}
 .sheet-wide {
   left: 0.7rem;
   width: auto;

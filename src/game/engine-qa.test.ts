@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { ReliquaryGame, TILE } from "./engine.ts";
+import { ReliquaryGame, ROOT_MENU, TILE } from "./engine.ts";
 import { currentStats, makeBeast } from "./content.ts";
 import { playerActsFirst } from "./systems/combat.ts";
-import { loadSave, SAVE_KEY } from "./save.ts";
+import { SAVE_BACKUP, SAVE_KEY, loadSave, parseSave } from "./save.ts";
 import type { Beast } from "./types.ts";
 
 async function withGame(
@@ -188,7 +188,7 @@ test("arrow navigation moves focus to the selected menu button", async () => {
     game.mode = "world";
     game.menu = "root";
     let focused = 0;
-    const buttons = Array.from({ length: 6 }, (_, index) => ({
+    const buttons = Array.from({ length: ROOT_MENU.length }, (_, index) => ({
       disabled: index === 1,
       focus: () => {
         focused = index;
@@ -362,6 +362,100 @@ test("a field item is used at once rather than asking which companion", async ()
     assert.equal(game.packTarget, null);
     assert.equal(game.menu, "items");
     assert.equal(game.inventory.quiet_bell, 0);
+  });
+});
+
+test("exporting hands out the live state as a readable file", async () => {
+  await withGame((game) => {
+    game.mode = "world";
+    game.playerName = "Rowan";
+    game.gold = 275;
+    game.party = [makeBeast("emberkit", 5)];
+    let handed: { name: string; text: string } | null = null;
+    game.exportFile = (name, text) => { handed = { name, text }; return true; };
+    assert.equal(game.exportGame(), true);
+    assert.deepEqual(handed!.name, "reliquary-rowan.json");
+    const read = parseSave(handed!.text);
+    assert.equal(read?.gold, 275);
+    assert.equal(read?.party[0]?.speciesId, "emberkit");
+    game.exportFile = null;
+    assert.equal(game.exportGame(), false);
+    assert.match(game.getSnapshot().toast ?? "", /will not hand out/);
+  });
+});
+
+test("importing an unreadable file changes nothing", async () => {
+  await withGame((game) => {
+    const slots = new Map<string, string>();
+    (globalThis as Record<string, unknown>).localStorage = {
+      getItem: (key: string) => slots.get(key) ?? null,
+      setItem: (key: string, value: string) => slots.set(key, value),
+      removeItem: (key: string) => slots.delete(key),
+    };
+    game.mode = "world";
+    game.playerName = "Rowan";
+    game.gold = 200;
+    game.party = [makeBeast("emberkit", 5)];
+    assert.equal(game.persist(), true);
+    const good = slots.get(SAVE_KEY);
+    assert.equal(game.importGame("not a save at all"), false);
+    assert.match(game.getSnapshot().dialog?.text ?? "", /nothing was changed/i);
+    assert.equal(game.gold, 200);
+    assert.equal(slots.get(SAVE_KEY), good);
+    // Schema-valid JSON that fails semantics (off-map position) is refused too.
+    const offMap = JSON.stringify({ ...game.currentSave(), x: 9_999 });
+    assert.equal(game.importGame(offMap), false);
+    assert.equal(slots.get(SAVE_KEY), good);
+  });
+});
+
+test("importing a valid file replaces the run and keeps the old save as backup", async () => {
+  await withGame((game) => {
+    const slots = new Map<string, string>();
+    (globalThis as Record<string, unknown>).localStorage = {
+      getItem: (key: string) => slots.get(key) ?? null,
+      setItem: (key: string, value: string) => slots.set(key, value),
+      removeItem: (key: string) => slots.delete(key),
+    };
+    game.mode = "world";
+    game.playerName = "Rowan";
+    game.gold = 200;
+    game.party = [makeBeast("emberkit", 5)];
+    assert.equal(game.persist(), true);
+    const previous = slots.get(SAVE_KEY);
+    const incoming = JSON.stringify({
+      ...game.currentSave(),
+      playerName: "Wren",
+      gold: 640,
+      party: [makeBeast("mothwisp", 9)],
+    });
+    assert.equal(game.importGame(incoming), true);
+    assert.equal(game.playerName, "Wren");
+    assert.equal(game.gold, 640);
+    assert.equal(game.party[0]!.speciesId, "mothwisp");
+    assert.equal(game.menu, null);
+    assert.equal(slots.get(SAVE_BACKUP), previous);
+    assert.equal(loadSave({ getItem: (key: string) => slots.get(key) ?? null, setItem() {}, removeItem() {} })?.playerName, "Wren");
+  });
+});
+
+test("the root menu offers Export and Import, and Import asks the shell for a file", async () => {
+  await withGame((game) => {
+    game.mode = "world";
+    game.party = [makeBeast("emberkit", 5)];
+    game.playerName = "Rowan";
+    let handed = 0;
+    game.exportFile = () => { handed += 1; return true; };
+    game.menu = "root";
+    game.menuIndex = ROOT_MENU.indexOf("Export");
+    game.menuConfirm();
+    assert.equal(handed, 1);
+    const before = game.getSnapshot().importTicket;
+    game.menu = "root";
+    game.menuIndex = ROOT_MENU.indexOf("Import");
+    game.menuConfirm();
+    assert.equal(game.getSnapshot().importTicket, before + 1);
+    assert.equal(game.menu, null);
   });
 });
 
