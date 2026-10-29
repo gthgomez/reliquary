@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { makeBeast } from "./content.ts";
-import { LEGACY_SAVE_KEY, SAVE_BACKUP, SAVE_KEY, loadSave, parseSave, writeSave, type SaveStorage } from "./save.ts";
+import { LEGACY_SAVE_KEY, SAVE_BACKUP, SAVE_KEY, loadSave, parseSave, serializeSave, writeSave, type SaveStorage } from "./save.ts";
 import type { GameSave } from "./types.ts";
 
 class MemoryStorage implements SaveStorage {
@@ -40,12 +40,37 @@ test("legacy v1 saves migrate without defaulting corrupt missing fields", () => 
   assert.equal(parseSave(JSON.stringify(missing)), null);
 });
 
+test("pending skill offers round-trip, and unknown offers are rejected", () => {
+  const store = new MemoryStorage();
+  const save = validSave();
+  save.party[0]!.pendingSkills = ["flare"];
+  assert.equal(writeSave(save, store), true);
+  assert.deepEqual(loadSave(store)?.party[0]?.pendingSkills, ["flare"]);
+  const corrupt = { ...validSave() };
+  corrupt.party[0]!.pendingSkills = ["no-such-skill"];
+  assert.equal(writeSave(corrupt, store), false);
+});
+
 test("a valid backup recovers when the primary record is bad", () => {
   const store = new MemoryStorage();
   const save = validSave();
   store.data.set(SAVE_KEY, "{broken");
   store.data.set(SAVE_BACKUP, JSON.stringify(save));
   assert.equal(loadSave(store)?.playerName, "Rowan");
+});
+
+test("export text is a save the game can read back, and bad state exports nothing", () => {
+  const text = serializeSave(validSave());
+  assert.equal(typeof text, "string");
+  assert.equal(parseSave(text!)?.playerName, "Rowan");
+  const broken = validSave();
+  broken.party[0]!.skills = ["no-such-skill"];
+  assert.equal(serializeSave(broken), null);
+  const offMap = validSave();
+  offMap.x = 9_999;
+  assert.equal(serializeSave(offMap), null);
+  const v1Text = serializeSave({ ...validSave(), version: 1 });
+  assert.equal(parseSave(v1Text!)?.version, 2);
 });
 
 test("a corrupt primary never overwrites the only good backup when the new primary write fails", () => {

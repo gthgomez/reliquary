@@ -261,6 +261,12 @@
 .hud-gold {
   font-variant-numeric: tabular-nums;
 }
+.hud-objective {
+  max-width: 40rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .hud-menu {
   margin-left: auto;
   pointer-events: auto;
@@ -320,6 +326,9 @@
   max-height: min(70vh, 520px);
   overflow: auto;
 }
+.save-file-input {
+  display: none;
+}
 .sheet-wide {
   left: 0.7rem;
   width: auto;
@@ -361,6 +370,14 @@
   color: var(--color-copper);
   font-variant-numeric: tabular-nums;
 }
+.target-list button {
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: 0.4rem;
+}
+.target-list button .muted {
+  flex-basis: 100%;
+}
 
 .party-grid,
 .reliq-grid {
@@ -378,6 +395,11 @@
   background: var(--color-cream);
   border-radius: var(--radius-md);
   padding: 0.55rem;
+  border: 1px solid var(--color-line);
+}
+.beast-card-active {
+  border-color: var(--color-copper);
+  box-shadow: 0 0 0 1px var(--color-copper);
 }
 .beast-actions {
   display: flex;

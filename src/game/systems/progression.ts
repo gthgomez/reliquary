@@ -4,6 +4,7 @@ import type { Beast } from "../types.ts";
 export type ProgressionResult = {
   levelsGained: number;
   learnedSkills: string[];
+  queuedSkills: string[];
   evolvedFrom: string | null;
   evolvedInto: string | null;
   evolvedStages: string[];
@@ -16,6 +17,7 @@ export function awardExperience(beast: Beast, xp: number): ProgressionResult {
   const result: ProgressionResult = {
     levelsGained: 0,
     learnedSkills: [],
+    queuedSkills: [],
     evolvedFrom: null,
     evolvedInto: null,
     evolvedStages: [],
@@ -28,10 +30,19 @@ export function awardExperience(beast: Beast, xp: number): ProgressionResult {
     result.levelsGained += 1;
     const species = SPECIES[beast.speciesId]!;
     const learned = species.learnset.find((entry) => entry.level === beast.level);
-    if (learned && SKILLS[learned.skill] && !beast.skills.includes(learned.skill)) {
-      if (beast.skills.length < 4) beast.skills.push(learned.skill);
-      else beast.skills[3] = learned.skill;
-      result.learnedSkills.push(learned.skill);
+    if (learned && SKILLS[learned.skill] && !beast.skills.includes(learned.skill) && !beast.pendingSkills?.includes(learned.skill)) {
+      if (beast.skills.length < 4) {
+        beast.skills.push(learned.skill);
+        result.learnedSkills.push(learned.skill);
+      } else {
+        // A full list must never overwrite silently: queue the skill so the
+        // player can choose to learn (replacing something) or decline. The
+        // bound matches the save schema; current learnsets queue at most a
+        // couple of entries, so it is a guard rather than a game rule.
+        const queue = beast.pendingSkills ?? [];
+        if (queue.length < 16) beast.pendingSkills = [...queue, learned.skill];
+        result.queuedSkills.push(learned.skill);
+      }
     }
     if (species.evolves && beast.level >= species.evolves.level && beast.speciesId === species.id) {
       result.evolvedFrom ??= species.id;

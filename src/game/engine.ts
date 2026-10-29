@@ -10,14 +10,15 @@ import {
 } from "./content.ts";
 import { BLOCKED, ENCOUNTER_TILES, GROUND_TILE, MAPS } from "./maps.ts";
 import { sfxPlay, startMusic, stopMusic, unlockAudio } from "./audio.ts";
-import { hasSave, loadSave, writeSave } from "./save.ts";
+import { hasSave, loadSave, parseSave, serializeSave, writeSave } from "./save.ts";
 import { mathRandom, type RandomSource } from "./rng.ts";
 import { captureChance, captureSucceeds, storeCapturedBeast } from "./systems/capture.ts";
 import { accuracySucceeds, healBeast, playerActsFirst, spendSkillMp, statusSucceeds } from "./systems/combat.ts";
 import { purchaseItem, sellItem } from "./systems/economy.ts";
 import { awardExperience } from "./systems/progression.ts";
 import { moveToLead, renameCreature, transferBeast } from "./systems/party.ts";
-import { applyStatus, tickStatus as tickBeastStatus } from "./systems/status.ts";
+import { currentObjective } from "./systems/objective.ts";
+import { STATUS_ADJECTIVES, applyStatus, dazeFumbles, tickStatus as tickBeastStatus } from "./systems/status.ts";
 import type {
   BattleState,
   Beast,
@@ -34,7 +35,7 @@ export const VIEW_W = 12;
 export const VIEW_H = 9;
 export const VIEW_W_PORT = 10;
 export const VIEW_H_PORT = 16;
-export const ROOT_MENU = ["Party", "Storage", "Reliquary", "Pack", "Save", "Close"] as const;
+export const ROOT_MENU = ["Party", "Storage", "Reliquary", "Pack", "Save", "Export", "Import", "Close"] as const;
 
 type Dialog = {
   speaker: string;
@@ -104,6 +105,14 @@ export class ReliquaryGame {
 	caught: Record<string, boolean> = {};
 	dialog: Dialog | null = null;
 	menu: string | null = null;
+	learnMenu: { uid: string; skill: string } | null = null;
+	packTarget: { item: string; uids: string[] } | null = null;
+	cardAction: { uid: string } | null = null;
+	private learnOrigin: "party" | "storage" = "party";
+	/** Set by the browser shell to hand the player a save file; null means no downloads here. */
+	exportFile: ((name: string, text: string) => boolean) | null = null;
+	/** Bumped to ask the shell to open a file picker; the shell watches this value. */
+	importTicket = 0;
 	menuIndex = 0;
 	battle: BattleState | null = null;
 	toast: string | null = null;
@@ -164,6 +173,7 @@ export class ReliquaryGame {
 			cssH: this.cssH,
 			mapName: MAPS[this.mapId]?.name ?? "",
 			region: MAPS[this.mapId]?.region ?? "",
+			objective: currentObjective(this.flags),
 			gold: this.gold,
 			party: this.party,
 			box: this.box,
@@ -175,7 +185,47 @@ export class ReliquaryGame {
 				speaker: this.dialog.speaker,
 				text: this.dialog.pages[this.dialog.index] ?? "",
 				last: this.dialog.index >= this.dialog.pages.length - 1
-			} : null,
+				} : null,
+			learnMenu:
+				this.menu === "learn" && this.learnMenu
+					? (() => {
+						const beast = this.party.find((item) => item.uid === this.learnMenu!.uid);
+						return beast ? { uid: beast.uid, nickname: beast.nickname, skill: this.learnMenu!.skill } : null;
+					})()
+					: null,
+			packTarget:
+				this.menu === "itemTarget" && this.packTarget
+					? {
+						item: this.packTarget.item,
+						targets: this.packTarget.uids
+							.map((uid) => this.party.find((beast) => beast.uid === uid))
+							.filter((beast): beast is Beast => Boolean(beast))
+							.map((beast) => {
+								const st = currentStats(beast);
+								const def = ITEMS[this.packTarget!.item]!;
+								const note = def.kind === "heal"
+									? `heals about ${def.power ?? 40} vitality`
+									: def.kind === "ether"
+										? `restores about ${def.power ?? 30} mist`
+										: def.kind === "status"
+											? `soothes ${beast.status ?? "an ailment"}`
+											: "wakes the fallen";
+								return {
+									uid: beast.uid,
+									nickname: beast.nickname,
+									hp: `${beast.hp}/${st.hp}`,
+									note,
+								};
+							}),
+					}
+					: null,
+			cardMenu:
+				(this.menu === "party" || this.menu === "storage") && this.cardAction
+					? (() => {
+						const beast = this.party.concat(this.box).find((item) => item.uid === this.cardAction!.uid);
+						return beast ? { uid: beast.uid, nickname: beast.nickname, actions: this.cardActions() } : null;
+					})()
+					: null,
 			menu: this.menu,
 			menuIndex: this.menuIndex,
 			battle: this.battle,
@@ -185,6 +235,7 @@ export class ReliquaryGame {
 			shopMode: this.shopMode,
 			shopStock: SHOP_STOCK,
 			hasSave: this.hasSave,
+			importTicket: this.importTicket,
 			items: ITEMS
 		};
 	}
@@ -364,7 +415,7 @@ export class ReliquaryGame {
 		};
 		window.__controlsTest = this.probe;
 	}
-	startNew(): void {
+	startNew(notice?: string): void {
 		unlockAudio();
 		startMusic();
 		sfxPlay.confirm();
@@ -400,6 +451,7 @@ export class ReliquaryGame {
 		this.encounterLock = false;
 		this.mode = "world";
 		this.openDialog("???", [
+			...(notice ? [notice] : []),
 			"A lantern ticks on the sill. Morning in Elderhall smells of peat and bread.",
 			"You are Rowan, newly sworn Pactwarden. The Crown of Binding cracked a generation ago — beasts walk feral on the old roads.",
 			"Elder Maren is waiting at the Chapter house. Take the lantern. Walk."
@@ -410,7 +462,10 @@ export class ReliquaryGame {
 		startMusic();
 		const s = loadSave();
 		if (!s) {
-			this.startNew();
+			this.hasSave = false;
+			this.startNew(
+				"The last lantern fell silent — its story could not be read. This is a new beginning.",
+			);
 			return;
 		}
 		this.applySave(s);
@@ -435,8 +490,9 @@ export class ReliquaryGame {
 		this.seen = s.seen;
 		this.caught = s.caught;
 	}
-	persist(): boolean {
-		const saved = writeSave({
+	/** The live state as a save. Single source of truth for persisting and exporting. */
+	currentSave(): GameSave {
+		return {
 			version: 2,
 			playerName: this.playerName,
 			mapId: this.mapId,
@@ -451,7 +507,64 @@ export class ReliquaryGame {
 			flags: this.flags,
 			seen: this.seen,
 			caught: this.caught
-		});
+		};
+	}
+	exportGame(): boolean {
+		if (this.mode !== "world") return false;
+		const text = serializeSave(this.currentSave());
+		if (text === null) {
+			this.toastMsg("The lantern cannot be written as it stands.");
+			this.emit();
+			return false;
+		}
+		if (!this.exportFile) {
+			this.toastMsg("This browser will not hand out save files.");
+			this.emit();
+			return false;
+		}
+		const slug = this.playerName.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "wanderer";
+		const written = this.exportFile(`reliquary-${slug}.json`, text);
+		this.toastMsg(written ? "The lantern is copied to a file." : "The file could not be written.");
+		this.emit();
+		return written;
+	}
+	/** Ask the shell to open a file picker; the chosen text comes back to importGame. */
+	requestImport(): void {
+		if (this.mode !== "world" || this.battle) return;
+		this.importTicket += 1;
+		this.emit();
+	}
+	importGame(text: string): boolean {
+		if (this.battle) {
+			this.toastMsg("Not in the middle of a fight.");
+			this.emit();
+			return false;
+		}
+		const save = parseSave(text);
+		if (!save) {
+			this.openDialog("The lantern", [
+				"That file is not a readable Reliquary record. Nothing was changed."
+			]);
+			this.emit();
+			return false;
+		}
+		if (!writeSave(save)) {
+			this.openDialog("The lantern", [
+				"This browser refused the record. Your last save is untouched."
+			]);
+			this.emit();
+			return false;
+		}
+		this.applySave(save);
+		this.menu = null;
+		this.menuIndex = 0;
+		this.hasSave = true;
+		this.toastMsg(`The lantern takes up ${save.playerName} — ${MAPS[save.mapId]?.name ?? save.mapId}.`);
+		this.emit();
+		return true;
+	}
+	persist(): boolean {
+		const saved = writeSave(this.currentSave());
 		if (saved) {
 			this.hasSave = true;
 			this.emit();
@@ -633,7 +746,19 @@ export class ReliquaryGame {
 		}
 		if (this.menu) {
 			if (this.menu === "root") this.menu = null;
-			else this.menu = "root";
+			else if (this.menu === "learn") this.menu = this.learnOrigin;
+			else if (this.cardAction && (this.menu === "party" || this.menu === "storage")) {
+				const uid = this.cardAction.uid;
+				this.cardAction = null;
+				this.menuIndex = this.cardIndexOf(uid);
+				sfxPlay.cancel();
+				this.emit();
+				return;
+			} else if (this.menu === "itemTarget") {
+				this.menu = "items";
+				const item = this.packTarget?.item;
+				this.menuIndex = item ? Math.max(0, this.usableItems().indexOf(item)) : 0;
+			} else this.menu = "root";
 			this.menuIndex = 0;
 			sfxPlay.cancel();
 			this.emit();
@@ -641,7 +766,12 @@ export class ReliquaryGame {
 	};
 	toggleMenu = (): void => {
 		if (this.mode !== "world" || this.dialog || this.battle) return;
-		this.menu = this.menu ? null : "root";
+		if (this.menu) {
+			this.menu = null;
+			this.cardAction = null;
+			this.learnMenu = null;
+			this.packTarget = null;
+		} else this.menu = "root";
 		this.menuIndex = 0;
 		sfxPlay.menu();
 		this.emit();
@@ -650,7 +780,7 @@ export class ReliquaryGame {
 		this.emit();
 	};
 	setLead(uid: string): void {
-		if (this.mode !== "world" || this.menu !== "party" || this.battle || this.dialog) return;
+		if (this.mode !== "world" || (this.menu !== "party" && this.menu !== "storage") || this.battle || this.dialog) return;
 		const party = moveToLead(this.party, uid);
 		if (!party) return;
 		this.party = party;
@@ -658,16 +788,28 @@ export class ReliquaryGame {
 		this.emit();
 	}
 	renamePartyCreature(uid: string, value: string): void {
-		if (this.mode !== "world" || this.menu !== "party" || this.battle || this.dialog) return;
-		const original = this.party.find((beast) => beast.uid === uid);
+		if (this.mode !== "world" || (this.menu !== "party" && this.menu !== "storage") || this.battle || this.dialog) return;
+		const original = this.party.concat(this.box).find((beast) => beast.uid === uid);
 		const renamed = original && renameCreature(original, value);
 		if (!renamed) return;
 		this.party = this.party.map((beast) => beast.uid === uid ? renamed : beast);
+		this.box = this.box.map((beast) => beast.uid === uid ? renamed : beast);
 		this.persist();
 		this.emit();
 	}
+	openLearnMenu(uid: string): void {
+		if (this.mode !== "world" || (this.menu !== "party" && this.menu !== "storage") || this.battle || this.dialog) return;
+		const beast = this.party.find((item) => item.uid === uid);
+		const head = beast?.pendingSkills?.[0];
+		if (!beast || !head) return;
+		this.learnOrigin = this.menu;
+		this.menu = "learn";
+		this.menuIndex = beast.skills.length;
+		this.learnMenu = { uid, skill: head };
+		this.emit();
+	}
 	trainCreature(uid: string): void {
-		if (this.mode !== "world" || this.menu !== "party" || this.battle || this.dialog) return;
+		if (this.mode !== "world" || (this.menu !== "party" && this.menu !== "storage") || this.battle || this.dialog) return;
 		const beast = this.party.find((item) => item.uid === uid);
 		if (!beast || beast.hp <= 0 || beast.level >= 40 || this.gold < 45) return;
 		this.gold -= 45;
@@ -694,7 +836,15 @@ export class ReliquaryGame {
 		}
 		if (this.menu === "root") return ROOT_MENU.length;
 		if (this.menu === "items") return this.usableItems().length;
-		if (this.menu === "party") return this.party.length;
+		if (this.menu === "learn") {
+			const beast = this.party.find((item) => item.uid === this.learnMenu?.uid);
+			return (beast?.skills.length ?? 0) + 1;
+		}
+		if (this.menu === "itemTarget") return this.packTarget?.uids.length ?? 0;
+		if (this.menu === "party" || this.menu === "storage") {
+			if (this.cardAction) return this.cardActions().length;
+			return this.menu === "party" ? this.party.length : this.party.length + this.box.length;
+		}
 		const b = this.battle!;
 		if (!b) return 0;
 		if (b.phase === "command") return b.canFlee ? 6 : 4;
@@ -822,7 +972,7 @@ export class ReliquaryGame {
 			return;
 		}
 		if (id === "innkeep") {
-			this.openDialog(name, ["Fifteen crowns for a clean bed and a whole lantern. Rest?"], () => this.offerInn());
+			this.openDialog(name, ["Fifteen crowns for a clean bed and a whole lantern. (A rest · B not now)"], () => this.offerInn());
 			return;
 		}
 		if (id === "shopkeep") {
@@ -834,7 +984,11 @@ export class ReliquaryGame {
 			return;
 		}
 		if (id === "wayfarer") {
-			this.openDialog(name, ["Tall grass means a fight. That's the old compact, gone feral.", "Sigil stones bind. Common ones break often. Thorn ones less. Don't throw them at a full-health wyrm."]);
+			this.openDialog(name, [
+				"Tall grass means a fight. That's the old compact, gone feral.",
+				"Sigil stones bind. Common ones break often. Thorn ones less. Don't throw them at a full-health wyrm.",
+				"Know the signs: burn eats vigor each turn. Soak drinks mist. Daze makes one grip in four fumble. Bind roots the legs — the bound beast acts last, and cannot flee.",
+			]);
 			return;
 		}
 		if (id === "reedcutter") {
@@ -850,7 +1004,15 @@ export class ReliquaryGame {
 				this.openDialog(name, ["Come back with a pact, green lantern."]);
 				return;
 			}
-			this.openDialog(name, ["Warden Cael. I keep Thornkeep's road.", "Show me the compact is not a hobby. Three of mine against yours. Bind or break."], () => this.startWarden());
+			const strongest = this.party.reduce((max, beast) => Math.max(max, beast.level), 0);
+			const pages = ["Warden Cael. I keep Thornkeep's road."];
+			if (strongest < 12) {
+				pages.push(`Your beast has weathered ${strongest} season${strongest === 1 ? "" : "s"}. Come back after a dozen and this goes lighter. As you like — three of mine against yours: Iron. Chapel. Drake.`);
+			} else {
+				pages.push("Show me the compact is not a hobby. Three of mine against yours — Iron. Chapel. Drake. Bind or break.");
+			}
+			pages.push("(A begin · B later)");
+			this.openDialog(name, pages, () => this.startWarden());
 			return;
 		}
 		if (id === "keep_guard") this.openDialog(name, ["Hall's through the east cottage. Cael doesn't like small talk."]);
@@ -1090,6 +1252,13 @@ export class ReliquaryGame {
 		const b = this.battle!;
 		const me = currentStats(this.party[b.playerIndex]!);
 		const foe = currentStats(b.foes[b.foeIndex]!);
+		if (this.party[b.playerIndex]!.status === "bind") {
+			const roots = "Roots hold fast — no escape.";
+			this.afterPlayer();
+			if (this.battle) this.battle.log = [roots, ...(this.battle.log ?? [])];
+			this.emit();
+			return;
+		}
 		const chance = .4 + (me.spd - foe.spd) / 200;
 		if (this.random() < chance) {
 			b.log = ["You break from the grass."];
@@ -1107,8 +1276,17 @@ export class ReliquaryGame {
 		let me = this.party[b.playerIndex]!;
 		const foe = b.foes[b.foeIndex]!;
 		const playerFirst = playerActsFirst(me, foe, this.random) || act.type === "item" || act.type === "switch" || act.type === "bind";
+		let fumbleNotice: string | null = null;
 		const doPlayer = () => {
 			if (me.hp <= 0) return;
+			if (act.type === "strike" || act.type === "skill") {
+				const name = act.type === "skill" ? SKILLS[act.skill!]?.name ?? act.skill : "Strike";
+				if (dazeFumbles(me, this.random)) {
+					fumbleNotice = `${me.nickname}'s ${name} falters — it cannot find its bearings.`;
+					b.log = [fumbleNotice];
+					return;
+				}
+			}
 			if (act.type === "strike") this.useSkill(me, foe, false, basicStrike(me), true);
 			else if (act.type === "skill") {
 				const sk = SKILLS[act.skill!];
@@ -1156,6 +1334,7 @@ export class ReliquaryGame {
 			this.tickStatus(me);
 			this.tickStatus(foe);
 		}
+		if (fumbleNotice && !b.log.includes(fumbleNotice)) b.log = [fumbleNotice, ...b.log];
 		this.emit();
 	}
 	private useSkill(atk: Beast, def: Beast, foeSide: boolean, skill: Skill, logIt: boolean): void {
@@ -1178,7 +1357,7 @@ export class ReliquaryGame {
 			if (skill.status) {
 				const target = skill.kind === "ward" ? atk : def;
 				applyStatus(target, skill.status);
-				b.log = [`${skill.name}: ${target.nickname} is ${skill.status}.`];
+				b.log = [`${skill.name}: ${target.nickname} is ${STATUS_ADJECTIVES[skill.status]}.`];
 			}
 			sfxPlay.menu();
 			return;
@@ -1200,7 +1379,7 @@ export class ReliquaryGame {
 		if (crit) line += " A true cut.";
 		if (skill.status && statusSucceeds(skill.statusChance ?? 0, this.random) && def.hp > 0) {
 				applyStatus(def, skill.status);
-			line += ` ${def.nickname} is ${skill.status}.`;
+			line += ` ${def.nickname} is ${STATUS_ADJECTIVES[skill.status]}.`;
 		}
 		b.log = [line];
 		if (crit) sfxPlay.crit();
@@ -1209,6 +1388,10 @@ export class ReliquaryGame {
 	private foeTurn(foe: Beast, me: Beast): void {
 		const skills = foe.skills.map((id) => SKILLS[id]).filter(Boolean);
 		const foS = currentStats(foe);
+		if (dazeFumbles(foe, this.random)) {
+			this.battle!.log = [`${foe.nickname}'s grip fumbles — it cannot find its line.`];
+			return;
+		}
 		if (foe.hp < foS.hp * .35) {
 			const heal = skills.find((s) => s.kind === "heal" && foe.mp >= s.mp);
 			if (heal) {
@@ -1282,6 +1465,8 @@ export class ReliquaryGame {
 	private grantXp(b: Beast, xp: number): void {
 		const progression = awardExperience(b, xp);
 		for (const skill of progression.learnedSkills) this.toastMsg(`${b.nickname} learned ${SKILLS[skill]?.name}.`);
+		for (const skill of progression.queuedSkills)
+			this.toastMsg(`${b.nickname} remembers ${SKILLS[skill]?.name} — open the Party card to decide.`);
 		if (progression.evolvedFrom && progression.evolvedInto) {
 			for (const speciesId of progression.evolvedStages) {
 				this.caught[speciesId] = true;
@@ -1450,6 +1635,37 @@ export class ReliquaryGame {
 		}
 		this.emit();
 	}
+	cardIndexOf(uid: string): number {
+		if (this.menu === "party") return Math.max(0, this.party.findIndex((beast) => beast.uid === uid));
+		return Math.max(0, this.party.concat(this.box).findIndex((beast) => beast.uid === uid));
+	}
+	private cardActions(): string[] {
+		const uid = this.cardAction?.uid;
+		if (!uid) return [];
+		const partyIndex = this.party.findIndex((beast) => beast.uid === uid);
+		const beast = partyIndex >= 0 ? this.party[partyIndex]! : this.box.find((item) => item.uid === uid);
+		if (!beast) return [];
+		const actions: string[] = [];
+		if (this.menu === "storage" && partyIndex >= 0) {
+			if (beast.hp > 0 && beast.level < 40 && this.gold >= 45) actions.push("practice");
+			if (beast.pendingSkills?.length) actions.push("learn");
+		}
+		if (this.menu === "party" && partyIndex >= 0) {
+			if (partyIndex > 0 && beast.hp > 0) actions.push("lead");
+			if (beast.hp > 0 && beast.level < 40 && this.gold >= 45) actions.push("practice");
+			if (beast.pendingSkills?.length) actions.push("learn");
+		}
+		if (this.menu === "storage") {
+			if (partyIndex >= 0) actions.push("store");
+			else if (this.party.length < 4) actions.push("in");
+		}
+		actions.push("rename");
+		return actions;
+	}
+	requestRename(uid: string): void {
+		this.selectedUid = uid;
+		this.emit();
+	}
 	menuConfirm(): void {
 		if (this.menu === "root") {
 			const c = ROOT_MENU[this.menuIndex];
@@ -1463,17 +1679,135 @@ export class ReliquaryGame {
 					this.toastMsg("The lantern is written.");
 				}
 				this.menu = null;
+			} else if (c === "Export") {
+				this.exportGame();
+				this.menu = null;
+			} else if (c === "Import") {
+				this.menu = null;
+				this.requestImport();
 			} else this.menu = null;
 			this.menuIndex = 0;
+			this.emit();
+			return;
+		}
+		if (this.menu === "party" || this.menu === "storage") {
+			if (!this.cardAction) {
+				const beast = this.menu === "party"
+					? this.party[this.menuIndex]
+					: this.party.concat(this.box)[this.menuIndex];
+				if (!beast) return;
+				this.cardAction = { uid: beast.uid };
+				this.menuIndex = 0;
+				sfxPlay.menu();
+				this.emit();
+				return;
+			}
+			const actions = this.cardActions();
+			const action = actions[this.menuIndex] ?? "";
+			const uid = this.cardAction.uid;
+			if (!action) {
+				this.cardAction = null;
+				this.menuIndex = this.cardIndexOf(uid);
+				this.emit();
+				return;
+			}
+			if (action === "learn") {
+				this.cardAction = null;
+				this.openLearnMenu(uid);
+				return;
+			}
+			if (action === "rename") {
+				this.cardAction = null;
+				this.requestRename(uid);
+				return;
+			}
+			if (action === "lead") this.setLead(uid);
+			else if (action === "practice") this.trainCreature(uid);
+			else if (action === "store") this.transferBeast(uid, "box");
+			else if (action === "in") this.transferBeast(uid, "party");
+			else this.cardAction = null;
+			this.menuIndex = this.cardIndexOf(uid);
+			this.cardAction = null;
+			this.emit();
+			return;
+		}
+		if (this.menu === "learn") {
+			const beast = this.party.find((item) => item.uid === this.learnMenu?.uid);
+			const queue = beast?.pendingSkills ?? [];
+			const skill = queue[0];
+			if (!beast || !skill || skill !== this.learnMenu!.skill) {
+				this.learnMenu = null;
+				this.menu = this.learnOrigin;
+				this.emit();
+				return;
+			}
+			const learned = SKILLS[skill];
+			if (this.menuIndex < beast.skills.length) {
+				const replacedName = SKILLS[beast.skills[this.menuIndex]!]?.name ?? "old art";
+				beast.skills = beast.skills.map((existing, i) => (i === this.menuIndex ? skill : existing));
+				beast.pendingSkills = queue.slice(1);
+				this.toastMsg(`${beast.nickname} learned ${learned?.name ?? skill}, retiring ${replacedName}.`);
+			} else {
+				beast.pendingSkills = queue.slice(1);
+				this.toastMsg(`${beast.nickname} keeps what it knows. ${learned?.name ?? skill} fades.`);
+			}
+			this.persist();
+			const next = beast.pendingSkills?.[0];
+			if (next) {
+				this.learnMenu = { uid: beast.uid, skill: next };
+				this.menuIndex = beast.skills.length;
+			} else {
+				this.learnMenu = null;
+				this.menu = this.learnOrigin;
+			}
 			this.emit();
 			return;
 		}
 		if (this.menu === "items") {
 			const id = this.usableItems()[this.menuIndex];
 			if (!id) return;
-			const live = this.party[0];
-			if (live) this.useItem(id, live, false);
+			this.packTarget = null;
+			const def = ITEMS[id];
+			if (def?.kind === "field") {
+				if (!this.party[0]) {
+					this.toastMsg("That would do nothing here.");
+					this.emit();
+					return;
+				}
+				this.useItem(id, this.party[0], false);
+				this.persist();
+				this.emit();
+				return;
+			}
+			const eligible: Beast[] = this.party.filter((beast) => this.itemHasEffect(id, beast, false));
+			if (!eligible.length) {
+				this.toastMsg("That would do nothing here.");
+				this.emit();
+				return;
+			}
+			if (eligible.length === 1) {
+				this.useItem(id, eligible[0]!, false);
+				this.persist();
+				this.emit();
+				return;
+			}
+			this.packTarget = { item: id, uids: eligible.map((beast) => beast.uid) };
+			this.menu = "itemTarget";
+			this.menuIndex = 0;
 			this.emit();
+			return;
+		}
+		if (this.menu === "itemTarget") {
+			const item = this.packTarget?.item;
+			const uid = this.packTarget?.uids[this.menuIndex];
+			const beast = this.party.find((member) => member.uid === uid);
+			this.packTarget = null;
+			this.menu = "items";
+			this.menuIndex = item ? Math.max(0, this.usableItems().indexOf(item)) : 0;
+			if (item && beast) this.useItem(item, beast, false);
+			this.persist();
+			this.emit();
+			return;
 		}
 	}
 	private draw(): void {

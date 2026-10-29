@@ -1,5 +1,5 @@
 import type { PointerEvent, ReactNode } from "react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   currentStats,
   expToNext,
@@ -94,6 +94,11 @@ export function Hud({ snap, onMenu }: { snap: Snapshot; onMenu: () => void }) {
       <div className="hud-chip">
         <span className="hud-place">{snap.mapName}</span>
         <span className="hud-muted">{snap.region}</span>
+        {snap.objective ? (
+          <span className="hud-muted hud-objective" title={snap.objective}>
+            {snap.objective}
+          </span>
+        ) : null}
       </div>
       <div className="hud-chip">
         <span className="hud-gold">{snap.gold} cr</span>
@@ -125,10 +130,47 @@ export function DialogBox({ snap, onAdvance }: { snap: Snapshot; onAdvance: () =
 
 export function MenuPanel({ game, snap }: { game: ReliquaryGame; snap: Snapshot }) {
   if (!snap.menu) return null;
+  const actionLabels: Record<string, (nickname: string) => string> = {
+    lead: (n) => `Make ${n} lead`,
+    practice: () => "Practice · 45 cr",
+    learn: () => "Learn a new skill",
+    rename: () => "Rename",
+    store: (n) => `Store ${n}`,
+    in: (n) => `Add ${n} to the party`,
+  };
+  if ((snap.menu === "party" || snap.menu === "storage") && snap.cardMenu) {
+    const beast = [...snap.party, ...snap.box].find((b) => b.uid === snap.cardMenu!.uid);
+    return (
+      <div className="sheet">
+        <h2>{snap.cardMenu.nickname}</h2>
+        <p className="sheet-sub">Choose an action.</p>
+        <ul className="menu-list">
+          {snap.cardMenu.actions.map((action, i) => (
+            <li key={action}>
+              <button
+                type="button"
+                className={i === snap.menuIndex ? "active" : ""}
+                onClick={() => {
+                  game.menuIndex = i;
+                  game.menuConfirm();
+                }}
+              >
+                {actionLabels[action]?.(beast?.nickname ?? "") ?? action}
+              </button>
+            </li>
+          ))}
+        </ul>
+        <button type="button" className="btn-ghost" onClick={() => game.cancel()}>
+          Back
+        </button>
+      </div>
+    );
+  }
   if (snap.menu === "root") {
     return (
       <div className="sheet">
         <h2>Lantern</h2>
+        {snap.objective ? <p className="sheet-sub">Objective — {snap.objective}</p> : null}
         <ul className="menu-list">
           {ROOT_MENU.map((it, i) => (
             <li key={it}>
@@ -148,13 +190,81 @@ export function MenuPanel({ game, snap }: { game: ReliquaryGame; snap: Snapshot 
       </div>
     );
   }
+  if (snap.learnMenu) {
+    const beast = snap.party.find((b) => b.uid === snap.learnMenu!.uid);
+    const skill = SKILLS[snap.learnMenu.skill];
+    return (
+      <div className="sheet">
+        <h2>{skill?.name ?? snap.learnMenu.skill} beckons</h2>
+        <p className="sheet-sub">
+          {beast?.nickname ?? "Your companion"} could learn{" "}
+          {skill ? `${skill.name} — ${skill.desc}` : snap.learnMenu.skill}. Replacing a skill
+          retires it for good.
+        </p>
+        <ul className="menu-list">
+          {beast?.skills.map((existingId, i) => (
+            <li key={existingId}>
+              <button
+                type="button"
+                className={i === snap.menuIndex ? "active" : ""}
+                onClick={() => {
+                  game.menuIndex = i;
+                  game.menuConfirm();
+                }}
+              >
+                Replace {SKILLS[existingId]?.name ?? existingId}
+              </button>
+            </li>
+          ))}
+          <li key="decline">
+            <button
+              type="button"
+              className={(beast?.skills.length ?? 0) === snap.menuIndex ? "active" : ""}
+              onClick={() => {
+                game.menuIndex = beast?.skills.length ?? 0;
+                game.menuConfirm();
+              }}
+            >
+              Decline — keep what it knows
+            </button>
+          </li>
+        </ul>
+        <button type="button" className="btn-ghost" onClick={() => game.cancel()}>
+          Back
+        </button>
+      </div>
+    );
+  }
+  if (snap.menu === "learn") {
+    // Defensive: the engine only opens this menu with a queued offer, but a
+    // stale view must never render an empty sheet with live input.
+    return (
+      <div className="sheet">
+        <h2>No offer to consider</h2>
+        <button type="button" className="btn-ghost" onClick={() => game.cancel()}>
+          Back
+        </button>
+      </div>
+    );
+  }
   if (snap.menu === "party") {
     return (
       <div className="sheet sheet-wide">
         <h2>Party</h2>
         <div className="party-grid">
           {snap.party.map((b, index) => (
-            <BeastCard key={b.uid} beast={b}>
+            <BeastCard key={b.uid} beast={b} selected={index === snap.menuIndex}>
+              {b.pendingSkills?.length ? (
+                <button
+                  type="button"
+                  className="btn-ghost"
+                  onClick={() => game.openLearnMenu(b.uid)}
+                  aria-label={`Teach ${b.nickname} ${SKILLS[b.pendingSkills[0]!]?.name ?? b.pendingSkills[0]}`}
+                >
+                  Learn {SKILLS[b.pendingSkills[0]!]?.name ?? b.pendingSkills[0]}
+                  {b.pendingSkills.length > 1 ? ` (${b.pendingSkills.length})` : ""}
+                </button>
+              ) : null}
               <button
                 type="button"
                 className="btn-ghost"
@@ -193,8 +303,8 @@ export function MenuPanel({ game, snap }: { game: ReliquaryGame; snap: Snapshot 
         </p>
         <h3>Travelling companions</h3>
         <div className="party-grid">
-          {snap.party.map((b) => (
-            <BeastCard key={b.uid} beast={b}>
+          {snap.party.map((b, index) => (
+            <BeastCard key={b.uid} beast={b} selected={index === snap.menuIndex}>
               <button
                 type="button"
                 className="btn-ghost"
@@ -208,8 +318,8 @@ export function MenuPanel({ game, snap }: { game: ReliquaryGame; snap: Snapshot 
         </div>
         <h3>Stored creatures</h3>
         <div className="party-grid">
-          {snap.box.map((b) => (
-            <BeastCard key={b.uid} beast={b}>
+          {snap.box.map((b, boxIndex) => (
+            <BeastCard key={b.uid} beast={b} selected={snap.party.length + boxIndex === snap.menuIndex}>
               <button
                 type="button"
                 className="btn-ghost"
@@ -260,6 +370,37 @@ export function MenuPanel({ game, snap }: { game: ReliquaryGame; snap: Snapshot 
       </div>
     );
   }
+  if (snap.packTarget) {
+    return (
+      <div className="sheet">
+        <h2>Use {ITEMS[snap.packTarget.item]?.name ?? snap.packTarget.item}</h2>
+        <p className="sheet-sub">Choose a companion. Nothing is spent until you pick one.</p>
+        <ul className="menu-list target-list">
+          {snap.packTarget.targets.map((target, i) => (
+            <li key={target.uid}>
+              <button
+                type="button"
+                className={i === snap.menuIndex ? "active" : ""}
+                onClick={() => {
+                  game.menuIndex = i;
+                  game.menuConfirm();
+                }}
+              >
+                {target.nickname} <em>{target.hp}</em>
+                <span className="muted"> — {target.note}</span>
+              </button>
+            </li>
+          ))}
+          {snap.packTarget.targets.length === 0 ? (
+            <li className="empty">Nobody here would benefit.</li>
+          ) : null}
+        </ul>
+        <button type="button" className="btn-ghost" onClick={() => game.cancel()}>
+          Back to the pack
+        </button>
+      </div>
+    );
+  }
   if (snap.menu === "items") {
     const ids = game.usableItems();
     const stones = Object.keys(snap.inventory).filter(
@@ -304,6 +445,14 @@ export function MenuPanel({ game, snap }: { game: ReliquaryGame; snap: Snapshot 
 function RenameCreature({ game, beast }: { game: ReliquaryGame; beast: Beast }) {
   const [name, setName] = useState(beast.nickname);
   const [editing, setEditing] = useState(false);
+  useEffect(() => {
+    if (game.selectedUid === beast.uid) {
+      setName(beast.nickname);
+      setEditing(true);
+      game.selectedUid = null;
+      game.emitPublic();
+    }
+  }, [game.selectedUid, beast.uid, beast.nickname, game]);
   if (!editing)
     return (
       <button
@@ -331,7 +480,12 @@ function RenameCreature({ game, beast }: { game: ReliquaryGame; beast: Beast }) 
     >
       <label>
         Creature name{" "}
-        <input value={name} maxLength={40} onChange={(event) => setName(event.target.value)} />
+        <input
+          value={name}
+          maxLength={40}
+          autoFocus
+          onChange={(event) => setName(event.target.value)}
+        />
       </label>
       <button type="submit" className="btn-ghost" disabled={!name.trim()}>
         Save name
@@ -343,12 +497,12 @@ function RenameCreature({ game, beast }: { game: ReliquaryGame; beast: Beast }) 
   );
 }
 
-function BeastCard({ beast, children }: { beast: Beast; children?: ReactNode }) {
+function BeastCard({ beast, children, selected }: { beast: Beast; children?: ReactNode; selected?: boolean }) {
   const sp = SPECIES[beast.speciesId]!;
   const st = currentStats(beast);
   const t = TEMPERAMENTS[beast.temperament];
   return (
-    <article className="beast-card">
+    <article className={`beast-card${selected ? " beast-card-active" : ""}`}>
       <img src={`/game/sprites/${beast.speciesId}.png`} alt="" />
       <div>
         <h3>

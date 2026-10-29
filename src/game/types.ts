@@ -91,6 +91,7 @@ export interface Beast {
   ivs: Stats;
   temperament: Temperament;
   skills: string[];
+  pendingSkills?: string[];
   status: StatusId | null;
   statusTurns: number;
 }
@@ -206,6 +207,30 @@ export interface DialogView {
   last: boolean;
 }
 
+export interface LearnMenuView {
+  uid: string;
+  nickname: string;
+  skill: string;
+}
+
+export interface PackTargetOption {
+  uid: string;
+  nickname: string;
+  hp: string;
+  note: string;
+}
+
+export interface PackTargetView {
+  item: string;
+  targets: PackTargetOption[];
+}
+
+export interface CardMenuView {
+  uid: string;
+  nickname: string;
+  actions: string[];
+}
+
 export interface Snapshot {
   mode: Mode;
   loadProgress: number;
@@ -215,6 +240,7 @@ export interface Snapshot {
   cssH: number;
   mapName: string;
   region: string;
+  objective: string | null;
   gold: number;
   party: Beast[];
   box: Beast[];
@@ -223,6 +249,9 @@ export interface Snapshot {
   seen: Record<string, boolean>;
   caught: Record<string, boolean>;
   dialog: DialogView | null;
+  learnMenu: LearnMenuView | null;
+  packTarget: PackTargetView | null;
+  cardMenu: CardMenuView | null;
   menu: string | null;
   menuIndex: number;
   battle: BattleState | null;
@@ -232,6 +261,7 @@ export interface Snapshot {
   shopMode: "buy" | "sell";
   shopStock: string[];
   hasSave: boolean;
+  importTicket: number;
   items: Record<string, ItemDef>;
 }
 

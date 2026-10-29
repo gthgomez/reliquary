@@ -10,7 +10,9 @@ const musicOn = true;
 
 export function unlockAudio(): void {
   if (!ctx) {
-    const AC = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+    if (typeof window === "undefined") return;
+    const AC = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    if (!AC) return;
     ctx = new AC({ latencyHint: "interactive" });
     master = ctx.createGain();
     music = ctx.createGain();
@@ -28,6 +30,7 @@ export function unlockAudio(): void {
       if (document.visibilityState === "hidden" && ctx?.state === "running") void ctx.suspend();
     });
   }
+  if (!ctx) return;
   if (ctx.state === "suspended") void ctx.resume();
 }
 
