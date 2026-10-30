@@ -1,0 +1,136 @@
+{
+  "sourceRevision": "64e2a2466b6146bc2d2c8e9934294fa7a52170c1",
+  "recordedAtUtc": "2026-10-30T12:05:45Z",
+  "viewport": {
+    "width": 1280,
+    "height": 800
+  },
+  "fps": 10,
+  "frames": 538,
+  "durationSeconds": 53.8,
+  "audio": false,
+  "browser": "154.0.8037.57",
+  "inputs": "Real keyboard and visible UI buttons; fresh isolated browser context",
+  "debugStateMutation": false,
+  "randomness": "Unmodified game randomness",
+  "events": [
+    {
+      "seconds": 0.0,
+      "event": "title"
+    },
+    {
+      "seconds": 8.22,
+      "event": "fresh-game",
+      "position": {
+        "map": "home",
+        "x": 5,
+        "y": 7,
+        "mode": "world",
+        "dialog": false
+      }
+    },
+    {
+      "seconds": 10.16,
+      "event": "screenshot",
+      "file": "exploration.png",
+      "position": {
+        "map": "elderhall",
+        "x": 5,
+        "y": 10,
+        "mode": "world",
+        "dialog": false
+      }
+    },
+    {
+      "seconds": 14.67,
+      "event": "binding-grove"
+    },
+    {
+      "seconds": 14.74,
+      "event": "screenshot",
+      "file": "starters.png",
+      "position": {
+        "map": "grove",
+        "x": 5,
+        "y": 6,
+        "mode": "world",
+        "dialog": false
+      }
+    },
+    {
+      "seconds": 23.79,
+      "event": "starter-bound",
+      "species": "emberkit"
+    },
+    {
+      "seconds": 29.18,
+      "event": "briar-road"
+    },
+    {
+      "seconds": 33.49,
+      "event": "wild-encounter"
+    },
+    {
+      "seconds": 33.58,
+      "event": "screenshot",
+      "file": "battle.png",
+      "position": {
+        "map": "briar_road",
+        "x": 7,
+        "y": 22,
+        "mode": "battle",
+        "dialog": false
+      }
+    },
+    {
+      "seconds": 38.93,
+      "event": "binding-attempt"
+    },
+    {
+      "seconds": 49.7,
+      "event": "screenshot",
+      "file": "party.png",
+      "position": {
+        "map": "briar_road",
+        "x": 7,
+        "y": 22,
+        "mode": "world",
+        "dialog": false
+      }
+    },
+    {
+      "seconds": 49.7,
+      "event": "party"
+    },
+    {
+      "seconds": 53.7,
+      "event": "completed"
+    }
+  ],
+  "pageErrors": [],
+  "assetHttpErrors": [],
+  "failure": null,
+  "media": {
+    "exploration.png": {
+      "bytes": 107431,
+      "sha256": "8ed07cbbb3551f8a67dbf5ea3ecea6a47f6375fb28d954705045b59387ec21bd"
+    },
+    "starters.png": {
+      "bytes": 70054,
+      "sha256": "ddadf879081b7f4b141fed4b69fd7b2e5f87f747c2264767a5df69e55889ca86"
+    },
+    "party.png": {
+      "bytes": 61420,
+      "sha256": "e37e0299bcf21b4140d20ad6a739911cae60d62d719b7dc19c9598ddf34a906c"
+    },
+    "gameplay.mp4": {
+      "bytes": 1597076,
+      "sha256": "0e34942822bf982ea8d431c13589dac9acf50df4c3af4425593945b253996b4b"
+    },
+    "battle.png": {
+      "bytes": 374043,
+      "sha256": "20b556d5451639f9f5348397c469e786fb30926543099c69c0cbcfa7602e4645"
+    }
+  },
+  "url": "http://127.0.0.1:8081/"
+}
