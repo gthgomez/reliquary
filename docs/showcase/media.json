@@ -1,0 +1,47 @@
+{
+  "gameRevision": "64e2a2466b6146bc2d2c8e9934294fa7a52170c1",
+  "media": {
+    "gameplay.mp4": {
+      "bytes": 1597076,
+      "sha256": "0e34942822bf982ea8d431c13589dac9acf50df4c3af4425593945b253996b4b"
+    },
+    "preview.gif": {
+      "bytes": 149537,
+      "sha256": "a9884c8a3aae8124a7ef5ad04882ad6b4effdbb0e70642b7db08b252be31d256"
+    },
+    "exploration.png": {
+      "bytes": 107431,
+      "sha256": "8ed07cbbb3551f8a67dbf5ea3ecea6a47f6375fb28d954705045b59387ec21bd"
+    },
+    "starters.png": {
+      "bytes": 70054,
+      "sha256": "ddadf879081b7f4b141fed4b69fd7b2e5f87f747c2264767a5df69e55889ca86"
+    },
+    "battle.png": {
+      "bytes": 374043,
+      "sha256": "20b556d5451639f9f5348397c469e786fb30926543099c69c0cbcfa7602e4645"
+    },
+    "party.png": {
+      "bytes": 61420,
+      "sha256": "e37e0299bcf21b4140d20ad6a739911cae60d62d719b7dc19c9598ddf34a906c"
+    },
+    "capture.json": {
+      "bytes": 2917,
+      "sha256": "e5d0e628aba5fbe494c1f625c8e4e5365f8e2357dac19de36bee86740e245387"
+    }
+  },
+  "publicationScripts": {
+    "capture.py": {
+      "bytes": 13519,
+      "sha256": "08372826f04878de309f27f5f890df08b7f374fdc34df5ec74cc065391448a4c"
+    },
+    "gallery.mjs": {
+      "bytes": 2126,
+      "sha256": "7f4e769163b86cf492e949ee2958534b93243ad44e3dc8ff706b8a69902b6652"
+    },
+    "verify.py": {
+      "bytes": 5225,
+      "sha256": "5721d65a27e2c36d437c71558b49804488b625e69cc52b3e8d66c269e2947f23"
+    }
+  }
+}
