@@ -5,7 +5,7 @@ import { SPECIES, ELEMENTS } from "../../src/game/content.ts";
 
 const escape = (value) => String(value).replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;");
 const species = Object.values(SPECIES);
-const card = (sp) => `<td align="center"><img src="../../public/game/sprites/${sp.id}.png" alt="${escape(sp.name)} creature artwork" width="144"><br><strong>${escape(sp.name)}</strong><br>${escape(sp.epithet)}<br>${sp.elements.map((id) => escape(ELEMENTS[id].name)).join(" · ")}<br><sub>${escape(sp.description)}</sub></td>`;
+const card = (sp) => `<td align="center"><img src="../../public/game/sprites/${sp.id}.png" alt="${escape(sp.name)} creature artwork" width="144"><br><strong>${escape(sp.name)}</strong><br>${escape(sp.epithet)}<br>${sp.elements.map((id) => escape(ELEMENTS[id].name)).join(" · ")}<p>${escape(sp.description)}</p></td>`;
 const rows = [];
 for (let i = 0; i < species.length; i += 2) {
   rows.push(`<tr>\n${species.slice(i, i + 2).map(card).join("\n")}\n${i + 1 === species.length ? "<td></td>\n" : ""}</tr>`);
