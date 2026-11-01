@@ -1,4 +1,5 @@
-import { BLOCKED, MAPS } from "../maps.ts";
+import { BLOCKED } from "../world/tiles.ts";
+import { MAPS } from "../maps.ts";
 import type { Dir, MapDef } from "../types.ts";
 
 export function mapIsRectangular(map: MapDef): boolean {

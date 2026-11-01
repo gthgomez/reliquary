@@ -8,10 +8,14 @@ import {
   SPECIES,
   typeMod,
 } from "./content.ts";
-import { BLOCKED, ENCOUNTER_TILES, GROUND_TILE, MAPS } from "./maps.ts";
+import { BLOCKED, GROUND_TILE, MAPS } from "./maps.ts";
+import { FIXED_ENCOUNTERS } from "./encounters.ts";
 import { sfxPlay, startMusic, stopMusic, unlockAudio } from "./audio.ts";
-import { hasSave, loadSave, parseSave, serializeSave, writeSave } from "./save.ts";
+import { hasSave, loadSave, parseSave, SAVE_VERSION, serializeSave, WORLD_REVISION, writeSave } from "./save.ts";
+import { collectGameAssets } from "./assets.ts";
 import { mathRandom, type RandomSource } from "./rng.ts";
+import { battleCommands, encounterAt, rollEncounter } from "./world/encounters.ts";
+import { isOccupied } from "./world/movement.ts";
 import { captureChance, captureSucceeds, storeCapturedBeast } from "./systems/capture.ts";
 import { accuracySucceeds, healBeast, playerActsFirst, spendSkillMp, statusSucceeds } from "./systems/combat.ts";
 import { purchaseItem, sellItem } from "./systems/economy.ts";
@@ -137,6 +141,8 @@ export class ReliquaryGame {
 	animFn: (() => void) | null = null;
 	encounterLock = false;
 	hasSave = false;
+	private settledSteps = 0;
+	private safeCheckpoint: GameSave | null = null;
 	lifecycle: "constructed" | "booted" | "stopped" = "constructed";
 	private readonly random: RandomSource;
 	private bootToken = 0;
@@ -145,6 +151,7 @@ export class ReliquaryGame {
 		if (document.visibilityState === "hidden") {
 			this.keys.clear();
 			this.injected = null;
+			if (this.mode === "battle") return;
 			if (this.mode !== "title" && this.mode !== "boot") this.persist();
 		}
 	};
@@ -469,6 +476,7 @@ export class ReliquaryGame {
 			return;
 		}
 		this.applySave(s);
+		this.captureCheckpoint();
 		this.mode = "world";
 		this.toastMsg("The lantern remembers.");
 		this.emit();
@@ -493,7 +501,8 @@ export class ReliquaryGame {
 	/** The live state as a save. Single source of truth for persisting and exporting. */
 	currentSave(): GameSave {
 		return {
-			version: 2,
+			version: SAVE_VERSION,
+			worldRevision: WORLD_REVISION,
 			playerName: this.playerName,
 			mapId: this.mapId,
 			x: this.tx,
@@ -580,17 +589,10 @@ export class ReliquaryGame {
 		return m.ground[y]![x]!;
 	}
 	private occupied(x: number, y: number): boolean {
-		const m = this.map();
-		const g = this.groundAt(x, y);
-		if (BLOCKED.has(g)) return true;
-		for (const o of m.objects) {
-			if (!o.solid) continue;
-			if (this.flags.starter && o.id.startsWith("st_")) continue;
-			const fy = o.y + o.h - o.foot;
-			if (x >= o.x && x < o.x + o.w && y >= fy && y < o.y + o.h) return true;
-		}
-		for (const n of m.npcs) if (n.x === x && n.y === y) return true;
-		return false;
+		return isOccupied(this.map(), this.flags, x, y);
+	}
+	private captureCheckpoint(): void {
+		this.safeCheckpoint = this.currentSave();
 	}
 	private wantDir(): Dir | null {
 		const k = this.held();
@@ -670,10 +672,15 @@ export class ReliquaryGame {
 			return;
 		}
 		if (this.quietBell > 0) this.quietBell -= 1;
-		const g = this.groundAt(this.tx, this.ty);
-		if (ENCOUNTER_TILES.has(g) && this.party.length && this.quietBell <= 0 && !this.encounterLock) {
-			const rate = this.map().encounterRate;
-			if (this.random() < rate) this.startWild();
+		this.settledSteps += 1;
+		if (this.settledSteps >= 8) {
+			this.settledSteps = 0;
+			this.persist();
+		}
+		const def = encounterAt(this.map(), this.tx, this.ty);
+		if (def && this.party.length && this.quietBell <= 0 && !this.encounterLock) {
+			const rolled = rollEncounter(def, this.random);
+			if (rolled) this.startWildFrom(rolled.species, rolled.level);
 		}
 	}
 	private warp(to: string, x: number, y: number, dir: Dir): void {
@@ -847,7 +854,7 @@ export class ReliquaryGame {
 		}
 		const b = this.battle!;
 		if (!b) return 0;
-		if (b.phase === "command") return b.canFlee ? 6 : 4;
+		if (b.phase === "command") return battleCommands(b).length;
 		if (b.phase === "skills") return this.party[b.playerIndex]?.skills.length ?? 0;
 		if (b.phase === "items") return this.usableItems().length;
 		if (b.phase === "bind") return [
@@ -887,7 +894,9 @@ export class ReliquaryGame {
 			enter_guild: ["guild_in", 6, 8],
 			enter_inn: ["inn_in", 6, 7],
 			enter_shop: ["shop_in", 5, 6],
-			enter_cave: ["ashenbarrow", 9, 16],
+			enter_cave: ["ashenbarrow", 9, 15],
+			enter_cellar: ["elderhall_cellar", 7, 10],
+			enter_ashen_north: ["ashenbarrow", 9, 2],
 			enter_hall: ["warden_hall", 7, 10],
 			enter_keep_inn: ["keep_inn", 6, 7],
 			enter_keep_shop: ["keep_shop", 5, 6],
@@ -928,6 +937,7 @@ export class ReliquaryGame {
 				sign_wildwood: "WILDWOOD — Ashenbarrow in the stone. Thornkeep beyond the trees.",
 				sign_mire: "MIREFEN — watch your step. The peat is older than the keep.",
 				sign_keep: "THORNKEEP — Warden Cael holds the first Mark.",
+				sign_crownpool: "CROWNPOOL — relic basin. Slimes gather where the crown cracked.",
 			};
 			this.openDialog("Sign", [signs[id] ?? "The letters have worn away."]);
 			return;
@@ -943,11 +953,52 @@ export class ReliquaryGame {
 				chest_wood: ["greater_tonic", 2],
 				chest_mire: ["relic_sigil", 1],
 				chest_cave: ["phoenix_ash", 1],
+				chest_cellar: ["tonic", 2],
 			};
 			const [item, n] = loot[id] ?? ["tonic", 1];
 			this.give(item, n);
 			sfxPlay.confirm();
 			this.openDialog("", [`Inside: ${ITEMS[item]?.name ?? item} ×${n}.`]);
+			this.persist();
+			return;
+		}
+		if (id === "slime_king") {
+			if (this.flags.defeated_slime_king) {
+				this.openDialog("", ["The basin is quiet now. Relic-light ripples without threat."]);
+				return;
+			}
+			if (!this.flags.starter) {
+				this.openDialog("", ["Something vast shifts in the water — not yet your fight."]);
+				return;
+			}
+			this.openDialog("", ["Challenge the Slime King? (A yes · B no)"], () => {
+				if (!this.startEncounter("slime_king")) this.openDialog("", ["The compact will not begin here."]);
+			});
+			return;
+		}
+		if (id === "goblin_scout") {
+			if (this.flags.defeated_goblin_scout) {
+				this.openDialog("Scout", ["You already proved your road-manners. The camp remembers."]);
+				return;
+			}
+			this.openDialog("Scout", ["I can show you the Wildwood paths — or we can settle it with pacts. (A duel · B talk)"], () => {
+				if (!this.startEncounter("goblin_scout")) this.openDialog("Scout", ["Another time. The east exit is marked."]);
+			});
+			return;
+		}
+		if (id === "goblin_king") {
+			if (this.flags.defeated_goblin_king) {
+				this.openDialog("Goblin King", ["The compact holds. My beasts sleep."]);
+				return;
+			}
+			if (!this.flags.trial) {
+				this.openDialog("Goblin King", ["Bring a Thorn Mark if you want a king's duel. Until then — trade, or leave."]);
+				return;
+			}
+			this.openDialog("Goblin King", ["A diplomatic compact, beast against beast. (A accept · B decline)"], () => {
+				if (!this.startEncounter("goblin_king")) this.openDialog("Goblin King", ["Wise. The fire is warm either way."]);
+			});
+			return;
 		}
 	}
 	private talk(id: string, name: string): void {
@@ -1016,6 +1067,7 @@ export class ReliquaryGame {
 			return;
 		}
 		if (id === "keep_guard") this.openDialog(name, ["Hall's through the east cottage. Cael doesn't like small talk."]);
+		if (id === "goblin_trader") this.openDialog(name, ["Scrap for sale, stories for free. The camp keeps to itself — unless you pick a fight."]);
 	}
 	private offerInn(): void {
 		if (this.gold < 15) {
@@ -1065,12 +1117,38 @@ export class ReliquaryGame {
 		this.toastT = 2.2;
 		this.emit();
 	}
+	private startWildFrom(speciesId: string, level: number): void {
+		const foe = makeBeast(speciesId, level, { random: this.random });
+		this.seen[speciesId] = true;
+		this.encounterLock = true;
+		this.captureCheckpoint();
+		sfxPlay.encounter();
+		this.battle = {
+			kind: "wild",
+			bg: this.map().battleBg,
+			playerIndex: this.firstAble(),
+			foes: [foe],
+			foeIndex: 0,
+			log: [`A wild ${SPECIES[speciesId].name} steps from the ${this.map().battleBg}.`],
+			phase: "command",
+			menuIndex: 0,
+			shake: 0,
+			catchStone: null,
+			pendingXp: 0,
+			escaped: false,
+			canFlee: true,
+			canBind: true,
+		};
+		this.mode = "battle";
+		this.menuIndex = 0;
+		this.emit();
+	}
 	private startWild(): void {
 		const table = this.map().encounters;
 		if (!table.length) return;
 		const total = table.reduce((s, e) => s + e.w, 0);
 		let r = this.random() * total;
-		let pick = table[0];
+		let pick = table[0]!;
 		for (const e of table) {
 			r -= e.w;
 			if (r <= 0) {
@@ -1079,28 +1157,44 @@ export class ReliquaryGame {
 			}
 		}
 		const level = pick.min + Math.floor(this.random() * (pick.max - pick.min + 1));
-		const foe = makeBeast(pick.species, level, { random: this.random });
-		this.seen[pick.species] = true;
-		this.encounterLock = true;
+		this.startWildFrom(pick.species, level);
+	}
+	startEncounter(id: string): boolean {
+		if (this.mode !== "world" || this.battle) return false;
+		const def = FIXED_ENCOUNTERS[id];
+		if (!def || def.mapId !== this.mapId) return false;
+		if (def.requiredFlags.some((flag) => !this.flags[flag])) return false;
+		if (this.flags[def.onceFlag]) return false;
+		const foes = def.foes.map((f) => makeBeast(f.speciesId, f.level, { random: this.random }));
+		foes.forEach((f) => {
+			this.seen[f.speciesId] = true;
+		});
+		this.captureCheckpoint();
 		sfxPlay.encounter();
+		const trainer =
+			id === "goblin_scout" ? "Goblin Scout" : id === "goblin_king" ? "Goblin King" : undefined;
 		this.battle = {
-			kind: "wild",
+			kind: "fixed",
 			bg: this.map().battleBg,
 			playerIndex: this.firstAble(),
-			foes: [foe],
+			foes,
 			foeIndex: 0,
-			log: [`A wild ${SPECIES[foe.speciesId].name} steps from the ${this.map().battleBg}.`],
+			trainerName: trainer,
+			log: [...def.intro, `${SPECIES[foes[0]!.speciesId].name} is sent out.`],
 			phase: "command",
 			menuIndex: 0,
 			shake: 0,
 			catchStone: null,
 			pendingXp: 0,
 			escaped: false,
-			canFlee: true
+			canFlee: def.canFlee,
+			canBind: def.canBind,
+			encounterId: id,
 		};
 		this.mode = "battle";
 		this.menuIndex = 0;
 		this.emit();
+		return true;
 	}
 	private startWarden(): void {
 		const foes = [
@@ -1111,6 +1205,7 @@ export class ReliquaryGame {
 		foes.forEach((f) => {
 			this.seen[f.speciesId] = true;
 		});
+		this.captureCheckpoint();
 		sfxPlay.encounter();
 		this.battle = {
 			kind: "trial",
@@ -1126,7 +1221,8 @@ export class ReliquaryGame {
 			catchStone: null,
 			pendingXp: 0,
 			escaped: false,
-			canFlee: false
+			canFlee: false,
+			canBind: false,
 		};
 		this.mode = "battle";
 		this.emit();
@@ -1148,19 +1244,7 @@ export class ReliquaryGame {
 			return;
 		}
 		if (b.phase === "command") {
-			const cmds = b.canFlee ? [
-				"Strike",
-				"Skill",
-				"Item",
-				"Bind",
-				"Party",
-				"Flee"
-			] : [
-				"Strike",
-				"Skill",
-				"Item",
-				"Party"
-			];
+			const cmds = battleCommands(b);
 			const c = cmds[b.menuIndex % cmds.length];
 			if (c === "Strike") this.playerAction({ type: "strike" });
 			else if (c === "Skill") {
@@ -1436,7 +1520,9 @@ export class ReliquaryGame {
 			this.emit();
 			return;
 		}
-		const gold = 8 + foe.level * 3 + (b.kind === "trial" ? 80 : 0);
+		const gold = b.kind === "fixed" && b.encounterId
+			? FIXED_ENCOUNTERS[b.encounterId]?.rewards.gold ?? 0
+			: 8 + foe.level * 3 + (b.kind === "trial" ? 80 : 0);
 		this.gold += gold;
 		b.log = [`${sp.name} falls. The road yields ${gold} crowns.`];
 		b.phase = "win";
@@ -1444,6 +1530,12 @@ export class ReliquaryGame {
 			this.flags.trial = true;
 			this.give("thorn_sigil", 3);
 			this.give("greater_tonic", 2);
+		} else if (b.kind === "fixed" && b.encounterId) {
+			const def = FIXED_ENCOUNTERS[b.encounterId];
+			if (def && !this.flags[def.onceFlag]) {
+				this.flags[def.onceFlag] = true;
+				for (const [item, count] of Object.entries(def.rewards.items)) this.give(item, count);
+			}
 		}
 		this.emit();
 	}
@@ -1478,8 +1570,8 @@ export class ReliquaryGame {
 	}
 	private tryCatch(stone: string): void {
 		const b = this.battle!;
-		if (b.kind !== "wild") {
-			b.log = ["You cannot bind a Warden's pact."];
+		if (!b.canBind || b.kind !== "wild") {
+			b.log = ["You cannot bind this foe."];
 			b.phase = "command";
 			this.emit();
 			return;
@@ -1572,9 +1664,11 @@ export class ReliquaryGame {
 		if (this.battle) this.battle.log = [`${def.name} on ${target.nickname}.`];
 	}
 	private endBattle(victory: boolean): void {
+		const wasTrial = this.battle?.kind === "trial";
 		this.battle = null;
-		this.mode = this.flags.trial && victory && !this.flags.ending ? this.maybeVictory() : "world";
+		this.mode = wasTrial && victory && !this.flags.ending ? this.maybeVictory() : "world";
 		this.encounterLock = false;
+		this.captureCheckpoint();
 		this.persist();
 		this.emit();
 	}
@@ -1952,64 +2046,7 @@ function basicStrike(b: Beast): Skill {
 	};
 }
 function collectPaths(): [string, string][] {
-	const out: [string, string][] = [];
-	for (const t of [
-		"grass",
-		"dirt",
-		"water",
-		"cobble",
-		"wood",
-		"cave",
-		"marsh",
-		"wall"
-	]) out.push([`tile_${t}`, `/game/tiles/${t}.png`]);
-	for (const d of [
-		"down",
-		"left",
-		"right",
-		"up"
-	]) for (let i = 0; i < 4; i++) out.push([`player_${d}${i}`, `/game/sprites/player/${d}${i}.png?v=4`]);
-	for (const id of Object.keys(SPECIES)) out.push([`sprite_${id}`, `/game/sprites/${id}.png`]);
-	for (const n of [
-		"elder",
-		"innkeep",
-		"shopkeep",
-		"warden",
-		"guard",
-		"traveler"
-	]) out.push([`npc_${n}`, `/game/sprites/npc/${n}.png`]);
-	for (const p of [
-		"tree",
-		"cottage",
-		"inn",
-		"shop",
-		"shrine",
-		"sign",
-		"barrel",
-		"crate",
-		"shrub",
-		"boulder",
-		"fence",
-		"tallgrass",
-		"pot",
-		"well",
-		"bed",
-		"table",
-		"chair",
-		"bookshelf",
-		"hearth",
-		"counter"
-	]) out.push([`prop_${p}`, `/game/props/${p}.png`]);
-	for (const bg of [
-		"grass",
-		"forest",
-		"cave",
-		"marsh",
-		"keep"
-	]) out.push([`bg_${bg}`, `/game/bg/bg_${bg}.jpg`]);
-	out.push(["bg_title", "/game/bg/title.jpg"]);
-	out.push(["ui_panel", "/game/ui/panel.png"]);
-	return out;
+	return collectGameAssets().map((entry) => [entry.key, entry.url]);
 }
 
 export type { Snapshot } from "./types";

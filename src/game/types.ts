@@ -78,6 +78,8 @@ export interface Species {
   description: string;
   learnset: { level: number; skill: string }[];
   evolves?: { level: number; into: string };
+  /** Seen-only legends do not count toward bind completion. */
+  collection?: "pact" | "legend";
 }
 
 export interface Beast {
@@ -143,6 +145,26 @@ export interface Encounter {
   w: number;
 }
 
+export interface EncounterRegion {
+  id: string;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  tiles: string[];
+  rate: number;
+  encounters: Encounter[];
+}
+
+export interface Decoration {
+  sprite: string;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  layer: "ground" | "canopy";
+}
+
 export interface MapDef {
   id: string;
   name: string;
@@ -151,14 +173,30 @@ export interface MapDef {
   battleBg: BattleBg;
   encounterRate: number;
   encounters: Encounter[];
+  encounterTiles?: string[];
+  encounterRegions?: EncounterRegion[];
+  decorations?: Decoration[];
   objects: MapObj[];
   npcs: MapNpc[];
   warps: MapWarp[];
   spawn: { x: number; y: number };
 }
 
+export interface FixedEncounterDef {
+  id: string;
+  kind: "warden" | "boss";
+  mapId: string;
+  foes: { speciesId: string; level: number }[];
+  canBind: boolean;
+  canFlee: boolean;
+  requiredFlags: string[];
+  onceFlag: string;
+  rewards: { gold: number; items: Record<string, number> };
+  intro: string[];
+}
+
 export interface BattleState {
-  kind: "wild" | "warden" | "trial";
+  kind: "wild" | "warden" | "trial" | "fixed";
   bg: BattleBg;
   playerIndex: number;
   foes: Beast[];
@@ -182,10 +220,13 @@ export interface BattleState {
   pendingXp: number;
   escaped: boolean;
   canFlee: boolean;
+  canBind: boolean;
+  encounterId?: string;
 }
 
 export interface GameSave {
   version: number;
+  worldRevision?: number;
   playerName: string;
   mapId: string;
   x: number;

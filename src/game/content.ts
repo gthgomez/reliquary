@@ -99,8 +99,9 @@ const S = (
   description: string,
   learnset: { level: number; skill: string }[],
   evolves?: { level: number; into: string },
+  collection?: "pact" | "legend",
 ): Species => ({
-  id, name, epithet, elements, base, catchRate, expYield, description, learnset, evolves,
+  id, name, epithet, elements, base, catchRate, expYield, description, learnset, evolves, collection,
 });
 
 export const SPECIES: Record<string, Species> = {
@@ -194,6 +195,36 @@ export const SPECIES: Record<string, Species> = {
     { hp: 48, mp: 72, atk: 36, def: 40, mag: 88, res: 70, spd: 64, lck: 58 },
     20, 170, "Peat-dark water walking. Reed-hair and two pale lantern eyes. It bargains, then it binds.",
     [{ level: 1, skill: "torrent" }, { level: 1, skill: "shade" }, { level: 12, skill: "soak" }, { level: 20, skill: "fenwork" }, { level: 28, skill: "drowse" }]),
+  dewslime: S("dewslime", "Dewslime", "Roadside ooze", ["tide"],
+    { hp: 42, mp: 38, atk: 38, def: 42, mag: 44, res: 40, spd: 32, lck: 35 },
+    120, 48, "A bead of marsh-water that learned to hop the Briar verge after rain.",
+    [{ level: 1, skill: "torrent" }, { level: 1, skill: "soak" }, { level: 8, skill: "rootgrasp" }, { level: 12, skill: "tideburst" }],
+    { level: 12, into: "bogslime" }),
+  bogslime: S("bogslime", "Bogslime", "Basin ooze", ["tide", "verdant"],
+    { hp: 58, mp: 48, atk: 52, def: 55, mag: 58, res: 52, spd: 38, lck: 40 },
+    60, 92, "Crownpool slime grown heavy with relic silt and lily roots.",
+    [{ level: 1, skill: "torrent" }, { level: 1, skill: "soak" }, { level: 12, skill: "tideburst" }, { level: 18, skill: "bloom" }]),
+  slime_king: S("slime_king", "Slime King", "Relic colony", ["tide", "light"],
+    { hp: 95, mp: 80, atk: 70, def: 75, mag: 90, res: 85, spd: 45, lck: 55 },
+    30, 220, "Many slimes wearing one crown of glass. Seen, not bound.",
+    [{ level: 1, skill: "torrent" }, { level: 1, skill: "tideburst" }], undefined, "legend"),
+  gutterrat: S("gutterrat", "Gutterrat", "Cellar scrapper", ["steel", "umbra"],
+    { hp: 40, mp: 32, atk: 52, def: 38, mag: 34, res: 36, spd: 58, lck: 45 },
+    110, 52, "A rat that nests in pact-cellars and gnaws sigil-stones for the salt.",
+    [{ level: 1, skill: "nip" }, { level: 1, skill: "shade" }, { level: 8, skill: "slash" }, { level: 12, skill: "shadowclaw" }],
+    { level: 12, into: "gravegnaw" }),
+  gravegnaw: S("gravegnaw", "Gravegnaw", "Bone gnawer", ["steel", "umbra"],
+    { hp: 62, mp: 42, atk: 78, def: 52, mag: 48, res: 50, spd: 68, lck: 50 },
+    45, 110, "Brass charms and sharper teeth. Goblin pacts favor it for night work.",
+    [{ level: 1, skill: "slash" }, { level: 1, skill: "shadowclaw" }, { level: 14, skill: "ironbite" }, { level: 20, skill: "voidhowl" }]),
+  blighted_gravepup: S("blighted_gravepup", "Blighted Gravepup", "Relic hound", ["umbra", "verdant"],
+    { hp: 52, mp: 44, atk: 72, def: 48, mag: 55, res: 42, spd: 62, lck: 38 },
+    40, 105, "Grave-charms cracked open. Thorn-rot and bone in equal measure.",
+    [{ level: 1, skill: "shade" }, { level: 1, skill: "thornlash" }, { level: 12, skill: "shadowclaw" }, { level: 18, skill: "voidhowl" }]),
+  ashforged_ironnewt: S("ashforged_ironnewt", "Ashforged Ironnewt", "Vitrified newt", ["steel", "ember"],
+    { hp: 58, mp: 36, atk: 72, def: 85, mag: 48, res: 62, spd: 28, lck: 30 },
+    35, 118, "Ore-pocket heat fused its plates. Slow, and spiteful when cornered.",
+    [{ level: 1, skill: "ram" }, { level: 1, skill: "cinder" }, { level: 11, skill: "ironbite" }, { level: 19, skill: "sparksteel" }]),
 };
 
 export const ITEMS: Record<string, ItemDef> = {

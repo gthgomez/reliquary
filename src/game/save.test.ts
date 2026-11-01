@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { makeBeast } from "./content.ts";
-import { LEGACY_SAVE_KEY, SAVE_BACKUP, SAVE_KEY, loadSave, parseSave, serializeSave, writeSave, type SaveStorage } from "./save.ts";
+import { LEGACY_SAVE_KEY, SAVE_BACKUP, SAVE_KEY, SAVE_VERSION, WORLD_REVISION, loadSave, parseSave, serializeSave, writeSave, type SaveStorage } from "./save.ts";
 import type { GameSave } from "./types.ts";
 
 class MemoryStorage implements SaveStorage {
@@ -14,13 +14,29 @@ class MemoryStorage implements SaveStorage {
 
 function validSave(): GameSave {
   const b = makeBeast("emberkit", 5, { temperament: "calm", ivs: { hp: 8, mp: 8, atk: 8, def: 8, mag: 8, res: 8, spd: 8, lck: 8 } });
-  return { version: 2, playerName: "Rowan", mapId: "elderhall", x: 12, y: 14, dir: 0, gold: 180, playTime: 12, party: [b], box: [], inventory: { tonic: 2 }, flags: {}, seen: { emberkit: true }, caught: { emberkit: true } };
+  return {
+    version: SAVE_VERSION,
+    worldRevision: WORLD_REVISION,
+    playerName: "Rowan",
+    mapId: "elderhall",
+    x: 12,
+    y: 14,
+    dir: 0,
+    gold: 180,
+    playTime: 12,
+    party: [b],
+    box: [],
+    inventory: { tonic: 2 },
+    flags: {},
+    seen: { emberkit: true },
+    caught: { emberkit: true },
+  };
 }
 
 test("valid saves round-trip through the current schema", () => {
   const store = new MemoryStorage();
   assert.equal(writeSave(validSave(), store), true);
-  assert.equal(loadSave(store)?.version, 2);
+  assert.equal(loadSave(store)?.version, SAVE_VERSION);
   assert.equal(store.data.has(SAVE_KEY), true);
 });
 
@@ -33,8 +49,9 @@ test("malformed JSON and corrupt nested data are rejected", () => {
 });
 
 test("legacy v1 saves migrate without defaulting corrupt missing fields", () => {
-  const legacy = { ...validSave(), version: 1 };
-  assert.equal(parseSave(JSON.stringify(legacy))?.version, 2);
+  const { worldRevision: _w, ...base } = validSave();
+  const legacy = { ...base, version: 1 };
+  assert.equal(parseSave(JSON.stringify(legacy))?.version, SAVE_VERSION);
   const missing = { ...legacy } as Partial<GameSave>;
   delete missing.party;
   assert.equal(parseSave(JSON.stringify(missing)), null);
@@ -69,8 +86,8 @@ test("export text is a save the game can read back, and bad state exports nothin
   const offMap = validSave();
   offMap.x = 9_999;
   assert.equal(serializeSave(offMap), null);
-  const v1Text = serializeSave({ ...validSave(), version: 1 });
-  assert.equal(parseSave(v1Text!)?.version, 2);
+  const { worldRevision: _wr, ...v1Body } = validSave();
+  assert.equal(parseSave(JSON.stringify({ ...v1Body, version: 1 }))?.version, SAVE_VERSION);
 });
 
 test("a corrupt primary never overwrites the only good backup when the new primary write fails", () => {
@@ -100,6 +117,7 @@ test("a corrupt primary is not validated for backup rotation", () => {
 test("loadSave falls back to legacy slots and survives read failures", () => {
   const store = new MemoryStorage();
   const legacy = { ...validSave(), version: 1 } as GameSave;
+  delete (legacy as { worldRevision?: number }).worldRevision;
   store.data.set(LEGACY_SAVE_KEY, JSON.stringify(legacy));
   assert.equal(loadSave(store)?.playerName, "Rowan");
   store.data.delete(LEGACY_SAVE_KEY);
@@ -124,6 +142,7 @@ test("duplicate creature IDs and unknown content fail semantic validation", () =
 test("legacy keys are removed only after a validated new save is durable", () => {
   const store = new MemoryStorage();
   const legacy = { ...validSave(), version: 1 } as GameSave;
+  delete (legacy as { worldRevision?: number }).worldRevision;
   store.data.set(LEGACY_SAVE_KEY, JSON.stringify(legacy));
   store.failOn = SAVE_KEY;
   assert.equal(writeSave(validSave(), store), false);

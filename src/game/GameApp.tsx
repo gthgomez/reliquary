@@ -12,6 +12,8 @@ import {
   TouchPad,
   VictoryScreen,
 } from "./ui/Overlays";
+import { AppStatus } from "./ui/AppStatus";
+import { registerReliquaryServiceWorker } from "../pwa/register.ts";
 
 export function GameApp() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -56,6 +58,7 @@ export function GameApp() {
       }
     };
     void g.boot(canvas);
+    void registerReliquaryServiceWorker();
     window.__reliquary = { confirm: g.confirm, cancel: g.cancel, startNew: () => g.startNew() };
     const apply = () => {
       if (!stage) return;
@@ -107,6 +110,7 @@ export function GameApp() {
         </div>
         {snap.mode === "boot" ? <LoadingScreen progress={snap.loadProgress} /> : null}
         {snap.mode === "title" ? <TitleScreen game={g} snap={snap} /> : null}
+        <AppStatus />
         {snap.mode === "victory" ? <VictoryScreen game={g} /> : null}
         <input
           ref={fileRef}

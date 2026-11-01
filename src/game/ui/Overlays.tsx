@@ -9,6 +9,7 @@ import {
   SPECIES,
   TEMPERAMENTS,
 } from "../content";
+import { battleCommands } from "../world/encounters.ts";
 import type { ReliquaryGame } from "../engine";
 import { ROOT_MENU } from "../engine";
 import type { Beast, Snapshot } from "../types";
@@ -568,9 +569,7 @@ export function BattleHud({ game, snap }: { game: ReliquaryGame; snap: Snapshot 
   const foe = b.foes[b.foeIndex];
   const meS = me ? currentStats(me) : null;
   const foS = foe ? currentStats(foe) : null;
-  const cmds = b.canFlee
-    ? ["Strike", "Skill", "Item", "Bind", "Party", "Flee"]
-    : ["Strike", "Skill", "Item", "Party"];
+  const cmds = battleCommands(b);
   return (
     <div className="battle-ui">
       {foe && foS ? (

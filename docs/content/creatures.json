@@ -1,0 +1,37 @@
+{
+  "release": "hollowmere-1",
+  "species": [
+    {
+      "id": "dewslime",
+      "evolves": { "level": 12, "into": "bogslime" },
+      "habitat": "briar_damp, crownpool"
+    },
+    {
+      "id": "bogslime",
+      "evolves": null,
+      "habitat": "crownpool"
+    },
+    {
+      "id": "slime_king",
+      "collection": "legend",
+      "encounter": "slime_king"
+    },
+    {
+      "id": "gutterrat",
+      "evolves": { "level": 12, "into": "gravegnaw" },
+      "habitat": "briar_cart, elderhall_cellar"
+    },
+    {
+      "id": "gravegnaw",
+      "habitat": "goblin_encounters"
+    },
+    {
+      "id": "blighted_gravepup",
+      "habitat": "ashenbarrow_relic_pocket"
+    },
+    {
+      "id": "ashforged_ironnewt",
+      "habitat": "ashenbarrow_ore_pocket"
+    }
+  ]
+}
