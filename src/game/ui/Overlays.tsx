@@ -13,6 +13,7 @@ import { battleCommands } from "../world/encounters.ts";
 import type { ReliquaryGame } from "../engine";
 import { ROOT_MENU } from "../engine";
 import type { Beast, Snapshot } from "../types";
+import { OverlayPanel } from "./OverlayPanel";
 
 export function TitleScreen({ game, snap }: { game: ReliquaryGame; snap: Snapshot }) {
   return (
@@ -142,8 +143,7 @@ export function MenuPanel({ game, snap }: { game: ReliquaryGame; snap: Snapshot 
   if ((snap.menu === "party" || snap.menu === "storage") && snap.cardMenu) {
     const beast = [...snap.party, ...snap.box].find((b) => b.uid === snap.cardMenu!.uid);
     return (
-      <div className="sheet">
-        <h2>{snap.cardMenu.nickname}</h2>
+      <OverlayPanel title={snap.cardMenu.nickname} onClose={() => game.cancel()}>
         <p className="sheet-sub">Choose an action.</p>
         <ul className="menu-list">
           {snap.cardMenu.actions.map((action, i) => (
@@ -161,17 +161,17 @@ export function MenuPanel({ game, snap }: { game: ReliquaryGame; snap: Snapshot 
             </li>
           ))}
         </ul>
-        <button type="button" className="btn-ghost" onClick={() => game.cancel()}>
-          Back
-        </button>
-      </div>
+      </OverlayPanel>
     );
   }
   if (snap.menu === "root") {
     return (
-      <div className="sheet">
-        <h2>Lantern</h2>
-        {snap.objective ? <p className="sheet-sub">Objective — {snap.objective}</p> : null}
+      <OverlayPanel
+        title="Lantern"
+        subtitle={snap.objective ? `Objective — ${snap.objective}` : undefined}
+        onClose={() => game.cancel()}
+        closeLabel="Close"
+      >
         <ul className="menu-list">
           {ROOT_MENU.map((it, i) => (
             <li key={it}>
@@ -188,7 +188,7 @@ export function MenuPanel({ game, snap }: { game: ReliquaryGame; snap: Snapshot 
             </li>
           ))}
         </ul>
-      </div>
+      </OverlayPanel>
     );
   }
   if (snap.learnMenu) {
@@ -706,9 +706,7 @@ export function ShopPanel({ game, snap }: { game: ReliquaryGame; snap: Snapshot 
       ? snap.shopStock
       : Object.keys(snap.inventory).filter((id) => (snap.inventory[id] ?? 0) > 0 && ITEMS[id]);
   return (
-    <div className="sheet">
-      <h2>Chandler</h2>
-      <p className="sheet-sub">{snap.gold} crowns</p>
+    <OverlayPanel title="Chandler" subtitle={`${snap.gold} crowns`} onClose={() => game.cancel()}>
       <div className="shop-tabs">
         <button
           type="button"
@@ -756,10 +754,7 @@ export function ShopPanel({ game, snap }: { game: ReliquaryGame; snap: Snapshot 
           );
         })}
       </ul>
-      <button type="button" className="btn-ghost" onClick={() => game.cancel()}>
-        Leave
-      </button>
-    </div>
+    </OverlayPanel>
   );
 }
 

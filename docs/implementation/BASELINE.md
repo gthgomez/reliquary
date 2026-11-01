@@ -17,7 +17,10 @@ Integrated **2026-11-01** on branch `cursor/playable-hollowmere-36d6`.
 | `npm test` | pass |
 | `npm run validate:content` | pass |
 | `npm run build` | pass |
-| `npm run test:pwa` | pass (manifest contract) |
+| `npm run build:web` | pass (standalone client + Workbox) |
+| `npm run test:pwa` | pass |
+| `npm run verify:pwa` | pass |
+| `npm run test:browser` | pass after `build:web` (Playwright layout/pwa/journey) |
 
 ## Scope landed in this branch
 
@@ -25,5 +28,6 @@ Integrated **2026-11-01** on branch `cursor/playable-hollowmere-36d6`.
 - Canonical `isOccupied` / reachability, encounter regions, fixed faction/boss fights
 - Seven new species + three maps (Cellar, Crownpool, Briar Camp), Ashenbarrow north passage
 - Reliquary public manifest, asset registry, Workbox post-build (`build:web`)
+- T04 `OverlayPanel`, T05 terrain/decor bake, T06 `maps/` module split, T10 browser CI + `RELEASE_EVIDENCE.md`
 
 Physical Android install verification remains **pending** (automated unit/content gates only in this environment).

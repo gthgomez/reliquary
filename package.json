@@ -21,6 +21,7 @@
     "check:auth": "node scripts/check-auth-invariant.mjs",
     "test": "node scripts/run-tests.mjs",
     "test:pwa": "node --test scripts/build-pwa.test.mjs",
+    "verify:pwa": "node scripts/verify-pwa.mjs",
     "test:browser": "node scripts/browser-regression.mjs",
     "build:web": "node scripts/build-web.mjs",
     "test:platform": "node scripts/run-tests.mjs --all",

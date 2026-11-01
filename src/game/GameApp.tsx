@@ -67,7 +67,12 @@ export function GameApp() {
       }
     });
     void registerReliquaryServiceWorker();
-    window.__reliquary = { confirm: g.confirm, cancel: g.cancel, startNew: () => g.startNew() };
+    window.__reliquary = {
+      confirm: g.confirm,
+      cancel: g.cancel,
+      startNew: () => g.startNew(),
+      openMenu: () => g.toggleMenu(),
+    };
     const apply = () => {
       if (!stage) return;
       const r = stage.getBoundingClientRect();

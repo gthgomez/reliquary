@@ -16,16 +16,30 @@ function run(cmd, args, env = {}) {
 
 run(process.execPath, [join(root, "scripts/generate-reliquary-icons.mjs")]);
 run(process.execPath, [join(root, "scripts/tint-new-sprites.mjs")]);
-run(process.execPath, [join(root, "scripts/with-app-env.mjs"), "vite", "build"]);
 
 const staticDir = join(root, ".vercel/output/static");
 mkdirSync(staticDir, { recursive: true });
 copyFileSync(join(root, "public/manifest.webmanifest"), join(staticDir, "manifest.webmanifest"));
 
-run(process.execPath, [join(root, "scripts/generate-web-shell.mjs")]);
+run(process.execPath, [
+  join(root, "scripts/with-app-env.mjs"),
+  "vite",
+  "build",
+  "--config",
+  "vite.public-game.config.ts",
+]);
+
+const gameShell = join(staticDir, "public-game.html");
+const indexShell = join(staticDir, "index.html");
+if (!existsSync(gameShell)) {
+  console.error("[build:web] public-game.html missing after client build");
+  process.exit(1);
+}
+copyFileSync(gameShell, indexShell);
+
 run(process.execPath, [join(root, "scripts/build-pwa.mjs")]);
 
-if (!existsSync(join(staticDir, "index.html"))) {
+if (!existsSync(indexShell)) {
   console.error("[build:web] index.html shell missing");
   process.exit(1);
 }

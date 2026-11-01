@@ -8,7 +8,7 @@ import {
   SPECIES,
   typeMod,
 } from "./content.ts";
-import { BLOCKED, GROUND_TILE, MAPS } from "./maps.ts";
+import { MAPS } from "./maps.ts";
 import { FIXED_ENCOUNTERS } from "./encounters.ts";
 import { sfxPlay, startMusic, stopMusic, unlockAudio } from "./audio.ts";
 import { hasSave, cloneSave, loadSave, parseSave, SAVE_VERSION, serializeSave, WORLD_REVISION, writeSave } from "./save.ts";
@@ -17,6 +17,7 @@ import { mathRandom, type RandomSource } from "./rng.ts";
 import { battleCommands, encounterAt, rollEncounter } from "./world/encounters.ts";
 import { isOccupied } from "./world/movement.ts";
 import { pickInteractObject } from "./world/interaction.ts";
+import { bakeMapTerrain } from "./world/terrain.ts";
 import { captureChance, captureSucceeds, storeCapturedBeast } from "./systems/capture.ts";
 import { accuracySucceeds, healBeast, playerActsFirst, spendSkillMp, statusSucceeds } from "./systems/combat.ts";
 import { purchaseItem, sellItem } from "./systems/economy.ts";
@@ -918,7 +919,7 @@ export class ReliquaryGame {
 			enter_guild: ["guild_in", 6, 8],
 			enter_inn: ["inn_in", 6, 7],
 			enter_shop: ["shop_in", 5, 6],
-			enter_cave: ["ashenbarrow", 9, 15],
+			enter_cave: ["ashenbarrow", 9, 14],
 			enter_cellar: ["elderhall_cellar", 7, 10],
 			enter_ashen_north: ["ashenbarrow", 9, 2],
 			enter_hall: ["warden_hall", 7, 10],
@@ -1955,26 +1956,36 @@ export class ReliquaryGame {
 			const ground = canvas.getContext("2d");
 			if (!ground) return;
 			ground.imageSmoothingEnabled = false;
-			for (let y = 0; y < mh; y++) for (let x = 0; x < mw; x++) {
-			const g = m.ground[y]![x]!;
-			const tileName = GROUND_TILE[g] ?? "grass";
-			const img = this.images[`tile_${tileName}`];
-			const dx = x * TILE;
-			const dy = y * TILE;
-			if (img) ground.drawImage(img, dx, dy, TILE, TILE);
-			else {
-				ground.fillStyle = tileName === "water" ? "#3d6e8a" : tileName === "wall" ? "#3a342e" : "#3d4a38";
-				ground.fillRect(dx, dy, TILE, TILE);
-			}
-			if (g === ",") {
-				const tg = this.images.prop_tallgrass;
-				if (tg) ground.drawImage(tg, dx, dy, TILE, TILE);
-				else {
-					ground.fillStyle = "rgba(40,70,40,0.35)";
-					ground.fillRect(dx, dy, TILE, TILE);
-				}
-			}
-		}
+			bakeMapTerrain({
+				map: m,
+				tileSize: TILE,
+				drawTile: (name, dx, dy, variant) => {
+					const key = variant === 0 ? `tile_${name}` : `tile_${name}`;
+					const img = this.images[key];
+					if (img) ground.drawImage(img, dx, dy, TILE, TILE);
+					else {
+						ground.fillStyle = name === "water" ? "#3d6e8a" : name === "wall" ? "#3a342e" : "#3d4a38";
+						ground.fillRect(dx, dy, TILE, TILE);
+					}
+					if (variant > 0) {
+						ground.fillStyle = `rgba(20,17,14,${0.04 * variant})`;
+						ground.fillRect(dx, dy, TILE, TILE);
+					}
+				},
+				drawOverlay: (style, dx, dy, strength) => {
+					if (style === "edge") {
+						ground.fillStyle = `rgba(20,17,14,${0.12 + strength * 0.2})`;
+						ground.fillRect(dx + 2, dy + 2, TILE - 4, TILE - 4);
+					} else {
+						ground.fillStyle = `rgba(0,0,0,${strength * 0.15})`;
+						ground.fillRect(dx, dy + TILE - 6, TILE, 6);
+					}
+				},
+				drawDecoration: (sprite, dx, dy, w, h) => {
+					const img = this.images[`prop_${sprite}`];
+					if (img) ground.drawImage(img, dx, dy, w * TILE, h * TILE);
+				},
+			});
 			this.terrain = { map: m, canvas };
 		}
 		ctx.drawImage(this.terrain.canvas, Math.ceil(camX), Math.ceil(camY), this.cw(), this.ch(), 0, 0, this.cw(), this.ch());

@@ -326,6 +326,33 @@
   max-height: min(70vh, 520px);
   overflow: auto;
 }
+.overlay-panel {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  overflow: hidden;
+  padding: 0;
+  max-height: min(72dvh, 540px);
+}
+.overlay-panel-head {
+  padding: 1rem 1rem 0.35rem;
+}
+.overlay-panel-body {
+  overflow-y: auto;
+  touch-action: pan-y;
+  overscroll-behavior: contain;
+  padding: 0 1rem;
+  min-height: 0;
+}
+.overlay-panel-foot {
+  padding: 0.55rem 1rem 1rem;
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.overlay-panel-foot .btn-ghost {
+  margin-left: auto;
+}
 .save-file-input {
   display: none;
 }

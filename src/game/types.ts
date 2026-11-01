@@ -310,6 +310,7 @@ export interface ReliquaryHandle {
   confirm: () => void;
   cancel: () => void;
   startNew: () => void;
+  openMenu?: () => void;
 }
 
 declare global {
