@@ -424,6 +424,9 @@ export function normalizeHeadContext(ctx = {}) {
 
 export function injectGrokPwaHead(html, ctx = {}) {
   if (typeof html !== "string") return html;
+  if (ctx.reliquaryPublic || process.env.VITE_RELIQUARY_PUBLIC === "1") {
+    return html;
+  }
   const { site, projectId, creator, creatorId, host, cwd } = normalizeHeadContext(ctx);
   const documentTitle = titleFromDocument(html);
   const appName = resolveOgTitle(
@@ -436,7 +439,12 @@ export function injectGrokPwaHead(html, ctx = {}) {
 
   const missing = grokPwaHeadTags(appName)
     .filter(([key]) => {
-      if (key === "manifest") return !next.includes('href="/__grok/manifest.webmanifest"');
+      if (key === "manifest") {
+        return (
+          !next.includes('href="/__grok/manifest.webmanifest"') &&
+          !next.includes('href="/manifest.webmanifest"')
+        );
+      }
       if (key === "apple-touch-icon") return !next.includes('href="/__grok/icon-180.png"');
       return !next.includes(`name="${key}"`);
     })

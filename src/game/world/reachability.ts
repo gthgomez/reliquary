@@ -9,9 +9,17 @@ function warpAt(map: MapDef, x: number, y: number): boolean {
   return map.warps.some((w) => w.x === x && w.y === y);
 }
 
+/** Legacy saves must stay inside the map grid with a walkable tile. */
+export function isLegacyCoordinateValid(map: MapDef, x: number, y: number): boolean {
+  if (y < 0 || x < 0 || y >= map.ground.length) return false;
+  const row = map.ground[y];
+  if (!row || x >= row.length) return false;
+  return row[x] !== "#";
+}
+
 /**
- * Flood-fill reachable tiles. Stepping onto a warp tile stops expansion there —
- * warps are exits, not corridors through the map graph.
+ * Flood-fill reachable tiles. Warp tiles stop expansion once entered,
+ * except the start tile may step off an entry warp.
  */
 export function reachableTiles(
   map: MapDef,
@@ -24,7 +32,7 @@ export function reachableTiles(
   out.add(key(start.x, start.y));
   while (queue.length) {
     const { x, y } = queue.shift()!;
-    if (warpAt(map, x, y)) continue;
+    if (warpAt(map, x, y) && (x !== start.x || y !== start.y)) continue;
     for (const [dx, dy] of [
       [0, 1],
       [0, -1],
@@ -50,6 +58,5 @@ export function resolveSafeSpawn(
 ): { x: number; y: number } {
   const reachableFromSpawn = reachableTiles(map, map.spawn, flags);
   if (reachableFromSpawn.has(key(old.x, old.y))) return old;
-  if (reachableFromSpawn.size === 0) return { ...map.spawn };
   return { ...map.spawn };
 }

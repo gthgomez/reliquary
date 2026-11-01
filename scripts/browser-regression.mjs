@@ -1,9 +1,14 @@
 #!/usr/bin/env node
-/**
- * Minimal browser regression runner stub — extend with Playwright suites in CI.
- */
-const args = process.argv.slice(2);
-const suiteIdx = args.indexOf("--suite");
-const suite = suiteIdx >= 0 ? args[suiteIdx + 1] : "all";
-console.log(`[browser] suite=${suite} (playwright journeys wired separately in scripts/*-qa.mjs)`);
-process.exit(0);
+import { spawnSync } from "node:child_process";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const root = join(dirname(fileURLToPath(import.meta.url)), "..");
+
+function run(cmd, args) {
+  const result = spawnSync(cmd, args, { cwd: root, stdio: "inherit" });
+  if (result.status !== 0) process.exit(result.status ?? 1);
+}
+
+run(process.execPath, ["--test", "scripts/build-pwa.test.mjs", "scripts/save-session.test.mjs"]);
+console.log("[browser] PWA and save-session smoke tests passed");

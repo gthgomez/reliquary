@@ -8,35 +8,31 @@ export interface SaveSession {
 
 /**
  * One active writer per origin when Web Locks are available.
+ * Resolves only after the lock is held; release() ends the session.
  */
 export async function acquireSaveSession(): Promise<{ result: SaveSessionResult; session: SaveSession | null }> {
   const locks = navigator.locks;
   if (!locks?.request) {
     return { result: "unsupported", session: { release: () => {} } };
   }
-  let releaseLock: (() => void) | null = null;
-  const held = new Promise<boolean>((resolve) => {
-    void locks.request(LOCK_NAME, { ifAvailable: true }, async (lock) => {
+  return new Promise((resolve) => {
+    void locks.request(LOCK_NAME, { ifAvailable: true }, (lock) => {
       if (!lock) {
-        resolve(false);
+        resolve({ result: "denied", session: null });
         return;
       }
-      await new Promise<void>((done) => {
+      let releaseLock: (() => void) | undefined;
+      resolve({
+        result: "granted",
+        session: {
+          release: () => {
+            releaseLock?.();
+          },
+        },
+      });
+      return new Promise<void>((done) => {
         releaseLock = done;
       });
     });
   });
-  const granted = await Promise.race([
-    held,
-    new Promise<boolean>((r) => setTimeout(() => r(true), 0)),
-  ]);
-  if (!granted) return { result: "denied", session: null };
-  return {
-    result: "granted",
-    session: {
-      release: () => {
-        releaseLock?.();
-      },
-    },
-  };
 }

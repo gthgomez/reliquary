@@ -11,11 +11,12 @@ import {
 import { BLOCKED, GROUND_TILE, MAPS } from "./maps.ts";
 import { FIXED_ENCOUNTERS } from "./encounters.ts";
 import { sfxPlay, startMusic, stopMusic, unlockAudio } from "./audio.ts";
-import { hasSave, loadSave, parseSave, SAVE_VERSION, serializeSave, WORLD_REVISION, writeSave } from "./save.ts";
+import { hasSave, cloneSave, loadSave, parseSave, SAVE_VERSION, serializeSave, WORLD_REVISION, writeSave } from "./save.ts";
 import { collectGameAssets } from "./assets.ts";
 import { mathRandom, type RandomSource } from "./rng.ts";
 import { battleCommands, encounterAt, rollEncounter } from "./world/encounters.ts";
 import { isOccupied } from "./world/movement.ts";
+import { pickInteractObject } from "./world/interaction.ts";
 import { captureChance, captureSucceeds, storeCapturedBeast } from "./systems/capture.ts";
 import { accuracySucceeds, healBeast, playerActsFirst, spendSkillMp, statusSucceeds } from "./systems/combat.ts";
 import { purchaseItem, sellItem } from "./systems/economy.ts";
@@ -143,6 +144,7 @@ export class ReliquaryGame {
 	hasSave = false;
 	private settledSteps = 0;
 	private safeCheckpoint: GameSave | null = null;
+	private saveWriteAllowed = true;
 	lifecycle: "constructed" | "booted" | "stopped" = "constructed";
 	private readonly random: RandomSource;
 	private bootToken = 0;
@@ -250,28 +252,36 @@ export class ReliquaryGame {
 		return this.lifecycle === "booted";
 	}
 	private async loadImages(token: number): Promise<void> {
-		const paths = collectPaths();
+		const entries = collectGameAssets();
+		const requiredByUrl = new Map(entries.map((entry) => [entry.url, entry.required]));
 		let done = 0;
-		await Promise.all(paths.map(([key, src]) => new Promise<void>((resolve) => {
+		const requiredFailures: string[] = [];
+		await Promise.all(entries.map((entry) => new Promise<void>((resolve) => {
 			const img = new Image();
 			img.crossOrigin = "anonymous";
 			img.onload = () => {
 				if (token !== this.bootToken || this.lifecycle !== "booted") { resolve(); return; }
-				this.images[key] = img;
+				this.images[entry.key] = img;
 				this.terrain = null;
 				done += 1;
-				this.loadProgress = done / paths.length;
+				this.loadProgress = done / entries.length;
 				resolve();
 			};
 			img.onerror = () => {
+				if (requiredByUrl.get(entry.url)) requiredFailures.push(entry.url);
 				done += 1;
-				this.loadProgress = done / paths.length;
+				if (token === this.bootToken && this.lifecycle === "booted") {
+					this.loadProgress = done / entries.length;
+				}
 				resolve();
 			};
-			img.src = src;
+			img.src = entry.url;
 		})));
 		if (token !== this.bootToken || this.lifecycle !== "booted") return;
 		this.loadProgress = 1;
+		if (requiredFailures.length) {
+			this.toastMsg(`Missing required assets (${requiredFailures.length}). Reload when files are available.`);
+		}
 		this.emit();
 	}
 	async boot(canvas: HTMLCanvasElement): Promise<void> {
@@ -476,7 +486,6 @@ export class ReliquaryGame {
 			return;
 		}
 		this.applySave(s);
-		this.captureCheckpoint();
 		this.mode = "world";
 		this.toastMsg("The lantern remembers.");
 		this.emit();
@@ -572,7 +581,16 @@ export class ReliquaryGame {
 		this.emit();
 		return true;
 	}
+	setSaveWriteAllowed(allowed: boolean, message?: string): void {
+		this.saveWriteAllowed = allowed;
+		if (!allowed && message) this.toastMsg(message);
+		this.emit();
+	}
 	persist(): boolean {
+		if (!this.saveWriteAllowed) {
+			this.toastMsg("Another window holds your save. This tab is read-only.");
+			return false;
+		}
 		const saved = writeSave(this.currentSave());
 		if (saved) {
 			this.hasSave = true;
@@ -591,8 +609,14 @@ export class ReliquaryGame {
 	private occupied(x: number, y: number): boolean {
 		return isOccupied(this.map(), this.flags, x, y);
 	}
-	private captureCheckpoint(): void {
-		this.safeCheckpoint = this.currentSave();
+	private persistBattleCheckpoint(): boolean {
+		this.safeCheckpoint = cloneSave(this.currentSave());
+		if (!this.saveWriteAllowed) return false;
+		const saved = writeSave(this.safeCheckpoint);
+		if (!saved) {
+			this.toastMsg("Could not write a pre-battle save. Keep this window open and finish quickly.");
+		}
+		return saved;
 	}
 	private wantDir(): Dir | null {
 		const k = this.held();
@@ -882,7 +906,7 @@ export class ReliquaryGame {
 			this.talk(npc.talk, npc.name);
 			return;
 		}
-		const obj = m.objects.find((o) => fx >= o.x && fx < o.x + o.w && fy >= o.y && fy < o.y + o.h);
+		const obj = pickInteractObject(m.objects, fx, fy);
 		if (obj?.interact) {
 			this.handleInteract(obj.interact);
 			return;
@@ -1121,7 +1145,7 @@ export class ReliquaryGame {
 		const foe = makeBeast(speciesId, level, { random: this.random });
 		this.seen[speciesId] = true;
 		this.encounterLock = true;
-		this.captureCheckpoint();
+		this.persistBattleCheckpoint();
 		sfxPlay.encounter();
 		this.battle = {
 			kind: "wild",
@@ -1169,7 +1193,7 @@ export class ReliquaryGame {
 		foes.forEach((f) => {
 			this.seen[f.speciesId] = true;
 		});
-		this.captureCheckpoint();
+		this.persistBattleCheckpoint();
 		sfxPlay.encounter();
 		const trainer =
 			id === "goblin_scout" ? "Goblin Scout" : id === "goblin_king" ? "Goblin King" : undefined;
@@ -1205,7 +1229,7 @@ export class ReliquaryGame {
 		foes.forEach((f) => {
 			this.seen[f.speciesId] = true;
 		});
-		this.captureCheckpoint();
+		this.persistBattleCheckpoint();
 		sfxPlay.encounter();
 		this.battle = {
 			kind: "trial",
@@ -1668,7 +1692,6 @@ export class ReliquaryGame {
 		this.battle = null;
 		this.mode = wasTrial && victory && !this.flags.ending ? this.maybeVictory() : "world";
 		this.encounterLock = false;
-		this.captureCheckpoint();
 		this.persist();
 		this.emit();
 	}

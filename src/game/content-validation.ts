@@ -1,4 +1,5 @@
 import { ELEMENTS, ITEMS, SKILLS, SPECIES } from "./content.ts";
+import { FIXED_ENCOUNTERS } from "./encounters.ts";
 import { MAPS } from "./maps.ts";
 import { mapIsRectangular, canStandAt } from "./systems/world.ts";
 
@@ -36,10 +37,26 @@ export function validateContent(): string[] {
     for (const encounter of map.encounters) {
       if (!speciesIds.has(encounter.species) || encounter.min < 1 || encounter.max < encounter.min || encounter.max > 40 || encounter.w <= 0) errors.push(`map ${id}: invalid encounter`);
     }
+    for (const region of map.encounterRegions ?? []) {
+      if (region.w <= 0 || region.h <= 0 || region.x < 0 || region.y < 0) errors.push(`map ${id}: invalid encounter region ${region.id}`);
+      for (const encounter of region.encounters) {
+        if (!speciesIds.has(encounter.species) || encounter.min < 1 || encounter.max < encounter.min || encounter.w <= 0) {
+          errors.push(`map ${id}: invalid encounter region ${region.id}`);
+        }
+      }
+    }
     for (const warp of map.warps) {
       const destination = MAPS[warp.to];
       if (!canStandAt(map, warp.x, warp.y) || !destination || !canStandAt(destination, warp.tx, warp.ty)) errors.push(`map ${id}: invalid warp`);
     }
+  }
+  for (const [encId, def] of Object.entries(FIXED_ENCOUNTERS)) {
+    const map = MAPS[def.mapId];
+    if (!map) errors.push(`encounter ${encId}: unknown map ${def.mapId}`);
+    for (const foe of def.foes) {
+      if (!speciesIds.has(foe.speciesId)) errors.push(`encounter ${encId}: unknown species ${foe.speciesId}`);
+    }
+    if (def.onceFlag && typeof def.onceFlag !== "string") errors.push(`encounter ${encId}: invalid once flag`);
   }
   return errors;
 }

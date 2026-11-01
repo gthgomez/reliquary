@@ -14,6 +14,7 @@ import {
 } from "./ui/Overlays";
 import { AppStatus } from "./ui/AppStatus";
 import { registerReliquaryServiceWorker } from "../pwa/register.ts";
+import { acquireSaveSession } from "./save-session.ts";
 
 export function GameApp() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -58,6 +59,13 @@ export function GameApp() {
       }
     };
     void g.boot(canvas);
+    let saveSession: { release: () => void } | null = null;
+    void acquireSaveSession().then(({ result, session }) => {
+      saveSession = session;
+      if (result === "denied") {
+        g.setSaveWriteAllowed(false, "Another Reliquary window holds the save lock. This tab is read-only.");
+      }
+    });
     void registerReliquaryServiceWorker();
     window.__reliquary = { confirm: g.confirm, cancel: g.cancel, startNew: () => g.startNew() };
     const apply = () => {
@@ -73,6 +81,7 @@ export function GameApp() {
     if (stage) ro.observe(stage);
     return () => {
       ro.disconnect();
+      saveSession?.release();
       g.exportFile = null;
       g.destroy();
       if (window.__reliquary?.confirm === g.confirm) delete window.__reliquary;
@@ -122,9 +131,20 @@ export function GameApp() {
             const file = event.target.files?.[0];
             event.target.value = "";
             if (!file) return;
-            void file.text().then((text) => {
-              g.importGame(text);
-            });
+            const MAX_IMPORT_BYTES = 512 * 1024;
+            if (file.size > MAX_IMPORT_BYTES) {
+              g.toastMsg("Save file is too large to import.");
+              return;
+            }
+            void file
+              .text()
+              .catch(() => {
+                g.toastMsg("Could not read that save file.");
+                return null;
+              })
+              .then((text) => {
+                if (text != null) g.importGame(text);
+              });
           }}
         />
       </div>

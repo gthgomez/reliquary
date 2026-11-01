@@ -371,7 +371,7 @@ const ashenbarrow: MapDef = {
     { species: "chapelite", min: 10, max: 13, w: 1 },
     { species: "keepdrake", min: 12, max: 14, w: 1 },
   ],
-  spawn: { x: 9, y: 15 },
+  spawn: { x: 9, y: 14 },
   encounterTiles: ["s"],
   encounterRegions: [
     {
@@ -691,9 +691,9 @@ const briar_camp: MapDef = {
   ],
   objects: [
     prop("camp_fire", "hearth", 8, 6),
-    prop("camp_tent", "cottage", 12, 4),
+    prop("camp_tent", "cottage", 11, 4),
     { id: "goblin_scout_npc", sprite: "traveler", x: 6, y: 7, w: 1, h: 1, foot: 1, solid: true, interact: "goblin_scout" },
-    { id: "goblin_king_npc", sprite: "warden", x: 12, y: 4, w: 1, h: 1, foot: 1, solid: true, interact: "goblin_king" },
+    { id: "goblin_king_npc", sprite: "warden", x: 13, y: 4, w: 1, h: 1, foot: 1, solid: true, interact: "goblin_king" },
   ],
   npcs: [{ id: "goblin_trader", sprite: "shopkeep", x: 4, y: 5, name: "Patch", talk: "goblin_trader" }],
   warps: [{ x: 0, y: 8, to: "wildwood", tx: 20, ty: 10 }],

@@ -1,6 +1,3 @@
-import { registerRoute } from "workbox-routing";
-import { CacheFirst } from "workbox-strategies";
-
 export type PwaStatus =
   | "unsupported"
   | "downloading"
@@ -26,6 +23,19 @@ function setStatus(next: PwaStatus): void {
   listeners.forEach((fn) => fn(next));
 }
 
+async function verifyOfflineShell(): Promise<boolean> {
+  if (typeof caches === "undefined") return false;
+  const names = await caches.keys();
+  const precache = names.find((name) => name.startsWith("workbox-precache"));
+  if (!precache) return false;
+  const cache = await caches.open(precache);
+  const index = await cache.match("/index.html");
+  const manifest = await cache.match("/manifest.webmanifest");
+  return Boolean(index && manifest);
+}
+
+const SW_READY_MS = 45_000;
+
 export async function registerReliquaryServiceWorker(): Promise<void> {
   if (typeof window === "undefined" || !("serviceWorker" in navigator)) {
     setStatus("unsupported");
@@ -34,7 +44,17 @@ export async function registerReliquaryServiceWorker(): Promise<void> {
   try {
     setStatus("downloading");
     const reg = await navigator.serviceWorker.register("/sw.js", { scope: "/" });
-    await navigator.serviceWorker.ready;
+    await Promise.race([
+      navigator.serviceWorker.ready,
+      new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error("service worker ready timeout")), SW_READY_MS);
+      }),
+    ]);
+    const shellOk = await verifyOfflineShell();
+    if (!shellOk) {
+      setStatus("failed");
+      return;
+    }
     if (reg.waiting) setStatus("updateWaiting");
     else setStatus("ready");
     reg.addEventListener("updatefound", () => {

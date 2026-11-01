@@ -169,6 +169,7 @@ export function grokPwaPlugin() {
       return injectGrokPwaHead(html, {
         host: process.env.VITE_PUBLIC_HOSTNAME ?? "",
         cwd: root,
+        reliquaryPublic: process.env.VITE_RELIQUARY_PUBLIC === "1",
       });
     },
     configureServer(server) {

@@ -3,7 +3,7 @@ import { currentStats, ITEMS, SKILLS, SPECIES } from "./content.ts";
 import { MAPS } from "./maps.ts";
 import type { GameSave } from "./types.ts";
 import { isOccupied } from "./world/movement.ts";
-import { resolveSafeSpawn } from "./world/reachability.ts";
+import { isLegacyCoordinateValid, resolveSafeSpawn } from "./world/reachability.ts";
 
 export const SAVE_VERSION = 3;
 export const WORLD_REVISION = 1;
@@ -79,6 +79,7 @@ function validateSemantics(save: GameSave, options: { migratePosition?: boolean 
   if (!validateBeasts(save)) return null;
   let { x, y } = save;
   if (options.migratePosition) {
+    if (!isLegacyCoordinateValid(map, x, y)) return null;
     ({ x, y } = resolveSafeSpawn(map, { x, y }, save.flags));
   } else if (isOccupied(map, save.flags, x, y)) {
     return null;
@@ -111,6 +112,10 @@ function migrateParsed(value: unknown): GameSave | null {
 
 export function parseSave(raw: string): GameSave | null {
   try { return migrateParsed(JSON.parse(raw)); } catch { return null; }
+}
+
+export function cloneSave(save: GameSave): GameSave {
+  return structuredClone(save);
 }
 
 export function serializeSave(save: GameSave): string | null {
