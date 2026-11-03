@@ -14,11 +14,21 @@ function bundleText() {
   return readFileSync(join(root, ".vercel/output/static/assets", m[1]), "utf8");
 }
 
-test("production build:web excludes economy probe identifiers", () => {
+const PROD_FORBIDDEN = [
+  "getEconomy",
+  "setGold",
+  "openShop",
+  "seedForcedSwitch",
+  "setBattlePhase",
+  "primeSkillMenu",
+  'VITE_RELIQUARY_BROWSER_TEST":"1"',
+];
+
+test("production build:web excludes all browser-test probe identifiers", () => {
   const build = spawnSync(process.execPath, [join(root, "scripts/build-web.mjs")], {
     cwd: root,
     stdio: "inherit",
-    timeout: 120_000,
+    timeout: 180_000,
     env: { ...process.env, VITE_RELIQUARY_BROWSER_TEST: "" },
   });
   assert.equal(build.status, 0);
@@ -28,17 +38,16 @@ test("production build:web excludes economy probe identifiers", () => {
   });
   assert.equal(assertRun.status, 0);
   const text = bundleText();
-  assert.equal(text.includes("getEconomy"), false);
-  assert.equal(text.includes("seedForcedSwitch"), false);
-  assert.equal(text.includes("primeSkillMenu"), false);
-  assert.equal(text.includes("setBattlePhase"), false);
+  for (const needle of PROD_FORBIDDEN) {
+    assert.equal(text.includes(needle), false, `production bundle contains ${needle}`);
+  }
 });
 
-test("browser-test build includes economy probes for regression", () => {
+test("browser-test build includes economy and battle UI probes for regression", () => {
   const build = spawnSync(process.execPath, [join(root, "scripts/build-web-test.mjs")], {
     cwd: root,
     stdio: "inherit",
-    timeout: 120_000,
+    timeout: 180_000,
   });
   assert.equal(build.status, 0);
   const text = bundleText();
