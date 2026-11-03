@@ -20,15 +20,18 @@ const MIME = {
   ".webmanifest": "application/manifest+json",
 };
 
-export function startStaticServer(port = 0) {
-  if (!existsSync(join(staticDir, "index.html"))) {
+export function startStaticServer(port = 0, options = {}) {
+  // `getRoot` lets a test swap the served build mid-run (e.g. to simulate a deploy).
+  const getRoot = options.getRoot ?? (() => staticDir);
+  if (!existsSync(join(getRoot(), "index.html"))) {
     throw new Error("Run npm run build:web before browser tests");
   }
   const server = createServer((req, res) => {
     const path = (req.url ?? "/").split("?", 1)[0] ?? "/";
     const rel = path === "/" ? "index.html" : path.replace(/^\//, "");
-    const filePath = join(staticDir, rel);
-    if (!filePath.startsWith(staticDir) || !existsSync(filePath)) {
+    const base = getRoot();
+    const filePath = join(base, rel);
+    if (!filePath.startsWith(base) || !existsSync(filePath)) {
       res.writeHead(404);
       res.end("not found");
       return;

@@ -14,7 +14,7 @@ import {
 } from "./ui/Overlays";
 import { AppStatus } from "./ui/AppStatus";
 import { isClassicTouchEnabled, isUiModalOpen, shouldShowDialogTouch, shouldShowExplorationTouch } from "./ui/ui-chrome.ts";
-import { registerReliquaryServiceWorker } from "../pwa/register.ts";
+import { registerReliquaryServiceWorker, setUpdateGuard } from "../pwa/register.ts";
 import { acquireSaveSession } from "./save-session.ts";
 import { attachEconomyProbes } from "reliquary-economy-probes";
 
@@ -68,6 +68,19 @@ export function GameApp() {
         g.setSaveWriteAllowed(false, "Another Reliquary window holds the save lock. This tab is read-only.");
       }
     });
+    // A new build applies itself by reloading, but only at a calm moment and
+    // after flushing the save, so an update never interrupts a battle or dialog.
+    setUpdateGuard({
+      canReloadNow: () => {
+        const s = g.getSnapshot();
+        return (s.mode === "title" || s.mode === "world" || s.mode === "victory") && !s.dialog && !s.menu && !isUiModalOpen(s);
+      },
+      canForceReload: () => g.getSnapshot().mode !== "battle",
+      beforeReload: () => {
+        const mode = g.getSnapshot().mode;
+        if (mode !== "title" && mode !== "boot" && mode !== "battle" && g.canWriteSave) g.persist();
+      },
+    });
     void registerReliquaryServiceWorker();
     const reliquaryHandle = {
       confirm: g.confirm,
@@ -91,6 +104,7 @@ export function GameApp() {
     return () => {
       ro.disconnect();
       saveSession?.release();
+      setUpdateGuard(null);
       g.exportFile = null;
       g.destroy();
       if (window.__reliquary?.confirm === g.confirm) delete window.__reliquary;

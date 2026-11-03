@@ -22,8 +22,11 @@ export async function buildPwa(options = {}) {
     globIgnores: ["**/sw.js", "**/node_modules/**", "**/__grok/**"],
     navigateFallback: "/index.html",
     navigateFallbackDenylist: [/^\/api\//, /^\/auth\//],
-    skipWaiting: false,
-    clientsClaim: false,
+    // New builds take over immediately; open pages reload themselves at a safe
+    // moment (see src/pwa/register.ts), so players never stay on a stale build.
+    skipWaiting: true,
+    clientsClaim: true,
+    cleanupOutdatedCaches: true,
   });
   if (warnings.length) {
     console.warn("[pwa]", warnings.join("\n"));
