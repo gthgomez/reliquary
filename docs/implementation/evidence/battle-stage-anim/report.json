@@ -1,0 +1,49 @@
+{
+  "staticDir": ".vercel/output/static",
+  "outDir": "docs/implementation/evidence/battle-stage-anim",
+  "viewports": [
+    {
+      "name": "320x568",
+      "canvas": "320x512",
+      "uiReserveTop": 241,
+      "playerCx": 64,
+      "foeCx": 202
+    },
+    {
+      "name": "390x667",
+      "canvas": "320x512",
+      "uiReserveTop": 241,
+      "playerCx": 64,
+      "foeCx": 202
+    },
+    {
+      "name": "390x844",
+      "canvas": "320x512",
+      "uiReserveTop": 241,
+      "playerCx": 64,
+      "foeCx": 202
+    },
+    {
+      "name": "640x320",
+      "canvas": "384x288",
+      "uiReserveTop": 98,
+      "playerCx": 69,
+      "foeCx": 262
+    },
+    {
+      "name": "844x390",
+      "canvas": "384x288",
+      "uiReserveTop": 98,
+      "playerCx": 69,
+      "foeCx": 262
+    },
+    {
+      "name": "1280x800",
+      "canvas": "384x288",
+      "uiReserveTop": 98,
+      "playerCx": 69,
+      "foeCx": 262
+    }
+  ],
+  "reducedMotion": null
+}
