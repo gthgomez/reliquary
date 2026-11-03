@@ -16,6 +16,7 @@ import { AppStatus } from "./ui/AppStatus";
 import { isClassicTouchEnabled, isUiModalOpen, shouldShowDialogTouch, shouldShowExplorationTouch } from "./ui/ui-chrome.ts";
 import { registerReliquaryServiceWorker } from "../pwa/register.ts";
 import { acquireSaveSession } from "./save-session.ts";
+import { attachEconomyProbes } from "reliquary-economy-probes";
 
 export function GameApp() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -68,27 +69,14 @@ export function GameApp() {
       }
     });
     void registerReliquaryServiceWorker();
-    window.__reliquary = {
+    const reliquaryHandle = {
       confirm: g.confirm,
       cancel: g.cancel,
       startNew: () => g.startNew(),
       openMenu: () => g.toggleMenu(),
-      openShop: () => {
-        g.mode = "shop";
-        g.shopMode = "buy";
-        g.shopIndex = 0;
-        g.menu = null;
-        g.emitPublic();
-      },
-      getEconomy: () => ({
-        gold: g.gold,
-        inventory: { ...g.inventory },
-      }),
-      setGold: (gold: number) => {
-        g.gold = gold;
-        g.emitPublic();
-      },
     };
+    attachEconomyProbes(reliquaryHandle, g);
+    window.__reliquary = reliquaryHandle;
     const apply = () => {
       if (!stage) return;
       const r = stage.getBoundingClientRect();

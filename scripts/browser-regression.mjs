@@ -39,8 +39,14 @@ if (serveOnly) {
   });
   server.listen(port, "127.0.0.1");
 } else {
-  function run(cmd, cmdArgs) {
-    const result = spawnSync(cmd, cmdArgs, { cwd: root, stdio: "inherit", timeout: 180_000, killSignal: "SIGKILL" });
+  function run(cmd, cmdArgs, env) {
+    const result = spawnSync(cmd, cmdArgs, {
+      cwd: root,
+      stdio: "inherit",
+      timeout: 180_000,
+      killSignal: "SIGKILL",
+      env: env ? { ...process.env, ...env } : process.env,
+    });
     if (result.error) {
       console.error(`[browser] ${cmdArgs.at(-1)} failed: ${result.error.message}`);
       process.exit(1);
@@ -48,10 +54,8 @@ if (serveOnly) {
     if (result.status !== 0) process.exit(result.status ?? 1);
   }
 
-  if (!existsSync(join(staticDir, "index.html"))) {
-    console.error("[browser] missing build output — run npm run build:web first");
-    process.exit(1);
-  }
+  console.log("[browser] building client with browser-test probes");
+  run(process.execPath, [join(root, "scripts/build-web-test.mjs")]);
 
   const gameShell = join(staticDir, "public-game.html");
   const indexShell = join(staticDir, "index.html");

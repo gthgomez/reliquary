@@ -311,7 +311,7 @@ export interface ReliquaryHandle {
   cancel: () => void;
   startNew: () => void;
   openMenu?: () => void;
-  /** Browser regression hooks (shell only; not part of player API). */
+  /** Browser regression hooks (omitted from production bundles). */
   openShop?: () => void;
   getEconomy?: () => { gold: number; inventory: Record<string, number> };
   setGold?: (gold: number) => void;
