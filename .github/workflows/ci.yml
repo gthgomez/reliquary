@@ -41,3 +41,5 @@ jobs:
         run: npm run validate:content
       - name: Production build
         run: npm run build
+      - name: Public web build and PWA gates
+        run: npm run build:web && npm run test:pwa && npm run verify:pwa && npx playwright install chromium && npm run test:browser -- --suite=all

@@ -12,20 +12,67 @@ import {
   TouchPad,
   VictoryScreen,
 } from "./ui/Overlays";
+import { AppStatus } from "./ui/AppStatus";
+import { registerReliquaryServiceWorker } from "../pwa/register.ts";
+import { acquireSaveSession } from "./save-session.ts";
 
 export function GameApp() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const askedImport = useRef(0);
   const gameRef = useRef<ReliquaryGame | null>(null);
   const g = gameRef.current ?? (gameRef.current = new ReliquaryGame());
   const snap = useSyncExternalStore(g.subscribe, g.getSnapshot, g.getSnapshot);
 
   useEffect(() => {
+    if (snap.importTicket > askedImport.current) {
+      askedImport.current = snap.importTicket;
+      fileRef.current?.click();
+    }
+  }, [snap.importTicket]);
+
+  useEffect(() => {
     const canvas = canvasRef.current;
     const stage = stageRef.current;
     if (!canvas) return;
+    // Hand the player their save as a file, so a cleared browser or a new
+    // device is not the end of the story.
+    g.exportFile = (name, text) => {
+      let url: string | null = null;
+      try {
+        url = URL.createObjectURL(new Blob([text], { type: "application/json" }));
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = name;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        return true;
+      } catch {
+        return false;
+      } finally {
+        if (url) {
+          const revoke = url;
+          setTimeout(() => URL.revokeObjectURL(revoke), 10_000);
+        }
+      }
+    };
     void g.boot(canvas);
-    window.__reliquary = { confirm: g.confirm, cancel: g.cancel, startNew: () => g.startNew() };
+    let saveSession: { release: () => void } | null = null;
+    void acquireSaveSession().then(({ result, session }) => {
+      saveSession = session;
+      if (result === "denied") {
+        g.setSaveWriteAllowed(false, "Another Reliquary window holds the save lock. This tab is read-only.");
+      }
+    });
+    void registerReliquaryServiceWorker();
+    window.__reliquary = {
+      confirm: g.confirm,
+      cancel: g.cancel,
+      startNew: () => g.startNew(),
+      openMenu: () => g.toggleMenu(),
+    };
     const apply = () => {
       if (!stage) return;
       const r = stage.getBoundingClientRect();
@@ -39,6 +86,8 @@ export function GameApp() {
     if (stage) ro.observe(stage);
     return () => {
       ro.disconnect();
+      saveSession?.release();
+      g.exportFile = null;
       g.destroy();
       if (window.__reliquary?.confirm === g.confirm) delete window.__reliquary;
     };
@@ -75,7 +124,34 @@ export function GameApp() {
         </div>
         {snap.mode === "boot" ? <LoadingScreen progress={snap.loadProgress} /> : null}
         {snap.mode === "title" ? <TitleScreen game={g} snap={snap} /> : null}
+        <AppStatus />
         {snap.mode === "victory" ? <VictoryScreen game={g} /> : null}
+        <input
+          ref={fileRef}
+          className="save-file-input"
+          type="file"
+          accept="application/json,.json"
+          aria-label="Import a Reliquary save file"
+          onChange={(event) => {
+            const file = event.target.files?.[0];
+            event.target.value = "";
+            if (!file) return;
+            const MAX_IMPORT_BYTES = 512 * 1024;
+            if (file.size > MAX_IMPORT_BYTES) {
+              g.toastMsg("Save file is too large to import.");
+              return;
+            }
+            void file
+              .text()
+              .catch(() => {
+                g.toastMsg("Could not read that save file.");
+                return null;
+              })
+              .then((text) => {
+                if (text != null) g.importGame(text);
+              });
+          }}
+        />
       </div>
       {showTouch ? <TouchPad game={g} /> : null}
     </div>

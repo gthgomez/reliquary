@@ -1,13 +1,18 @@
 import { z } from "zod";
 import { currentStats, ITEMS, SKILLS, SPECIES } from "./content.ts";
-import { BLOCKED, MAPS } from "./maps.ts";
+import { MAPS } from "./maps.ts";
 import type { GameSave } from "./types.ts";
+import { isOccupied } from "./world/movement.ts";
+import { isLegacyCoordinateValid, resolveSafeSpawn } from "./world/reachability.ts";
 
-export const SAVE_VERSION = 2;
-export const SAVE_KEY = "reliquary.save.v2";
-export const SAVE_BACKUP = "reliquary.save.v2.bak";
-export const LEGACY_SAVE_KEY = "reliquary.save.v1";
-export const LEGACY_SAVE_BACKUP = "reliquary.save.v1.bak";
+export const SAVE_VERSION = 3;
+export const WORLD_REVISION = 1;
+export const SAVE_KEY = "reliquary.save.v3";
+export const SAVE_BACKUP = "reliquary.save.v3.bak";
+export const LEGACY_SAVE_KEY = "reliquary.save.v2";
+export const LEGACY_SAVE_BACKUP = "reliquary.save.v2.bak";
+export const LEGACY_V1_KEY = "reliquary.save.v1";
+export const LEGACY_V1_BACKUP = "reliquary.save.v1.bak";
 
 export interface SaveStorage {
   getItem(key: string): string | null;
@@ -28,6 +33,7 @@ const beastSchema = z.object({
   hp: z.number().finite().nonnegative(), mp: z.number().finite().nonnegative(),
   ivs: statSchema, temperament: z.enum(["fierce", "warding", "keen", "sage", "stalwart", "lucid", "wild", "calm"]),
   skills: z.array(z.string().min(1)).max(4),
+  pendingSkills: z.array(z.string().min(1)).max(16).optional(),
   status: z.enum(["burn", "soak", "bind", "daze", "ward", "bless"]).nullable(),
   statusTurns: z.number().int().nonnegative(),
 }).strict();
@@ -41,31 +47,24 @@ const saveFields = {
   flags: z.record(z.string(), z.boolean()), seen: z.record(z.string(), z.boolean()), caught: z.record(z.string(), z.boolean()),
 };
 
-/** The on-disk v1 contract, retained so current legitimate saves can migrate. */
 export const GameSaveV1Schema = z.object({ version: z.literal(1), ...saveFields }).strict();
-export const GameSaveSchema = z.object({ version: z.literal(SAVE_VERSION), ...saveFields }).strict();
+export const GameSaveV2Schema = z.object({ version: z.literal(2), ...saveFields }).strict();
+export const GameSaveSchema = z
+  .object({ version: z.literal(SAVE_VERSION), worldRevision: z.literal(WORLD_REVISION), ...saveFields })
+  .strict();
 
 function browserStorage(): SaveStorage | null {
-  return typeof localStorage === "undefined" ? null : localStorage;
+  try { return typeof localStorage === "undefined" ? null : localStorage; }
+  catch { return null; }
 }
 
-function migrateParsed(value: unknown): GameSave | null {
-  const version = value && typeof value === "object" && "version" in value ? value.version : undefined;
-  const parsed = version === 1 ? GameSaveV1Schema.safeParse(value) : GameSaveSchema.safeParse(value);
-  if (!parsed.success) return null;
-  const save = { ...parsed.data, version: SAVE_VERSION } as GameSave;
-  return validateSemantics(save) ? save : null;
-}
-
-function validateSemantics(save: GameSave): boolean {
-  const map = MAPS[save.mapId];
-  if (!map || save.y < 0 || save.y >= map.ground.length || save.x < 0 || save.x >= (map.ground[0]?.length ?? 0)) return false;
-  if (BLOCKED.has(map.ground[save.y]![save.x]!)) return false;
+function validateBeasts(save: Omit<GameSave, "version">): boolean {
   const ids = new Set<string>();
   for (const beast of [...save.party, ...save.box]) {
     if (ids.has(beast.uid) || !SPECIES[beast.speciesId]) return false;
     ids.add(beast.uid);
     if (beast.skills.some((skill) => !SKILLS[skill])) return false;
+    if (beast.pendingSkills?.some((skill) => !SKILLS[skill])) return false;
     const stats = currentStats(beast);
     if (beast.hp > stats.hp || beast.mp > stats.mp) return false;
   }
@@ -74,13 +73,62 @@ function validateSemantics(save: GameSave): boolean {
   return true;
 }
 
+function validateSemantics(save: GameSave, options: { migratePosition?: boolean }): GameSave | null {
+  const map = MAPS[save.mapId];
+  if (!map) return null;
+  if (!validateBeasts(save)) return null;
+  let { x, y } = save;
+  if (options.migratePosition) {
+    if (!isLegacyCoordinateValid(map, x, y)) return null;
+    ({ x, y } = resolveSafeSpawn(map, { x, y }, save.flags));
+  } else if (isOccupied(map, save.flags, x, y)) {
+    return null;
+  }
+  return { ...save, x, y, version: SAVE_VERSION, worldRevision: WORLD_REVISION };
+}
+
+function migrateParsed(value: unknown): GameSave | null {
+  if (!value || typeof value !== "object" || !("version" in value)) return null;
+  const version = value.version;
+  if (version === SAVE_VERSION) {
+    const parsed = GameSaveSchema.safeParse(value);
+    if (!parsed.success) return null;
+    return validateSemantics(parsed.data as GameSave, { migratePosition: false });
+  }
+  if (version === 2) {
+    const parsed = GameSaveV2Schema.safeParse(value);
+    if (!parsed.success) return null;
+    const draft = { ...parsed.data, version: SAVE_VERSION, worldRevision: WORLD_REVISION } as GameSave;
+    return validateSemantics(draft, { migratePosition: true });
+  }
+  if (version === 1) {
+    const parsed = GameSaveV1Schema.safeParse(value);
+    if (!parsed.success) return null;
+    const draft = { ...parsed.data, version: SAVE_VERSION, worldRevision: WORLD_REVISION } as GameSave;
+    return validateSemantics(draft, { migratePosition: true });
+  }
+  return null;
+}
+
 export function parseSave(raw: string): GameSave | null {
   try { return migrateParsed(JSON.parse(raw)); } catch { return null; }
 }
 
+export function cloneSave(save: GameSave): GameSave {
+  return structuredClone(save);
+}
+
+export function serializeSave(save: GameSave): string | null {
+  const normalized = { ...save, version: SAVE_VERSION, worldRevision: WORLD_REVISION } as GameSave;
+  if (!GameSaveSchema.safeParse(normalized).success) return null;
+  const validated = validateSemantics(normalized, { migratePosition: false });
+  if (!validated) return null;
+  return JSON.stringify(validated);
+}
+
 export function loadSave(source: SaveStorage | null = browserStorage()): GameSave | null {
   if (!source) return null;
-  for (const key of [SAVE_KEY, SAVE_BACKUP, LEGACY_SAVE_KEY, LEGACY_SAVE_BACKUP]) {
+  for (const key of [SAVE_KEY, SAVE_BACKUP, LEGACY_SAVE_KEY, LEGACY_SAVE_BACKUP, LEGACY_V1_KEY, LEGACY_V1_BACKUP]) {
     try {
       const raw = source.getItem(key);
       if (!raw) continue;
@@ -95,28 +143,27 @@ export function loadSave(source: SaveStorage | null = browserStorage()): GameSav
 
 export function writeSave(save: GameSave, target: SaveStorage | null = browserStorage()): boolean {
   if (!target) return false;
-  const normalized = { ...save, version: SAVE_VERSION } as GameSave;
-  if (!GameSaveSchema.safeParse(normalized).success || !validateSemantics(normalized)) return false;
+  const text = serializeSave(save);
+  if (text === null) return false;
   let hadLegacySlots = false;
   try {
-    // Rotate only a *validated* prior save into the backup slot. A corrupt or
-    // unreadable primary must never destroy the last valid recovery copy.
-    const previous = target.getItem(SAVE_KEY) ?? target.getItem(LEGACY_SAVE_KEY);
-    hadLegacySlots = target.getItem(LEGACY_SAVE_KEY) !== null || target.getItem(LEGACY_SAVE_BACKUP) !== null;
+    const previous = target.getItem(SAVE_KEY) ?? target.getItem(LEGACY_SAVE_KEY) ?? target.getItem(LEGACY_V1_KEY);
+    hadLegacySlots =
+      target.getItem(LEGACY_SAVE_KEY) !== null
+      || target.getItem(LEGACY_SAVE_BACKUP) !== null
+      || target.getItem(LEGACY_V1_KEY) !== null
+      || target.getItem(LEGACY_V1_BACKUP) !== null;
     if (previous !== null && parseSave(previous) !== null) {
       target.setItem(SAVE_BACKUP, previous);
     }
-    target.setItem(SAVE_KEY, JSON.stringify(normalized));
-    // The new primary is durable; stale legacy slots may now be reclaimed.
+    target.setItem(SAVE_KEY, text);
     if (hadLegacySlots) {
-      for (const key of [LEGACY_SAVE_KEY, LEGACY_SAVE_BACKUP]) {
+      for (const key of [LEGACY_SAVE_KEY, LEGACY_SAVE_BACKUP, LEGACY_V1_KEY, LEGACY_V1_BACKUP]) {
         try { target.removeItem(key); } catch { /* keep going: primary is durable */ }
       }
     }
     return true;
   } catch {
-    // A failed write leaves the previous state (validated backup and/or old
-    // primary) in place so loadSave can still recover the last good save.
     return false;
   }
 }
@@ -127,7 +174,7 @@ export function hasSave(source: SaveStorage | null = browserStorage()): boolean 
 
 export function clearSave(target: SaveStorage | null = browserStorage()): void {
   if (!target) return;
-  for (const key of [SAVE_KEY, SAVE_BACKUP, LEGACY_SAVE_KEY, LEGACY_SAVE_BACKUP]) {
+  for (const key of [SAVE_KEY, SAVE_BACKUP, LEGACY_SAVE_KEY, LEGACY_SAVE_BACKUP, LEGACY_V1_KEY, LEGACY_V1_BACKUP]) {
     try { target.removeItem(key); } catch { /* storage unavailable */ }
   }
 }

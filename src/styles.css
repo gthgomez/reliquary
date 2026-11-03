@@ -42,8 +42,9 @@
 
 .game-root {
   position: relative;
-  min-height: 100dvh;
-  min-height: 100svh;
+  /* Fixed to the viewport so short landscape screens never scroll the document. */
+  height: 100dvh;
+  height: 100svh;
   display: flex;
   flex-direction: column;
   background: var(--color-ink);
@@ -261,6 +262,12 @@
 .hud-gold {
   font-variant-numeric: tabular-nums;
 }
+.hud-objective {
+  max-width: 40rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .hud-menu {
   margin-left: auto;
   pointer-events: auto;
@@ -320,6 +327,36 @@
   max-height: min(70vh, 520px);
   overflow: auto;
 }
+.overlay-panel {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  overflow: hidden;
+  padding: 0;
+  max-height: min(72dvh, 540px);
+}
+.overlay-panel-head {
+  padding: 1rem 1rem 0.35rem;
+}
+.overlay-panel-body {
+  overflow-y: auto;
+  touch-action: pan-y;
+  overscroll-behavior: contain;
+  padding: 0 1rem;
+  min-height: 0;
+}
+.overlay-panel-foot {
+  padding: 0.55rem 1rem 1rem;
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.overlay-panel-foot .btn-ghost {
+  margin-left: auto;
+}
+.save-file-input {
+  display: none;
+}
 .sheet-wide {
   left: 0.7rem;
   width: auto;
@@ -361,6 +398,14 @@
   color: var(--color-copper);
   font-variant-numeric: tabular-nums;
 }
+.target-list button {
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: 0.4rem;
+}
+.target-list button .muted {
+  flex-basis: 100%;
+}
 
 .party-grid,
 .reliq-grid {
@@ -378,6 +423,39 @@
   background: var(--color-cream);
   border-radius: var(--radius-md);
   padding: 0.55rem;
+  border: 1px solid var(--color-line);
+}
+.beast-card-active {
+  border-color: var(--color-copper);
+  box-shadow: 0 0 0 1px var(--color-copper);
+}
+.beast-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+.beast-actions .btn-ghost {
+  background: var(--color-ink);
+  color: var(--color-cream);
+}
+.rename-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+.rename-form label {
+  display: grid;
+  gap: 0.25rem;
+  width: 100%;
+}
+.rename-form input {
+  min-width: 0;
+  width: 100%;
+  padding: 0.5rem;
+  color: var(--color-ink);
+  background: var(--color-cream);
+  border: 1px solid var(--color-ink);
 }
 .beast-card img,
 .reliq-cell img {
@@ -736,4 +814,48 @@
 .empty {
   color: var(--color-muted);
   margin: 0.4rem 0;
+}
+
+/* Keep variable-length logs, battler details and command rows in normal flow. */
+.battle-controls {
+  position: absolute;
+  left: 0.6rem;
+  right: 0.6rem;
+  bottom: 0.6rem;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.5rem;
+  max-height: 65%;
+  overflow-y: auto;
+  pointer-events: auto;
+}
+.battle-controls .battler.me,
+.battle-controls .battle-log,
+.battle-controls .cmd,
+.battle-controls .btn-primary {
+  position: static;
+  flex-shrink: 0;
+}
+.battle-controls .battler.me {
+  align-self: flex-start;
+}
+.battle-controls .battle-log {
+  width: 100%;
+}
+button:focus-visible {
+  outline: 2px solid var(--color-copper);
+  outline-offset: 3px;
+}
+button:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.app-status {
+  margin: 0.35rem auto 0;
+  max-width: 28rem;
+  text-align: center;
+  font-size: 0.85rem;
+  color: var(--parchment-dim, #a89880);
 }
