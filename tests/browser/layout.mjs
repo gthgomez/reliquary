@@ -64,11 +64,13 @@ try {
         return {
           isModal: document.querySelector(".game-root")?.classList.contains("is-ui-modal"),
           touchHidden: !touch || getComputedStyle(touch).display === "none",
+          explorePad: document.querySelector(".touch .dpad") != null,
           hudHidden: document.querySelector(".hud")?.classList.contains("hud-dormant") === true,
         };
       });
       assert.equal(modalChrome.isModal, true, "menu open sets ui modal class");
       assert.equal(modalChrome.touchHidden, true, "exploration touch hidden in menu");
+      assert.equal(modalChrome.explorePad, false, "walk pad hidden in menu");
       assert.equal(modalChrome.hudHidden, true, "world HUD dormant under menu sheet");
       const panel = page.locator(".overlay-panel, .sheet").first();
       const box = await panel.boundingBox();

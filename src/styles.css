@@ -660,13 +660,15 @@
 }
 .battler {
   position: absolute;
-  background: color-mix(in oklab, var(--color-ink) 78%, transparent);
-  border: 1px solid var(--color-line);
+  background: color-mix(in oklab, var(--color-ink) 94%, transparent);
+  border: 1px solid color-mix(in oklab, var(--color-cream) 22%, transparent);
   border-radius: var(--radius-md);
   padding: 0.45rem 0.65rem;
   min-width: min(150px, 46%);
   max-width: calc(100% - 1.2rem);
   pointer-events: none;
+  box-shadow: 0 4px 16px color-mix(in oklab, var(--color-ink) 65%, transparent);
+  color: var(--color-cream);
 }
 .battler.foe {
   top: 0.6rem;
@@ -679,10 +681,18 @@
 .battler strong {
   font-family: var(--font-display);
   display: block;
+  color: var(--color-cream);
 }
 .battler span {
-  color: var(--color-muted);
-  font-size: 0.75rem;
+  color: var(--color-parchment);
+  font-size: 0.78rem;
+}
+.battler .meter {
+  color: var(--color-cream);
+  font-size: 0.78rem;
+}
+.battle-controls .battler {
+  position: static;
 }
 .battle-log {
   position: absolute;
@@ -768,7 +778,35 @@
   color: var(--color-hp);
 }
 .shop-list button.unaffordable {
-  opacity: 0.92;
+  opacity: 1;
+  border-left: 4px solid var(--color-hp);
+  background: color-mix(in oklab, var(--color-hp) 8%, var(--color-cream));
+}
+.shop-list button.unaffordable em {
+  text-decoration: line-through;
+  color: var(--color-hp);
+}
+.shop-list button.affordable em {
+  color: color-mix(in oklab, var(--color-forest) 55%, var(--color-copper));
+}
+.shop-buy-btn {
+  width: 100%;
+  margin-bottom: 0.5rem;
+}
+.shop-buy-btn:disabled {
+  opacity: 0.85;
+  background: color-mix(in oklab, var(--color-parchment) 70%, var(--color-cream));
+}
+.btn-lead-active {
+  background: var(--color-copper);
+  color: var(--color-cream);
+  border: 1px solid color-mix(in oklab, var(--color-cream) 35%, transparent);
+  min-height: 44px;
+  padding: 0.45rem 0.8rem;
+  font-family: var(--font-display);
+  letter-spacing: 0.04em;
+  border-radius: var(--radius-sm);
+  opacity: 1;
 }
 .shop-detail {
   margin-bottom: 0;
@@ -817,6 +855,32 @@
   text-wrap: balance;
 }
 
+.touch-dialog-hint {
+  margin: 0;
+  flex: 1;
+  text-align: center;
+  font-size: 0.78rem;
+  color: var(--color-parchment-dim);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.game-root.has-dialog-touch .stage {
+  padding-bottom: 88px;
+}
+.game-root.has-dialog-touch .touch {
+  height: 88px;
+  justify-content: center;
+}
+.game-root.is-battle.has-touch .stage,
+.game-root.is-battle .stage {
+  padding-bottom: 0.35rem;
+}
+.game-root.is-battle .touch {
+  display: none;
+}
+.game-root.classic-touch.is-dialog.has-touch .stage {
+  padding-bottom: 132px;
+}
 .touch {
   display: none;
   position: absolute;

@@ -13,7 +13,7 @@ import {
   VictoryScreen,
 } from "./ui/Overlays";
 import { AppStatus } from "./ui/AppStatus";
-import { isUiModalOpen } from "./ui/ui-chrome.ts";
+import { isClassicTouchEnabled, isUiModalOpen, shouldShowDialogTouch, shouldShowExplorationTouch } from "./ui/ui-chrome.ts";
 import { registerReliquaryServiceWorker } from "../pwa/register.ts";
 import { acquireSaveSession } from "./save-session.ts";
 
@@ -103,28 +103,33 @@ export function GameApp() {
     !!snap.dialog ||
     !!snap.menu;
   const uiModal = isUiModalOpen(snap);
+  const classicTouch = isClassicTouchEnabled();
   const showHudBar = playing && snap.mode !== "battle";
-  const showHudInteractive = showHudBar && !uiModal;
-  const showTouch =
-    snap.mode !== "boot" && snap.mode !== "title" && snap.mode !== "victory" && !uiModal;
+  const showExplorationTouch = shouldShowExplorationTouch(snap, classicTouch);
+  const showDialogTouch = shouldShowDialogTouch(snap, classicTouch);
+  const showTouch = showExplorationTouch || showDialogTouch;
   const menuButtonRef = useRef<HTMLButtonElement>(null);
+  const wasUiModal = useRef(false);
 
   useEffect(() => {
     if (uiModal) {
+      wasUiModal.current = true;
       requestAnimationFrame(() => {
         document.querySelector<HTMLElement>(".overlay-panel-close")?.focus({ preventScroll: true });
       });
       return;
     }
+    if (!wasUiModal.current) return;
+    wasUiModal.current = false;
     requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        menuButtonRef.current?.focus({ preventScroll: true });
-      });
+      menuButtonRef.current?.focus({ preventScroll: true });
     });
-  }, [uiModal, snap.menu, snap.mode]);
+  }, [uiModal]);
 
   return (
-    <div className={`game-root${showTouch ? " has-touch" : ""}${uiModal ? " is-ui-modal" : ""}`}>
+    <div
+      className={`game-root${showTouch ? " has-touch" : ""}${showExplorationTouch ? " has-explore-touch" : ""}${showDialogTouch ? " has-dialog-touch" : ""}${classicTouch ? " classic-touch" : ""}${uiModal ? " is-ui-modal" : ""}${snap.dialog ? " is-dialog" : ""}${snap.mode === "battle" ? " is-battle" : ""}`}
+    >
       <div className="stage" ref={stageRef}>
         <div
           className="viewport"
@@ -197,7 +202,7 @@ export function GameApp() {
           }}
         />
       </div>
-      {showTouch ? <TouchPad game={g} /> : null}
+      {showTouch ? <TouchPad game={g} variant={showDialogTouch && !showExplorationTouch ? "dialog" : "full"} /> : null}
     </div>
   );
 }

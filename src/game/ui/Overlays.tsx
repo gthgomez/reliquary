@@ -19,6 +19,7 @@ import {
   practiceActionHint,
   practiceEnabledHint,
 } from "./party-actions.ts";
+import { shopBuyAffordability } from "./ui-chrome.ts";
 
 export function TitleScreen({ game, snap }: { game: ReliquaryGame; snap: Snapshot }) {
   return (
@@ -294,9 +295,12 @@ export function MenuPanel({ game, snap }: { game: ReliquaryGame; snap: Snapshot 
               <div className="action-with-hint">
                 <button
                   type="button"
-                  className="btn-ghost"
-                  disabled={index === 0 || b.hp <= 0}
-                  onClick={() => game.setLead(b.uid)}
+                  className={index === 0 ? "btn-lead-active" : "btn-ghost"}
+                  disabled={index !== 0 && b.hp <= 0}
+                  aria-pressed={index === 0}
+                  onClick={() => {
+                    if (index !== 0 && b.hp > 0) game.setLead(b.uid);
+                  }}
                   aria-label={`Make ${b.nickname} lead`}
                   aria-describedby={`lead-hint-${b.uid}`}
                 >
@@ -792,15 +796,16 @@ export function ShopPanel({ game, snap }: { game: ReliquaryGame; snap: Snapshot 
           const it = ITEMS[id]!;
           const price = snap.shopMode === "buy" ? it.price : Math.floor(it.price / 2);
           const owned = snap.inventory[id] ?? 0;
-          const unaffordable = snap.shopMode === "buy" && snap.gold < it.price;
+          const unaffordable = snap.shopMode === "buy" && shopBuyAffordability(snap.gold, it.price) === "unaffordable";
+          const affordable = snap.shopMode === "buy" && !unaffordable;
           return (
             <li key={id}>
               <button
                 type="button"
-                className={`shop-row${i === snap.shopIndex ? " active" : ""}${unaffordable ? " unaffordable" : ""}`}
+                className={`shop-row${i === snap.shopIndex ? " active" : ""}${unaffordable ? " unaffordable" : ""}${affordable ? " affordable" : ""}`}
                 onClick={() => {
                   game.shopIndex = i;
-                  game.shopConfirm();
+                  game.emitPublic();
                 }}
               >
                 <span className="shop-row-main">
@@ -819,6 +824,18 @@ export function ShopPanel({ game, snap }: { game: ReliquaryGame; snap: Snapshot 
           );
         })}
       </ul>
+      {selected && snap.shopMode === "buy" ? (
+        <button
+          type="button"
+          className="btn-primary shop-buy-btn"
+          disabled={!canAffordBuy}
+          onClick={() => game.shopConfirm()}
+        >
+          {canAffordBuy
+            ? `Buy for ${selected.price} cr`
+            : `Need ${selected.price} cr (${snap.gold} in purse)`}
+        </button>
+      ) : null}
       {selected ? (
         <p className="sheet-sub shop-detail" aria-live="polite">
           {selected.desc}
@@ -831,7 +848,7 @@ export function ShopPanel({ game, snap }: { game: ReliquaryGame; snap: Snapshot 
   );
 }
 
-export function TouchPad({ game }: { game: ReliquaryGame }) {
+export function TouchPad({ game, variant = "full" }: { game: ReliquaryGame; variant?: "full" | "dialog" }) {
   const hold = (code: string, on: boolean) => {
     if (on) game.keys.add(code);
     else game.keys.delete(code);
@@ -847,21 +864,25 @@ export function TouchPad({ game }: { game: ReliquaryGame }) {
     onLostPointerCapture: () => hold(code, false),
   });
   return (
-    <div className="touch">
-      <div className="dpad">
-        <button type="button" className="d up" aria-label="North" {...dir("KeyW")}>
-          <span>N</span>
-        </button>
-        <button type="button" className="d left" aria-label="West" {...dir("KeyA")}>
-          <span>W</span>
-        </button>
-        <button type="button" className="d right" aria-label="East" {...dir("KeyD")}>
-          <span>E</span>
-        </button>
-        <button type="button" className="d down" aria-label="South" {...dir("KeyS")}>
-          <span>S</span>
-        </button>
-      </div>
+    <div className={`touch touch-${variant}`} aria-label={variant === "dialog" ? "Dialog controls" : "Movement controls"}>
+      {variant === "full" ? (
+        <div className="dpad">
+          <button type="button" className="d up" aria-label="North" {...dir("KeyW")}>
+            <span>N</span>
+          </button>
+          <button type="button" className="d left" aria-label="West" {...dir("KeyA")}>
+            <span>W</span>
+          </button>
+          <button type="button" className="d right" aria-label="East" {...dir("KeyD")}>
+            <span>E</span>
+          </button>
+          <button type="button" className="d down" aria-label="South" {...dir("KeyS")}>
+            <span>S</span>
+          </button>
+        </div>
+      ) : (
+        <p className="touch-dialog-hint">A · Next · B · Back</p>
+      )}
       <div className="ab">
         <button type="button" className="b-btn" onClick={() => game.cancel()}>
           B
