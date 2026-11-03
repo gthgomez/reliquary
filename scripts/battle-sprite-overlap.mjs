@@ -8,7 +8,7 @@ import { createServer } from "node:http";
 import { readFileSync, existsSync } from "node:fs";
 import { join, extname } from "node:path";
 import { fileURLToPath } from "node:url";
-import { computeBattleLayout } from "../src/game/render/battle-scene.ts";
+import { computeBattleLayout, stableBattleUiReserveTop } from "../src/game/render/battle-scene.ts";
 
 const root = join(fileURLToPath(new URL(".", import.meta.url)), "..");
 const staticDir = process.argv[2] ?? join(root, ".vercel/output/static");
@@ -98,7 +98,8 @@ try {
     }, GAP_PX);
 
     assert.ok(probe, `${vp.name} battle probe missing`);
-    const layout = computeBattleLayout(probe.cw, probe.ch, probe.reserveDom);
+    const reserveTop = stableBattleUiReserveTop(probe.cw, probe.ch);
+    const layout = computeBattleLayout(probe.cw, probe.ch, reserveTop, { stableReserve: true });
 
     const spriteCheck = await page.evaluate(
       ({ foe, player, gapPx }) => {
