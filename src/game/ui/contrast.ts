@@ -15,9 +15,34 @@ export function contrastRatio(fg: [number, number, number], bg: [number, number,
   return (lighter + 0.05) / (darker + 0.05);
 }
 
-/** Parse `rgb(r, g, b)` / `rgba(...)` from computed styles. */
+/** Parse `rgb(r, g, b)` / `rgba(...)` from computed styles (alpha defaults to 1). */
 export function parseRgb(cssColor: string): [number, number, number] | null {
-  const m = cssColor.match(/rgba?\(\s*([\d.]+)[,\s]+([\d.]+)[,\s]+([\d.]+)/);
+  const rgba = parseRgba(cssColor);
+  if (!rgba) return null;
+  return [rgba[0], rgba[1], rgba[2]];
+}
+
+export function parseRgba(cssColor: string): [number, number, number, number] | null {
+  const m = cssColor.match(
+    /rgba?\(\s*([\d.]+)[,\s]+([\d.]+)[,\s]+([\d.]+)(?:[,\s/]+([\d.]+))?\s*\)/,
+  );
   if (!m) return null;
-  return [Number(m[1]), Number(m[2]), Number(m[3])];
+  const a = m[4] != null ? Number(m[4]) : 1;
+  return [Number(m[1]), Number(m[2]), Number(m[3]), a];
+}
+
+/** Place `top` (with alpha) over `bottom` sRGB triple. */
+export function compositeOver(
+  bottom: [number, number, number],
+  top: [number, number, number, number],
+): [number, number, number] {
+  const [tr, tg, tb, ta] = top;
+  if (ta <= 0) return bottom;
+  if (ta >= 1) return [tr, tg, tb];
+  const inv = 1 - ta;
+  return [
+    Math.round(tr * ta + bottom[0] * inv),
+    Math.round(tg * ta + bottom[1] * inv),
+    Math.round(tb * ta + bottom[2] * inv),
+  ];
 }

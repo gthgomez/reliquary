@@ -1,9 +1,18 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { contrastRatio, parseRgb, relativeLuminance } from "./contrast.ts";
+import { compositeOver, contrastRatio, parseRgb, parseRgba, relativeLuminance } from "./contrast.ts";
 
 test("parseRgb reads computed-style rgb strings", () => {
   assert.deepEqual(parseRgb("rgb(20, 17, 14)"), [20, 17, 14]);
+});
+
+test("parseRgba reads alpha", () => {
+  assert.deepEqual(parseRgba("rgba(10, 20, 30, 0.5)"), [10, 20, 30, 0.5]);
+});
+
+test("compositeOver blends translucent overlays", () => {
+  const out = compositeOver([0, 0, 0], [255, 255, 255, 0.5]);
+  assert.deepEqual(out, [128, 128, 128]);
 });
 
 test("contrastRatio matches known black on white", () => {

@@ -1,4 +1,5 @@
-import type { ReactNode } from "react";
+import { useRef, type ReactNode } from "react";
+import { useOverlayFocusTrap } from "./useOverlayFocusTrap.ts";
 
 type OverlayPanelProps = {
   title: string;
@@ -20,8 +21,12 @@ export function OverlayPanel({
   footer,
   wide = false,
 }: OverlayPanelProps) {
+  const panelRef = useRef<HTMLDivElement>(null);
+  useOverlayFocusTrap(panelRef, true);
+
   return (
     <div
+      ref={panelRef}
       className={`overlay-panel sheet${wide ? " sheet-wide" : ""}`}
       role="dialog"
       aria-modal="true"

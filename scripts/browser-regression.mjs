@@ -68,10 +68,19 @@ if (serveOnly) {
   const suiteIdx = args.indexOf("--suite");
   const suite = suiteIdx >= 0 ? args[suiteIdx + 1] : "all";
   const map = {
-    all: ["layout.mjs", "contrast.mjs", "modal-a11y.mjs", "touch-arbitration.mjs", "pwa.mjs", "journey.mjs"],
+    all: [
+      "layout.mjs",
+      "contrast.mjs",
+      "modal-a11y.mjs",
+      "modal-focus-trap.mjs",
+      "shop-flow.mjs",
+      "touch-arbitration.mjs",
+      "pwa.mjs",
+      "journey.mjs",
+    ],
     layout: ["layout.mjs"],
     contrast: ["contrast.mjs"],
-    a11y: ["modal-a11y.mjs"],
+    a11y: ["modal-a11y.mjs", "modal-focus-trap.mjs"],
     touch: ["touch-arbitration.mjs"],
     pwa: ["pwa.mjs"],
     journey: ["journey.mjs"],

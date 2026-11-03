@@ -35,6 +35,49 @@ try {
     assert.equal(worldChrome.dpad, true);
   });
   console.log("[touch-arbitration] dialog vs overworld pad ok");
+
+  await withBrowser(async (page) => {
+    await page.addInitScript(() => {
+      localStorage.setItem("reliquary-classic-touch", "1");
+    });
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto(baseUrl, { waitUntil: "networkidle", timeout: 60_000 });
+    await waitForGameBoot(page);
+    await page.click("text=Start");
+    await page.waitForSelector(".dialog", { timeout: 10_000 });
+    const dialogClassic = await page.evaluate(() => ({
+      classic: document.querySelector(".game-root")?.classList.contains("classic-touch"),
+      explore: document.querySelector(".game-root")?.classList.contains("has-explore-touch"),
+      dpad: document.querySelector(".touch .dpad") != null,
+    }));
+    assert.equal(dialogClassic.classic, true, "classic-touch class when localStorage=1");
+    assert.equal(dialogClassic.explore, true, "classic keeps exploration pad during dialogue");
+    assert.equal(dialogClassic.dpad, true, "dpad visible in classic dialogue");
+
+    for (let i = 0; i < 16; i += 1) {
+      if ((await page.locator(".dialog").count()) === 0) break;
+      await page.locator(".dialog").click().catch(() => page.keyboard.press("Enter"));
+      await page.waitForTimeout(80);
+    }
+    await page.waitForSelector(".hud-menu");
+    const worldClassic = await page.evaluate(() => ({
+      explore: document.querySelector(".game-root")?.classList.contains("has-explore-touch"),
+      dpad: document.querySelector(".touch .dpad") != null,
+    }));
+    assert.equal(worldClassic.explore, true, "classic pad in overworld");
+    assert.equal(worldClassic.dpad, true);
+
+    await page.click(".hud-menu");
+    await page.waitForSelector(".overlay-panel");
+    const menuClassic = await page.evaluate(() => ({
+      explore: document.querySelector(".game-root")?.classList.contains("has-explore-touch"),
+      modal: document.querySelector(".game-root")?.classList.contains("is-ui-modal"),
+    }));
+    assert.equal(menuClassic.modal, true);
+    assert.equal(menuClassic.explore, true, "classic mode keeps exploration pad in modal");
+    await page.evaluate(() => window.__reliquary?.cancel?.());
+  });
+  console.log("[touch-arbitration] classic localStorage=1 runtime ok");
 } finally {
   server.close();
 }

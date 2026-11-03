@@ -73,6 +73,21 @@ export function GameApp() {
       cancel: g.cancel,
       startNew: () => g.startNew(),
       openMenu: () => g.toggleMenu(),
+      openShop: () => {
+        g.mode = "shop";
+        g.shopMode = "buy";
+        g.shopIndex = 0;
+        g.menu = null;
+        g.emitPublic();
+      },
+      getEconomy: () => ({
+        gold: g.gold,
+        inventory: { ...g.inventory },
+      }),
+      setGold: (gold: number) => {
+        g.gold = gold;
+        g.emitPublic();
+      },
     };
     const apply = () => {
       if (!stage) return;
@@ -124,7 +139,7 @@ export function GameApp() {
     requestAnimationFrame(() => {
       menuButtonRef.current?.focus({ preventScroll: true });
     });
-  }, [uiModal]);
+  }, [uiModal, snap.menu, snap.mode]);
 
   return (
     <div

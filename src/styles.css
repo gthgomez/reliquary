@@ -660,7 +660,7 @@
 }
 .battler {
   position: absolute;
-  background: color-mix(in oklab, var(--color-ink) 94%, transparent);
+  background: rgba(20, 17, 14, 0.96);
   border: 1px solid color-mix(in oklab, var(--color-cream) 22%, transparent);
   border-radius: var(--radius-md);
   padding: 0.45rem 0.65rem;
