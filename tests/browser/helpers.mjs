@@ -57,7 +57,7 @@ export async function withBrowser(fn, options = {}) {
   try {
     const context = await browser.newContext({ serviceWorkers: "block", ...(options.context ?? {}) });
     const page = await context.newPage();
-    await fn(page, context);
+    return await fn(page, context);
   } finally {
     await browser.close();
   }

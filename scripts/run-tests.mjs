@@ -29,6 +29,7 @@ const testArgs = files.map((path) => relative(root, join(root, path)));
 const result = spawnSync(process.execPath, ["--experimental-strip-types", "--test", ...testArgs], {
   cwd: root,
   stdio: "inherit",
+  env: { ...process.env, VITE_RELIQUARY_BROWSER_TEST: "1" },
 });
 if (result.error) {
   console.error(`[tests] failed to start: ${result.error.message}`);

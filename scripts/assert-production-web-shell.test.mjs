@@ -37,6 +37,12 @@ test("production build:web excludes all browser-test probe identifiers", () => {
     stdio: "inherit",
   });
   assert.equal(assertRun.status, 0);
+  const runtime = spawnSync(process.execPath, [join(root, "scripts/assert-production-runtime.mjs")], {
+    cwd: root,
+    stdio: "inherit",
+    timeout: 120_000,
+  });
+  assert.equal(runtime.status, 0);
   const text = bundleText();
   for (const needle of PROD_FORBIDDEN) {
     assert.equal(text.includes(needle), false, `production bundle contains ${needle}`);

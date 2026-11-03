@@ -37,6 +37,7 @@ import {
   computeBattleStageGeometry,
   reportBattleStageGeometry,
 } from "./render/battle-stage-geometry.ts";
+import { shouldExposeControlsTestOnWindow } from "./render/render-report-gate.ts";
 import {
   adjustCamYForHudInset,
   readUiSafeTopCanvas,
@@ -190,7 +191,7 @@ export class ReliquaryGame {
 	private battleLayoutCanvasKey: string | null = null;
 	private battleIdlePhase = 0;
 	private reducedMotion = false;
-	private worldCamRelief: WorldCamReliefState = { relief: 0 };
+	private worldCamRelief: WorldCamReliefState = { relief: 0, contentPanY: 0 };
 	constructor(options: { random?: RandomSource } = {}) {
 		this.random = options.random ?? mathRandom;
 		this.snap = this.buildSnap();
@@ -470,7 +471,7 @@ export class ReliquaryGame {
 				this.startWild();
 			}
 		};
-		window.__controlsTest = this.probe;
+		if (shouldExposeControlsTestOnWindow()) window.__controlsTest = this.probe;
 	}
 	startNew(notice?: string): void {
 		unlockAudio();
@@ -2041,15 +2042,25 @@ export class ReliquaryGame {
 				const adjusted = adjustCamYForHudInset(camY, playerHeadCanvasY, insetCanvas, this.worldCamRelief);
 				camY = adjusted.camY;
 				this.worldCamRelief.relief = adjusted.relief;
+				this.worldCamRelief.contentPanY = adjusted.contentPanY;
 				reportWorldCameraGeometry(this.cw(), this.ch(), {
 					hudInsetBottom: insetCanvas,
 					hudInsetSource: source,
 					camRelief: adjusted.relief,
-					playerHeadCanvasY: this.py + TILE - TILE * 1.5 - camY,
+					contentPanY: adjusted.contentPanY,
+					headAfterCamRelief: adjusted.headAfterCamRelief,
+					effectivePlayerHeadCanvasY: adjusted.effectiveHeadCanvasY,
+					playerHeadCanvasY: adjusted.headAfterCamRelief,
 				});
 			}
 		} else if (canvas && typeof document !== "undefined") {
 			this.worldCamRelief.relief = 0;
+			this.worldCamRelief.contentPanY = 0;
+		}
+		const worldPanY = this.worldCamRelief.contentPanY;
+		if (worldPanY > 0) {
+			ctx.save();
+			ctx.translate(0, worldPanY);
 		}
 		if (this.terrain?.map !== m) {
 			const canvas = document.createElement("canvas");
@@ -2153,6 +2164,7 @@ export class ReliquaryGame {
 		});
 		list.sort((a, b) => a.y - b.y);
 		for (const s of list) s.draw();
+		if (worldPanY > 0) ctx.restore();
 	}
 	private drawBattle(ctx: CanvasRenderingContext2D): void {
 		const b = this.battle!;

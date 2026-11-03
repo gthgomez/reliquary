@@ -7,28 +7,39 @@ const ENTER_PX = 10;
 const LEAVE_PX = 4;
 const RELIEF_STEP = 0.18;
 const MAX_RELIEF = 96;
+const MAX_CONTENT_PAN = 160;
 
-/** @deprecated use readUiSafeTopCanvas — kept for tests comparing fallback path. */
-export function measureWorldHudInsetCanvas(canvas: HTMLCanvasElement): number | null {
-  const { insetCanvas, source } = readUiSafeTopCanvas(canvas);
-  return source ? insetCanvas : null;
-}
-
-export type WorldCamReliefState = { relief: number };
+export type WorldCamReliefState = { relief: number; contentPanY: number };
 
 export function adjustCamYForHudInset(
   camY: number,
   playerHeadCanvasY: number,
   hudInsetBottom: number,
   state: WorldCamReliefState,
-): { camY: number; relief: number } {
+): { camY: number; relief: number; contentPanY: number; effectiveHeadCanvasY: number; headAfterCamRelief: number } {
   const targetMin = hudInsetBottom + 4;
-  const gap = targetMin - playerHeadCanvasY;
   let relief = state.relief;
+  const gap = targetMin - playerHeadCanvasY;
   if (gap > ENTER_PX) relief = Math.min(MAX_RELIEF, relief + gap * RELIEF_STEP);
   else if (gap < -LEAVE_PX) relief = Math.max(0, relief + gap * RELIEF_STEP);
-  const adjusted = Math.max(0, camY - relief);
-  return { camY: adjusted, relief };
+  const adjustedCamY = Math.max(0, camY - relief);
+  const headAfterCamRelief = playerHeadCanvasY + (camY - adjustedCamY);
+
+  let contentPanY = state.contentPanY;
+  let gapAfterCam = targetMin - headAfterCamRelief;
+  if (gapAfterCam > ENTER_PX) {
+    contentPanY = Math.min(MAX_CONTENT_PAN, contentPanY + gapAfterCam * RELIEF_STEP);
+    if (adjustedCamY === 0 && camY === 0) {
+      contentPanY = Math.min(MAX_CONTENT_PAN, Math.max(contentPanY, gapAfterCam + 4));
+    }
+  } else if (gapAfterCam < -LEAVE_PX) {
+    contentPanY = Math.max(0, contentPanY + gapAfterCam * RELIEF_STEP);
+  }
+
+  const effectiveHeadCanvasY = headAfterCamRelief + contentPanY;
+  state.relief = relief;
+  state.contentPanY = contentPanY;
+  return { camY: adjustedCamY, relief, contentPanY, effectiveHeadCanvasY, headAfterCamRelief };
 }
 
 declare global {
@@ -37,6 +48,9 @@ declare global {
       hudInsetBottom: number;
       hudInsetSource: "css-var" | "dom-fallback" | null;
       camRelief: number;
+      contentPanY?: number;
+      headAfterCamRelief?: number;
+      effectivePlayerHeadCanvasY?: number;
       playerHeadCanvasY: number;
       canvasW: number;
       canvasH: number;

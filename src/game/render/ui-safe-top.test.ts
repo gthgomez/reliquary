@@ -77,6 +77,7 @@ test("missing CSS var uses DOM fallback not zero posing as published", () => {
   }
 });
 
-test("production gate disables render report mutation", () => {
-  assert.equal(shouldPublishRenderGeometryReports(), false);
+test("unit test runner enables browser-test gate for engine QA hooks", () => {
+  assert.equal(process.env.VITE_RELIQUARY_BROWSER_TEST, "1");
+  assert.equal(shouldPublishRenderGeometryReports(), true);
 });
