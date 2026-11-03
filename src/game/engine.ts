@@ -18,6 +18,14 @@ import { battleCommands, encounterAt, rollEncounter } from "./world/encounters.t
 import { isOccupied } from "./world/movement.ts";
 import { pickInteractObject } from "./world/interaction.ts";
 import { bakeMapTerrain } from "./world/terrain.ts";
+import {
+  computeBattleLayout,
+  drawBattleFoeSprite,
+  drawBattlePlayerSprite,
+  paintBattleBackdrop,
+} from "./render/battle-scene.ts";
+import { drawAtlasTile, paintTileAccent, tileAtlasQuadrant } from "./render/tile-surface.ts";
+import { paintWorldActorShadow } from "./render/world-actors.ts";
 import { captureChance, captureSucceeds, storeCapturedBeast } from "./systems/capture.ts";
 import { accuracySucceeds, healBeast, playerActsFirst, spendSkillMp, statusSucceeds } from "./systems/combat.ts";
 import { purchaseItem, sellItem } from "./systems/economy.ts";
@@ -1960,15 +1968,19 @@ export class ReliquaryGame {
 				map: m,
 				tileSize: TILE,
 				drawTile: (name, dx, dy, variant) => {
-					const key = variant === 0 ? `tile_${name}` : `tile_${name}`;
-					const img = this.images[key];
-					if (img) ground.drawImage(img, dx, dy, TILE, TILE);
+					const tx = dx / TILE;
+					const ty = dy / TILE;
+					const atlas = this.images[`tile_${name}-2x2`];
+					const base = this.images[`tile_${name}`];
+					if (atlas && variant > 0) {
+						drawAtlasTile(ground, atlas, dx, dy, TILE, tileAtlasQuadrant(variant, tx, ty));
+					} else if (base) ground.drawImage(base, dx, dy, TILE, TILE);
 					else {
 						ground.fillStyle = name === "water" ? "#3d6e8a" : name === "wall" ? "#3a342e" : "#3d4a38";
 						ground.fillRect(dx, dy, TILE, TILE);
 					}
-					if (variant > 0) {
-						ground.fillStyle = `rgba(20,17,14,${0.04 * variant})`;
+					if (variant > 0 && !atlas) {
+						ground.fillStyle = `rgba(20,17,14,${0.035 * variant})`;
 						ground.fillRect(dx, dy, TILE, TILE);
 					}
 				},
@@ -1985,6 +1997,7 @@ export class ReliquaryGame {
 					const img = this.images[`prop_${sprite}`];
 					if (img) ground.drawImage(img, dx, dy, w * TILE, h * TILE);
 				},
+				drawAccent: (kind, dx, dy) => paintTileAccent(ground, dx, dy, TILE, kind),
 			});
 			this.terrain = { map: m, canvas };
 		}
@@ -2001,7 +2014,10 @@ export class ReliquaryGame {
 					const dy = o.y * TILE - camY;
 					const dw = o.w * TILE;
 					const dh = o.h * TILE;
-					if (img) ctx.drawImage(img, dx, dy, dw, dh);
+					if (img) {
+						paintWorldActorShadow(ctx, dx, dy + dh - 4, dw);
+						ctx.drawImage(img, dx, dy, dw, dh);
+					}
 				}
 			});
 		}
@@ -2015,7 +2031,10 @@ export class ReliquaryGame {
 				const dw = TILE;
 				const dh = TILE * 1.25;
 				const dy = n.y * TILE + TILE - dh - camY;
-				if (img) ctx.drawImage(img, dx, dy, dw, dh);
+				if (img) {
+					paintWorldActorShadow(ctx, dx, dy + dh - 4, dw);
+					ctx.drawImage(img, dx, dy, dw, dh);
+				}
 			}
 		});
 		}
@@ -2029,8 +2048,10 @@ export class ReliquaryGame {
 				const dw = TILE;
 				const dh = TILE * 1.5;
 				const dy = this.py + TILE - dh - camY;
-				if (img) ctx.drawImage(img, dx, dy, dw, dh);
-				else {
+				if (img) {
+					paintWorldActorShadow(ctx, dx, dy + dh - 4, dw);
+					ctx.drawImage(img, dx, dy, dw, dh);
+				} else {
 					ctx.fillStyle = "#c4a574";
 					ctx.fillRect(dx + 8, dy + 8, 16, 20);
 				}
@@ -2042,30 +2063,26 @@ export class ReliquaryGame {
 	private drawBattle(ctx: CanvasRenderingContext2D): void {
 		const b = this.battle!;
 		if (!b) return;
+		const cw = this.cw();
+		const ch = this.ch();
+		const layout = computeBattleLayout(cw, ch);
 		const bg = this.images[`bg_${b.bg}`] || this.images.bg_grass;
-		if (bg) ctx.drawImage(bg, 0, 0, this.cw(), this.ch());
+		if (bg) ctx.drawImage(bg, 0, 0, cw, ch);
 		else {
 			ctx.fillStyle = "#2c3d32";
-			ctx.fillRect(0, 0, this.cw(), this.ch());
+			ctx.fillRect(0, 0, cw, ch);
 		}
+		paintBattleBackdrop(ctx, cw, ch, layout, b.bg);
 		const foe = b.foes[b.foeIndex]!;
 		if (foe && foe.hp > 0) {
 			const img = this.images[`sprite_${foe.speciesId}`];
 			const shake = b.phase === "catch" ? Math.sin(b.shake * 8) * 6 : 0;
-			if (img) ctx.drawImage(img, this.cw() / 2 - 56 + shake, 18, 120, 120);
+			if (img) drawBattleFoeSprite(ctx, img, layout, shake);
 		}
 		const me = this.party[b.playerIndex]!;
 		if (me) {
 			const img = this.images[`sprite_${me.speciesId}`];
-			if (img) {
-				ctx.save();
-				// The battle controls (card, log, commands) stack over the lower canvas, so
-				// keep the player sprite in the clear band between the foe and the controls.
-				ctx.translate(this.cw() * 0.23, Math.round(this.ch() * 0.4));
-				ctx.scale(-.7, .7);
-				ctx.drawImage(img, -60, -60, 120, 120);
-				ctx.restore();
-			}
+			if (img) drawBattlePlayerSprite(ctx, img, layout);
 		}
 	}
 };
