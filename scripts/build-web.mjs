@@ -21,9 +21,12 @@ const staticDir = join(root, ".vercel/output/static");
 mkdirSync(staticDir, { recursive: true });
 copyFileSync(join(root, "public/manifest.webmanifest"), join(staticDir, "manifest.webmanifest"));
 
+const viteCli = join(root, "node_modules", "vite", "bin", "vite.js");
+
 run(process.execPath, [
   join(root, "scripts/with-app-env.mjs"),
-  "vite",
+  process.execPath,
+  viteCli,
   "build",
   "--config",
   "vite.public-game.config.ts",

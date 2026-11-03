@@ -13,8 +13,10 @@ import {
   VictoryScreen,
 } from "./ui/Overlays";
 import { AppStatus } from "./ui/AppStatus";
+import { isClassicTouchEnabled, isUiModalOpen, shouldShowDialogTouch, shouldShowExplorationTouch } from "./ui/ui-chrome.ts";
 import { registerReliquaryServiceWorker } from "../pwa/register.ts";
 import { acquireSaveSession } from "./save-session.ts";
+import { attachEconomyProbes } from "reliquary-economy-probes";
 
 export function GameApp() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -67,12 +69,14 @@ export function GameApp() {
       }
     });
     void registerReliquaryServiceWorker();
-    window.__reliquary = {
+    const reliquaryHandle = {
       confirm: g.confirm,
       cancel: g.cancel,
       startNew: () => g.startNew(),
       openMenu: () => g.toggleMenu(),
     };
+    attachEconomyProbes(reliquaryHandle, g);
+    window.__reliquary = reliquaryHandle;
     const apply = () => {
       if (!stage) return;
       const r = stage.getBoundingClientRect();
@@ -95,11 +99,40 @@ export function GameApp() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const playing = snap.mode === "world" || snap.mode === "shop" || snap.mode === "battle" || !!snap.dialog || !!snap.menu;
-  const showTouch = snap.mode !== "boot" && snap.mode !== "title" && snap.mode !== "victory";
+  const playing =
+    snap.mode === "world" ||
+    snap.mode === "shop" ||
+    snap.mode === "battle" ||
+    !!snap.dialog ||
+    !!snap.menu;
+  const uiModal = isUiModalOpen(snap);
+  const classicTouch = isClassicTouchEnabled();
+  const showHudBar = playing && snap.mode !== "battle";
+  const showExplorationTouch = shouldShowExplorationTouch(snap, classicTouch);
+  const showDialogTouch = shouldShowDialogTouch(snap, classicTouch);
+  const showTouch = showExplorationTouch || showDialogTouch;
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
+  const wasUiModal = useRef(false);
+
+  useEffect(() => {
+    if (uiModal) {
+      wasUiModal.current = true;
+      requestAnimationFrame(() => {
+        document.querySelector<HTMLElement>(".overlay-panel-close")?.focus({ preventScroll: true });
+      });
+      return;
+    }
+    if (!wasUiModal.current) return;
+    wasUiModal.current = false;
+    requestAnimationFrame(() => {
+      menuButtonRef.current?.focus({ preventScroll: true });
+    });
+  }, [uiModal, snap.menu, snap.mode]);
 
   return (
-    <div className={`game-root${showTouch ? " has-touch" : ""}`}>
+    <div
+      className={`game-root${showTouch ? " has-touch" : ""}${showExplorationTouch ? " has-explore-touch" : ""}${showDialogTouch ? " has-dialog-touch" : ""}${classicTouch ? " classic-touch" : ""}${uiModal ? " is-ui-modal" : ""}${snap.dialog ? " is-dialog" : ""}${snap.mode === "battle" ? " is-battle" : ""}`}
+    >
       <div className="stage" ref={stageRef}>
         <div
           className="viewport"
@@ -115,15 +148,31 @@ export function GameApp() {
             width={snap.viewW * TILE}
             height={snap.viewH * TILE}
           />
+          {uiModal ? (
+            <div
+              className="ui-scrim"
+              aria-hidden
+              onClick={() => g.cancel()}
+              onPointerDown={(event) => event.preventDefault()}
+            />
+          ) : null}
           {/* HUD and toast share one top column so the toast always lands below the HUD. */}
-          <div className="top-stack">
-            {playing && snap.mode !== "battle" ? <Hud snap={snap} onMenu={() => g.toggleMenu()} /> : null}
-            {snap.toast ? <Toast text={snap.toast} /> : null}
+          <div className={`top-stack${uiModal ? " top-stack-dormant" : ""}`}>
+            {showHudBar ? (
+              <Hud
+                snap={snap}
+                menuButtonRef={menuButtonRef}
+                dormant={uiModal}
+                onMenu={() => g.toggleMenu()}
+              />
+            ) : null}
+            {snap.toast && !uiModal ? <Toast text={snap.toast} /> : null}
           </div>
           {snap.mode === "battle" ? <BattleHud game={g} snap={snap} /> : null}
           {snap.dialog ? <DialogBox snap={snap} onAdvance={() => g.confirm()} /> : null}
           {snap.menu ? <MenuPanel game={g} snap={snap} /> : null}
           {snap.mode === "shop" ? <ShopPanel game={g} snap={snap} /> : null}
+          {uiModal && snap.toast ? <Toast text={snap.toast} className="toast-modal" /> : null}
         </div>
         {snap.mode === "boot" ? <LoadingScreen progress={snap.loadProgress} /> : null}
         {snap.mode === "title" ? <TitleScreen game={g} snap={snap} /> : null}
@@ -156,7 +205,7 @@ export function GameApp() {
           }}
         />
       </div>
-      {showTouch ? <TouchPad game={g} /> : null}
+      {showTouch ? <TouchPad game={g} variant={showDialogTouch && !showExplorationTouch ? "dialog" : "full"} /> : null}
     </div>
   );
 }

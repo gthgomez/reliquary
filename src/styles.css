@@ -271,6 +271,11 @@
 .hud-chip:first-child {
   flex: 0 1 auto;
 }
+.hud-chip-grow {
+  flex: 1 1 0;
+  min-width: 0;
+  max-width: calc(100% - 7.5rem);
+}
 .hud-place {
   font-family: var(--font-display);
   font-size: 0.85rem;
@@ -280,15 +285,76 @@
   color: var(--color-muted);
   font-size: 0.72rem;
 }
+.hud-chip .hud-muted {
+  color: var(--color-parchment);
+}
 .hud-gold {
   font-variant-numeric: tabular-nums;
 }
-.hud-objective {
-  max-width: 40rem;
+.hud-objective-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 0;
+  margin-top: 0.15rem;
+}
+.hud-objective-btn {
+  pointer-events: auto;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 0.35rem;
+  align-items: center;
+  width: 100%;
+  min-height: 44px;
+  padding: 0.35rem 0.45rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid color-mix(in oklab, var(--color-cream) 28%, transparent);
+  background: color-mix(in oklab, var(--color-ink) 55%, transparent);
+  color: var(--color-cream);
+  text-align: left;
+  font: inherit;
+}
+.hud-objective-label {
+  font-family: var(--font-display);
+  font-size: 0.62rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-parchment);
+}
+.hud-objective-preview {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  font-size: 0.74rem;
+  color: var(--color-cream);
+}
+.hud-objective-chevron {
+  color: var(--color-parchment);
+  font-size: 0.75rem;
+}
+.hud-objective-full {
+  margin: 0;
+  padding: 0.4rem 0.45rem;
+  border-radius: var(--radius-sm);
+  background: color-mix(in oklab, var(--color-ink) 82%, transparent);
+  color: var(--color-cream);
+  font-size: 0.78rem;
+  line-height: 1.4;
+  text-wrap: pretty;
+  pointer-events: auto;
+}
+.hud-objective-lantern {
+  pointer-events: auto;
+  align-self: flex-start;
+  min-height: 44px;
+  padding: 0.35rem 0.55rem;
+  border: 0;
+  background: transparent;
+  color: var(--color-parchment);
+  font-size: 0.72rem;
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 .hud-menu {
   flex: 0 0 auto;
@@ -392,8 +458,17 @@
 }
 .sheet-sub {
   margin: -0.3rem 0 0.8rem;
-  color: color-mix(in oklab, var(--color-ink) 65%, transparent);
+  color: color-mix(in oklab, var(--color-ink) 78%, transparent);
   font-size: 0.85rem;
+  line-height: 1.4;
+}
+.sheet-section {
+  font-family: var(--font-display);
+  font-size: 0.82rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  margin: 0.35rem 0 0.45rem;
+  color: color-mix(in oklab, var(--color-ink) 72%, transparent);
 }
 .menu-list {
   list-style: none;
@@ -413,7 +488,8 @@
 }
 .menu-list button.active,
 .cmd button.active,
-.shop-tabs button.active {
+.shop-tabs button.active,
+.shop-list button.active {
   outline: 2px solid var(--color-copper);
 }
 .menu-list em,
@@ -462,6 +538,21 @@
 .beast-actions .btn-ghost {
   background: var(--color-ink);
   color: var(--color-cream);
+}
+.action-with-hint {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  width: 100%;
+}
+.action-hint {
+  margin: 0;
+  font-size: 0.78rem;
+  line-height: 1.35;
+  color: color-mix(in oklab, var(--color-ink) 72%, transparent);
+}
+.action-with-hint button:disabled + .action-hint {
+  color: color-mix(in oklab, var(--color-ink) 82%, var(--color-hp));
 }
 .rename-form {
   display: flex;
@@ -528,6 +619,9 @@
 .reliq-cell.have {
   outline: 1px solid var(--color-copper);
 }
+.reliq-cell.seen {
+  outline: 1px dashed color-mix(in oklab, var(--color-copper) 55%, transparent);
+}
 .unknown {
   width: 72px;
   height: 72px;
@@ -566,13 +660,15 @@
 }
 .battler {
   position: absolute;
-  background: color-mix(in oklab, var(--color-ink) 78%, transparent);
-  border: 1px solid var(--color-line);
+  background: rgba(20, 17, 14, 0.96);
+  border: 1px solid color-mix(in oklab, var(--color-cream) 22%, transparent);
   border-radius: var(--radius-md);
   padding: 0.45rem 0.65rem;
   min-width: min(150px, 46%);
   max-width: calc(100% - 1.2rem);
   pointer-events: none;
+  box-shadow: 0 4px 16px color-mix(in oklab, var(--color-ink) 65%, transparent);
+  color: var(--color-cream);
 }
 .battler.foe {
   top: 0.6rem;
@@ -585,10 +681,18 @@
 .battler strong {
   font-family: var(--font-display);
   display: block;
+  color: var(--color-cream);
 }
 .battler span {
-  color: var(--color-muted);
-  font-size: 0.75rem;
+  color: var(--color-parchment);
+  font-size: 0.78rem;
+}
+.battler .meter {
+  color: var(--color-cream);
+  font-size: 0.78rem;
+}
+.battle-controls .battler {
+  position: static;
 }
 .battle-log {
   position: absolute;
@@ -640,6 +744,103 @@
   background: var(--color-cream);
   color: var(--color-ink);
 }
+.shop-list button {
+  align-items: flex-start;
+  gap: 0.55rem;
+  min-height: 44px;
+}
+.shop-row-main {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+  flex: 1;
+  text-align: left;
+}
+.shop-row-name {
+  font-family: var(--font-display);
+  font-size: 0.92rem;
+}
+.shop-row-desc {
+  font-size: 0.78rem;
+  line-height: 1.35;
+  color: color-mix(in oklab, var(--color-ink) 70%, transparent);
+}
+.shop-row-price {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.15rem;
+  flex-shrink: 0;
+}
+.shop-row-note {
+  font-size: 0.72rem;
+  color: var(--color-hp);
+}
+.shop-list button.unaffordable {
+  opacity: 1;
+  border-left: 4px solid var(--color-hp);
+  background: color-mix(in oklab, var(--color-hp) 8%, var(--color-cream));
+}
+.shop-list button.unaffordable em {
+  text-decoration: line-through;
+  color: var(--color-hp);
+}
+.shop-list button.affordable em {
+  color: color-mix(in oklab, var(--color-forest) 55%, var(--color-copper));
+}
+.shop-buy-btn {
+  width: 100%;
+  margin-bottom: 0.5rem;
+}
+.shop-buy-btn:disabled {
+  opacity: 0.85;
+  background: color-mix(in oklab, var(--color-parchment) 70%, var(--color-cream));
+}
+.btn-lead-active {
+  background: var(--color-copper);
+  color: var(--color-cream);
+  border: 1px solid color-mix(in oklab, var(--color-cream) 35%, transparent);
+  min-height: 44px;
+  padding: 0.45rem 0.8rem;
+  font-family: var(--font-display);
+  letter-spacing: 0.04em;
+  border-radius: var(--radius-sm);
+  opacity: 1;
+}
+.shop-detail {
+  margin-bottom: 0;
+}
+
+.ui-scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  background: color-mix(in oklab, var(--color-ink) 55%, transparent);
+  pointer-events: auto;
+  touch-action: none;
+}
+.game-root.is-ui-modal .overlay-panel {
+  z-index: 6;
+}
+.hud-dormant {
+  visibility: hidden;
+  pointer-events: none;
+}
+.top-stack-dormant {
+  pointer-events: none;
+}
+.game-root.is-ui-modal .game-canvas {
+  pointer-events: none;
+}
+.toast-modal {
+  position: fixed;
+  left: 50%;
+  top: calc(0.75rem + env(safe-area-inset-top));
+  transform: translateX(-50%);
+  z-index: 20;
+  max-width: min(22rem, calc(100% - 1rem));
+}
 
 .toast {
   position: relative;
@@ -654,6 +855,32 @@
   text-wrap: balance;
 }
 
+.touch-dialog-hint {
+  margin: 0;
+  flex: 1;
+  text-align: center;
+  font-size: 0.78rem;
+  color: var(--color-parchment-dim);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.game-root.has-dialog-touch .stage {
+  padding-bottom: 88px;
+}
+.game-root.has-dialog-touch .touch {
+  height: 88px;
+  justify-content: center;
+}
+.game-root.is-battle.has-touch .stage,
+.game-root.is-battle .stage {
+  padding-bottom: 0.35rem;
+}
+.game-root.is-battle .touch {
+  display: none;
+}
+.game-root.classic-touch.is-dialog.has-touch .stage {
+  padding-bottom: 132px;
+}
 .touch {
   display: none;
   position: absolute;
@@ -769,7 +996,7 @@
   .hud-menu,
   .btn-primary,
   .btn-ghost {
-    min-height: 42px;
+    min-height: 44px;
     padding: 0.45rem 0.8rem;
   }
   .battler {
@@ -788,9 +1015,18 @@
     font-size: 0.85rem;
     min-height: 40px;
   }
+  .battle-controls {
+    max-height: min(58%, calc(100% - 6rem));
+  }
+  .battler.foe {
+    max-width: min(132px, 40%);
+  }
   .sheet {
     top: 2.9rem;
     max-height: min(58dvh, 420px, calc(100% - 3.4rem));
+  }
+  .game-root.is-ui-modal.has-touch .stage {
+    padding-bottom: 0.35rem;
   }
   .title-copy {
     width: min(520px, 94%);
@@ -874,7 +1110,7 @@
   flex-direction: column;
   align-items: flex-end;
   gap: 0.5rem;
-  max-height: 65%;
+  max-height: min(65%, calc(100% - 5.75rem));
   overflow-y: auto;
   pointer-events: auto;
 }

@@ -25,6 +25,9 @@
     "paths": {
       "@/*": [
         "./src/*"
+      ],
+      "reliquary-economy-probes": [
+        "./src/game/shell/reliquary-economy-probes.stub.ts"
       ]
     },
     "allowImportingTsExtensions": true

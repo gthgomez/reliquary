@@ -1,4 +1,4 @@
-import type { PointerEvent, ReactNode } from "react";
+import type { PointerEvent, ReactNode, RefObject } from "react";
 import { useEffect, useState } from "react";
 import {
   currentStats,
@@ -14,6 +14,12 @@ import type { ReliquaryGame } from "../engine";
 import { ROOT_MENU } from "../engine";
 import type { Beast, Snapshot } from "../types";
 import { OverlayPanel } from "./OverlayPanel";
+import {
+  leadActionHint,
+  practiceActionHint,
+  practiceEnabledHint,
+} from "./party-actions.ts";
+import { shopBuyAffordability } from "./ui-chrome.ts";
 
 export function TitleScreen({ game, snap }: { game: ReliquaryGame; snap: Snapshot }) {
   return (
@@ -88,18 +94,42 @@ export function VictoryScreen({ game }: { game: ReliquaryGame }) {
   );
 }
 
-export function Hud({ snap, onMenu }: { snap: Snapshot; onMenu: () => void }) {
+export function Hud({
+  snap,
+  onMenu,
+  menuButtonRef,
+  dormant = false,
+}: {
+  snap: Snapshot;
+  onMenu: () => void;
+  menuButtonRef?: RefObject<HTMLButtonElement | null>;
+  dormant?: boolean;
+}) {
   const lead = snap.party[0];
   const st = lead ? currentStats(lead) : null;
+  const [objectiveOpen, setObjectiveOpen] = useState(false);
   return (
-    <div className="hud">
-      <div className="hud-chip">
+    <div className={`hud${dormant ? " hud-dormant" : ""}`} aria-hidden={dormant}>
+      <div className="hud-chip hud-chip-grow">
         <span className="hud-place">{snap.mapName}</span>
         <span className="hud-muted">{snap.region}</span>
         {snap.objective ? (
-          <span className="hud-muted hud-objective" title={snap.objective}>
-            {snap.objective}
-          </span>
+          <div className="hud-objective-wrap">
+            <button
+              type="button"
+              className="hud-objective-btn"
+              aria-expanded={objectiveOpen}
+              onClick={() => setObjectiveOpen((open) => !open)}
+            >
+              <span className="hud-objective-label">Objective</span>
+              <span className="hud-objective-preview">{snap.objective}</span>
+              <span className="hud-objective-chevron">{objectiveOpen ? "▾" : "▸"}</span>
+            </button>
+            {objectiveOpen ? <p className="hud-objective-full">{snap.objective}</p> : null}
+            <button type="button" className="hud-objective-lantern" onClick={onMenu}>
+              Open in Lantern menu
+            </button>
+          </div>
         ) : null}
       </div>
       <div className="hud-chip">
@@ -112,7 +142,7 @@ export function Hud({ snap, onMenu }: { snap: Snapshot; onMenu: () => void }) {
           <span className="hud-muted">No pact yet</span>
         )}
       </div>
-      <button type="button" className="hud-menu" onClick={onMenu}>
+      <button type="button" className="hud-menu" ref={menuButtonRef} onClick={onMenu}>
         Menu
       </button>
     </div>
@@ -195,13 +225,13 @@ export function MenuPanel({ game, snap }: { game: ReliquaryGame; snap: Snapshot 
     const beast = snap.party.find((b) => b.uid === snap.learnMenu!.uid);
     const skill = SKILLS[snap.learnMenu.skill];
     return (
-      <div className="sheet">
-        <h2>{skill?.name ?? snap.learnMenu.skill} beckons</h2>
-        <p className="sheet-sub">
-          {beast?.nickname ?? "Your companion"} could learn{" "}
-          {skill ? `${skill.name} — ${skill.desc}` : snap.learnMenu.skill}. Replacing a skill
-          retires it for good.
-        </p>
+      <OverlayPanel
+        title={skill?.name ?? snap.learnMenu.skill}
+        subtitle={`${beast?.nickname ?? "Your companion"} could learn ${
+          skill ? `${skill.name} — ${skill.desc}` : snap.learnMenu.skill
+        }. Replacing a skill retires it for good.`}
+        onClose={() => game.cancel()}
+      >
         <ul className="menu-list">
           {beast?.skills.map((existingId, i) => (
             <li key={existingId}>
@@ -230,28 +260,24 @@ export function MenuPanel({ game, snap }: { game: ReliquaryGame; snap: Snapshot 
             </button>
           </li>
         </ul>
-        <button type="button" className="btn-ghost" onClick={() => game.cancel()}>
-          Back
-        </button>
-      </div>
+      </OverlayPanel>
     );
   }
   if (snap.menu === "learn") {
-    // Defensive: the engine only opens this menu with a queued offer, but a
-    // stale view must never render an empty sheet with live input.
     return (
-      <div className="sheet">
-        <h2>No offer to consider</h2>
-        <button type="button" className="btn-ghost" onClick={() => game.cancel()}>
-          Back
-        </button>
-      </div>
+      <OverlayPanel title="No offer to consider" onClose={() => game.cancel()}>
+        <p className="sheet-sub">Return to your party when a skill beckons.</p>
+      </OverlayPanel>
     );
   }
   if (snap.menu === "party") {
     return (
-      <div className="sheet sheet-wide">
-        <h2>Party</h2>
+      <OverlayPanel
+        wide
+        title="Party"
+        subtitle="Lead walks first in battle. Practice costs 45 cr and grants 80 lore (XP)."
+        onClose={() => game.cancel()}
+      >
         <div className="party-grid">
           {snap.party.map((b, index) => (
             <BeastCard key={b.uid} beast={b} selected={index === snap.menuIndex}>
@@ -266,43 +292,56 @@ export function MenuPanel({ game, snap }: { game: ReliquaryGame; snap: Snapshot 
                   {b.pendingSkills.length > 1 ? ` (${b.pendingSkills.length})` : ""}
                 </button>
               ) : null}
-              <button
-                type="button"
-                className="btn-ghost"
-                disabled={index === 0 || b.hp <= 0}
-                onClick={() => game.setLead(b.uid)}
-                aria-label={`Make ${b.nickname} lead`}
-              >
-                {index === 0 ? "Party lead" : "Make lead"}
-              </button>
+              <div className="action-with-hint">
+                <button
+                  type="button"
+                  className={index === 0 ? "btn-lead-active" : "btn-ghost"}
+                  disabled={index !== 0 && b.hp <= 0}
+                  aria-pressed={index === 0}
+                  onClick={() => {
+                    if (index !== 0 && b.hp > 0) game.setLead(b.uid);
+                  }}
+                  aria-label={`Make ${b.nickname} lead`}
+                  aria-describedby={`lead-hint-${b.uid}`}
+                >
+                  {index === 0 ? "Party lead" : "Make lead"}
+                </button>
+                <p id={`lead-hint-${b.uid}`} className="action-hint" role="note">
+                  {leadActionHint(index, b) ?? "Send this companion to the front of the party and into battle first."}
+                </p>
+              </div>
               <RenameCreature game={game} beast={b} />
-              <button
-                type="button"
-                className="btn-ghost"
-                disabled={b.hp <= 0 || b.level >= 40 || snap.gold < 45}
-                onClick={() => game.trainCreature(b.uid)}
-                aria-label={`Practice with ${b.nickname} for 45 crowns`}
-              >
-                Practice · 45 cr
-              </button>
+              <div className="action-with-hint">
+                <button
+                  type="button"
+                  className="btn-ghost"
+                  disabled={b.hp <= 0 || b.level >= 40 || snap.gold < 45}
+                  onClick={() => game.trainCreature(b.uid)}
+                  aria-label={`Practice with ${b.nickname} for 45 crowns`}
+                  aria-describedby={`practice-hint-${b.uid}`}
+                >
+                  Practice · 45 cr
+                </button>
+                <p id={`practice-hint-${b.uid}`} className="action-hint" role="note">
+                  {practiceActionHint(b, snap.gold) ?? practiceEnabledHint()}
+                </p>
+              </div>
             </BeastCard>
           ))}
           {snap.party.length === 0 ? <p className="empty">No pact spoken yet.</p> : null}
         </div>
-        <button type="button" className="btn-ghost" onClick={() => game.cancel()}>
-          Back
-        </button>
-      </div>
+      </OverlayPanel>
     );
   }
   if (snap.menu === "storage") {
     return (
-      <div className="sheet sheet-wide">
-        <h2>Creature storage</h2>
-        <p className="sheet-sub">
-          Party {snap.party.length}/4 · Stored {snap.box.length}
-        </p>
-        <h3>Travelling companions</h3>
+      <OverlayPanel
+        wide
+        title="Creature storage"
+        subtitle={`Party ${snap.party.length}/4 · Stored ${snap.box.length}`}
+        onClose={() => game.cancel()}
+      >
+        <h3 className="sheet-section">Travelling companions</h3>
         <div className="party-grid">
           {snap.party.map((b, index) => (
             <BeastCard key={b.uid} beast={b} selected={index === snap.menuIndex}>
@@ -317,65 +356,84 @@ export function MenuPanel({ game, snap }: { game: ReliquaryGame; snap: Snapshot 
             </BeastCard>
           ))}
         </div>
-        <h3>Stored creatures</h3>
+        <h3 className="sheet-section">Stored creatures</h3>
         <div className="party-grid">
           {snap.box.map((b, boxIndex) => (
             <BeastCard key={b.uid} beast={b} selected={snap.party.length + boxIndex === snap.menuIndex}>
-              <button
-                type="button"
-                className="btn-ghost"
-                disabled={snap.party.length >= 4}
-                onClick={() => game.transferBeast(b.uid, "party")}
-                aria-label={`Add ${b.nickname} to party`}
-              >
-                Add to party
-              </button>
+              <div className="action-with-hint">
+                <button
+                  type="button"
+                  className="btn-ghost"
+                  disabled={snap.party.length >= 4}
+                  onClick={() => game.transferBeast(b.uid, "party")}
+                  aria-label={`Add ${b.nickname} to party`}
+                  aria-describedby={`store-in-hint-${b.uid}`}
+                >
+                  Add to party
+                </button>
+                {snap.party.length >= 4 ? (
+                  <p id={`store-in-hint-${b.uid}`} className="action-hint" role="note">
+                    Party is full (4/4). Store a traveller first.
+                  </p>
+                ) : null}
+              </div>
             </BeastCard>
           ))}
           {snap.box.length === 0 ? <p className="empty">No creatures in storage yet.</p> : null}
         </div>
-        <button type="button" className="btn-ghost" onClick={() => game.cancel()}>
-          Back
-        </button>
-      </div>
+      </OverlayPanel>
     );
   }
   if (snap.menu === "reliquary") {
     const ids = Object.keys(SPECIES);
     return (
-      <div className="sheet sheet-wide">
-        <h2>Reliquary</h2>
-        <p className="sheet-sub">
-          Bound {Object.keys(snap.caught).length} · Seen {Object.keys(snap.seen).length} of{" "}
-          {ids.length}
-        </p>
+      <OverlayPanel
+        wide
+        title="Reliquary"
+        subtitle={`Bound ${Object.keys(snap.caught).length} · Seen ${Object.keys(snap.seen).length} of ${ids.length} · ? unheard · —— spotted only`}
+        onClose={() => game.cancel()}
+      >
         <div className="reliq-grid">
           {ids.map((id) => {
             const sp = SPECIES[id]!;
-            const known = snap.seen[id] || snap.caught[id];
+            const caught = Boolean(snap.caught[id]);
+            const seen = Boolean(snap.seen[id]);
+            const known = seen || caught;
             return (
-              <div key={id} className={`reliq-cell ${snap.caught[id] ? "have" : ""}`}>
+              <div
+                key={id}
+                className={`reliq-cell ${caught ? "have" : ""}${seen && !caught ? " seen" : ""}`}
+                title={
+                  caught
+                    ? `${sp.name} — bound to your compact`
+                    : seen
+                      ? `${sp.name} — seen in the wild, not yet bound`
+                      : "Unheard of — bind one to learn its name"
+                }
+              >
                 {known ? (
-                  <img src={`/game/sprites/${id}.png`} alt={sp.name} />
+                  <img src={`/game/sprites/${id}.png`} alt={caught || seen ? sp.name : "Unknown creature"} />
                 ) : (
-                  <span className="unknown">?</span>
+                  <span className="unknown" aria-label="Unheard of">
+                    ?
+                  </span>
                 )}
-                <span>{known ? sp.name : "——"}</span>
+                <span>{caught || seen ? sp.name : "——"}</span>
               </div>
             );
           })}
         </div>
-        <button type="button" className="btn-ghost" onClick={() => game.cancel()}>
-          Back
-        </button>
-      </div>
+      </OverlayPanel>
     );
   }
   if (snap.packTarget) {
     return (
-      <div className="sheet">
-        <h2>Use {ITEMS[snap.packTarget.item]?.name ?? snap.packTarget.item}</h2>
-        <p className="sheet-sub">Choose a companion. Nothing is spent until you pick one.</p>
+      <OverlayPanel
+        title={`Use ${ITEMS[snap.packTarget.item]?.name ?? snap.packTarget.item}`}
+        subtitle="Choose a companion. Nothing is spent until you pick one."
+        onClose={() => game.cancel()}
+        closeLabel="Back to the pack"
+      >
         <ul className="menu-list target-list">
           {snap.packTarget.targets.map((target, i) => (
             <li key={target.uid}>
@@ -396,10 +454,7 @@ export function MenuPanel({ game, snap }: { game: ReliquaryGame; snap: Snapshot 
             <li className="empty">Nobody here would benefit.</li>
           ) : null}
         </ul>
-        <button type="button" className="btn-ghost" onClick={() => game.cancel()}>
-          Back to the pack
-        </button>
-      </div>
+      </OverlayPanel>
     );
   }
   if (snap.menu === "items") {
@@ -408,8 +463,7 @@ export function MenuPanel({ game, snap }: { game: ReliquaryGame; snap: Snapshot 
       (id) => (snap.inventory[id] ?? 0) > 0 && ITEMS[id]?.kind === "sigil",
     );
     return (
-      <div className="sheet">
-        <h2>Pack</h2>
+      <OverlayPanel title="Pack" onClose={() => game.cancel()}>
         <ul className="menu-list">
           {ids.map((id, i) => (
             <li key={id}>
@@ -434,10 +488,7 @@ export function MenuPanel({ game, snap }: { game: ReliquaryGame; snap: Snapshot 
             {stones.map((id) => `${ITEMS[id]?.name} ×${snap.inventory[id]}`).join(" · ")}
           </p>
         ) : null}
-        <button type="button" className="btn-ghost" onClick={() => game.cancel()}>
-          Back
-        </button>
-      </div>
+      </OverlayPanel>
     );
   }
   return null;
@@ -705,8 +756,17 @@ export function ShopPanel({ game, snap }: { game: ReliquaryGame; snap: Snapshot 
     snap.shopMode === "buy"
       ? snap.shopStock
       : Object.keys(snap.inventory).filter((id) => (snap.inventory[id] ?? 0) > 0 && ITEMS[id]);
+  const selectedId = list[snap.shopIndex];
+  const selected = selectedId ? ITEMS[selectedId] : null;
+  const canAffordBuy = selected && snap.shopMode === "buy" ? snap.gold >= selected.price : true;
+
   return (
-    <OverlayPanel title="Chandler" subtitle={`${snap.gold} crowns`} onClose={() => game.cancel()}>
+    <OverlayPanel
+      title="Chandler"
+      subtitle={`${snap.gold} crowns in purse`}
+      onClose={() => game.cancel()}
+      closeLabel="Leave"
+    >
       <div className="shop-tabs">
         <button
           type="button"
@@ -731,34 +791,64 @@ export function ShopPanel({ game, snap }: { game: ReliquaryGame; snap: Snapshot 
           Sell
         </button>
       </div>
-      <ul className="menu-list">
+      <ul className="menu-list shop-list">
         {list.map((id, i) => {
           const it = ITEMS[id]!;
           const price = snap.shopMode === "buy" ? it.price : Math.floor(it.price / 2);
+          const owned = snap.inventory[id] ?? 0;
+          const unaffordable = snap.shopMode === "buy" && shopBuyAffordability(snap.gold, it.price) === "unaffordable";
+          const affordable = snap.shopMode === "buy" && !unaffordable;
           return (
             <li key={id}>
               <button
                 type="button"
-                className={i === snap.shopIndex ? "active" : ""}
+                className={`shop-row${i === snap.shopIndex ? " active" : ""}${unaffordable ? " unaffordable" : ""}${affordable ? " affordable" : ""}`}
                 onClick={() => {
                   game.shopIndex = i;
-                  game.shopConfirm();
+                  game.emitPublic();
                 }}
               >
-                {it.name}
-                <em>
-                  {price} cr{snap.shopMode === "sell" ? ` · ×${snap.inventory[id]}` : ""}
-                </em>
+                <span className="shop-row-main">
+                  <span className="shop-row-name">{it.name}</span>
+                  <span className="shop-row-desc">{it.desc}</span>
+                </span>
+                <span className="shop-row-price">
+                  <em>
+                    {price} cr
+                    {snap.shopMode === "buy" ? ` · own ×${owned}` : ` · sell ×${owned}`}
+                  </em>
+                  {unaffordable ? <span className="shop-row-note">Need {it.price} cr</span> : null}
+                </span>
               </button>
             </li>
           );
         })}
       </ul>
+      {selected && snap.shopMode === "buy" ? (
+        <button
+          type="button"
+          className="btn-primary shop-buy-btn"
+          disabled={!canAffordBuy}
+          onClick={() => game.shopConfirm()}
+        >
+          {canAffordBuy
+            ? `Buy for ${selected.price} cr`
+            : `Need ${selected.price} cr (${snap.gold} in purse)`}
+        </button>
+      ) : null}
+      {selected ? (
+        <p className="sheet-sub shop-detail" aria-live="polite">
+          {selected.desc}
+          {snap.shopMode === "buy" && !canAffordBuy
+            ? ` — ${selected.price} cr required (short ${selected.price - snap.gold}).`
+            : null}
+        </p>
+      ) : null}
     </OverlayPanel>
   );
 }
 
-export function TouchPad({ game }: { game: ReliquaryGame }) {
+export function TouchPad({ game, variant = "full" }: { game: ReliquaryGame; variant?: "full" | "dialog" }) {
   const hold = (code: string, on: boolean) => {
     if (on) game.keys.add(code);
     else game.keys.delete(code);
@@ -774,21 +864,25 @@ export function TouchPad({ game }: { game: ReliquaryGame }) {
     onLostPointerCapture: () => hold(code, false),
   });
   return (
-    <div className="touch">
-      <div className="dpad">
-        <button type="button" className="d up" aria-label="North" {...dir("KeyW")}>
-          <span>N</span>
-        </button>
-        <button type="button" className="d left" aria-label="West" {...dir("KeyA")}>
-          <span>W</span>
-        </button>
-        <button type="button" className="d right" aria-label="East" {...dir("KeyD")}>
-          <span>E</span>
-        </button>
-        <button type="button" className="d down" aria-label="South" {...dir("KeyS")}>
-          <span>S</span>
-        </button>
-      </div>
+    <div className={`touch touch-${variant}`} aria-label={variant === "dialog" ? "Dialog controls" : "Movement controls"}>
+      {variant === "full" ? (
+        <div className="dpad">
+          <button type="button" className="d up" aria-label="North" {...dir("KeyW")}>
+            <span>N</span>
+          </button>
+          <button type="button" className="d left" aria-label="West" {...dir("KeyA")}>
+            <span>W</span>
+          </button>
+          <button type="button" className="d right" aria-label="East" {...dir("KeyD")}>
+            <span>E</span>
+          </button>
+          <button type="button" className="d down" aria-label="South" {...dir("KeyS")}>
+            <span>S</span>
+          </button>
+        </div>
+      ) : (
+        <p className="touch-dialog-hint">A · Next · B · Back</p>
+      )}
       <div className="ab">
         <button type="button" className="b-btn" onClick={() => game.cancel()}>
           B
@@ -801,6 +895,6 @@ export function TouchPad({ game }: { game: ReliquaryGame }) {
   );
 }
 
-export function Toast({ text }: { text: string }) {
-  return <div className="toast">{text}</div>;
+export function Toast({ text, className }: { text: string; className?: string }) {
+  return <div className={className ? `toast ${className}` : "toast"}>{text}</div>;
 }

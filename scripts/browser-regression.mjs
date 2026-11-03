@@ -39,8 +39,14 @@ if (serveOnly) {
   });
   server.listen(port, "127.0.0.1");
 } else {
-  function run(cmd, cmdArgs) {
-    const result = spawnSync(cmd, cmdArgs, { cwd: root, stdio: "inherit", timeout: 180_000, killSignal: "SIGKILL" });
+  function run(cmd, cmdArgs, env) {
+    const result = spawnSync(cmd, cmdArgs, {
+      cwd: root,
+      stdio: "inherit",
+      timeout: 180_000,
+      killSignal: "SIGKILL",
+      env: env ? { ...process.env, ...env } : process.env,
+    });
     if (result.error) {
       console.error(`[browser] ${cmdArgs.at(-1)} failed: ${result.error.message}`);
       process.exit(1);
@@ -48,10 +54,8 @@ if (serveOnly) {
     if (result.status !== 0) process.exit(result.status ?? 1);
   }
 
-  if (!existsSync(join(staticDir, "index.html"))) {
-    console.error("[browser] missing build output — run npm run build:web first");
-    process.exit(1);
-  }
+  console.log("[browser] building client with browser-test probes");
+  run(process.execPath, [join(root, "scripts/build-web-test.mjs")]);
 
   const gameShell = join(staticDir, "public-game.html");
   const indexShell = join(staticDir, "index.html");
@@ -67,9 +71,23 @@ if (serveOnly) {
 
   const suiteIdx = args.indexOf("--suite");
   const suite = suiteIdx >= 0 ? args[suiteIdx + 1] : "all";
+  const renderOverlap = existsSync(join(root, "src/game/render/battle-scene.ts"));
   const map = {
-    all: ["layout.mjs", "pwa.mjs", "journey.mjs"],
+    all: [
+      "layout.mjs",
+      "contrast.mjs",
+      "modal-a11y.mjs",
+      "modal-focus-trap.mjs",
+      "shop-flow.mjs",
+      "touch-arbitration.mjs",
+      "battle-hud-layout.mjs",
+      "pwa.mjs",
+      "journey.mjs",
+    ],
     layout: ["layout.mjs"],
+    contrast: ["contrast.mjs"],
+    a11y: ["modal-a11y.mjs", "modal-focus-trap.mjs"],
+    touch: ["touch-arbitration.mjs"],
     pwa: ["pwa.mjs"],
     journey: ["journey.mjs"],
   };
@@ -78,6 +96,10 @@ if (serveOnly) {
   for (const file of files) {
     console.log(`[browser] running ${file}`);
     run(process.execPath, [join(root, "tests/browser", file)]);
+  }
+  if (renderOverlap && existsSync(join(root, "scripts/battle-sprite-overlap.mjs"))) {
+    console.log("[browser] running battle-sprite-overlap.mjs (renderer integration)");
+    run(process.execPath, [join(root, "scripts/battle-sprite-overlap.mjs")]);
   }
   console.log(`[browser] suite=${suite} passed`);
 }

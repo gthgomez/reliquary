@@ -311,6 +311,10 @@ export interface ReliquaryHandle {
   cancel: () => void;
   startNew: () => void;
   openMenu?: () => void;
+  /** Browser regression hooks (omitted from production bundles). */
+  openShop?: () => void;
+  getEconomy?: () => { gold: number; inventory: Record<string, number> };
+  setGold?: (gold: number) => void;
 }
 
 declare global {
