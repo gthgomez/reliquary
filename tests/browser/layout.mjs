@@ -53,6 +53,19 @@ try {
         window.__reliquary?.openMenu?.();
       });
       await page.waitForSelector(".overlay-panel", { timeout: 10_000 });
+      const modalChrome = await page.evaluate(() => {
+        const touch = document.querySelector(".touch");
+        return {
+          isModal: document.querySelector(".game-root")?.classList.contains("is-ui-modal"),
+          touchHidden: !touch || getComputedStyle(touch).display === "none",
+          hudVisible: [...document.querySelectorAll(".hud")].some(
+            (el) => el.getClientRects().length > 0 && getComputedStyle(el).visibility !== "hidden",
+          ),
+        };
+      });
+      assert.equal(modalChrome.isModal, true, "menu open sets ui modal class");
+      assert.equal(modalChrome.touchHidden, true, "exploration touch hidden in menu");
+      assert.equal(modalChrome.hudVisible, false, "world HUD hidden under menu sheet");
       const panel = page.locator(".overlay-panel, .sheet").first();
       const box = await panel.boundingBox();
       assert.ok(box, "overlay panel visible");
@@ -76,6 +89,17 @@ try {
         )
         .then(() => true, () => false);
       assert.equal(hit, true, "menu button receives pointer hits");
+      await page.locator(".overlay-panel .menu-list button").filter({ hasText: "Reliquary" }).click();
+      await page.waitForSelector(".overlay-panel-foot .btn-ghost", { timeout: 5000 });
+      await page.locator(".overlay-panel-body").evaluate((el) => {
+        el.scrollTop = el.scrollHeight;
+      });
+      const backSticky = await page
+        .locator(".overlay-panel-foot .btn-ghost")
+        .first()
+        .boundingBox();
+      assert.ok(backSticky, "collection back control present after scroll");
+      assert.ok(backSticky.y + backSticky.height <= viewport.height + 2, "back stays on screen while grid scrolls");
     });
     console.log(`[layout] ok ${viewport.width}x${viewport.height}`);
   }

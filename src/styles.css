@@ -280,15 +280,21 @@
   color: var(--color-muted);
   font-size: 0.72rem;
 }
+.hud-chip .hud-muted {
+  color: color-mix(in oklab, var(--color-cream) 82%, var(--color-muted));
+}
 .hud-gold {
   font-variant-numeric: tabular-nums;
 }
 .hud-objective {
-  max-width: 40rem;
+  max-width: 100%;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  color: color-mix(in oklab, var(--color-cream) 92%, var(--color-parchment));
+  font-size: 0.74rem;
+  line-height: 1.35;
 }
 .hud-menu {
   flex: 0 0 auto;
@@ -392,8 +398,17 @@
 }
 .sheet-sub {
   margin: -0.3rem 0 0.8rem;
-  color: color-mix(in oklab, var(--color-ink) 65%, transparent);
+  color: color-mix(in oklab, var(--color-ink) 78%, transparent);
   font-size: 0.85rem;
+  line-height: 1.4;
+}
+.sheet-section {
+  font-family: var(--font-display);
+  font-size: 0.82rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  margin: 0.35rem 0 0.45rem;
+  color: color-mix(in oklab, var(--color-ink) 72%, transparent);
 }
 .menu-list {
   list-style: none;
@@ -413,7 +428,8 @@
 }
 .menu-list button.active,
 .cmd button.active,
-.shop-tabs button.active {
+.shop-tabs button.active,
+.shop-list button.active {
   outline: 2px solid var(--color-copper);
 }
 .menu-list em,
@@ -528,6 +544,9 @@
 .reliq-cell.have {
   outline: 1px solid var(--color-copper);
 }
+.reliq-cell.seen {
+  outline: 1px dashed color-mix(in oklab, var(--color-copper) 55%, transparent);
+}
 .unknown {
   width: 72px;
   height: 72px;
@@ -639,6 +658,75 @@
   flex: 1;
   background: var(--color-cream);
   color: var(--color-ink);
+}
+.shop-list button {
+  align-items: flex-start;
+  gap: 0.55rem;
+  min-height: 44px;
+}
+.shop-row-main {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+  flex: 1;
+  text-align: left;
+}
+.shop-row-name {
+  font-family: var(--font-display);
+  font-size: 0.92rem;
+}
+.shop-row-desc {
+  font-size: 0.78rem;
+  line-height: 1.35;
+  color: color-mix(in oklab, var(--color-ink) 70%, transparent);
+}
+.shop-row-price {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.15rem;
+  flex-shrink: 0;
+}
+.shop-row-note {
+  font-size: 0.72rem;
+  color: var(--color-hp);
+}
+.shop-list button.unaffordable {
+  opacity: 0.92;
+}
+.shop-detail {
+  margin-bottom: 0;
+}
+
+.ui-scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  background: color-mix(in oklab, var(--color-ink) 55%, transparent);
+  pointer-events: auto;
+  touch-action: none;
+}
+.game-root.is-ui-modal .overlay-panel {
+  z-index: 6;
+}
+.game-root.is-ui-modal .top-stack {
+  visibility: hidden;
+  height: 0;
+  overflow: hidden;
+  margin: 0;
+  padding: 0;
+}
+.game-root.is-ui-modal .game-canvas {
+  pointer-events: none;
+}
+.toast-modal {
+  position: fixed;
+  left: 50%;
+  top: calc(0.75rem + env(safe-area-inset-top));
+  transform: translateX(-50%);
+  z-index: 20;
+  max-width: min(22rem, calc(100% - 1rem));
 }
 
 .toast {
@@ -769,7 +857,7 @@
   .hud-menu,
   .btn-primary,
   .btn-ghost {
-    min-height: 42px;
+    min-height: 44px;
     padding: 0.45rem 0.8rem;
   }
   .battler {
@@ -791,6 +879,9 @@
   .sheet {
     top: 2.9rem;
     max-height: min(58dvh, 420px, calc(100% - 3.4rem));
+  }
+  .game-root.is-ui-modal.has-touch .stage {
+    padding-bottom: 0.35rem;
   }
   .title-copy {
     width: min(520px, 94%);

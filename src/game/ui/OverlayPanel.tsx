@@ -7,6 +7,7 @@ type OverlayPanelProps = {
   onClose?: () => void;
   closeLabel?: string;
   footer?: ReactNode;
+  wide?: boolean;
 };
 
 /** Shared scrollable panel shell for menus, shop, and sheets (T04). */
@@ -17,9 +18,15 @@ export function OverlayPanel({
   onClose,
   closeLabel = "Back",
   footer,
+  wide = false,
 }: OverlayPanelProps) {
   return (
-    <div className="overlay-panel sheet" role="dialog" aria-labelledby="overlay-panel-title">
+    <div
+      className={`overlay-panel sheet${wide ? " sheet-wide" : ""}`}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="overlay-panel-title"
+    >
       <header className="overlay-panel-head">
         <h2 id="overlay-panel-title">{title}</h2>
         {subtitle ? <p className="sheet-sub">{subtitle}</p> : null}
