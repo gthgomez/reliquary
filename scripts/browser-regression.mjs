@@ -71,6 +71,7 @@ if (serveOnly) {
 
   const suiteIdx = args.indexOf("--suite");
   const suite = suiteIdx >= 0 ? args[suiteIdx + 1] : "all";
+  const renderOverlap = existsSync(join(root, "src/game/render/battle-scene.ts"));
   const map = {
     all: [
       "layout.mjs",
@@ -79,6 +80,7 @@ if (serveOnly) {
       "modal-focus-trap.mjs",
       "shop-flow.mjs",
       "touch-arbitration.mjs",
+      "battle-hud-layout.mjs",
       "pwa.mjs",
       "journey.mjs",
     ],
@@ -94,6 +96,10 @@ if (serveOnly) {
   for (const file of files) {
     console.log(`[browser] running ${file}`);
     run(process.execPath, [join(root, "tests/browser", file)]);
+  }
+  if (renderOverlap && existsSync(join(root, "scripts/battle-sprite-overlap.mjs"))) {
+    console.log("[browser] running battle-sprite-overlap.mjs (renderer integration)");
+    run(process.execPath, [join(root, "scripts/battle-sprite-overlap.mjs")]);
   }
   console.log(`[browser] suite=${suite} passed`);
 }
