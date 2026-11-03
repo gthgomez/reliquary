@@ -40,7 +40,11 @@ if (serveOnly) {
   server.listen(port, "127.0.0.1");
 } else {
   function run(cmd, cmdArgs) {
-    const result = spawnSync(cmd, cmdArgs, { cwd: root, stdio: "inherit" });
+    const result = spawnSync(cmd, cmdArgs, { cwd: root, stdio: "inherit", timeout: 180_000, killSignal: "SIGKILL" });
+    if (result.error) {
+      console.error(`[browser] ${cmdArgs.at(-1)} failed: ${result.error.message}`);
+      process.exit(1);
+    }
     if (result.status !== 0) process.exit(result.status ?? 1);
   }
 

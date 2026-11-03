@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { generateSW } from "workbox-build";
 
 const root = join(fileURLToPath(new URL(".", import.meta.url)), "..");
@@ -31,7 +31,7 @@ export async function buildPwa(options = {}) {
   return { count, size, outDir };
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   buildPwa().then((result) => {
     console.log(`[pwa] precached ${result.count} files (${result.size} bytes)`);
   }).catch((err) => {

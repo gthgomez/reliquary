@@ -37,6 +37,11 @@ export function startStaticServer(port = 0) {
     res.writeHead(200, { "content-type": MIME[extname(filePath)] ?? "application/octet-stream" });
     res.end(body);
   });
+  const close = server.close.bind(server);
+  server.close = (cb) => {
+    server.closeAllConnections?.();
+    return close(cb);
+  };
   return new Promise((resolve, reject) => {
     server.listen(port, "127.0.0.1", () => {
       const address = server.address();

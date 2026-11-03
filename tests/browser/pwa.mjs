@@ -11,13 +11,16 @@ try {
     const reg = await page.evaluate(async () => {
       if (!("serviceWorker" in navigator)) return { ok: false, reason: "unsupported" };
       await navigator.serviceWorker.register("/sw.js");
-      await navigator.serviceWorker.ready;
+      await Promise.race([
+        navigator.serviceWorker.ready,
+        new Promise((_, reject) => setTimeout(() => reject(new Error("service worker ready timed out")), 30_000)),
+      ]);
       const keys = await caches.keys();
       const precache = keys.find((k) => k.startsWith("workbox-precache"));
       if (!precache) return { ok: false, reason: "no precache" };
       const cache = await caches.open(precache);
-      const index = await cache.match("/index.html");
-      const manifest = await cache.match("/manifest.webmanifest");
+      const index = await cache.match("/index.html", { ignoreSearch: true });
+      const manifest = await cache.match("/manifest.webmanifest", { ignoreSearch: true });
       return { ok: Boolean(index && manifest), reason: index && manifest ? "ready" : "missing shell" };
     });
     assert.equal(reg.ok, true, reg.reason);
@@ -26,7 +29,7 @@ try {
     await waitForGameBoot(page);
     const title = await page.locator(".title-word").first().textContent();
     assert.match(title ?? "", /Reliquary/);
-  });
+  }, { context: { serviceWorkers: "allow" } });
 } finally {
   server.close();
 }

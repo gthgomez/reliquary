@@ -35,10 +35,20 @@ try {
       const menuBtn = page.locator(".overlay-panel .menu-list button, .sheet .menu-list button").first();
       const target = await menuBtn.boundingBox();
       assert.ok(target, "menu action visible");
-      const hit = await page.evaluate(({ x, y }) => {
-        const el = document.elementFromPoint(x + 4, y + 4);
-        return el?.closest("button") != null;
-      }, { x: target.x, y: target.y });
+      // The sheet animates in; poll until the first menu button is hit-testable.
+      const hit = await page
+        .waitForFunction(
+          () => {
+            const btn = document.querySelector(".overlay-panel .menu-list button, .sheet .menu-list button");
+            if (!btn) return false;
+            const r = btn.getBoundingClientRect();
+            const el = document.elementFromPoint(r.x + 4, r.y + 4);
+            return el?.closest("button") != null;
+          },
+          undefined,
+          { timeout: 5000 },
+        )
+        .then(() => true, () => false);
       assert.equal(hit, true, "menu button receives pointer hits");
     });
     console.log(`[layout] ok ${viewport.width}x${viewport.height}`);

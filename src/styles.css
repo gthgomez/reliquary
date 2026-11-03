@@ -42,8 +42,9 @@
 
 .game-root {
   position: relative;
-  min-height: 100dvh;
-  min-height: 100svh;
+  /* Fixed to the viewport so short landscape screens never scroll the document. */
+  height: 100dvh;
+  height: 100svh;
   display: flex;
   flex-direction: column;
   background: var(--color-ink);
