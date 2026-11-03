@@ -216,6 +216,9 @@ export interface BattleState {
     | "catch";
   menuIndex: number;
   shake: number;
+  /** Cosmetic strike animation; combat resolves before this plays. */
+  animCue: { skillId: string; attacker: "player" | "foe"; hit: boolean } | null;
+  animElapsedMs: number;
   catchStone: string | null;
   pendingXp: number;
   escaped: boolean;

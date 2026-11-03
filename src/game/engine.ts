@@ -23,8 +23,26 @@ import {
   drawBattleFoeSprite,
   drawBattlePlayerSprite,
   paintBattleBackdrop,
+  stableBattleUiReserveTop,
 } from "./render/battle-scene.ts";
-import { measureBattleUiReserveCanvas } from "./render/battle-layout-dom.ts";
+import {
+  battleAnimDurationMs,
+  paintGustProjectile,
+  sampleBattleAnim,
+  sampleBattleIdle,
+  shouldPlayBattleAnim,
+  type BattleAnimCue,
+} from "./render/battle-creature-anim.ts";
+import {
+  computeBattleStageGeometry,
+  reportBattleStageGeometry,
+} from "./render/battle-stage-geometry.ts";
+import {
+  adjustCamYForHudInset,
+  readUiSafeTopCanvas,
+  reportWorldCameraGeometry,
+  type WorldCamReliefState,
+} from "./render/world-camera-safe.ts";
 import { drawAtlasTile, paintTileAccent, tileAtlasQuadrant } from "./render/tile-surface.ts";
 import { paintWorldActorShadow } from "./render/world-actors.ts";
 import { captureChance, captureSucceeds, storeCapturedBeast } from "./systems/capture.ts";
@@ -168,6 +186,11 @@ export class ReliquaryGame {
 		}
 	};
 	private probe: NonNullable<Window["__controlsTest"]> | null = null;
+	private battleStableReserve: number | null = null;
+	private battleLayoutCanvasKey: string | null = null;
+	private battleIdlePhase = 0;
+	private reducedMotion = false;
+	private worldCamRelief: WorldCamReliefState = { relief: 0 };
 	constructor(options: { random?: RandomSource } = {}) {
 		this.random = options.random ?? mathRandom;
 		this.snap = this.buildSnap();
@@ -307,6 +330,9 @@ export class ReliquaryGame {
 		this.raf = requestAnimationFrame(this.loop);
 		this.bindInput();
 		this.installProbe();
+		if (typeof window !== "undefined" && typeof window.matchMedia === "function") {
+			this.reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+		}
 		await this.loadImages(token);
 	}
 	destroy(): void {
@@ -358,6 +384,10 @@ export class ReliquaryGame {
 		this.cssH = cssH;
 		canvas.width = vw * TILE;
 		canvas.height = vh * TILE;
+		if (this.mode === "battle") {
+			this.battleStableReserve = null;
+			this.battleLayoutCanvasKey = null;
+		}
 		this.emit();
 	}
 
@@ -656,6 +686,21 @@ export class ReliquaryGame {
 				fn();
 			}
 		}
+		if (this.mode === "battle" && this.battle?.phase === "anim" && this.battle.animCue) {
+			this.battle.animElapsedMs += dt * 1000;
+			const dur = battleAnimDurationMs(this.battle.animCue, this.reducedMotion);
+			if (this.battle.animElapsedMs >= dur) {
+				this.battle.animCue = null;
+				this.battle.animElapsedMs = 0;
+				if (this.battle.phase === "anim") {
+					this.battle.phase = "command";
+					this.battle.menuIndex = 0;
+					this.menuIndex = 0;
+					this.emit();
+				}
+			}
+		}
+		if (this.mode === "battle") this.battleIdlePhase += dt;
 		if (this.mode === "world" && (!this.dialog || this.injected) && !this.menu) this.tickMove(dt);
 		this.draw();
 		this.raf = requestAnimationFrame(this.loop);
@@ -1170,6 +1215,8 @@ export class ReliquaryGame {
 			phase: "command",
 			menuIndex: 0,
 			shake: 0,
+			animCue: null,
+			animElapsedMs: 0,
 			catchStone: null,
 			pendingXp: 0,
 			escaped: false,
@@ -1221,6 +1268,8 @@ export class ReliquaryGame {
 			phase: "command",
 			menuIndex: 0,
 			shake: 0,
+			animCue: null,
+			animElapsedMs: 0,
 			catchStone: null,
 			pendingXp: 0,
 			escaped: false,
@@ -1255,6 +1304,8 @@ export class ReliquaryGame {
 			phase: "command",
 			menuIndex: 0,
 			shake: 0,
+			animCue: null,
+			animElapsedMs: 0,
 			catchStone: null,
 			pendingXp: 0,
 			escaped: false,
@@ -1398,6 +1449,7 @@ export class ReliquaryGame {
 		const foe = b.foes[b.foeIndex]!;
 		const playerFirst = playerActsFirst(me, foe, this.random) || act.type === "item" || act.type === "switch" || act.type === "bind";
 		let fumbleNotice: string | null = null;
+		let strikeAnim: BattleAnimCue | null = null;
 		const doPlayer = () => {
 			if (me.hp <= 0) return;
 			if (act.type === "strike" || act.type === "skill") {
@@ -1408,26 +1460,32 @@ export class ReliquaryGame {
 					return;
 				}
 			}
-			if (act.type === "strike") this.useSkill(me, foe, false, basicStrike(me), true);
-			else if (act.type === "skill") {
+			if (act.type === "strike") {
+				const cue = this.useSkill(me, foe, false, basicStrike(me), true);
+				if (cue) strikeAnim = cue;
+			} else if (act.type === "skill") {
 				const sk = SKILLS[act.skill!];
 				if (!sk) return;
 				if (!spendSkillMp(me, sk)) {
 					b.log = [`${me.nickname} hasn't the breath.`];
 					return;
 				}
-				this.useSkill(me, foe, false, sk, true);
+				const cue = this.useSkill(me, foe, false, sk, true);
+				if (cue) strikeAnim = cue;
 			} else if (act.type === "item") this.useItem(act.item!, me, true);
 			else if (act.type === "bind") this.tryCatch(act.item!);
 			else if (act.type === "switch") {
 				b.playerIndex = act.index!;
 				me = this.party[b.playerIndex]!;
 				b.log = [`${this.party[b.playerIndex]!.nickname} steps forward.`];
+				b.animCue = null;
+				b.animElapsedMs = 0;
 			}
 		};
 		const doFoe = () => {
 			if (foe.hp <= 0 || b.phase === "catch" || b.escaped) return;
-			this.foeTurn(foe, me);
+			const cue = this.foeTurn(foe, me);
+			if (cue) strikeAnim = cue;
 		};
 		if (playerFirst) {
 			doPlayer();
@@ -1449,30 +1507,41 @@ export class ReliquaryGame {
 			if (foe.hp <= 0) { this.foeDown(); return; }
 		}
 		if (b.phase !== "win" && b.phase !== "lose") {
-			b.phase = "command";
-			b.menuIndex = 0;
-			this.menuIndex = 0;
-			this.tickStatus(me);
-			this.tickStatus(foe);
+			if (strikeAnim) {
+				b.animCue = strikeAnim;
+				b.animElapsedMs = 0;
+				b.phase = "anim";
+				this.tickStatus(me);
+				this.tickStatus(foe);
+			} else {
+				b.phase = "command";
+				b.menuIndex = 0;
+				this.menuIndex = 0;
+				this.tickStatus(me);
+				this.tickStatus(foe);
+			}
 		}
 		if (fumbleNotice && !b.log.includes(fumbleNotice)) b.log = [fumbleNotice, ...b.log];
 		this.emit();
 	}
-	private useSkill(atk: Beast, def: Beast, foeSide: boolean, skill: Skill, logIt: boolean): void {
+	private useSkill(atk: Beast, def: Beast, foeSide: boolean, skill: Skill, logIt: boolean): BattleAnimCue | null {
 		const b = this.battle!;
 		const aS = currentStats(atk);
 		const dS = currentStats(def);
 		const sp = SPECIES[atk.speciesId];
+		const animSide: BattleAnimCue["attacker"] = foeSide ? "foe" : "player";
+		const maybeAnim = (hit: boolean): BattleAnimCue | null =>
+			logIt && shouldPlayBattleAnim(skill.id) ? { skillId: skill.id, attacker: animSide, hit } : null;
 		if (!accuracySucceeds(skill, atk, this.random)) {
 			if (logIt) b.log = [`${atk.nickname}'s ${skill.name} misses.`];
 			sfxPlay.fail();
-			return;
+			return maybeAnim(false);
 		}
 		if (skill.kind === "heal") {
 			const heal = healBeast(atk, skill.power * (aS.mag / 40));
 			b.log = [`${atk.nickname} mends for ${heal}.`];
 			sfxPlay.heal();
-			return;
+			return null;
 		}
 		if (skill.kind === "ward" || skill.kind === "hex" && skill.power === 0) {
 			if (skill.status) {
@@ -1481,7 +1550,7 @@ export class ReliquaryGame {
 				b.log = [`${skill.name}: ${target.nickname} is ${STATUS_ADJECTIVES[skill.status]}.`];
 			}
 			sfxPlay.menu();
-			return;
+			return null;
 		}
 		const phys = skill.kind === "strike";
 		const atkStat = phys ? aS.atk : aS.mag;
@@ -1505,20 +1574,20 @@ export class ReliquaryGame {
 		b.log = [line];
 		if (crit) sfxPlay.crit();
 		else sfxPlay.hit();
+		return maybeAnim(true);
 	}
-	private foeTurn(foe: Beast, me: Beast): void {
+	private foeTurn(foe: Beast, me: Beast): BattleAnimCue | null {
 		const skills = foe.skills.map((id) => SKILLS[id]).filter(Boolean);
 		const foS = currentStats(foe);
 		if (dazeFumbles(foe, this.random)) {
 			this.battle!.log = [`${foe.nickname}'s grip fumbles — it cannot find its line.`];
-			return;
+			return null;
 		}
 		if (foe.hp < foS.hp * .35) {
 			const heal = skills.find((s) => s.kind === "heal" && foe.mp >= s.mp);
 			if (heal) {
 				foe.mp -= heal.mp;
-				this.useSkill(foe, foe, true, heal, true);
-				return;
+				return this.useSkill(foe, foe, true, heal, true);
 			}
 		}
 		const myEls = SPECIES[me.speciesId].elements;
@@ -1533,7 +1602,7 @@ export class ReliquaryGame {
 			}
 		}
 		if (best.mp) foe.mp = Math.max(0, foe.mp - best.mp);
-		this.useSkill(foe, me, true, best, true);
+		return this.useSkill(foe, me, true, best, true);
 	}
 	private tickStatus(b: Beast): void {
 		if (!b.status) return;
@@ -1553,6 +1622,8 @@ export class ReliquaryGame {
 			b.foeIndex = next;
 			const nsp = SPECIES[b.foes[next].speciesId];
 			b.log = [`${sp.name} falls.`, `${b.trainerName ?? "The foe"} sends ${nsp.name}.`];
+			b.animCue = null;
+			b.animElapsedMs = 0;
 			b.phase = "command";
 			this.emit();
 			return;
@@ -1703,6 +1774,8 @@ export class ReliquaryGame {
 	private endBattle(victory: boolean): void {
 		const wasTrial = this.battle?.kind === "trial";
 		this.battle = null;
+		this.battleStableReserve = null;
+		this.battleIdlePhase = 0;
 		this.mode = wasTrial && victory && !this.flags.ending ? this.maybeVictory() : "world";
 		this.encounterLock = false;
 		this.persist();
@@ -1727,6 +1800,8 @@ export class ReliquaryGame {
 		this.party.forEach(healFull);
 		this.gold = Math.max(0, Math.floor(this.gold * .85));
 		this.battle = null;
+		this.battleStableReserve = null;
+		this.battleIdlePhase = 0;
 		this.warp("elderhall", 12, 14, 0);
 		this.mode = "world";
 		this.encounterLock = false;
@@ -1960,7 +2035,25 @@ export class ReliquaryGame {
 		const mw = m.ground[0]?.length ?? 0;
 		const mh = m.ground.length;
 		const camX = Math.max(0, Math.min(this.px - (this.viewW / 2 - 0.5) * TILE, Math.max(0, mw * TILE - this.cw())));
-		const camY = Math.max(0, Math.min(this.py - (this.viewH / 2 - 0.5) * TILE, Math.max(0, mh * TILE - this.ch())));
+		let camY = Math.max(0, Math.min(this.py - (this.viewH / 2 - 0.5) * TILE, Math.max(0, mh * TILE - this.ch())));
+		const canvas = this.canvas;
+		const playerHeadCanvasY = this.py + TILE - TILE * 1.5 - camY;
+		if (canvas && typeof document !== "undefined" && this.mode === "world" && !this.menu && !this.dialog) {
+			const { insetCanvas, source } = readUiSafeTopCanvas(canvas);
+			if (source) {
+				const adjusted = adjustCamYForHudInset(camY, playerHeadCanvasY, insetCanvas, this.worldCamRelief);
+				camY = adjusted.camY;
+				this.worldCamRelief.relief = adjusted.relief;
+				reportWorldCameraGeometry(this.cw(), this.ch(), {
+					hudInsetBottom: insetCanvas,
+					hudInsetSource: source,
+					camRelief: adjusted.relief,
+					playerHeadCanvasY: this.py + TILE - TILE * 1.5 - camY,
+				});
+			}
+		} else if (canvas && typeof document !== "undefined") {
+			this.worldCamRelief.relief = 0;
+		}
 		if (this.terrain?.map !== m) {
 			const canvas = document.createElement("canvas");
 			canvas.width = mw * TILE;
@@ -2069,10 +2162,16 @@ export class ReliquaryGame {
 		if (!b) return;
 		const cw = this.cw();
 		const ch = this.ch();
-		const canvas = this.canvas;
-		const measured =
-			canvas && typeof document !== "undefined" ? measureBattleUiReserveCanvas(canvas) : null;
-		const layout = computeBattleLayout(cw, ch, measured);
+		if (this.battleStableReserve == null) {
+			this.battleStableReserve = stableBattleUiReserveTop(cw, ch);
+		}
+		const canvasKey = `${cw}x${ch}`;
+		if (this.battleLayoutCanvasKey !== canvasKey) {
+			this.battleStableReserve = stableBattleUiReserveTop(cw, ch);
+			this.battleLayoutCanvasKey = canvasKey;
+		}
+		const layout = computeBattleLayout(cw, ch, this.battleStableReserve, { stableReserve: true });
+		const geometryBase = computeBattleStageGeometry(cw, ch, layout, b.phase);
 		const bg = this.images[`bg_${b.bg}`] || this.images.bg_grass;
 		if (bg) ctx.drawImage(bg, 0, 0, cw, ch);
 		else {
@@ -2080,17 +2179,35 @@ export class ReliquaryGame {
 			ctx.fillRect(0, 0, cw, ch);
 		}
 		paintBattleBackdrop(ctx, cw, ch, layout, b.bg);
+		const anchors = { player: layout.player, foe: { cx: layout.foe.cx, cy: layout.foe.cy } };
+		const motion = b.animCue
+			? sampleBattleAnim(b.animCue, b.animElapsedMs, geometryBase.animCorridor, anchors, {
+					reducedMotion: this.reducedMotion,
+					idlePhase: this.battleIdlePhase,
+				})
+			: sampleBattleIdle({ reducedMotion: this.reducedMotion, idlePhase: this.battleIdlePhase });
+		const playerCosmetic = { dx: motion.dx, dy: motion.dy };
+		const foeCosmetic = {
+			dx: b.animCue?.attacker === "foe" ? motion.dx : 0,
+			dy: motion.dy * 0.35,
+		};
+		const geometry = { ...geometryBase, cosmeticOffset: { player: playerCosmetic, foe: foeCosmetic } };
+		reportBattleStageGeometry(cw, ch, geometry);
 		const foe = b.foes[b.foeIndex]!;
 		if (foe && foe.hp > 0) {
 			const img = this.images[`sprite_${foe.speciesId}`];
-			const shake = b.phase === "catch" ? Math.sin(b.shake * 8) * 6 : 0;
-			if (img) drawBattleFoeSprite(ctx, img, layout, shake);
+			const catchShake = b.phase === "catch" ? Math.sin(b.shake * 8) * 6 : 0;
+			const shake = catchShake + motion.foeShakeX;
+			if (img) {
+				drawBattleFoeSprite(ctx, img, layout, shake, foeCosmetic);
+			}
 		}
 		const me = this.party[b.playerIndex]!;
 		if (me) {
 			const img = this.images[`sprite_${me.speciesId}`];
-			if (img) drawBattlePlayerSprite(ctx, img, layout);
+			if (img) drawBattlePlayerSprite(ctx, img, layout, playerCosmetic);
 		}
+		if (motion.projectile) paintGustProjectile(ctx, motion.projectile);
 	}
 };
 function basicStrike(b: Beast): Skill {
