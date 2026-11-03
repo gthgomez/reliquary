@@ -91,3 +91,27 @@ test("strike resolution does not depend on animation elapsed time", async () => 
     assert.equal(SKILLS.nip.power, 40);
   });
 });
+
+test("gust resolves damage and MP before anim; HP stable through playback", async () => {
+  await withBattle((game, frame) => {
+    const b = game.battle as BattleState;
+    b.phase = "command";
+    const foe = b.foes[0]!;
+    const me = game.party[b.playerIndex]!;
+    me.skills = ["gust"];
+    me.mp = 12;
+    foe.hp = 50;
+    const mpBefore = me.mp;
+    const act = game as unknown as { playerAction: (a: { type: string; skill?: string }) => void };
+    act.playerAction({ type: "skill", skill: "gust" });
+    assert.equal(b.phase, "anim");
+    assert.equal(b.animCue?.skillId, "gust");
+    assert.equal(me.mp, mpBefore - SKILLS.gust.mp);
+    const hpAfterResolve = foe.hp;
+    assert.ok(hpAfterResolve < 50);
+    for (let t = 16; t < 8000; t += 16) frame(t);
+    assert.equal(foe.hp, hpAfterResolve);
+    assert.equal(me.mp, mpBefore - SKILLS.gust.mp);
+    assert.equal(b.phase, "command");
+  });
+});

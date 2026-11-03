@@ -9,7 +9,7 @@ On `.viewport`:
 - **`--ui-safe-top-px`** (CSS px): distance from **viewport top** to **`.top-stack` bottom + 4px** (`UI_SAFE_TOP_GAP_PX` in `src/game/ui/ui-geometry.ts`).
 - Updated via `ResizeObserver` in `GameApp` on the UI branch.
 
-Renderer reads this in **`readUiSafeTopCanvas`** (`src/game/render/ui-safe-top.ts`), mapping into canvas space. If the variable is absent (pre-merge), **`measureTopStackBottomCanvas`** uses the same +4px gap — no second geometry assumption.
+Renderer reads this in **`readUiSafeTopCanvas`** (`src/game/render/ui-safe-top.ts`), mapping into canvas space. **`0` is a valid published value** (e.g. battle mode / empty stack) and must not trigger DOM fallback. If the property is **unset** (`""` after removal), use **`measureTopStackBottomCanvas`** (+4px gap).
 
 World camera relief uses **`readUiSafeTopCanvas` only** (not a parallel stack query in engine).
 

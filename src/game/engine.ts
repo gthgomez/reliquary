@@ -690,13 +690,9 @@ export class ReliquaryGame {
 				this.battle.animCue = null;
 				this.battle.animElapsedMs = 0;
 				if (this.battle.phase === "anim") {
-					const me = this.party[this.battle.playerIndex]!;
-					const foe = this.battle.foes[this.battle.foeIndex]!;
 					this.battle.phase = "command";
 					this.battle.menuIndex = 0;
 					this.menuIndex = 0;
-					this.tickStatus(me);
-					this.tickStatus(foe);
 					this.emit();
 				}
 			}
@@ -1512,6 +1508,8 @@ export class ReliquaryGame {
 				b.animCue = strikeAnim;
 				b.animElapsedMs = 0;
 				b.phase = "anim";
+				this.tickStatus(me);
+				this.tickStatus(foe);
 			} else {
 				b.phase = "command";
 				b.menuIndex = 0;
