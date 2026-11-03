@@ -68,8 +68,10 @@ if (serveOnly) {
   const suiteIdx = args.indexOf("--suite");
   const suite = suiteIdx >= 0 ? args[suiteIdx + 1] : "all";
   const map = {
-    all: ["layout.mjs", "pwa.mjs", "journey.mjs"],
+    all: ["layout.mjs", "contrast.mjs", "modal-a11y.mjs", "pwa.mjs", "journey.mjs"],
     layout: ["layout.mjs"],
+    contrast: ["contrast.mjs"],
+    a11y: ["modal-a11y.mjs"],
     pwa: ["pwa.mjs"],
     journey: ["journey.mjs"],
   };

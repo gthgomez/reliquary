@@ -1,8 +1,18 @@
 import assert from "node:assert/strict";
 import { startStaticServer, withBrowser, waitForGameBoot } from "./helpers.mjs";
 
+async function dismissIntro(page) {
+  for (let i = 0; i < 16; i += 1) {
+    if ((await page.locator(".dialog").count()) === 0) break;
+    await page.locator(".dialog").click({ timeout: 2000 }).catch(() => page.keyboard.press("Enter"));
+    await page.waitForTimeout(120);
+  }
+}
+
 const VIEWPORTS = [
+  { width: 320, height: 568 },
   { width: 390, height: 844 },
+  { width: 640, height: 320 },
   { width: 844, height: 390 },
   { width: 1280, height: 800 },
 ];
@@ -16,11 +26,7 @@ try {
       await waitForGameBoot(page);
       await page.setViewportSize(viewport);
       await page.click("text=Start");
-      for (let i = 0; i < 6; i += 1) {
-        if ((await page.locator(".dialog").count()) === 0) break;
-        await page.keyboard.press("Enter");
-        await page.waitForTimeout(150);
-      }
+      await dismissIntro(page);
       await page.waitForSelector(".hud-menu", { timeout: 15_000 });
       await page.waitForFunction(() => typeof window.__reliquary?.openMenu === "function");
       // The stage must fit the viewport (no sideways scroll) and the HUD pieces
@@ -58,14 +64,12 @@ try {
         return {
           isModal: document.querySelector(".game-root")?.classList.contains("is-ui-modal"),
           touchHidden: !touch || getComputedStyle(touch).display === "none",
-          hudVisible: [...document.querySelectorAll(".hud")].some(
-            (el) => el.getClientRects().length > 0 && getComputedStyle(el).visibility !== "hidden",
-          ),
+          hudHidden: document.querySelector(".hud")?.classList.contains("hud-dormant") === true,
         };
       });
       assert.equal(modalChrome.isModal, true, "menu open sets ui modal class");
       assert.equal(modalChrome.touchHidden, true, "exploration touch hidden in menu");
-      assert.equal(modalChrome.hudVisible, false, "world HUD hidden under menu sheet");
+      assert.equal(modalChrome.hudHidden, true, "world HUD dormant under menu sheet");
       const panel = page.locator(".overlay-panel, .sheet").first();
       const box = await panel.boundingBox();
       assert.ok(box, "overlay panel visible");

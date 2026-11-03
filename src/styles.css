@@ -271,6 +271,11 @@
 .hud-chip:first-child {
   flex: 0 1 auto;
 }
+.hud-chip-grow {
+  flex: 1 1 0;
+  min-width: 0;
+  max-width: calc(100% - 7.5rem);
+}
 .hud-place {
   font-family: var(--font-display);
   font-size: 0.85rem;
@@ -281,20 +286,75 @@
   font-size: 0.72rem;
 }
 .hud-chip .hud-muted {
-  color: color-mix(in oklab, var(--color-cream) 82%, var(--color-muted));
+  color: var(--color-parchment);
 }
 .hud-gold {
   font-variant-numeric: tabular-nums;
 }
-.hud-objective {
-  max-width: 100%;
+.hud-objective-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 0;
+  margin-top: 0.15rem;
+}
+.hud-objective-btn {
+  pointer-events: auto;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 0.35rem;
+  align-items: center;
+  width: 100%;
+  min-height: 44px;
+  padding: 0.35rem 0.45rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid color-mix(in oklab, var(--color-cream) 28%, transparent);
+  background: color-mix(in oklab, var(--color-ink) 55%, transparent);
+  color: var(--color-cream);
+  text-align: left;
+  font: inherit;
+}
+.hud-objective-label {
+  font-family: var(--font-display);
+  font-size: 0.62rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-parchment);
+}
+.hud-objective-preview {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  color: color-mix(in oklab, var(--color-cream) 92%, var(--color-parchment));
   font-size: 0.74rem;
-  line-height: 1.35;
+  color: var(--color-cream);
+}
+.hud-objective-chevron {
+  color: var(--color-parchment);
+  font-size: 0.75rem;
+}
+.hud-objective-full {
+  margin: 0;
+  padding: 0.4rem 0.45rem;
+  border-radius: var(--radius-sm);
+  background: color-mix(in oklab, var(--color-ink) 82%, transparent);
+  color: var(--color-cream);
+  font-size: 0.78rem;
+  line-height: 1.4;
+  text-wrap: pretty;
+  pointer-events: auto;
+}
+.hud-objective-lantern {
+  pointer-events: auto;
+  align-self: flex-start;
+  min-height: 44px;
+  padding: 0.35rem 0.55rem;
+  border: 0;
+  background: transparent;
+  color: var(--color-parchment);
+  font-size: 0.72rem;
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 .hud-menu {
   flex: 0 0 auto;
@@ -478,6 +538,21 @@
 .beast-actions .btn-ghost {
   background: var(--color-ink);
   color: var(--color-cream);
+}
+.action-with-hint {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  width: 100%;
+}
+.action-hint {
+  margin: 0;
+  font-size: 0.78rem;
+  line-height: 1.35;
+  color: color-mix(in oklab, var(--color-ink) 72%, transparent);
+}
+.action-with-hint button:disabled + .action-hint {
+  color: color-mix(in oklab, var(--color-ink) 82%, var(--color-hp));
 }
 .rename-form {
   display: flex;
@@ -710,12 +785,12 @@
 .game-root.is-ui-modal .overlay-panel {
   z-index: 6;
 }
-.game-root.is-ui-modal .top-stack {
+.hud-dormant {
   visibility: hidden;
-  height: 0;
-  overflow: hidden;
-  margin: 0;
-  padding: 0;
+  pointer-events: none;
+}
+.top-stack-dormant {
+  pointer-events: none;
 }
 .game-root.is-ui-modal .game-canvas {
   pointer-events: none;

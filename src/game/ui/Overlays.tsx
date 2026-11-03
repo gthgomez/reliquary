@@ -1,4 +1,4 @@
-import type { PointerEvent, ReactNode } from "react";
+import type { PointerEvent, ReactNode, RefObject } from "react";
 import { useEffect, useState } from "react";
 import {
   currentStats,
@@ -14,6 +14,11 @@ import type { ReliquaryGame } from "../engine";
 import { ROOT_MENU } from "../engine";
 import type { Beast, Snapshot } from "../types";
 import { OverlayPanel } from "./OverlayPanel";
+import {
+  leadActionHint,
+  practiceActionHint,
+  practiceEnabledHint,
+} from "./party-actions.ts";
 
 export function TitleScreen({ game, snap }: { game: ReliquaryGame; snap: Snapshot }) {
   return (
@@ -88,18 +93,42 @@ export function VictoryScreen({ game }: { game: ReliquaryGame }) {
   );
 }
 
-export function Hud({ snap, onMenu }: { snap: Snapshot; onMenu: () => void }) {
+export function Hud({
+  snap,
+  onMenu,
+  menuButtonRef,
+  dormant = false,
+}: {
+  snap: Snapshot;
+  onMenu: () => void;
+  menuButtonRef?: RefObject<HTMLButtonElement | null>;
+  dormant?: boolean;
+}) {
   const lead = snap.party[0];
   const st = lead ? currentStats(lead) : null;
+  const [objectiveOpen, setObjectiveOpen] = useState(false);
   return (
-    <div className="hud">
-      <div className="hud-chip">
+    <div className={`hud${dormant ? " hud-dormant" : ""}`} aria-hidden={dormant}>
+      <div className="hud-chip hud-chip-grow">
         <span className="hud-place">{snap.mapName}</span>
         <span className="hud-muted">{snap.region}</span>
         {snap.objective ? (
-          <span className="hud-objective" title={snap.objective}>
-            {snap.objective}
-          </span>
+          <div className="hud-objective-wrap">
+            <button
+              type="button"
+              className="hud-objective-btn"
+              aria-expanded={objectiveOpen}
+              onClick={() => setObjectiveOpen((open) => !open)}
+            >
+              <span className="hud-objective-label">Objective</span>
+              <span className="hud-objective-preview">{snap.objective}</span>
+              <span className="hud-objective-chevron">{objectiveOpen ? "▾" : "▸"}</span>
+            </button>
+            {objectiveOpen ? <p className="hud-objective-full">{snap.objective}</p> : null}
+            <button type="button" className="hud-objective-lantern" onClick={onMenu}>
+              Open in Lantern menu
+            </button>
+          </div>
         ) : null}
       </div>
       <div className="hud-chip">
@@ -112,7 +141,7 @@ export function Hud({ snap, onMenu }: { snap: Snapshot; onMenu: () => void }) {
           <span className="hud-muted">No pact yet</span>
         )}
       </div>
-      <button type="button" className="hud-menu" onClick={onMenu}>
+      <button type="button" className="hud-menu" ref={menuButtonRef} onClick={onMenu}>
         Menu
       </button>
     </div>
@@ -262,41 +291,37 @@ export function MenuPanel({ game, snap }: { game: ReliquaryGame; snap: Snapshot 
                   {b.pendingSkills.length > 1 ? ` (${b.pendingSkills.length})` : ""}
                 </button>
               ) : null}
-              <button
-                type="button"
-                className="btn-ghost"
-                disabled={index === 0 || b.hp <= 0}
-                title={
-                  index === 0
-                    ? "Already your party lead"
-                    : b.hp <= 0
-                      ? "A fallen companion cannot lead"
-                      : `Send ${b.nickname} to the front of the party`
-                }
-                onClick={() => game.setLead(b.uid)}
-                aria-label={`Make ${b.nickname} lead`}
-              >
-                {index === 0 ? "Party lead" : "Make lead"}
-              </button>
+              <div className="action-with-hint">
+                <button
+                  type="button"
+                  className="btn-ghost"
+                  disabled={index === 0 || b.hp <= 0}
+                  onClick={() => game.setLead(b.uid)}
+                  aria-label={`Make ${b.nickname} lead`}
+                  aria-describedby={`lead-hint-${b.uid}`}
+                >
+                  {index === 0 ? "Party lead" : "Make lead"}
+                </button>
+                <p id={`lead-hint-${b.uid}`} className="action-hint" role="note">
+                  {leadActionHint(index, b) ?? "Send this companion to the front of the party and into battle first."}
+                </p>
+              </div>
               <RenameCreature game={game} beast={b} />
-              <button
-                type="button"
-                className="btn-ghost"
-                disabled={b.hp <= 0 || b.level >= 40 || snap.gold < 45}
-                title={
-                  b.hp <= 0
-                    ? "Practice needs a companion on their feet"
-                    : b.level >= 40
-                      ? "Already at the level cap"
-                      : snap.gold < 45
-                        ? `Need 45 cr (you have ${snap.gold})`
-                        : "Pay 45 cr for 80 lore — does not heal"
-                }
-                onClick={() => game.trainCreature(b.uid)}
-                aria-label={`Practice with ${b.nickname} for 45 crowns`}
-              >
-                Practice · 45 cr
-              </button>
+              <div className="action-with-hint">
+                <button
+                  type="button"
+                  className="btn-ghost"
+                  disabled={b.hp <= 0 || b.level >= 40 || snap.gold < 45}
+                  onClick={() => game.trainCreature(b.uid)}
+                  aria-label={`Practice with ${b.nickname} for 45 crowns`}
+                  aria-describedby={`practice-hint-${b.uid}`}
+                >
+                  Practice · 45 cr
+                </button>
+                <p id={`practice-hint-${b.uid}`} className="action-hint" role="note">
+                  {practiceActionHint(b, snap.gold) ?? practiceEnabledHint()}
+                </p>
+              </div>
             </BeastCard>
           ))}
           {snap.party.length === 0 ? <p className="empty">No pact spoken yet.</p> : null}
@@ -331,16 +356,23 @@ export function MenuPanel({ game, snap }: { game: ReliquaryGame; snap: Snapshot 
         <div className="party-grid">
           {snap.box.map((b, boxIndex) => (
             <BeastCard key={b.uid} beast={b} selected={snap.party.length + boxIndex === snap.menuIndex}>
-              <button
-                type="button"
-                className="btn-ghost"
-                disabled={snap.party.length >= 4}
-                title={snap.party.length >= 4 ? "Party is full — store someone first" : undefined}
-                onClick={() => game.transferBeast(b.uid, "party")}
-                aria-label={`Add ${b.nickname} to party`}
-              >
-                Add to party
-              </button>
+              <div className="action-with-hint">
+                <button
+                  type="button"
+                  className="btn-ghost"
+                  disabled={snap.party.length >= 4}
+                  onClick={() => game.transferBeast(b.uid, "party")}
+                  aria-label={`Add ${b.nickname} to party`}
+                  aria-describedby={`store-in-hint-${b.uid}`}
+                >
+                  Add to party
+                </button>
+                {snap.party.length >= 4 ? (
+                  <p id={`store-in-hint-${b.uid}`} className="action-hint" role="note">
+                    Party is full (4/4). Store a traveller first.
+                  </p>
+                ) : null}
+              </div>
             </BeastCard>
           ))}
           {snap.box.length === 0 ? <p className="empty">No creatures in storage yet.</p> : null}

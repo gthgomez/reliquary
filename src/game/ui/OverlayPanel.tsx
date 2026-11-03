@@ -35,7 +35,7 @@ export function OverlayPanel({
       <footer className="overlay-panel-foot">
         {footer}
         {onClose ? (
-          <button type="button" className="btn-ghost" onClick={onClose}>
+          <button type="button" className="btn-ghost overlay-panel-close" onClick={onClose}>
             {closeLabel}
           </button>
         ) : null}

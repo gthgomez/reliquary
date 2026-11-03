@@ -103,9 +103,25 @@ export function GameApp() {
     !!snap.dialog ||
     !!snap.menu;
   const uiModal = isUiModalOpen(snap);
-  const showHud = playing && snap.mode !== "battle" && !uiModal;
+  const showHudBar = playing && snap.mode !== "battle";
+  const showHudInteractive = showHudBar && !uiModal;
   const showTouch =
     snap.mode !== "boot" && snap.mode !== "title" && snap.mode !== "victory" && !uiModal;
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (uiModal) {
+      requestAnimationFrame(() => {
+        document.querySelector<HTMLElement>(".overlay-panel-close")?.focus({ preventScroll: true });
+      });
+      return;
+    }
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        menuButtonRef.current?.focus({ preventScroll: true });
+      });
+    });
+  }, [uiModal, snap.menu, snap.mode]);
 
   return (
     <div className={`game-root${showTouch ? " has-touch" : ""}${uiModal ? " is-ui-modal" : ""}`}>
@@ -133,8 +149,15 @@ export function GameApp() {
             />
           ) : null}
           {/* HUD and toast share one top column so the toast always lands below the HUD. */}
-          <div className="top-stack">
-            {showHud ? <Hud snap={snap} onMenu={() => g.toggleMenu()} /> : null}
+          <div className={`top-stack${uiModal ? " top-stack-dormant" : ""}`}>
+            {showHudBar ? (
+              <Hud
+                snap={snap}
+                menuButtonRef={menuButtonRef}
+                dormant={uiModal}
+                onMenu={() => g.toggleMenu()}
+              />
+            ) : null}
             {snap.toast && !uiModal ? <Toast text={snap.toast} /> : null}
           </div>
           {snap.mode === "battle" ? <BattleHud game={g} snap={snap} /> : null}
