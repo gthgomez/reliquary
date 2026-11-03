@@ -37,6 +37,12 @@ import {
   computeBattleStageGeometry,
   reportBattleStageGeometry,
 } from "./render/battle-stage-geometry.ts";
+import {
+  adjustCamYForHudInset,
+  measureWorldHudInsetCanvas,
+  reportWorldCameraGeometry,
+  type WorldCamReliefState,
+} from "./render/world-camera-safe.ts";
 import { drawAtlasTile, paintTileAccent, tileAtlasQuadrant } from "./render/tile-surface.ts";
 import { paintWorldActorShadow } from "./render/world-actors.ts";
 import { captureChance, captureSucceeds, storeCapturedBeast } from "./systems/capture.ts";
@@ -181,8 +187,10 @@ export class ReliquaryGame {
 	};
 	private probe: NonNullable<Window["__controlsTest"]> | null = null;
 	private battleStableReserve: number | null = null;
+	private battleLayoutCanvasKey: string | null = null;
 	private battleIdlePhase = 0;
 	private reducedMotion = false;
+	private worldCamRelief: WorldCamReliefState = { relief: 0 };
 	constructor(options: { random?: RandomSource } = {}) {
 		this.random = options.random ?? mathRandom;
 		this.snap = this.buildSnap();
@@ -376,6 +384,10 @@ export class ReliquaryGame {
 		this.cssH = cssH;
 		canvas.width = vw * TILE;
 		canvas.height = vh * TILE;
+		if (this.mode === "battle") {
+			this.battleStableReserve = null;
+			this.battleLayoutCanvasKey = null;
+		}
 		this.emit();
 	}
 
@@ -2022,7 +2034,24 @@ export class ReliquaryGame {
 		const mw = m.ground[0]?.length ?? 0;
 		const mh = m.ground.length;
 		const camX = Math.max(0, Math.min(this.px - (this.viewW / 2 - 0.5) * TILE, Math.max(0, mw * TILE - this.cw())));
-		const camY = Math.max(0, Math.min(this.py - (this.viewH / 2 - 0.5) * TILE, Math.max(0, mh * TILE - this.ch())));
+		let camY = Math.max(0, Math.min(this.py - (this.viewH / 2 - 0.5) * TILE, Math.max(0, mh * TILE - this.ch())));
+		const canvas = this.canvas;
+		const playerHeadCanvasY = this.py + TILE - TILE * 1.5 - camY;
+		if (canvas && typeof document !== "undefined" && this.mode === "world" && !this.menu && !this.dialog) {
+			const inset = measureWorldHudInsetCanvas(canvas);
+			if (inset != null) {
+				const adjusted = adjustCamYForHudInset(camY, playerHeadCanvasY, inset, this.worldCamRelief);
+				camY = adjusted.camY;
+				this.worldCamRelief.relief = adjusted.relief;
+				reportWorldCameraGeometry(this.cw(), this.ch(), {
+					hudInsetBottom: inset,
+					camRelief: adjusted.relief,
+					playerHeadCanvasY: this.py + TILE - TILE * 1.5 - camY,
+				});
+			}
+		} else if (canvas && typeof document !== "undefined") {
+			this.worldCamRelief.relief = 0;
+		}
 		if (this.terrain?.map !== m) {
 			const canvas = document.createElement("canvas");
 			canvas.width = mw * TILE;
@@ -2134,8 +2163,13 @@ export class ReliquaryGame {
 		if (this.battleStableReserve == null) {
 			this.battleStableReserve = stableBattleUiReserveTop(cw, ch);
 		}
+		const canvasKey = `${cw}x${ch}`;
+		if (this.battleLayoutCanvasKey !== canvasKey) {
+			this.battleStableReserve = stableBattleUiReserveTop(cw, ch);
+			this.battleLayoutCanvasKey = canvasKey;
+		}
 		const layout = computeBattleLayout(cw, ch, this.battleStableReserve, { stableReserve: true });
-		const geometry = computeBattleStageGeometry(cw, ch, layout);
+		const geometry = computeBattleStageGeometry(cw, ch, layout, b.phase);
 		reportBattleStageGeometry(cw, ch, geometry);
 		const bg = this.images[`bg_${b.bg}`] || this.images.bg_grass;
 		if (bg) ctx.drawImage(bg, 0, 0, cw, ch);
@@ -2156,8 +2190,10 @@ export class ReliquaryGame {
 			const img = this.images[`sprite_${foe.speciesId}`];
 			const catchShake = b.phase === "catch" ? Math.sin(b.shake * 8) * 6 : 0;
 			const shake = catchShake + motion.foeShakeX;
+			const foeDy =
+				b.animCue && (b.animCue.attacker === "foe" || b.animCue.skillId === "gust") ? motion.dy * 0.35 : 0;
 			if (img) {
-				drawBattleFoeSprite(ctx, img, layout, shake, { dx: 0, dy: motion.dy * 0.35 });
+				drawBattleFoeSprite(ctx, img, layout, shake, { dx: 0, dy: foeDy });
 			}
 		}
 		const me = this.party[b.playerIndex]!;

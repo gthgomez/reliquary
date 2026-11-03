@@ -107,6 +107,20 @@ try {
     const layout = computeBattleLayout(stageProbe.cw, stageProbe.ch, reserve, { stableReserve: true });
     assert.ok(layout.player.cx < layout.foe.cx, `${vp.name} player left of foe`);
 
+    assert.ok(stageProbe?.report?.spriteAnchors, `${vp.name} missing spriteAnchors`);
+    if (vp.name === "390x844" && !stageOnly) {
+      const commandAnchors = stageProbe.report.spriteAnchors;
+      await page.keyboard.press("ArrowDown");
+      await page.keyboard.press("Enter");
+      await page.waitForTimeout(200);
+      const skillsAnchors = await page.evaluate(
+        () => window.__battleStageReport?.spriteAnchors ?? null,
+      );
+      assert.deepEqual(skillsAnchors, commandAnchors, "spriteAnchors drifted on skills menu");
+      await page.keyboard.press("Escape");
+      await page.waitForTimeout(120);
+    }
+
     if (!animOnly) {
       await page.screenshot({ path: join(outDir, `stage-${vp.name}.png`) });
     }

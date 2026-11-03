@@ -3,6 +3,11 @@ import type { BattleLayout } from "./battle-scene.ts";
 /** Canvas-space band reserved for HUD status readouts (sprites must not enter). */
 export type BattleZoneRect = { x: number; y: number; w: number; h: number };
 
+export type BattleSpriteAnchors = {
+  player: { cx: number; cy: number };
+  foe: { x: number; y: number; w: number; h: number };
+};
+
 export type BattleStageGeometry = {
   layout: BattleLayout;
   /** Safe motion band between the two anchors (attacks stay inside). */
@@ -10,6 +15,10 @@ export type BattleStageGeometry = {
   statusZonePlayer: BattleZoneRect;
   statusZoneFoe: BattleZoneRect;
   commandZoneTop: number;
+  stableReserveTop: number;
+  spriteAnchors: BattleSpriteAnchors;
+  /** QA telemetry; anchors must not depend on this. */
+  battlePhase: string | null;
 };
 
 const STATUS_H_FRAC = 0.11;
@@ -41,10 +50,19 @@ export function battleAnimCorridor(cw: number, uiReserveTop: number, layout: Bat
   };
 }
 
+export function battleSpriteAnchors(layout: BattleLayout): BattleSpriteAnchors {
+  const { x, y, w, h } = layout.foe;
+  return {
+    player: { cx: layout.player.cx, cy: layout.player.cy },
+    foe: { x, y, w, h },
+  };
+}
+
 export function computeBattleStageGeometry(
   cw: number,
   ch: number,
   layout: BattleLayout,
+  battlePhase: string | null = null,
 ): BattleStageGeometry {
   const corridor = battleAnimCorridor(cw, layout.uiReserveTop, layout);
   return {
@@ -53,6 +71,9 @@ export function computeBattleStageGeometry(
     statusZonePlayer: statusZone(cw, ch, "player"),
     statusZoneFoe: statusZone(cw, ch, "foe"),
     commandZoneTop: layout.uiReserveTop,
+    stableReserveTop: layout.uiReserveTop,
+    spriteAnchors: battleSpriteAnchors(layout),
+    battlePhase,
   };
 }
 
