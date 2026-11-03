@@ -13,10 +13,14 @@ import {
   VictoryScreen,
 } from "./ui/Overlays";
 import { AppStatus } from "./ui/AppStatus";
+import { battleSubmenuRootClass } from "./ui/battle-chrome.ts";
 import { isClassicTouchEnabled, isUiModalOpen, shouldShowDialogTouch, shouldShowExplorationTouch } from "./ui/ui-chrome.ts";
 import { registerReliquaryServiceWorker } from "../pwa/register.ts";
 import { acquireSaveSession } from "./save-session.ts";
 import { attachEconomyProbes } from "reliquary-economy-probes";
+import { attachBattleUiBrowserHooks } from "reliquary-battle-browser-probes";
+
+declare const __RELIQUARY_BROWSER_TEST__: boolean;
 
 export function GameApp() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -76,6 +80,7 @@ export function GameApp() {
       openMenu: () => g.toggleMenu(),
     };
     attachEconomyProbes(reliquaryHandle, g);
+    attachBattleUiBrowserHooks(reliquaryHandle, g, __RELIQUARY_BROWSER_TEST__);
     window.__reliquary = reliquaryHandle;
     const apply = () => {
       if (!stage) return;
@@ -131,7 +136,7 @@ export function GameApp() {
 
   return (
     <div
-      className={`game-root${showTouch ? " has-touch" : ""}${showExplorationTouch ? " has-explore-touch" : ""}${showDialogTouch ? " has-dialog-touch" : ""}${classicTouch ? " classic-touch" : ""}${uiModal ? " is-ui-modal" : ""}${snap.dialog ? " is-dialog" : ""}${snap.mode === "battle" ? " is-battle" : ""}`}
+      className={`game-root${showTouch ? " has-touch" : ""}${showExplorationTouch ? " has-explore-touch" : ""}${showDialogTouch ? " has-dialog-touch" : ""}${classicTouch ? " classic-touch" : ""}${uiModal ? " is-ui-modal" : ""}${snap.dialog ? " is-dialog" : ""}${snap.mode === "battle" ? " is-battle" : ""}${battleSubmenuRootClass(snap.battle?.phase)}`}
     >
       <div className="stage" ref={stageRef}>
         <div

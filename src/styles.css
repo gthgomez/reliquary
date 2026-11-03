@@ -658,59 +658,101 @@
   pointer-events: none;
   z-index: 3;
 }
-.battler {
+.battle-status-zone {
   position: absolute;
+  top: 0.6rem;
+  right: 0.6rem;
+  left: 0.6rem;
+  display: flex;
+  justify-content: flex-end;
+  pointer-events: none;
+  transition: opacity 160ms ease;
+}
+.game-root.is-battle-submenu .battle-status-zone {
+  opacity: 0.78;
+}
+.battler {
   background: rgba(20, 17, 14, 0.96);
   border: 1px solid color-mix(in oklab, var(--color-cream) 22%, transparent);
   border-radius: var(--radius-md);
-  padding: 0.45rem 0.65rem;
-  min-width: min(150px, 46%);
+  padding: 0.4rem 0.55rem;
+  min-width: min(140px, 46%);
   max-width: calc(100% - 1.2rem);
   pointer-events: none;
   box-shadow: 0 4px 16px color-mix(in oklab, var(--color-ink) 65%, transparent);
   color: var(--color-cream);
 }
 .battler.foe {
-  top: 0.6rem;
-  right: 0.6rem;
+  position: relative;
+  top: auto;
+  right: auto;
 }
 .battler.me {
-  left: 0.6rem;
-  bottom: 7.2rem;
+  position: relative;
+  left: auto;
+  bottom: auto;
 }
 .battler strong {
   font-family: var(--font-display);
   display: block;
   color: var(--color-cream);
+  font-size: 0.88rem;
 }
 .battler span {
   color: var(--color-parchment);
-  font-size: 0.78rem;
+  font-size: 0.74rem;
 }
 .battler .meter {
   color: var(--color-cream);
-  font-size: 0.78rem;
+  font-size: 0.72rem;
 }
-.battle-controls .battler {
-  position: static;
+.meter-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.35rem;
+  line-height: 1.2;
+}
+.meter-kicker {
+  font-size: 0.65rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-parchment-dim);
+}
+.meter-frac {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.meter-abbr {
+  text-decoration: none;
+  font-weight: 600;
+  color: var(--color-cream);
+}
+.meter-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.3rem;
+  margin-top: 0.15rem;
 }
 .battle-log {
-  position: absolute;
-  left: 0.6rem;
-  right: 0.6rem;
-  bottom: 4.6rem;
   background: var(--color-parchment);
   color: var(--color-ink);
   border-radius: var(--radius-md);
-  padding: 0.55rem 0.7rem;
+  padding: 0.5rem 0.65rem;
   min-height: 44px;
-  font-size: 0.9rem;
+  font-size: 0.86rem;
   pointer-events: none;
+  width: 100%;
+}
+.battle-panel-title {
+  margin: 0 0 0.35rem;
+  font-family: var(--font-display);
+  font-size: 0.78rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--color-parchment-dim);
 }
 .cmd {
-  position: absolute;
-  right: 0.6rem;
-  bottom: 0.6rem;
   list-style: none;
   margin: 0;
   padding: 0;
@@ -718,7 +760,14 @@
   grid-template-columns: 1fr 1fr;
   gap: 0.3rem;
   pointer-events: auto;
-  width: min(260px, 70vw);
+  width: 100%;
+}
+.cmd-scroll {
+  grid-template-columns: 1fr;
+  max-width: none;
+}
+.cmd-party {
+  width: 100%;
 }
 .cmd button {
   background: var(--color-parchment);
@@ -726,11 +775,23 @@
   width: 100%;
   display: flex;
   justify-content: space-between;
+  min-height: 44px;
+}
+.battle-controls-actions .cmd {
+  width: min(260px, 100%);
+  margin-left: auto;
+}
+.battle-back {
+  min-height: 44px;
+  min-width: 5.5rem;
+  background: var(--color-cream);
+  color: var(--color-ink);
+}
+.battle-continue {
+  min-height: 44px;
+  margin-left: auto;
 }
 .battle-ui .btn-primary {
-  position: absolute;
-  right: 0.6rem;
-  bottom: 0.6rem;
   pointer-events: auto;
 }
 
@@ -1000,26 +1061,21 @@
     padding: 0.45rem 0.8rem;
   }
   .battler {
-    min-width: min(124px, 46%);
-    padding: 0.35rem 0.5rem;
+    min-width: min(118px, 46%);
+    padding: 0.32rem 0.45rem;
   }
-  .battler.me {
-    bottom: 6.4rem;
-  }
-  /* Player sprite is drawn on the left; keep its stat card on the right. */
-  .game-root .battle-controls .battler.me {
-    align-self: flex-end;
+  .meter-row {
+    grid-template-columns: 1fr;
   }
   .battle-log {
-    bottom: 4.1rem;
-    font-size: 0.85rem;
+    font-size: 0.82rem;
     min-height: 40px;
   }
   .battle-controls {
-    max-height: min(58%, calc(100% - 6rem));
+    max-height: min(58%, calc(100% - 5.5rem));
   }
   .battler.foe {
-    max-width: min(132px, 40%);
+    max-width: min(128px, 42%);
   }
   .sheet {
     top: 2.9rem;
@@ -1082,13 +1138,16 @@
     height: auto;
     background: none;
   }
-  .battle-controls .cmd {
+  .battle-controls-actions .cmd {
     grid-template-columns: repeat(3, 1fr);
     width: min(360px, 100%);
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .battle-status-zone {
+    transition: none;
+  }
   .btn-primary:active,
   .load-fill {
     transition: none;
@@ -1106,26 +1165,34 @@
   left: 0.6rem;
   right: 0.6rem;
   bottom: 0.6rem;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 0.5rem;
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  align-items: stretch;
+  gap: 0.35rem;
   max-height: min(65%, calc(100% - 5.75rem));
-  overflow-y: auto;
+  overflow: hidden;
   pointer-events: auto;
 }
-.battle-controls .battler.me,
-.battle-controls .battle-log,
-.battle-controls .cmd,
-.battle-controls .btn-primary {
-  position: static;
+.battle-controls-body {
+  overflow-y: auto;
+  touch-action: pan-y;
+  overscroll-behavior: contain;
+  min-height: 0;
+}
+.battle-controls-body.is-empty {
+  display: none;
+}
+.battle-controls-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  justify-content: flex-end;
+  gap: 0.35rem;
   flex-shrink: 0;
 }
 .battle-controls .battler.me {
   align-self: flex-start;
-}
-.battle-controls .battle-log {
-  width: 100%;
+  max-width: min(280px, 100%);
 }
 button:focus-visible {
   outline: 2px solid var(--color-copper);

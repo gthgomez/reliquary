@@ -11,6 +11,7 @@ async function dismissIntro(page) {
 
 const VIEWPORTS = [
   { width: 320, height: 568 },
+  { width: 390, height: 667 },
   { width: 390, height: 844 },
   { width: 640, height: 320 },
   { width: 844, height: 390 },
