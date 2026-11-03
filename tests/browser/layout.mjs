@@ -23,6 +23,32 @@ try {
       }
       await page.waitForSelector(".hud-menu", { timeout: 15_000 });
       await page.waitForFunction(() => typeof window.__reliquary?.openMenu === "function");
+      // The stage must fit the viewport (no sideways scroll) and the HUD pieces
+      // must not sit on top of each other.
+      const fit = await page.evaluate(() => {
+        const rects = [...document.querySelectorAll(".hud-chip, .hud-menu, .toast, .app-status")]
+          .filter((el) => el.getClientRects().length)
+          .map((el) => ({ name: el.className, r: el.getBoundingClientRect() }));
+        const overlaps = [];
+        for (let i = 0; i < rects.length; i += 1)
+          for (let j = i + 1; j < rects.length; j += 1) {
+            const a = rects[i].r;
+            const b = rects[j].r;
+            if (a.left < b.right - 1 && b.left < a.right - 1 && a.top < b.bottom - 1 && b.top < a.bottom - 1)
+              overlaps.push(`${rects[i].name} / ${rects[j].name}`);
+          }
+        const vp = document.querySelector(".viewport")?.getBoundingClientRect();
+        return {
+          scrollWidth: document.documentElement.scrollWidth,
+          innerWidth: window.innerWidth,
+          vpLeft: vp?.left ?? 0,
+          vpRight: vp?.right ?? 0,
+          overlaps,
+        };
+      });
+      assert.ok(fit.scrollWidth <= fit.innerWidth, `no horizontal overflow (${fit.scrollWidth} > ${fit.innerWidth})`);
+      assert.ok(fit.vpLeft >= -1 && fit.vpRight <= fit.innerWidth + 1, "game viewport inside the window");
+      assert.deepEqual(fit.overlaps, [], "HUD elements do not overlap");
       await page.evaluate(() => {
         window.__reliquary?.openMenu?.();
       });
