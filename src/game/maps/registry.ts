@@ -51,7 +51,10 @@ const elderhall: MapDef = {
   decorations: [
     { sprite: "shrub", x: 3, y: 15, w: 1, h: 1, layer: "ground" },
     { sprite: "shrub", x: 19, y: 4, w: 1, h: 1, layer: "ground" },
+    { sprite: "barrel", x: 18, y: 8, w: 1, h: 1, layer: "ground" },
+    { sprite: "fence", x: 10, y: 11, w: 1, h: 1, layer: "ground" },
     { sprite: "tree", x: 21, y: 14, w: 2, h: 2, layer: "canopy" },
+    { sprite: "tree", x: 1, y: 1, w: 2, h: 2, layer: "canopy" },
   ],
   npcs: [
     { id: "maren", sprite: "elder", x: 7, y: 9, name: "Elder Maren", talk: "maren" },
@@ -270,6 +273,11 @@ const briar_road: MapDef = {
     { sprite: "shrub", x: 4, y: 6, w: 1, h: 1, layer: "ground" },
     { sprite: "shrub", x: 17, y: 14, w: 1, h: 1, layer: "ground" },
     { sprite: "fence", x: 9, y: 9, w: 1, h: 1, layer: "ground" },
+    { sprite: "barrel", x: 14, y: 11, w: 1, h: 1, layer: "ground" },
+    { sprite: "crate", x: 15, y: 12, w: 1, h: 1, layer: "ground" },
+    { sprite: "well", x: 3, y: 11, w: 1, h: 1, layer: "ground" },
+    { sprite: "tree", x: 1, y: 7, w: 2, h: 2, layer: "canopy" },
+    { sprite: "tree", x: 16, y: 3, w: 2, h: 2, layer: "canopy" },
   ],
   npcs: [{ id: "road_traveler", sprite: "traveler", x: 12, y: 16, name: "Wayfarer", talk: "wayfarer" }],
   warps: [
@@ -332,6 +340,14 @@ const wildwood: MapDef = {
     { id: "chest_wood", sprite: "crate", x: 18, y: 5, w: 1, h: 1, foot: 1, solid: true, interact: "chest_wood" },
     { id: "cave_mouth", sprite: "boulder", x: 6, y: 1, w: 1, h: 1, foot: 1, solid: false, interact: "enter_cave" },
   ],
+  decorations: [
+    { sprite: "shrub", x: 4, y: 4, w: 1, h: 1, layer: "ground" },
+    { sprite: "shrub", x: 15, y: 6, w: 1, h: 1, layer: "ground" },
+    { sprite: "boulder", x: 5, y: 2, w: 1, h: 1, layer: "ground" },
+    { sprite: "fence", x: 9, y: 12, w: 1, h: 1, layer: "ground" },
+    { sprite: "tree", x: 19, y: 7, w: 2, h: 2, layer: "canopy" },
+    { sprite: "tree", x: 1, y: 10, w: 2, h: 2, layer: "canopy" },
+  ],
   npcs: [],
   warps: [
     { x: 9, y: 21, to: "briar_road", tx: 10, ty: 1 },
@@ -385,6 +401,12 @@ const mirefen: MapDef = {
     prop("reed2", "shrub", 14, 10),
   ],
   npcs: [{ id: "fen_walker", sprite: "traveler", x: 10, y: 14, name: "Reed-cutter", talk: "reedcutter" }],
+  decorations: [
+    { sprite: "shrub", x: 3, y: 3, w: 1, h: 1, layer: "ground" },
+    { sprite: "shrub", x: 15, y: 11, w: 1, h: 1, layer: "ground" },
+    { sprite: "boulder", x: 8, y: 5, w: 1, h: 1, layer: "ground" },
+    { sprite: "tree", x: 17, y: 1, w: 2, h: 2, layer: "canopy" },
+  ],
   warps: [
     { x: 0, y: 7, to: "briar_road", tx: 18, ty: 11 },
     { x: 0, y: 8, to: "briar_road", tx: 18, ty: 11 },

@@ -23,6 +23,7 @@ test("bakeMapTerrain invokes decoration callbacks", () => {
   const map = MAPS.elderhall;
   let deco = 0;
   let tiles = 0;
+  let accents = 0;
   bakeMapTerrain({
     map,
     tileSize: 32,
@@ -33,7 +34,11 @@ test("bakeMapTerrain invokes decoration callbacks", () => {
     drawDecoration: () => {
       deco += 1;
     },
+    drawAccent: () => {
+      accents += 1;
+    },
   });
   assert.ok(tiles > 0);
   assert.ok(deco > 0, "decorations and tallgrass should draw");
+  assert.ok(accents > 0, "ground accents should scatter on walkable tiles");
 });

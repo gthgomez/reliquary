@@ -1,4 +1,5 @@
 import type { MapDef } from "../types.ts";
+import { chooseTileAccent, type TileAccentKind } from "../render/tile-surface.ts";
 import { GROUND_TILE } from "./tiles.ts";
 
 /** Stable decorative variant index; never uses gameplay RNG. */
@@ -38,6 +39,7 @@ export type TerrainBakeContext = {
   drawTile: (name: string, dx: number, dy: number, variant: number) => void;
   drawOverlay: (style: "edge" | "shadow", dx: number, dy: number, strength: number) => void;
   drawDecoration: (sprite: string, dx: number, dy: number, w: number, h: number) => void;
+  drawAccent?: (kind: TileAccentKind, dx: number, dy: number) => void;
 };
 
 /** Bake static ground, edge accents, ground-layer décor, and canopy shadows. */
@@ -53,6 +55,8 @@ export function bakeMapTerrain(ctx: TerrainBakeContext): void {
       const dx = x * TILE;
       const dy = y * TILE;
       ctx.drawTile(name, dx, dy, variant);
+      const accent = chooseTileAccent(map.id, x, y, symbol);
+      if (accent && ctx.drawAccent) ctx.drawAccent(accent, dx, dy);
       if (symbol === ",") {
         ctx.drawDecoration("tallgrass", dx, dy, 1, 1);
       }
