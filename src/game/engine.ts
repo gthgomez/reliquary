@@ -2059,7 +2059,9 @@ export class ReliquaryGame {
 			const img = this.images[`sprite_${me.speciesId}`];
 			if (img) {
 				ctx.save();
-				ctx.translate(this.cw() * 0.23, this.ch() - 70);
+				// The battle controls (card, log, commands) stack over the lower canvas, so
+				// keep the player sprite in the clear band between the foe and the controls.
+				ctx.translate(this.cw() * 0.23, Math.round(this.ch() * 0.4));
 				ctx.scale(-.7, .7);
 				ctx.drawImage(img, -60, -60, 120, 120);
 				ctx.restore();

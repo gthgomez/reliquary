@@ -115,12 +115,15 @@ export function GameApp() {
             width={snap.viewW * TILE}
             height={snap.viewH * TILE}
           />
-          {playing && snap.mode !== "battle" ? <Hud snap={snap} onMenu={() => g.toggleMenu()} /> : null}
+          {/* HUD and toast share one top column so the toast always lands below the HUD. */}
+          <div className="top-stack">
+            {playing && snap.mode !== "battle" ? <Hud snap={snap} onMenu={() => g.toggleMenu()} /> : null}
+            {snap.toast ? <Toast text={snap.toast} /> : null}
+          </div>
           {snap.mode === "battle" ? <BattleHud game={g} snap={snap} /> : null}
           {snap.dialog ? <DialogBox snap={snap} onAdvance={() => g.confirm()} /> : null}
           {snap.menu ? <MenuPanel game={g} snap={snap} /> : null}
           {snap.mode === "shop" ? <ShopPanel game={g} snap={snap} /> : null}
-          {snap.toast ? <Toast text={snap.toast} /> : null}
         </div>
         {snap.mode === "boot" ? <LoadingScreen progress={snap.loadProgress} /> : null}
         {snap.mode === "title" ? <TitleScreen game={g} snap={snap} /> : null}
