@@ -596,6 +596,9 @@ export class ReliquaryGame {
 		if (!allowed && message) this.toastMsg(message);
 		this.emit();
 	}
+	get canWriteSave(): boolean {
+		return this.saveWriteAllowed;
+	}
 	persist(): boolean {
 		if (!this.saveWriteAllowed) {
 			this.toastMsg("Another window holds your save. This tab is read-only.");
