@@ -1,30 +1,21 @@
-/** Exploration HUD inset and camera relief (renderer/engine; reads existing DOM). */
+/** Exploration HUD inset and camera relief (renderer/engine). */
 
-const HUD_GAP_CSS = 6;
+import { readUiSafeTopCanvas } from "./ui-safe-top.ts";
+import { shouldPublishRenderGeometryReports } from "./render-report-gate.ts";
+
 const ENTER_PX = 10;
 const LEAVE_PX = 4;
 const RELIEF_STEP = 0.18;
 const MAX_RELIEF = 96;
 
-/**
- * Bottom edge of `.top-stack` in canvas pixel space (region the world camera should keep clear).
- */
+/** @deprecated use readUiSafeTopCanvas — kept for tests comparing fallback path. */
 export function measureWorldHudInsetCanvas(canvas: HTMLCanvasElement): number | null {
-  const viewport = canvas.parentElement;
-  if (!viewport) return null;
-  const stack = viewport.querySelector(".top-stack");
-  if (!stack || !stack.getClientRects().length) return null;
-  const canvasRect = canvas.getBoundingClientRect();
-  const stackRect = stack.getBoundingClientRect();
-  if (canvasRect.height <= 0 || canvas.width <= 0 || canvas.height <= 0) return null;
-  const scaleY = canvas.height / canvasRect.height;
-  const bottomCss = stackRect.bottom - canvasRect.top;
-  return Math.round(Math.max(0, Math.min(canvas.height, bottomCss * scaleY + HUD_GAP_CSS * scaleY)));
+  const { insetCanvas, source } = readUiSafeTopCanvas(canvas);
+  return source ? insetCanvas : null;
 }
 
 export type WorldCamReliefState = { relief: number };
 
-/** Keep player sprite head below HUD inset with hysteresis (pure; used by engine + tests). */
 export function adjustCamYForHudInset(
   camY: number,
   playerHeadCanvasY: number,
@@ -44,6 +35,7 @@ declare global {
   interface Window {
     __worldCameraReport?: {
       hudInsetBottom: number;
+      hudInsetSource: "css-var" | "dom-fallback" | null;
       camRelief: number;
       playerHeadCanvasY: number;
       canvasW: number;
@@ -58,6 +50,8 @@ export function reportWorldCameraGeometry(
   ch: number,
   payload: Omit<NonNullable<Window["__worldCameraReport"]>, "canvasW" | "canvasH" | "ts">,
 ): void {
-  if (typeof window === "undefined") return;
+  if (typeof window === "undefined" || !shouldPublishRenderGeometryReports()) return;
   window.__worldCameraReport = { ...payload, canvasW: cw, canvasH: ch, ts: Date.now() };
 }
+
+export { readUiSafeTopCanvas };

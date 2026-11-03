@@ -39,7 +39,7 @@ import {
 } from "./render/battle-stage-geometry.ts";
 import {
   adjustCamYForHudInset,
-  measureWorldHudInsetCanvas,
+  readUiSafeTopCanvas,
   reportWorldCameraGeometry,
   type WorldCamReliefState,
 } from "./render/world-camera-safe.ts";
@@ -2038,13 +2038,14 @@ export class ReliquaryGame {
 		const canvas = this.canvas;
 		const playerHeadCanvasY = this.py + TILE - TILE * 1.5 - camY;
 		if (canvas && typeof document !== "undefined" && this.mode === "world" && !this.menu && !this.dialog) {
-			const inset = measureWorldHudInsetCanvas(canvas);
-			if (inset != null) {
-				const adjusted = adjustCamYForHudInset(camY, playerHeadCanvasY, inset, this.worldCamRelief);
+			const { insetCanvas, source } = readUiSafeTopCanvas(canvas);
+			if (source) {
+				const adjusted = adjustCamYForHudInset(camY, playerHeadCanvasY, insetCanvas, this.worldCamRelief);
 				camY = adjusted.camY;
 				this.worldCamRelief.relief = adjusted.relief;
 				reportWorldCameraGeometry(this.cw(), this.ch(), {
-					hudInsetBottom: inset,
+					hudInsetBottom: insetCanvas,
+					hudInsetSource: source,
 					camRelief: adjusted.relief,
 					playerHeadCanvasY: this.py + TILE - TILE * 1.5 - camY,
 				});
@@ -2169,8 +2170,7 @@ export class ReliquaryGame {
 			this.battleLayoutCanvasKey = canvasKey;
 		}
 		const layout = computeBattleLayout(cw, ch, this.battleStableReserve, { stableReserve: true });
-		const geometry = computeBattleStageGeometry(cw, ch, layout, b.phase);
-		reportBattleStageGeometry(cw, ch, geometry);
+		const geometryBase = computeBattleStageGeometry(cw, ch, layout, b.phase);
 		const bg = this.images[`bg_${b.bg}`] || this.images.bg_grass;
 		if (bg) ctx.drawImage(bg, 0, 0, cw, ch);
 		else {
@@ -2180,26 +2180,31 @@ export class ReliquaryGame {
 		paintBattleBackdrop(ctx, cw, ch, layout, b.bg);
 		const anchors = { player: layout.player, foe: { cx: layout.foe.cx, cy: layout.foe.cy } };
 		const motion = b.animCue
-			? sampleBattleAnim(b.animCue, b.animElapsedMs, geometry.animCorridor, anchors, {
+			? sampleBattleAnim(b.animCue, b.animElapsedMs, geometryBase.animCorridor, anchors, {
 					reducedMotion: this.reducedMotion,
 					idlePhase: this.battleIdlePhase,
 				})
 			: sampleBattleIdle({ reducedMotion: this.reducedMotion, idlePhase: this.battleIdlePhase });
+		const playerCosmetic = { dx: motion.dx, dy: motion.dy };
+		const foeCosmetic = {
+			dx: b.animCue?.attacker === "foe" ? motion.dx : 0,
+			dy: motion.dy * 0.35,
+		};
+		const geometry = { ...geometryBase, cosmeticOffset: { player: playerCosmetic, foe: foeCosmetic } };
+		reportBattleStageGeometry(cw, ch, geometry);
 		const foe = b.foes[b.foeIndex]!;
 		if (foe && foe.hp > 0) {
 			const img = this.images[`sprite_${foe.speciesId}`];
 			const catchShake = b.phase === "catch" ? Math.sin(b.shake * 8) * 6 : 0;
 			const shake = catchShake + motion.foeShakeX;
-			const foeDy =
-				b.animCue && (b.animCue.attacker === "foe" || b.animCue.skillId === "gust") ? motion.dy * 0.35 : 0;
 			if (img) {
-				drawBattleFoeSprite(ctx, img, layout, shake, { dx: 0, dy: foeDy });
+				drawBattleFoeSprite(ctx, img, layout, shake, foeCosmetic);
 			}
 		}
 		const me = this.party[b.playerIndex]!;
 		if (me) {
 			const img = this.images[`sprite_${me.speciesId}`];
-			if (img) drawBattlePlayerSprite(ctx, img, layout, { dx: motion.dx, dy: motion.dy });
+			if (img) drawBattlePlayerSprite(ctx, img, layout, playerCosmetic);
 		}
 		if (motion.projectile) paintGustProjectile(ctx, motion.projectile);
 	}

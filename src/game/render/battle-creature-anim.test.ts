@@ -40,15 +40,9 @@ test("reduced motion shortens duration and lunge distance", () => {
   assert.ok(Math.abs(reduced.dx) <= Math.abs(full.dx));
 });
 
-test("foe idle vertical bob is not implied by strike samples on player side", () => {
+test("idle motion is bounded; foe draw uses scaled cosmetic dy only", () => {
   const idle = sampleBattleIdle({ idlePhase: 2, reducedMotion: false });
   assert.ok(Math.abs(idle.dy) > 0);
-  const nip = sampleBattleAnim(
-    { skillId: "nip", attacker: "player", hit: true },
-    200,
-    { x: 40, y: 60, w: 220, h: 120 },
-    { player: { cx: 80, cy: 180 }, foe: { cx: 260, cy: 90 } },
-    { reducedMotion: false },
-  );
-  assert.equal(nip.dx !== 0 || nip.foeShakeX !== 0, true);
+  assert.ok(Math.abs(idle.dy) <= 3);
+  assert.ok(Math.abs(idle.dy * 0.35) <= 1.2);
 });

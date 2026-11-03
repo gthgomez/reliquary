@@ -1,4 +1,5 @@
 import type { BattleLayout } from "./battle-scene.ts";
+import { shouldPublishRenderGeometryReports } from "./render-report-gate.ts";
 
 /** Canvas-space band reserved for HUD status readouts (sprites must not enter). */
 export type BattleZoneRect = { x: number; y: number; w: number; h: number };
@@ -8,6 +9,8 @@ export type BattleSpriteAnchors = {
   foe: { x: number; y: number; w: number; h: number };
 };
 
+export type BattleCosmeticOffset = { dx: number; dy: number };
+
 export type BattleStageGeometry = {
   layout: BattleLayout;
   /** Safe motion band between the two anchors (attacks stay inside). */
@@ -16,7 +19,10 @@ export type BattleStageGeometry = {
   statusZoneFoe: BattleZoneRect;
   commandZoneTop: number;
   stableReserveTop: number;
+  /** Layout anchors only — excludes idle/strike cosmetic motion. */
   spriteAnchors: BattleSpriteAnchors;
+  /** Present on browser-test builds when publishing reports. */
+  cosmeticOffset?: { player: BattleCosmeticOffset; foe: BattleCosmeticOffset };
   /** QA telemetry; anchors must not depend on this. */
   battlePhase: string | null;
 };
@@ -89,6 +95,6 @@ export function reportBattleStageGeometry(
   ch: number,
   geometry: BattleStageGeometry,
 ): void {
-  if (typeof window === "undefined") return;
+  if (typeof window === "undefined" || !shouldPublishRenderGeometryReports()) return;
   window.__battleStageReport = { ...geometry, canvasW: cw, canvasH: ch, ts: Date.now() };
 }

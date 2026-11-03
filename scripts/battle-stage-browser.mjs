@@ -1,5 +1,7 @@
 /**
  * Standalone battle stage + creature animation browser capture.
+ * Requires browser-test client (geometry reports gated like economy probes):
+ *   node scripts/build-web-test.mjs
  * Usage: node scripts/battle-stage-browser.mjs [staticDir] [outDir] [--stage-only|--anim-only]
  */
 import assert from "node:assert/strict";
@@ -102,7 +104,7 @@ try {
       };
     });
 
-    assert.ok(stageProbe?.report, `${vp.name} missing __battleStageReport`);
+    assert.ok(stageProbe?.report, `${vp.name} missing __battleStageReport (run build-web-test.mjs first)`);
     const reserve = stableBattleUiReserveTop(stageProbe.cw, stageProbe.ch, stageProbe.report.commandZoneTop);
     const layout = computeBattleLayout(stageProbe.cw, stageProbe.ch, reserve, { stableReserve: true });
     assert.ok(layout.player.cx < layout.foe.cx, `${vp.name} player left of foe`);

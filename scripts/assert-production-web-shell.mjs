@@ -24,7 +24,7 @@ const bundle = clientBundlePath();
 assert.ok(bundle, `[assert:web-shell] missing client bundle under ${staticDir}`);
 
 const source = readFileSync(bundle, "utf8");
-const forbidden = ["getEconomy", "setGold", "openShop"];
+const forbidden = ["getEconomy", "setGold", "openShop", 'VITE_RELIQUARY_BROWSER_TEST":"1"'];
 for (const needle of forbidden) {
   assert.equal(
     source.includes(needle),

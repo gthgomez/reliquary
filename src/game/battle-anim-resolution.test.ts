@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { ReliquaryGame } from "./engine.ts";
-import { SKILLS } from "./content.ts";
+import { SKILLS, makeBeast } from "./content.ts";
 import type { BattleState } from "./types.ts";
 
 async function withBattle(run: (game: ReliquaryGame, frame: (ms: number) => void) => void) {
@@ -38,6 +38,38 @@ async function withBattle(run: (game: ReliquaryGame, frame: (ms: number) => void
     }
   }
 }
+
+test("voluntary switch clears anim cue without changing foe hp", async () => {
+  await withBattle((game) => {
+    const b = game.battle as BattleState;
+    if (game.party.length < 2) game.party.push(makeBeast("mothwisp", 5, { random: () => 0.5 }));
+    b.phase = "command";
+    b.animCue = { skillId: "nip", attacker: "player", hit: true };
+    b.animElapsedMs = 120;
+    const hp = b.foes[0]!.hp;
+    const act = game as unknown as {
+      playerAction: (a: { type: string; index?: number }) => void;
+    };
+    act.playerAction({ type: "switch", index: 1 });
+    assert.equal(b.playerIndex, 1);
+    assert.equal(b.foes[0]!.hp, hp);
+    assert.equal(b.animElapsedMs, 0);
+  });
+});
+
+test("hidden document does not advance anim into extra combat turns", async () => {
+  await withBattle((game, frame) => {
+    const b = game.battle as BattleState;
+    b.phase = "anim";
+    b.animCue = { skillId: "nip", attacker: "player", hit: true };
+    b.animElapsedMs = 0;
+    const foeHp = b.foes[0]!.hp;
+    Object.assign(document, { visibilityState: "hidden" });
+    for (let t = 0; t < 5000; t += 16) frame(t);
+    assert.equal(b.foes[0]!.hp, foeHp);
+    assert.ok(b.phase === "anim" || b.phase === "command");
+  });
+});
 
 test("strike resolution does not depend on animation elapsed time", async () => {
   await withBattle((game, frame) => {
