@@ -26,11 +26,12 @@ export function adjustCamYForHudInset(
   const headAfterCamRelief = playerHeadCanvasY + (camY - adjustedCamY);
 
   let contentPanY = state.contentPanY;
-  let gapAfterCam = targetMin - headAfterCamRelief;
+  const gapAfterCam = targetMin - headAfterCamRelief;
   if (gapAfterCam > ENTER_PX) {
-    contentPanY = Math.min(MAX_CONTENT_PAN, contentPanY + gapAfterCam * RELIEF_STEP);
     if (adjustedCamY === 0 && camY === 0) {
-      contentPanY = Math.min(MAX_CONTENT_PAN, Math.max(contentPanY, gapAfterCam + 4));
+      contentPanY = Math.min(MAX_CONTENT_PAN, gapAfterCam + 4);
+    } else {
+      contentPanY = Math.min(MAX_CONTENT_PAN, contentPanY + gapAfterCam * RELIEF_STEP);
     }
   } else if (gapAfterCam < -LEAVE_PX) {
     contentPanY = Math.max(0, contentPanY + gapAfterCam * RELIEF_STEP);

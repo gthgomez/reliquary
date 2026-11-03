@@ -21,6 +21,6 @@ test("content pan clears head when camera is clamped at map top", () => {
   const state = { relief: 0, contentPanY: 0 };
   const out = adjustCamYForHudInset(0, 16, 119, state);
   assert.equal(out.camY, 0);
-  assert.ok(out.contentPanY > 0, "pan when camY cannot drop further");
+  assert.equal(out.contentPanY, 111, "snap to gap+4 when cam clamped, not runaway to MAX");
   assert.ok(out.effectiveHeadCanvasY >= 119 + 4, "effective head below HUD inset floor");
 });
