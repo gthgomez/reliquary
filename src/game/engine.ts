@@ -1495,35 +1495,27 @@ export class ReliquaryGame {
 		if (playerFirst) {
 			doPlayer();
 			if (b.phase === "catch") return;
-			if (foe.hp <= 0) {
-				this.foeDown();
-				return;
-			}
-			doFoe();
-			if (me.hp <= 0) { this.playerDown(); return; }
+			if (foe.hp > 0) doFoe();
 		} else {
 			doFoe();
-			if (me.hp <= 0) {
-				this.playerDown();
-				return;
-			}
-			doPlayer();
+			if (me.hp > 0) doPlayer();
 			if (b.phase === "catch") return;
-			if (foe.hp <= 0) { this.foeDown(); return; }
 		}
+		// Resolve the completed turn before a KO handler changes active beasts.
+		// Only survivors tick: burn's minimum-HP rule must not revive the fallen.
+		if (me.hp > 0) this.tickStatus(me);
+		if (foe.hp > 0) this.tickStatus(foe);
+		if (foe.hp <= 0) { this.foeDown(); return; }
+		if (me.hp <= 0) { this.playerDown(); return; }
 		if (b.phase !== "win" && b.phase !== "lose") {
 			if (strikeAnim) {
 				b.animCue = strikeAnim;
 				b.animElapsedMs = 0;
 				b.phase = "anim";
-				this.tickStatus(me);
-				this.tickStatus(foe);
 			} else {
 				b.phase = "command";
 				b.menuIndex = 0;
 				this.menuIndex = 0;
-				this.tickStatus(me);
-				this.tickStatus(foe);
 			}
 		}
 		if (fumbleNotice && !b.log.includes(fumbleNotice)) b.log = [fumbleNotice, ...b.log];
@@ -1736,6 +1728,9 @@ export class ReliquaryGame {
 		const me = this.party[b.playerIndex]!;
 		const foe = b.foes[b.foeIndex]!;
 		if (foe.hp > 0 && me.hp > 0) this.foeTurn(foe, me);
+		// A failed flee or binding attempt completes its turn after retaliation.
+		if (me.hp > 0) this.tickStatus(me);
+		if (foe.hp > 0) this.tickStatus(foe);
 		if (me.hp <= 0) this.playerDown();
 	}
 	private itemHasEffect(id: string, target: Beast, inBattle: boolean): boolean {
