@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Ensure production web bundles do not ship browser-regression economy cheats.
+ * Ensure production web bundles do not ship browser-regression economy or battle UI cheats.
  */
 import assert from "node:assert/strict";
 import { readFileSync, existsSync } from "node:fs";
@@ -24,7 +24,14 @@ const bundle = clientBundlePath();
 assert.ok(bundle, `[assert:web-shell] missing client bundle under ${staticDir}`);
 
 const source = readFileSync(bundle, "utf8");
-const forbidden = ["getEconomy", "setGold", "openShop"];
+const forbidden = [
+  "getEconomy",
+  "setGold",
+  "openShop",
+  "seedForcedSwitch",
+  "setBattlePhase",
+  "primeSkillMenu",
+];
 for (const needle of forbidden) {
   assert.equal(
     source.includes(needle),

@@ -29,6 +29,9 @@ test("production build:web excludes economy probe identifiers", () => {
   assert.equal(assertRun.status, 0);
   const text = bundleText();
   assert.equal(text.includes("getEconomy"), false);
+  assert.equal(text.includes("seedForcedSwitch"), false);
+  assert.equal(text.includes("primeSkillMenu"), false);
+  assert.equal(text.includes("setBattlePhase"), false);
 });
 
 test("browser-test build includes economy probes for regression", () => {
@@ -41,4 +44,6 @@ test("browser-test build includes economy probes for regression", () => {
   const text = bundleText();
   assert.equal(text.includes("getEconomy"), true);
   assert.equal(text.includes("setGold"), true);
+  assert.equal(text.includes("seedForcedSwitch"), true);
+  assert.equal(text.includes("primeSkillMenu"), true);
 });

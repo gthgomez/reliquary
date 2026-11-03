@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 import { chromium } from "playwright";
 
 const root = join(fileURLToPath(new URL(".", import.meta.url)), "..", "..");
-const staticDir = join(root, ".vercel/output/static");
+const staticDir = process.env.RELIQUARY_STATIC_ROOT ?? join(root, ".vercel/output/static");
 
 const MIME = {
   ".html": "text/html; charset=utf-8",
