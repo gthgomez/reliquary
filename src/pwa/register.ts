@@ -29,8 +29,8 @@ async function verifyOfflineShell(): Promise<boolean> {
   const precache = names.find((name) => name.startsWith("workbox-precache"));
   if (!precache) return false;
   const cache = await caches.open(precache);
-  const index = await cache.match("/index.html");
-  const manifest = await cache.match("/manifest.webmanifest");
+  const index = await cache.match("/index.html", { ignoreSearch: true });
+  const manifest = await cache.match("/manifest.webmanifest", { ignoreSearch: true });
   return Boolean(index && manifest);
 }
 
