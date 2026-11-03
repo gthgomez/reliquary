@@ -72,6 +72,16 @@ const viewports = [
 
 const { server, baseUrl } = await startServer(staticDir);
 
+async function dismissIntro(page) {
+  for (let i = 0; i < 24; i += 1) {
+    if ((await page.locator(".dialog").count()) === 0) break;
+    const dialog = page.locator("button.dialog").first();
+    if (await dialog.count()) await dialog.click({ timeout: 2000 });
+    else await page.keyboard.press("Enter");
+    await page.waitForTimeout(100);
+  }
+}
+
 try {
   for (const vp of viewports) {
     await withBrowser(async (page) => {
@@ -79,11 +89,7 @@ try {
         await page.goto(baseUrl, { waitUntil: "networkidle", timeout: 60_000 });
         await waitForGameBoot(page);
         await page.getByRole("button", { name: "Start", exact: true }).click();
-        for (let i = 0; i < 6; i += 1) {
-          if ((await page.locator(".dialog").count()) === 0) break;
-          await page.keyboard.press("Enter");
-          await page.waitForTimeout(120);
-        }
+        await dismissIntro(page);
         await page.waitForFunction(() => typeof window.__controlsTest?.warp === "function");
         await page.evaluate(() => {
           window.__controlsTest?.warp?.("wildwood", 10, 12);

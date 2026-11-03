@@ -24,6 +24,7 @@ import {
   drawBattlePlayerSprite,
   paintBattleBackdrop,
 } from "./render/battle-scene.ts";
+import { measureBattleUiReserveCanvas } from "./render/battle-layout-dom.ts";
 import { drawAtlasTile, paintTileAccent, tileAtlasQuadrant } from "./render/tile-surface.ts";
 import { paintWorldActorShadow } from "./render/world-actors.ts";
 import { captureChance, captureSucceeds, storeCapturedBeast } from "./systems/capture.ts";
@@ -2065,7 +2066,10 @@ export class ReliquaryGame {
 		if (!b) return;
 		const cw = this.cw();
 		const ch = this.ch();
-		const layout = computeBattleLayout(cw, ch);
+		const canvas = this.canvas;
+		const measured =
+			canvas && typeof document !== "undefined" ? measureBattleUiReserveCanvas(canvas) : null;
+		const layout = computeBattleLayout(cw, ch, measured);
 		const bg = this.images[`bg_${b.bg}`] || this.images.bg_grass;
 		if (bg) ctx.drawImage(bg, 0, 0, cw, ch);
 		else {
