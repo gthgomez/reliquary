@@ -153,6 +153,9 @@ try {
         assert.equal(scrollProbe.backPinned, true, `party ${size} Back moved when body scrolled`);
         assert.ok(scrollProbe.actionsBottom <= scrollProbe.innerHeight + 2, `party ${size} actions clipped`);
         if (size >= 4) assert.ok(scrollProbe.bodyScrollable, `party ${size} should scroll`);
+        const logText = await page.locator(".battle-log-text").innerText();
+        assert.ok(/Choose another/i.test(logText), `party ${size} log clipped (${JSON.stringify(logText)})`);
+        assert.ok(!/^hoose/i.test(logText.trim()), `party ${size} log missing leading letter`);
       }
       await page.screenshot({ path: "/opt/cursor/artifacts/battle-hud-forced-switch-320x568.png" });
     },
@@ -184,6 +187,29 @@ try {
     { context: { fontSize: "200%" } },
   );
   console.log("[battle-hud-layout] ok 200% text + meter labels");
+
+  await withBrowser(async (page) => {
+    await page.setViewportSize({ width: 390, height: 667 });
+    await page.goto(baseUrl, { waitUntil: "networkidle", timeout: 60_000 });
+    await waitForGameBoot(page);
+    await startBattle(page);
+    await page.waitForFunction(() => typeof window.__reliquary?.primeSkillMenu === "function");
+    await page.evaluate(() => window.__reliquary?.primeSkillMenu?.(2));
+    await page.waitForSelector('.battle-controls[data-battle-phase="skills"]');
+    const unaffordable = page.locator(".cmd-skills button.skill-unaffordable").first();
+    assert.ok((await page.locator(".cmd-skills button.skill-unaffordable").count()) >= 1, "at least one skill marked unaffordable at 2 MP");
+    const hint = await unaffordable.locator("em").innerText();
+    assert.match(hint, /Need \d+ MP · have 2/);
+    await unaffordable.click();
+    await page.waitForTimeout(120);
+    assert.equal(
+      await page.locator('.battle-controls[data-battle-phase="skills"]').count(),
+      1,
+      "unaffordable skill click must not leave skills menu (no spend)",
+    );
+    await page.screenshot({ path: "/opt/cursor/artifacts/battle-hud-skill-mp-390x667.png" });
+  });
+  console.log("[battle-hud-layout] ok skill MP insufficiency surfaced in UI");
 } finally {
   server.close();
 }

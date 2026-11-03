@@ -14,6 +14,7 @@ import {
 } from "./ui/Overlays";
 import { AppStatus } from "./ui/AppStatus";
 import { battleSubmenuRootClass } from "./ui/battle-chrome.ts";
+import { formatUiSafeTopPx } from "./ui/ui-geometry.ts";
 import { isClassicTouchEnabled, isUiModalOpen, shouldShowDialogTouch, shouldShowExplorationTouch } from "./ui/ui-chrome.ts";
 import { registerReliquaryServiceWorker } from "../pwa/register.ts";
 import { acquireSaveSession } from "./save-session.ts";
@@ -25,6 +26,7 @@ declare const __RELIQUARY_BROWSER_TEST__: boolean;
 export function GameApp() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
+  const topStackRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const askedImport = useRef(0);
   const gameRef = useRef<ReliquaryGame | null>(null);
@@ -134,6 +136,28 @@ export function GameApp() {
     });
   }, [uiModal, snap.menu, snap.mode]);
 
+  useEffect(() => {
+    const stage = stageRef.current;
+    const stack = topStackRef.current;
+    if (!stage || !stack) return;
+    const viewport = stage.querySelector<HTMLElement>(".viewport");
+    if (!viewport) return;
+    const applySafeTop = () => {
+      const vr = viewport.getBoundingClientRect();
+      const sr = stack.getBoundingClientRect();
+      if (sr.height <= 0) {
+        viewport.style.removeProperty("--ui-safe-top-px");
+        return;
+      }
+      viewport.style.setProperty("--ui-safe-top-px", formatUiSafeTopPx(sr.bottom - vr.top));
+    };
+    applySafeTop();
+    const ro = new ResizeObserver(applySafeTop);
+    ro.observe(stack);
+    ro.observe(viewport);
+    return () => ro.disconnect();
+  }, [showHudBar, snap.toast, uiModal, snap.objective, snap.mode]);
+
   return (
     <div
       className={`game-root${showTouch ? " has-touch" : ""}${showExplorationTouch ? " has-explore-touch" : ""}${showDialogTouch ? " has-dialog-touch" : ""}${classicTouch ? " classic-touch" : ""}${uiModal ? " is-ui-modal" : ""}${snap.dialog ? " is-dialog" : ""}${snap.mode === "battle" ? " is-battle" : ""}${battleSubmenuRootClass(snap.battle?.phase)}`}
@@ -145,6 +169,7 @@ export function GameApp() {
             width: snap.cssW || snap.viewW * TILE,
             height: snap.cssH || snap.viewH * TILE,
             ["--ar" as string]: String(snap.viewW / snap.viewH),
+            ["--ui-safe-top-px" as string]: "0",
           }}
         >
           <canvas
@@ -162,7 +187,7 @@ export function GameApp() {
             />
           ) : null}
           {/* HUD and toast share one top column so the toast always lands below the HUD. */}
-          <div className={`top-stack${uiModal ? " top-stack-dormant" : ""}`}>
+          <div className={`top-stack${uiModal ? " top-stack-dormant" : ""}`} ref={topStackRef}>
             {showHudBar ? (
               <Hud
                 snap={snap}

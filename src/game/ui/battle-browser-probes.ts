@@ -5,6 +5,7 @@ import type { BattleState, ReliquaryHandle } from "../types.ts";
 type BattleUiBrowserHandle = ReliquaryHandle & {
   seedForcedSwitch?: (partySize?: number) => void;
   setBattlePhase?: (phase: BattleState["phase"]) => void;
+  primeSkillMenu?: (mp?: number) => void;
 };
 
 /** Browser-regression hooks (stripped from production via __RELIQUARY_BROWSER_TEST__). */
@@ -33,6 +34,18 @@ export function attachBattleUiBrowserHooks(
     if (!game.battle) return;
     game.battle.phase = phase;
     game.battle.menuIndex = 0;
+    game.emitPublic();
+  };
+
+  battleHandle.primeSkillMenu = (mp = 2) => {
+    if (game.mode !== "battle" || !game.battle) {
+      window.__controlsTest?.startWild?.();
+    }
+    const lead = game.party[game.battle!.playerIndex];
+    if (lead) lead.mp = mp;
+    game.battle!.phase = "skills";
+    game.battle!.menuIndex = 0;
+    game.menuIndex = 0;
     game.emitPublic();
   };
 }

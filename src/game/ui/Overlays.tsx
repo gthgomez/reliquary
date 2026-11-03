@@ -20,7 +20,7 @@ import {
   practiceEnabledHint,
 } from "./party-actions.ts";
 import { battlePanelHeading, isBattleSubmenuPhase } from "./battle-chrome.ts";
-import { shopBuyAffordability } from "./ui-chrome.ts";
+import { shopBuyAffordability, skillMpAffordability, skillMpHint } from "./ui-chrome.ts";
 
 export function TitleScreen({ game, snap }: { game: ReliquaryGame; snap: Snapshot }) {
   return (
@@ -110,42 +110,48 @@ export function Hud({
   const st = lead ? currentStats(lead) : null;
   const [objectiveOpen, setObjectiveOpen] = useState(false);
   return (
-    <div className={`hud${dormant ? " hud-dormant" : ""}`} aria-hidden={dormant}>
-      <div className="hud-chip hud-chip-grow">
-        <span className="hud-place">{snap.mapName}</span>
-        <span className="hud-muted">{snap.region}</span>
-        {snap.objective ? (
-          <div className="hud-objective-wrap">
-            <button
-              type="button"
-              className="hud-objective-btn"
-              aria-expanded={objectiveOpen}
-              onClick={() => setObjectiveOpen((open) => !open)}
-            >
-              <span className="hud-objective-label">Objective</span>
-              <span className="hud-objective-preview">{snap.objective}</span>
-              <span className="hud-objective-chevron">{objectiveOpen ? "▾" : "▸"}</span>
-            </button>
-            {objectiveOpen ? <p className="hud-objective-full">{snap.objective}</p> : null}
-            <button type="button" className="hud-objective-lantern" onClick={onMenu}>
-              Open in Lantern menu
-            </button>
-          </div>
-        ) : null}
+    <div className={`hud${dormant ? " hud-dormant" : ""}${objectiveOpen ? " hud-objective-expanded" : ""}`} aria-hidden={dormant}>
+      <div className="hud-row">
+        <div className="hud-chip hud-chip-grow">
+          <span className="hud-place">{snap.mapName}</span>
+          <span className="hud-muted hud-region">{snap.region}</span>
+          {snap.objective ? (
+            <div className="hud-objective-slot">
+              <button
+                type="button"
+                className="hud-objective-btn"
+                aria-expanded={objectiveOpen}
+                onClick={() => setObjectiveOpen((open) => !open)}
+              >
+                <span className="hud-objective-label">Objective</span>
+                <span className="hud-objective-preview">{snap.objective}</span>
+                <span className="hud-objective-chevron">{objectiveOpen ? "▾" : "▸"}</span>
+              </button>
+              {objectiveOpen ? (
+                <div className="hud-objective-popover" role="region" aria-label="Current objective">
+                  <p className="hud-objective-full">{snap.objective}</p>
+                  <button type="button" className="hud-objective-lantern" onClick={onMenu}>
+                    Open in Lantern menu
+                  </button>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+        </div>
+        <div className="hud-chip hud-chip-stats">
+          <span className="hud-gold">{snap.gold} cr</span>
+          {lead && st ? (
+            <span className="hud-muted">
+              {lead.nickname} {lead.hp}/{st.hp}
+            </span>
+          ) : (
+            <span className="hud-muted">No pact yet</span>
+          )}
+        </div>
+        <button type="button" className="hud-menu" ref={menuButtonRef} onClick={onMenu}>
+          Menu
+        </button>
       </div>
-      <div className="hud-chip">
-        <span className="hud-gold">{snap.gold} cr</span>
-        {lead && st ? (
-          <span className="hud-muted">
-            {lead.nickname} {lead.hp}/{st.hp}
-          </span>
-        ) : (
-          <span className="hud-muted">No pact yet</span>
-        )}
-      </div>
-      <button type="button" className="hud-menu" ref={menuButtonRef} onClick={onMenu}>
-        Menu
-      </button>
     </div>
   );
 }
@@ -641,23 +647,31 @@ export function BattleHud({ game, snap }: { game: ReliquaryGame; snap: Snapshot 
     scrollBody = renderCmdList(
       me.skills.map((sid, i) => {
         const sk = SKILLS[sid];
+        const cost = sk?.mp ?? 0;
+        const afford = skillMpAffordability(me.mp, cost);
+        const hint = skillMpHint(me.mp, cost);
         return (
           <li key={sid}>
             <button
               type="button"
-              className={i === b.menuIndex ? "active" : ""}
+              className={`${i === b.menuIndex ? "active" : ""} skill-${afford}`}
+              aria-describedby={afford === "unaffordable" ? `skill-mp-${sid}` : undefined}
               onClick={() => {
                 game.menuIndex = i;
                 if (game.battle) game.battle.menuIndex = i;
+                if (afford === "unaffordable") return;
                 game.confirm();
               }}
             >
-              {sk?.name} <em>{sk?.mp} MP</em>
+              <span className="cmd-skill-main">
+                <span className="cmd-skill-name">{sk?.name}</span>
+                <em id={afford === "unaffordable" ? `skill-mp-${sid}` : undefined}>{hint}</em>
+              </span>
             </button>
           </li>
         );
       }),
-      "cmd cmd-scroll",
+      "cmd cmd-scroll cmd-skills",
     );
   } else if (b.phase === "items") {
     scrollBody = renderCmdList(
@@ -701,22 +715,30 @@ export function BattleHud({ game, snap }: { game: ReliquaryGame; snap: Snapshot 
     );
   } else if (b.phase === "party") {
     scrollBody = renderCmdList(
-      snap.party.map((p, i) => (
-        <li key={p.uid}>
-          <button
-            type="button"
-            className={i === b.menuIndex ? "active" : ""}
-            disabled={p.hp <= 0}
-            onClick={() => {
-              game.menuIndex = i;
-              if (game.battle) game.battle.menuIndex = i;
-              game.confirm();
-            }}
-          >
-            {p.nickname} <em>{p.hp} hp</em>
-          </button>
-        </li>
-      )),
+      snap.party.map((p, i) => {
+        const pst = currentStats(p);
+        return (
+          <li key={p.uid}>
+            <button
+              type="button"
+              className={`cmd-party-row${i === b.menuIndex ? " active" : ""}`}
+              disabled={p.hp <= 0}
+              onClick={() => {
+                game.menuIndex = i;
+                if (game.battle) game.battle.menuIndex = i;
+                game.confirm();
+              }}
+            >
+              <span className="cmd-party-name">{p.nickname}</span>
+              <span className="cmd-party-meta">
+                <em>
+                  {p.hp}/{pst.hp} hp
+                </em>
+              </span>
+            </button>
+          </li>
+        );
+      }),
       "cmd cmd-scroll cmd-party",
     );
   }
@@ -744,7 +766,7 @@ export function BattleHud({ game, snap }: { game: ReliquaryGame; snap: Snapshot 
           </div>
         ) : null}
         <div className="battle-log" aria-live="polite">
-          {b.log[b.log.length - 1]}
+          <span className="battle-log-text">{b.log[b.log.length - 1]}</span>
         </div>
         <div className={`battle-controls-body${scrollBody ? "" : " is-empty"}`}>
           {panelHeading ? <p className="battle-panel-title">{panelHeading}</p> : null}

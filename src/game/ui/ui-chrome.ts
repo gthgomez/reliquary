@@ -45,3 +45,13 @@ export function shouldShowDialogTouch(
 export function shopBuyAffordability(gold: number, price: number): "affordable" | "unaffordable" {
   return gold >= price ? "affordable" : "unaffordable";
 }
+
+export function skillMpAffordability(currentMp: number, cost: number): "affordable" | "unaffordable" {
+  return currentMp >= cost ? "affordable" : "unaffordable";
+}
+
+/** Visible hint for skill rows; browsing stays enabled when unaffordable. */
+export function skillMpHint(currentMp: number, cost: number): string {
+  if (currentMp >= cost) return `${cost} MP`;
+  return `Need ${cost} MP · have ${currentMp}`;
+}

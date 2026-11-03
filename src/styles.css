@@ -250,11 +250,14 @@
 .hud {
   position: relative;
   width: 100%;
-  display: flex;
-  gap: 0.4rem;
-  align-items: center;
   pointer-events: none;
   z-index: 2;
+}
+.hud-row {
+  display: flex;
+  gap: 0.35rem;
+  align-items: stretch;
+  width: 100%;
 }
 .hud-chip {
   pointer-events: none;
@@ -263,22 +266,35 @@
   background: color-mix(in oklab, var(--color-ink) 72%, transparent);
   border: 1px solid var(--color-line);
   border-radius: var(--radius-md);
-  padding: 0.35rem 0.7rem;
+  padding: 0.28rem 0.55rem;
   display: flex;
   flex-direction: column;
+  justify-content: center;
   font-variant-numeric: tabular-nums;
-}
-.hud-chip:first-child {
-  flex: 0 1 auto;
 }
 .hud-chip-grow {
   flex: 1 1 0;
   min-width: 0;
   max-width: calc(100% - 7.5rem);
 }
+.hud-chip-stats {
+  flex-shrink: 0;
+}
+.hud-objective-expanded .hud-place,
+.hud-objective-expanded .hud-region {
+  opacity: 0.78;
+  transition: opacity 180ms ease;
+}
+@media (prefers-reduced-motion: reduce) {
+  .hud-objective-expanded .hud-place,
+  .hud-objective-expanded .hud-region {
+    transition: none;
+  }
+}
 .hud-place {
   font-family: var(--font-display);
-  font-size: 0.85rem;
+  font-size: 0.82rem;
+  line-height: 1.15;
 }
 .hud-muted,
 .muted {
@@ -288,15 +304,16 @@
 .hud-chip .hud-muted {
   color: var(--color-parchment);
 }
+.hud-region {
+  line-height: 1.1;
+}
 .hud-gold {
   font-variant-numeric: tabular-nums;
 }
-.hud-objective-wrap {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
+.hud-objective-slot {
+  position: relative;
+  margin-top: 0.12rem;
   min-width: 0;
-  margin-top: 0.15rem;
 }
 .hud-objective-btn {
   pointer-events: auto;
@@ -305,8 +322,8 @@
   gap: 0.35rem;
   align-items: center;
   width: 100%;
-  min-height: 44px;
-  padding: 0.35rem 0.45rem;
+  min-height: 40px;
+  padding: 0.28rem 0.4rem;
   border-radius: var(--radius-sm);
   border: 1px solid color-mix(in oklab, var(--color-cream) 28%, transparent);
   background: color-mix(in oklab, var(--color-ink) 55%, transparent);
@@ -326,23 +343,35 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 0.74rem;
+  font-size: 0.72rem;
   color: var(--color-cream);
 }
 .hud-objective-chevron {
   color: var(--color-parchment);
   font-size: 0.75rem;
 }
+.hud-objective-popover {
+  position: absolute;
+  top: calc(100% + 0.2rem);
+  left: 0;
+  right: 0;
+  z-index: 12;
+  padding: 0.45rem 0.5rem 0.5rem;
+  border-radius: var(--radius-md);
+  border: 1px solid color-mix(in oklab, var(--color-cream) 22%, transparent);
+  background: color-mix(in oklab, var(--color-ink) 92%, transparent);
+  box-shadow: 0 10px 28px color-mix(in oklab, var(--color-ink) 55%, transparent);
+  pointer-events: auto;
+  max-height: min(38dvh, 220px);
+  overflow-y: auto;
+  touch-action: pan-y;
+}
 .hud-objective-full {
-  margin: 0;
-  padding: 0.4rem 0.45rem;
-  border-radius: var(--radius-sm);
-  background: color-mix(in oklab, var(--color-ink) 82%, transparent);
+  margin: 0 0 0.45rem;
   color: var(--color-cream);
   font-size: 0.78rem;
   line-height: 1.4;
   text-wrap: pretty;
-  pointer-events: auto;
 }
 .hud-objective-lantern {
   pointer-events: auto;
@@ -738,11 +767,22 @@
   background: var(--color-parchment);
   color: var(--color-ink);
   border-radius: var(--radius-md);
-  padding: 0.5rem 0.65rem;
+  padding: 0.55rem 0.85rem;
   min-height: 44px;
   font-size: 0.86rem;
   pointer-events: none;
   width: 100%;
+  box-sizing: border-box;
+  overflow: visible;
+  display: flex;
+  align-items: center;
+}
+.battle-log-text {
+  display: block;
+  width: 100%;
+  line-height: 1.35;
+  text-wrap: pretty;
+  overflow-wrap: anywhere;
 }
 .battle-panel-title {
   margin: 0 0 0.35rem;
@@ -775,7 +815,52 @@
   width: 100%;
   display: flex;
   justify-content: space-between;
+  align-items: center;
   min-height: 44px;
+  gap: 0.35rem;
+}
+.cmd-skills button.skill-unaffordable {
+  border-left: 4px solid var(--color-hp);
+  background: color-mix(in oklab, var(--color-hp) 6%, var(--color-parchment));
+}
+.cmd-skills button.skill-unaffordable em {
+  color: var(--color-hp);
+  font-weight: 600;
+}
+.cmd-skill-main {
+  display: flex;
+  width: 100%;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.45rem;
+  min-width: 0;
+}
+.cmd-skill-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: left;
+}
+.cmd-party button.cmd-party-row,
+button.cmd-party-row {
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  min-height: 48px;
+  padding: 0.45rem 0.65rem;
+}
+.cmd-party-name {
+  font-family: var(--font-display);
+  font-size: 0.88rem;
+  line-height: 1.2;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cmd-party-meta {
+  font-size: 0.78rem;
 }
 .battle-controls-actions .cmd {
   width: min(260px, 100%);
@@ -1043,8 +1128,11 @@
   .hud {
     gap: 0.3rem;
   }
+  .hud-row {
+    gap: 0.28rem;
+  }
   .hud-chip {
-    padding: 0.22rem 0.5rem;
+    padding: 0.22rem 0.45rem;
   }
   .hud-place {
     font-size: 0.78rem;

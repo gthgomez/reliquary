@@ -56,6 +56,24 @@ try {
       assert.ok(fit.scrollWidth <= fit.innerWidth, `no horizontal overflow (${fit.scrollWidth} > ${fit.innerWidth})`);
       assert.ok(fit.vpLeft >= -1 && fit.vpRight <= fit.innerWidth + 1, "game viewport inside the window");
       assert.deepEqual(fit.overlaps, [], "HUD elements do not overlap");
+      if (await page.locator(".hud-objective-btn").count()) {
+        const menuBoxBefore = await page.locator(".hud-menu").boundingBox();
+        assert.ok(menuBoxBefore, "menu visible before objective expand");
+        await page.locator(".hud-objective-btn").first().click();
+        await page.waitForSelector(".hud-objective-popover", { timeout: 3000 });
+        const menuBoxAfter = await page.locator(".hud-menu").boundingBox();
+        assert.ok(menuBoxAfter, "menu visible after objective expand");
+        assert.ok(
+          Math.abs(menuBoxBefore.y - menuBoxAfter.y) < 1.5,
+          `objective expand shifted Menu vertically (${menuBoxBefore.y} → ${menuBoxAfter.y})`,
+        );
+        const safeTop = await page.evaluate(() => {
+          const vp = document.querySelector(".viewport");
+          if (!vp) return 0;
+          return Number.parseFloat(getComputedStyle(vp).getPropertyValue("--ui-safe-top-px"));
+        });
+        assert.ok(safeTop > 24, `--ui-safe-top-px should reflect HUD stack (${safeTop})`);
+      }
       await page.evaluate(() => {
         window.__reliquary?.openMenu?.();
       });
