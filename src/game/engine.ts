@@ -42,6 +42,7 @@ import {
   adjustCamYForHudInset,
   readUiSafeTopCanvas,
   reportWorldCameraGeometry,
+  resetWorldCamRelief,
   type WorldCamReliefState,
 } from "./render/world-camera-safe.ts";
 import { drawAtlasTile, paintTileAccent, tileAtlasQuadrant } from "./render/tile-surface.ts";
@@ -383,6 +384,7 @@ export class ReliquaryGame {
 		this.viewH = vh;
 		this.cssW = cssW;
 		this.cssH = cssH;
+		resetWorldCamRelief(this.worldCamRelief);
 		canvas.width = vw * TILE;
 		canvas.height = vh * TILE;
 		if (this.mode === "battle") {
@@ -763,8 +765,12 @@ export class ReliquaryGame {
 			if (rolled) this.startWildFrom(rolled.species, rolled.level);
 		}
 	}
+	private resetWorldCameraRelief(): void {
+		resetWorldCamRelief(this.worldCamRelief);
+	}
 	private warp(to: string, x: number, y: number, dir: Dir): void {
 		if (!MAPS[to]) return;
+		this.resetWorldCameraRelief();
 		this.mapId = to;
 		this.tx = x;
 		this.ty = y;
@@ -1198,6 +1204,7 @@ export class ReliquaryGame {
 		this.emit();
 	}
 	private startWildFrom(speciesId: string, level: number): void {
+		this.resetWorldCameraRelief();
 		const foe = makeBeast(speciesId, level, { random: this.random });
 		this.seen[speciesId] = true;
 		this.encounterLock = true;
@@ -1771,6 +1778,7 @@ export class ReliquaryGame {
 	}
 	private endBattle(victory: boolean): void {
 		const wasTrial = this.battle?.kind === "trial";
+		this.resetWorldCameraRelief();
 		this.battle = null;
 		this.battleStableReserve = null;
 		this.battleIdlePhase = 0;
@@ -2052,10 +2060,11 @@ export class ReliquaryGame {
 					effectivePlayerHeadCanvasY: adjusted.effectiveHeadCanvasY,
 					playerHeadCanvasY: adjusted.headAfterCamRelief,
 				});
+			} else {
+				this.resetWorldCameraRelief();
 			}
 		} else if (canvas && typeof document !== "undefined") {
-			this.worldCamRelief.relief = 0;
-			this.worldCamRelief.contentPanY = 0;
+			this.resetWorldCameraRelief();
 		}
 		const worldPanY = this.worldCamRelief.contentPanY;
 		if (worldPanY > 0) {

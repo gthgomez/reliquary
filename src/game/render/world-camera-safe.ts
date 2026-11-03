@@ -11,33 +11,64 @@ const MAX_CONTENT_PAN = 160;
 
 export type WorldCamReliefState = { relief: number; contentPanY: number };
 
+export function resetWorldCamRelief(state: WorldCamReliefState): void {
+  state.relief = 0;
+  state.contentPanY = 0;
+}
+
+function stepToward(current: number, target: number): number {
+  const diff = target - current;
+  if (Math.abs(diff) < 0.05) return target;
+  return current + diff * RELIEF_STEP;
+}
+
+/** Split total lift between camera relief and residual canvas pan (engine-faithful inputs). */
+export function computeWorldCamReliefTargets(
+  camY: number,
+  playerHeadCanvasY: number,
+  hudInsetBottom: number,
+  state: WorldCamReliefState,
+): { targetRelief: number; targetPanY: number; targetMin: number } {
+  const targetMin = hudInsetBottom + 4;
+  const rawDeficit = targetMin - playerHeadCanvasY;
+  const camDrop = Math.min(state.relief, camY);
+  const effectiveHead = playerHeadCanvasY + camDrop + state.contentPanY;
+  const effectiveDeficit = targetMin - effectiveHead;
+
+  const clearBand = rawDeficit <= -LEAVE_PX && effectiveDeficit <= -LEAVE_PX;
+  if (clearBand) return { targetRelief: 0, targetPanY: 0, targetMin };
+
+  const needEnter = rawDeficit >= ENTER_PX || effectiveDeficit >= ENTER_PX;
+  if (needEnter) {
+    const lift = Math.max(0, rawDeficit, effectiveDeficit);
+    const maxCam = Math.min(camY, MAX_RELIEF);
+    const targetRelief = Math.min(maxCam, lift);
+    const targetPanY = Math.min(MAX_CONTENT_PAN, Math.max(0, lift - targetRelief));
+    return { targetRelief, targetPanY, targetMin };
+  }
+
+  if (effectiveDeficit <= -LEAVE_PX) return { targetRelief: 0, targetPanY: 0, targetMin };
+  return { targetRelief: state.relief, targetPanY: state.contentPanY, targetMin };
+}
+
 export function adjustCamYForHudInset(
   camY: number,
   playerHeadCanvasY: number,
   hudInsetBottom: number,
   state: WorldCamReliefState,
 ): { camY: number; relief: number; contentPanY: number; effectiveHeadCanvasY: number; headAfterCamRelief: number } {
-  const targetMin = hudInsetBottom + 4;
-  let relief = state.relief;
-  const gap = targetMin - playerHeadCanvasY;
-  if (gap > ENTER_PX) relief = Math.min(MAX_RELIEF, relief + gap * RELIEF_STEP);
-  else if (gap < -LEAVE_PX) relief = Math.max(0, relief + gap * RELIEF_STEP);
+  const { targetRelief, targetPanY } = computeWorldCamReliefTargets(camY, playerHeadCanvasY, hudInsetBottom, state);
+
+  let relief = stepToward(state.relief, targetRelief);
+  relief = Math.max(0, Math.min(relief, MAX_RELIEF, camY));
+
+  let contentPanY = stepToward(state.contentPanY, targetPanY);
+  contentPanY = Math.max(0, Math.min(contentPanY, MAX_CONTENT_PAN));
+
   const adjustedCamY = Math.max(0, camY - relief);
   const headAfterCamRelief = playerHeadCanvasY + (camY - adjustedCamY);
-
-  let contentPanY = state.contentPanY;
-  const gapAfterCam = targetMin - headAfterCamRelief;
-  if (gapAfterCam > ENTER_PX) {
-    if (adjustedCamY === 0 && camY === 0) {
-      contentPanY = Math.min(MAX_CONTENT_PAN, gapAfterCam + 4);
-    } else {
-      contentPanY = Math.min(MAX_CONTENT_PAN, contentPanY + gapAfterCam * RELIEF_STEP);
-    }
-  } else if (gapAfterCam < -LEAVE_PX) {
-    contentPanY = Math.max(0, contentPanY + gapAfterCam * RELIEF_STEP);
-  }
-
   const effectiveHeadCanvasY = headAfterCamRelief + contentPanY;
+
   state.relief = relief;
   state.contentPanY = contentPanY;
   return { camY: adjustedCamY, relief, contentPanY, effectiveHeadCanvasY, headAfterCamRelief };
