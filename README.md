@@ -81,6 +81,12 @@ npm run build
 orchestration command when a configured deployment database needs migrations.
 No production database is required for local tests or builds.
 
+For the static PWA, `npm run build:web` creates the deployment artifact and
+checks that browser-test mutators are absent. Browser verification is separate:
+run `npx playwright install --with-deps chromium`, then `npm run verify:web:runtime`
+on the production artifact before `npm run test:browser -- --suite=all` rebuilds
+with test probes. CI requires both checks on Linux and Windows.
+
 Copyright © 2026 Jonathan Gomez Aguilar. All rights reserved. This is public source
 visibility, not an open-source license. GitHub's Terms necessarily provide
 limited platform rights for accessing and using GitHub repository features;

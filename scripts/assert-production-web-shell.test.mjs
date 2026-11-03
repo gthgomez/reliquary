@@ -1,11 +1,49 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
+
+const { scripts } = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
+
+function buildWithNoBrowser(browserTestFlag) {
+  const browserDir = mkdtempSync(join(tmpdir(), "reliquary-no-browser-"));
+  const staticDir = join(root, ".vercel/output/static");
+  // These cases build both safe and intentionally unsafe artifacts. Do not let
+  // their assets leak into the production artifact checked later in this file/CI.
+  rmSync(staticDir, { recursive: true, force: true });
+  try {
+    return spawnSync(scripts["build:web"], {
+      shell: true,
+      cwd: root,
+      encoding: "utf8",
+      timeout: 180_000,
+      env: {
+        ...process.env,
+        PLAYWRIGHT_BROWSERS_PATH: browserDir,
+        VITE_RELIQUARY_BROWSER_TEST: browserTestFlag,
+      },
+    });
+  } finally {
+    rmSync(browserDir, { recursive: true, force: true });
+    rmSync(staticDir, { recursive: true, force: true });
+  }
+}
+
+test("production web artifact builds when no Playwright browser is installed", () => {
+  const result = buildWithNoBrowser("");
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
+});
+
+test("deploy build still rejects a browser-test bundle", () => {
+  const result = buildWithNoBrowser("1");
+  assert.equal(result.status, 1, `${result.stdout}\n${result.stderr}`);
+  assert.match(result.stderr, /production bundle must not contain getEconomy/);
+});
 
 function bundleText() {
   const html = readFileSync(join(root, ".vercel/output/static/index.html"), "utf8");
