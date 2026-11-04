@@ -20,6 +20,21 @@ does not establish whether an asset is human-authored, AI-generated, generated
 by Grok, or derived from a supplied third-party source. This uncertainty is a
 pre-commercialization clearance item, not a reason to remove valuable game art.
 
+## Dialogue portrait treatment (issue #24, run C)
+
+| Path/category | Likely source | Transformation | Status/confidence | Action |
+|---|---|---|---|---|
+| `src/game/portraits.ts`, `src/game/ui/NpcPortrait.tsx`, `src/game/ui/NpcDialogScene.tsx` | Original self-authored inline SVG/CSS, written in-repository for this change by the AI model run for issue #24 run C; no external art, no third-party assets, no network fetches | Layered SVG portraits (Elder Maren, Warden Cael) plus tinted hooded-sigil fallback busts with role emblems; data-driven npc-id/sprite → portrait-key mapping | Original / high — authored in this repository, source-controlled as TS/CSS | Retain source modules; no binary assets added, nothing to clear |
+
+The authored portraits and the sigil fallbacks are inline SVG source in
+`src/game/ui/NpcPortrait.tsx` (240×240 viewBox, gradients and paths only), so
+they are version-controlled, work offline, and add no runtime network or
+asset-pipeline dependencies. Palette direction follows the existing 32px NPC
+sprites (`public/game/sprites/npc/*.png`): grey/white/brown for Elder Maren,
+navy/steel/copper for Warden Cael, and per-role tints for the sigil fallbacks.
+No existing asset was modified, and the engine preload set is unchanged
+(inline SVG needs no preload).
+
 ## Raw masters removed from the public repository
 
 The repository is proprietary licensed. Full-resolution raw masters were being

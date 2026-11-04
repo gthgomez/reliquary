@@ -6,8 +6,8 @@ Crown of Binding's promise forward.
 
 The current prototype includes Elderhall, Binding Grove, Briar Road, Wildwood,
 Mirefen, Ashenbarrow, Thornkeep, creature progression/evolution, elemental
-battles, binding, party and box storage, items, shops, NPC dialogue, saves, and
-keyboard/touch controls.
+battles, binding, party and box storage, items, shops, NPC dialogue with
+cinematic portrait close-ups, saves, and keyboard/touch controls.
 
 **Status:** active prototype / gameplay foundation hardening.
 
@@ -98,6 +98,7 @@ separate written agreement.
 ## Project notes
 
 - [Architecture](docs/ARCHITECTURE.md)
+- [Dialogue portrait evidence](docs/dialogue-portraits/README.md)
 - [Content system](docs/CONTENT_SYSTEM.md)
 - [Asset provenance](docs/ASSET_PROVENANCE.md)
 - [Publication and removal status](docs/security/publication-status.md)

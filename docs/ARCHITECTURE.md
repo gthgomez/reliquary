@@ -10,6 +10,7 @@ src/game/
   engine.ts         runtime orchestration, rendering, input, state transitions
   content.ts        data-driven species, skills, items, stat formulas
   maps.ts           Hollowmere map data and tile constants
+  portraits.ts      npc-id/sprite → dialogue portrait key mapping (issue #24)
   save.ts           versioned local save validation, migration, recovery
   rng.ts            production random source and deterministic test source
   systems/
@@ -26,6 +27,15 @@ The engine intentionally still owns presentation side effects (audio, logs,
 animations, and snapshot emission). New mechanics should be added to a pure
 system first, then called by the engine. Content should reference IDs rather
 than embedding behavior.
+
+The NPC dialogue focus scene (issue #24) follows that split: the engine
+threads a stable placed-NPC id and a resolved portrait key through
+`DialogView`; `portraits.ts` holds the pure data-driven npc-id → portrait map
+(with a sprite-kind fallback and `null` for narrator/sign/object/system
+dialogue); `src/game/ui/NpcPortrait.tsx` owns the original inline SVG artwork
+and `src/game/ui/NpcDialogScene.tsx` the layered HTML/CSS scene rendered over
+the canvas. Portrait identity is never derived from speaker name strings or
+dialogue text.
 
 The `src/lib/auth`, `src/lib/db`, `src/lib/app-data`, preview bridge, PWA
 middleware, and multiplayer folders are platform/future scaffolding. They are
