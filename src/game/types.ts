@@ -245,10 +245,27 @@ export interface GameSave {
   caught: Record<string, boolean>;
 }
 
+/** Stable portrait identities. Never derive these from display names. */
+export type PortraitId =
+  | "maren"
+  | "cael"
+  | "guard"
+  | "keep-guard"
+  | "innkeep"
+  | "shopkeep"
+  | "lise"
+  | "wayfarer"
+  | "reedcutter"
+  | "scout"
+  | "goblin-king"
+  | "patch";
+
 export interface DialogView {
   speaker: string;
   text: string;
   last: boolean;
+  /** Explicit portrait key chosen by the dialog source; null is text-only. */
+  portrait: PortraitId | null;
 }
 
 export interface LearnMenuView {

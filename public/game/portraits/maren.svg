@@ -1,0 +1,155 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 780" role="img" aria-labelledby="title desc">
+  <title id="title">Elder Maren of Hollowmere</title>
+  <desc id="desc">Painted-style upper-body portrait of an elderly woman with silver braided hair, a moss-green shawl, a copper circlet and a rune pendant.</desc>
+  <defs>
+    <linearGradient id="maren-robe" x1="0" y1="0" x2="0.35" y2="1">
+      <stop offset="0" stop-color="#4a6049"/>
+      <stop offset="0.52" stop-color="#334635"/>
+      <stop offset="1" stop-color="#162018"/>
+    </linearGradient>
+    <linearGradient id="maren-shawl" x1="0.1" y1="0" x2="0.9" y2="1">
+      <stop offset="0" stop-color="#6f8a61"/>
+      <stop offset="0.55" stop-color="#4a654c"/>
+      <stop offset="1" stop-color="#2a3d2d"/>
+    </linearGradient>
+    <linearGradient id="maren-skin" x1="0.15" y1="0" x2="0.9" y2="1">
+      <stop offset="0" stop-color="#dbb08a"/>
+      <stop offset="0.48" stop-color="#c28e67"/>
+      <stop offset="1" stop-color="#936044"/>
+    </linearGradient>
+    <radialGradient id="maren-cheek" cx="50%" cy="42%" r="62%">
+      <stop offset="0" stop-color="#e3b995" stop-opacity="0.7"/>
+      <stop offset="0.62" stop-color="#c58f68" stop-opacity="0.25"/>
+      <stop offset="1" stop-color="#8b573c" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="maren-hair" x1="0" y1="0" x2="0.8" y2="1">
+      <stop offset="0" stop-color="#f0ece1"/>
+      <stop offset="0.5" stop-color="#c8c2b3"/>
+      <stop offset="1" stop-color="#8f8b7f"/>
+    </linearGradient>
+    <linearGradient id="maren-hair-dark" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#b7b1a3"/>
+      <stop offset="1" stop-color="#6f6c62"/>
+    </linearGradient>
+    <linearGradient id="maren-copper" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#d29a68"/>
+      <stop offset="0.55" stop-color="#a36a45"/>
+      <stop offset="1" stop-color="#6d422a"/>
+    </linearGradient>
+    <linearGradient id="maren-rim" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#fff6e2" stop-opacity="0"/>
+      <stop offset="0.7" stop-color="#fff6e2" stop-opacity="0.2"/>
+      <stop offset="1" stop-color="#fff6e2" stop-opacity="0.5"/>
+    </linearGradient>
+    <filter id="maren-soft" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="3"/>
+    </filter>
+  </defs>
+
+  <!-- silhouette mass -->
+  <path d="M300 92c-108 0-152 84-146 196 5 76 30 137 72 184l-6 58C108 566 48 650 28 780h544c-20-130-80-214-192-250l-6-58c42-47 67-108 72-184C452 176 408 92 300 92Z" fill="#18211a"/>
+
+  <!-- robe and shoulders -->
+  <path d="M42 780c16-126 74-209 196-242l62 34 62-34c122 33 180 116 196 242Z" fill="url(#maren-robe)"/>
+  <path d="M118 780c12-104 56-173 132-202 32 34 68 34 100 0 76 29 120 98 132 202Z" fill="url(#maren-shawl)"/>
+  <path d="M250 538c26 42 74 42 100 0l-14 96c-20 16-52 16-72 0Z" fill="#223126"/>
+
+  <!-- neck -->
+  <path d="M252 388c2 48 8 92 30 122l18 14 18-14c22-30 28-74 30-122Z" fill="#a56c4d"/>
+  <path d="M258 390c2 46 10 84 30 110 8-28 11-72 10-110Z" fill="#b77e5a"/>
+
+  <!-- face -->
+  <ellipse cx="178" cy="296" rx="19" ry="28" fill="#b77e5a"/>
+  <ellipse cx="422" cy="296" rx="19" ry="28" fill="#a66e4e"/>
+  <path d="M300 118c92 0 136 74 130 172-5 88-59 158-130 166-71-8-125-78-130-166-6-98 38-172 130-172Z" fill="url(#maren-skin)"/>
+  <ellipse cx="300" cy="246" rx="92" ry="98" fill="url(#maren-cheek)"/>
+
+  <!-- aged planes -->
+  <path d="M190 304c10 30 26 51 46 62-24-4-43-28-46-62Z" fill="#8b573c" opacity="0.28"/>
+  <path d="M410 304c-10 30-26 51-46 62 24-4 43-28 46-62Z" fill="#8b573c" opacity="0.24"/>
+  <path d="M244 372c14 28 34 44 56 48 22-4 42-20 56-48-18 16-37 25-56 28-19-3-38-12-56-28Z" fill="#8b573c" opacity="0.25"/>
+  <path d="M300 220c-10 44-14 88-8 128 5 26 3 39-4 48 15-5 27-12 34-20-8-8-10-24-8-48 4-35 2-74-14-108Z" fill="#c68f68"/>
+  <path d="M300 220c-10 44-14 88-8 128 5 26 3 39-4 48" fill="none" stroke="#8b573c" stroke-opacity="0.45" stroke-width="3"/>
+
+  <!-- brows and eyes -->
+  <path d="M220 270c20-15 44-16 62-4-19 1-42 4-62 4Z" fill="#8c877a"/>
+  <path d="M380 270c-20-15-44-16-62-4 19 1 42 4 62 4Z" fill="#8c877a"/>
+  <path d="M222 301c15-13 48-13 62 2-16 16-48 16-62-2Z" fill="#f4ead9"/>
+  <path d="M378 301c-15-13-48-13-62 2 16 16 48 16 62-2Z" fill="#f4ead9"/>
+  <circle cx="260" cy="303" r="10" fill="#a9752f"/>
+  <circle cx="340" cy="303" r="10" fill="#a9752f"/>
+  <circle cx="261" cy="303" r="4.2" fill="#241b13"/>
+  <circle cx="339" cy="303" r="4.2" fill="#241b13"/>
+  <circle cx="264" cy="299" r="2" fill="#fff6e2" opacity="0.8"/>
+  <circle cx="342" cy="299" r="2" fill="#fff6e2" opacity="0.8"/>
+  <path d="M222 300c15-8 48-8 62 3" fill="none" stroke="#6c4a38" stroke-width="3.4" stroke-linecap="round"/>
+  <path d="M378 300c-15-8-48-8-62 3" fill="none" stroke="#6c4a38" stroke-width="3.4" stroke-linecap="round"/>
+  <path d="M216 317c10 7 17 7 25 4M384 317c-10 7-17 7-25 4" fill="none" stroke="#8b573c" stroke-width="2.4" stroke-linecap="round" opacity="0.6"/>
+  <path d="M208 284c-9 6-13 14-12 24M392 284c9 6 13 14 12 24" fill="none" stroke="#8b573c" stroke-width="2.2" stroke-linecap="round" opacity="0.55"/>
+
+  <!-- nose and mouth -->
+  <path d="M294 308c-4 28-10 47-20 60 8 8 20 11 30 8 10 3 22 0 30-8-10-13-16-32-20-60Z" fill="#b77e5a"/>
+  <path d="M276 366c8-4 16-3 22 2M324 366c-8-4-16-3-22 2" fill="none" stroke="#7d4c35" stroke-width="3" stroke-linecap="round"/>
+  <path d="M274 390c18-7 38-7 52 0-14 10-38 10-52 0Z" fill="#8b4d40"/>
+  <path d="M278 403c15 6 31 6 44 0-13 11-31 11-44 0Z" fill="#a8614e"/>
+  <path d="M282 404c12 4 24 4 36 0" fill="none" stroke="#6c3a31" stroke-width="2.2"/>
+
+  <!-- age lines and weathered planes -->
+  <path d="M238 208c18-8 38-9 55-3M307 205c18-6 38-5 55 3" fill="none" stroke="#9c654a" stroke-width="2.4" stroke-linecap="round" opacity="0.55"/>
+  <path d="M232 224c18-6 36-6 52-1M316 223c16-5 34-5 52 1" fill="none" stroke="#9c654a" stroke-width="2" stroke-linecap="round" opacity="0.4"/>
+  <path d="M242 190c14-4 29-4 42 0M318 190c13-4 28-4 42 0" fill="none" stroke="#a97150" stroke-width="1.6" stroke-linecap="round" opacity="0.35"/>
+  <path d="M230 350c-2 18 2 34 10 44M370 350c2 18-2 34-10 44" fill="none" stroke="#8b573c" stroke-width="2.4" stroke-linecap="round" opacity="0.35"/>
+  <path d="M232 323c12 7 25 7 36 2M368 323c-12 7-25 7-36 2" fill="none" stroke="#7d4c35" stroke-width="2.6" stroke-linecap="round" opacity="0.45"/>
+  <path d="M224 331c8 10 17 16 27 18M376 331c-8 10-17 16-27 18" fill="none" stroke="#9c654a" stroke-width="1.8" stroke-linecap="round" opacity="0.45"/>
+  <path d="M266 416c4-7 10-10 17-9M316 407c7-1 13 2 17 9" fill="none" stroke="#7d4c35" stroke-width="2" stroke-linecap="round" opacity="0.28"/>
+  <path d="M238 372c-7 9-9 20-5 30M362 372c7 9 9 20 5 30" fill="none" stroke="#8b573c" stroke-width="2" stroke-linecap="round" opacity="0.22"/>
+  <path d="M208 342c-3 14 0 26 6 35M392 342c3 14 0 26-6 35" fill="none" stroke="#8b573c" stroke-width="1.6" stroke-linecap="round" opacity="0.18"/>
+  <path d="M252 430c16 8 32 8 48 0 8-4 15-10 21-18-6 18-18 30-36 35-18-5-30-17-36-35 6 8 11 14 3 18Z" fill="#7d4c35" opacity="0.18"/>
+  <path d="M262 178c9 6 18 9 28 9M312 187c9 0 18-3 27-9" fill="none" stroke="#b5825f" stroke-width="1.4" stroke-linecap="round" opacity="0.4"/>
+
+  <!-- hair -->
+  <path d="M300 104c-101 0-156 68-150 164 2 32 10 58 22 78 6-50 23-92 54-121 20 24 44 38 74 43 30-5 54-19 74-43 31 29 48 71 54 121 12-20 20-46 22-78 6-96-49-164-150-164Z" fill="url(#maren-hair)"/>
+  <path d="M190 178c-18 34-24 75-20 118 8-38 23-70 45-94-6-10-14-18-25-24ZM410 178c18 34 24 75 20 118-8-38-23-70-45-94 6-10 14-18 25-24Z" fill="url(#maren-hair-dark)" opacity="0.9"/>
+  <path d="M184 246c4 54 2 104-8 152-8 38-6 74 8 104 18-26 22-52 12-78 22-44 28-92 14-144Z" fill="url(#maren-hair)">
+  </path>
+  <path d="M416 246c-4 54-2 104 8 152 8 38 6 74-8 104-18-26-22-52-12-78-22-44-28-92-14-144Z" fill="url(#maren-hair-dark)"/>
+
+  <!-- braid over the left shoulder -->
+  <g fill="url(#maren-hair)">
+    <ellipse cx="424" cy="414" rx="25" ry="18" transform="rotate(18 424 414)"/>
+    <ellipse cx="435" cy="450" rx="24" ry="17" transform="rotate(-10 435 450)"/>
+    <ellipse cx="432" cy="486" rx="22" ry="16" transform="rotate(14 432 486)"/>
+    <ellipse cx="441" cy="520" rx="20" ry="15" transform="rotate(-8 441 520)"/>
+    <ellipse cx="438" cy="552" rx="17" ry="13" transform="rotate(10 438 552)"/>
+  </g>
+  <g fill="none" stroke="#8f8b7f" stroke-width="2.2" opacity="0.7">
+    <path d="M408 412c14 4 26 4 38-2M420 448c12 4 24 3 34-3M417 484c12 4 24 3 33-3M426 518c10 3 21 2 30-3M425 550c8 3 17 2 25-2"/>
+  </g>
+  <path d="M441 566c-2 24-6 40-14 54 16-10 25-28 27-50Z" fill="url(#maren-hair-dark)"/>
+
+  <!-- circlet and rune -->
+  <path d="M182 244c72-30 164-30 236 0l-5 19c-72-26-154-26-226 0Z" fill="url(#maren-copper)"/>
+  <path d="M182 244c72-30 164-30 236 0" fill="none" stroke="#e0b489" stroke-opacity="0.7" stroke-width="2"/>
+  <path d="M300 218l15 18-15 22-15-22Z" fill="#d9a06c"/>
+  <path d="M300 225v27M292 234h16" stroke="#5f3924" stroke-width="2.4" stroke-linecap="round"/>
+
+  <!-- earrings -->
+  <circle cx="176" cy="328" r="6" fill="#a36a45"/>
+  <circle cx="424" cy="328" r="6" fill="#a36a45"/>
+  <path d="M176 334v16M424 334v16" stroke="#a36a45" stroke-width="2.4"/>
+
+  <!-- pendant -->
+  <path d="M238 532c20 34 42 48 62 52 20-4 42-18 62-52" fill="none" stroke="#7b5a35" stroke-width="3"/>
+  <circle cx="300" cy="592" r="27" fill="#3a2c1e" stroke="url(#maren-copper)" stroke-width="5"/>
+  <path d="M300 574v36M286 586h28M292 604l8-12 8 12" fill="none" stroke="#d7a26d" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <!-- shawl folds and clasp -->
+  <path d="M118 758c30-72 72-116 132-134M482 758c-30-72-72-116-132-134" fill="none" stroke="#7f9a68" stroke-width="4" opacity="0.35"/>
+  <path d="M206 566c-30 30-48 72-57 126M394 566c30 30 48 72 57 126" fill="none" stroke="#1a261c" stroke-width="5" opacity="0.4"/>
+  <circle cx="252" cy="556" r="10" fill="url(#maren-copper)"/>
+  <circle cx="252" cy="556" r="4" fill="#2a2017"/>
+
+  <!-- rim light -->
+  <path d="M300 118c92 0 136 74 130 172-5 88-59 158-130 166 54-24 91-88 96-166 5-85-29-150-96-172Z" fill="url(#maren-rim)" filter="url(#maren-soft)"/>
+  <path d="M416 246c-4 54-2 104 8 152 8 38 6 74-8 104 8-44 6-88-4-132-8-38-8-82 4-124Z" fill="#fff6e2" opacity="0.14"/>
+</svg>

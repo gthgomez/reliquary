@@ -109,6 +109,24 @@ species ids in `SPECIES` (`src/game/content.ts`) all have a shipped
 | `public/favicon.svg`, `og.jpg`, `x-banner.jpg` | 3 | Repository branding assets; generating script not identified in tree | Unclear / low |
 | `public/__grok/**` (platform/PWA scaffold, not loaded by the game) | 8 | Third-party platform scaffold committed during initial import | Unclear / low — not part of the game's runtime preload set |
 
+## NPC dialogue portraits (added 2026-11-04)
+
+Two bespoke, source-controlled character close-ups were created for the NPC
+conversation presentation. They are hand-authored SVG (paths, gradients and
+filters written directly in the repository) rather than generated raster art,
+downloaded art, or enlarged overworld sprites. No third-party image, franchise
+reference, external font, or network request is involved.
+
+| Path | Character | How created | Rights/status |
+|---|---|---|---|
+| `public/game/portraits/maren.svg` | Elder Maren | Original SVG geometry authored for this change by the AI coding agent on branch `experiment/dialogue-portraits-model-a` | Original repository content / high |
+| `public/game/portraits/cael.svg` | Warden Cael | Original SVG geometry authored for this change by the AI coding agent on branch `experiment/dialogue-portraits-model-a` | Original repository content / high |
+
+Named NPCs without bespoke art use a shared hooded fallback rendered inline from
+`src/game/ui/Overlays.tsx`; it is a deliberate placeholder tinted by the NPC's
+dialogue palette and monogrammed, not a portrait of another character.
+Narrator, sign, object and system dialogue renders text-only.
+
 **Missing provenance / action items (unchanged rights status, nothing here is
 cleared):**
 

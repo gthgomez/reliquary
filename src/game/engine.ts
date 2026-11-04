@@ -59,9 +59,11 @@ import type {
   GameSave,
   MapDef,
   Mode,
+  PortraitId,
   Skill,
   Snapshot,
 } from "./types.ts";
+import { portraitForTalk } from "./ui/portraits.ts";
 
 export const TILE = 32;
 export const VIEW_W = 12;
@@ -75,6 +77,7 @@ type Dialog = {
   pages: string[];
   index: number;
   onDone?: () => void;
+  portrait: PortraitId | null;
 };
 
 const DIRS: Record<Dir, { x: number; y: number; name: string }> = {
@@ -226,7 +229,8 @@ export class ReliquaryGame {
 			dialog: this.dialog ? {
 				speaker: this.dialog.speaker,
 				text: this.dialog.pages[this.dialog.index] ?? "",
-				last: this.dialog.index >= this.dialog.pages.length - 1
+				last: this.dialog.index >= this.dialog.pages.length - 1,
+				portrait: this.dialog.portrait
 				} : null,
 			learnMenu:
 				this.menu === "learn" && this.learnMenu
@@ -733,7 +737,7 @@ export class ReliquaryGame {
 		const warp = this.map().warps.find((w) => w.x === nx && w.y === ny);
 		if (warp) {
 			if (!this.flags.starter && (warp.to === "briar_road" || this.mapId === "elderhall" && ny <= 0)) {
-				this.openDialog("Gateward", ["The Briar Road is no place without a pact-beast. Speak with Elder Maren."]);
+				this.openPortraitDialog("guard", "Gateward", ["The Briar Road is no place without a pact-beast. Speak with Elder Maren."]);
 				return;
 			}
 			this.warp(warp.to, warp.tx, warp.ty, warp.dir ?? d);
@@ -1060,52 +1064,56 @@ export class ReliquaryGame {
 		}
 		if (id === "goblin_scout") {
 			if (this.flags.defeated_goblin_scout) {
-				this.openDialog("Scout", ["You already proved your road-manners. The camp remembers."]);
+				this.openPortraitDialog("scout", "Scout", ["You already proved your road-manners. The camp remembers."]);
 				return;
 			}
-			this.openDialog("Scout", ["I can show you the Wildwood paths — or we can settle it with pacts. (A duel · B talk)"], () => {
-				if (!this.startEncounter("goblin_scout")) this.openDialog("Scout", ["Another time. The east exit is marked."]);
+			this.openPortraitDialog("scout", "Scout", ["I can show you the Wildwood paths — or we can settle it with pacts. (A duel · B talk)"], () => {
+				if (!this.startEncounter("goblin_scout")) this.openPortraitDialog("scout", "Scout", ["Another time. The east exit is marked."]);
 			});
 			return;
 		}
 		if (id === "goblin_king") {
 			if (this.flags.defeated_goblin_king) {
-				this.openDialog("Goblin King", ["The compact holds. My beasts sleep."]);
+				this.openPortraitDialog("goblin-king", "Goblin King", ["The compact holds. My beasts sleep."]);
 				return;
 			}
 			if (!this.flags.trial) {
-				this.openDialog("Goblin King", ["Bring a Thorn Mark if you want a king's duel. Until then — trade, or leave."]);
+				this.openPortraitDialog("goblin-king", "Goblin King", ["Bring a Thorn Mark if you want a king's duel. Until then — trade, or leave."]);
 				return;
 			}
-			this.openDialog("Goblin King", ["A diplomatic compact, beast against beast. (A accept · B decline)"], () => {
-				if (!this.startEncounter("goblin_king")) this.openDialog("Goblin King", ["Wise. The fire is warm either way."]);
+			this.openPortraitDialog("goblin-king", "Goblin King", ["A diplomatic compact, beast against beast. (A accept · B decline)"], () => {
+				if (!this.startEncounter("goblin_king")) this.openPortraitDialog("goblin-king", "Goblin King", ["Wise. The fire is warm either way."]);
 			});
 			return;
 		}
 	}
 	private talk(id: string, name: string): void {
+		// Portrait identity travels with the map's talk id, never with `name`.
+		const portrait = portraitForTalk(id);
+		const say = (pages: string[], onDone?: () => void) =>
+			this.openPortraitDialog(portrait, name, pages, onDone);
 		if (id === "maren" || id === "maren_guild") {
 			if (!this.flags.starter) {
-				this.openDialog(name, ["The Crown cracked. We did not. That is the whole of our order.", "Walk west to the Binding Grove. Three beasts have waited the night. Speak a pact. Then the road is yours."]);
+				say(["The Crown cracked. We did not. That is the whole of our order.", "Walk west to the Binding Grove. Three beasts have waited the night. Speak a pact. Then the road is yours."]);
 				return;
 			}
 			if (!this.flags.trial) {
-				this.openDialog(name, ["Good. A pact is a name you intend to keep.", "Bind what you can on Briar Road. When you are ready, take the Wildwood north to Thornkeep. Warden Cael will test the compact."]);
+				say(["Good. A pact is a name you intend to keep.", "Bind what you can on Briar Road. When you are ready, take the Wildwood north to Thornkeep. Warden Cael will test the compact."]);
 				return;
 			}
-			this.openDialog(name, ["The Thorn Sigil sits well on you. The Hollow Crown is still a rumor with teeth — but that is a later road.", "Rest. Bind. Walk. That is the work."]);
+			say(["The Thorn Sigil sits well on you. The Hollow Crown is still a rumor with teeth — but that is a later road.", "Rest. Bind. Walk. That is the work."]);
 			return;
 		}
 		if (id === "guard") {
-			this.openDialog(name, [this.flags.starter ? "Road's open. If the grass sings, you already know what that means." : "Not without a pact-beast. Maren's in the Chapter, or the Grove west of town."]);
+			say([this.flags.starter ? "Road's open. If the grass sings, you already know what that means." : "Not without a pact-beast. Maren's in the Chapter, or the Grove west of town."]);
 			return;
 		}
 		if (id === "lise") {
-			this.openDialog(name, ["Inns take crowns. Shrines take nothing but a moment. I know which I'd trust.", "If you see my cousin on the road, tell her the well's still sweet."]);
+			say(["Inns take crowns. Shrines take nothing but a moment. I know which I'd trust.", "If you see my cousin on the road, tell her the well's still sweet."]);
 			return;
 		}
 		if (id === "innkeep") {
-			this.openDialog(name, ["Fifteen crowns for a clean bed and a whole lantern. (A rest · B not now)"], () => this.offerInn());
+			say(["Fifteen crowns for a clean bed and a whole lantern. (A rest · B not now)"], () => this.offerInn());
 			return;
 		}
 		if (id === "shopkeep") {
@@ -1117,7 +1125,7 @@ export class ReliquaryGame {
 			return;
 		}
 		if (id === "wayfarer") {
-			this.openDialog(name, [
+			say([
 				"Tall grass means a fight. That's the old compact, gone feral.",
 				"Sigil stones bind. Common ones break often. Thorn ones less. Don't throw them at a full-health wyrm.",
 				"Know the signs: burn eats vigor each turn. Soak drinks mist. Daze makes one grip in four fumble. Bind roots the legs — the bound beast acts last, and cannot flee.",
@@ -1125,16 +1133,16 @@ export class ReliquaryGame {
 			return;
 		}
 		if (id === "reedcutter") {
-			this.openDialog(name, ["Fenwitch walks the peat when the mist sits low. Pale eyes. Don't follow them off the bridge."]);
+			say(["Fenwitch walks the peat when the mist sits low. Pale eyes. Don't follow them off the bridge."]);
 			return;
 		}
 		if (id === "cael" || id === "cael_trial") {
 			if (this.flags.trial) {
-				this.openDialog(name, ["You already keep the Thorn Mark. Don't make me bored."]);
+				say(["You already keep the Thorn Mark. Don't make me bored."]);
 				return;
 			}
 			if (!this.flags.starter) {
-				this.openDialog(name, ["Come back with a pact, green lantern."]);
+				say(["Come back with a pact, green lantern."]);
 				return;
 			}
 			const strongest = this.party.reduce((max, beast) => Math.max(max, beast.level), 0);
@@ -1145,22 +1153,22 @@ export class ReliquaryGame {
 				pages.push("Show me the compact is not a hobby. Three of mine against yours — Iron. Chapel. Drake. Bind or break.");
 			}
 			pages.push("(A begin · B later)");
-			this.openDialog(name, pages, () => this.startWarden());
+			say(pages, () => this.startWarden());
 			return;
 		}
-		if (id === "keep_guard") this.openDialog(name, ["Hall's through the east cottage. Cael doesn't like small talk."]);
-		if (id === "goblin_trader") this.openDialog(name, ["Scrap for sale, stories for free. The camp keeps to itself — unless you pick a fight."]);
+		if (id === "keep_guard") say(["Hall's through the east cottage. Cael doesn't like small talk."]);
+		if (id === "goblin_trader") say(["Scrap for sale, stories for free. The camp keeps to itself — unless you pick a fight."]);
 	}
 	private offerInn(): void {
 		if (this.gold < 15) {
-			this.openDialog("Innmother Cald", ["Crowns first, kindness second. Come back when the purse is less embarrassed."]);
+			this.openPortraitDialog("innkeep", "Innmother Cald", ["Crowns first, kindness second. Come back when the purse is less embarrassed."]);
 			return;
 		}
 		this.gold -= 15;
 		this.party.forEach(healFull);
 		this.persist();
 		sfxPlay.heal();
-		this.openDialog("Innmother Cald", ["Sleep. The road will still be there. Unfortunately."]);
+		this.openPortraitDialog("innkeep", "Innmother Cald", ["Sleep. The road will still be there. Unfortunately."]);
 	}
 	private chooseStarter(id: string): void {
 		if (this.flags.starter && this.party.length > 0) {
@@ -1178,7 +1186,7 @@ export class ReliquaryGame {
 			this.give("common_sigil", 3);
 			this.gold += 40;
 			sfxPlay.catch();
-			this.openDialog("Elder Maren", [`So it is ${sp.name}. Keep the name.`, "I have left sigils in your pack. The Briar Road will teach the rest."]);
+			this.openPortraitDialog("maren", "Elder Maren", [`So it is ${sp.name}. Keep the name.`, "I have left sigils in your pack. The Briar Road will teach the rest."]);
 			this.persist();
 		});
 	}
@@ -1186,11 +1194,20 @@ export class ReliquaryGame {
 		this.inventory[id] = (this.inventory[id] ?? 0) + n;
 	}
 	openDialog(speaker: string, pages: string[], onDone?: () => void): void {
+		this.openPortraitDialog(null, speaker, pages, onDone);
+	}
+	private openPortraitDialog(
+		portrait: PortraitId | null,
+		speaker: string,
+		pages: string[],
+		onDone?: () => void,
+	): void {
 		this.dialog = {
 			speaker,
 			pages,
 			index: 0,
-			onDone
+			onDone,
+			portrait,
 		};
 		this.emit();
 	}
@@ -1784,7 +1801,7 @@ export class ReliquaryGame {
 	private maybeVictory(): Mode {
 		if (this.flags.trial && !this.flags.ending) {
 			this.flags.ending = true;
-			this.openDialog("Warden Cael", [
+			this.openPortraitDialog("cael", "Warden Cael", [
 				"Enough. You keep the compact.",
 				"Take the Thorn Mark. The Hollow Crown still sits in rumor, west of the ash. That road is longer than this lantern-light.",
 				"Come back when you have more names in the Reliquary. I'll still be here. Unfortunately."

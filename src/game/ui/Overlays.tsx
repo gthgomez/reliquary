@@ -1,4 +1,4 @@
-import type { PointerEvent, ReactNode, RefObject } from "react";
+import type { CSSProperties, PointerEvent, ReactNode, RefObject } from "react";
 import { useEffect, useState } from "react";
 import {
   currentStats,
@@ -20,6 +20,7 @@ import {
   practiceEnabledHint,
 } from "./party-actions.ts";
 import { shopBuyAffordability } from "./ui-chrome.ts";
+import { PORTRAITS } from "./portraits.ts";
 
 export function TitleScreen({ game, snap }: { game: ReliquaryGame; snap: Snapshot }) {
   return (
@@ -151,12 +152,113 @@ export function Hud({
 
 export function DialogBox({ snap, onAdvance }: { snap: Snapshot; onAdvance: () => void }) {
   if (!snap.dialog) return null;
+  const view = snap.dialog;
+  const portrait = view.portrait ? PORTRAITS[view.portrait] : null;
   return (
-    <button type="button" className="dialog" onClick={onAdvance}>
-      {snap.dialog.speaker ? <span className="dialog-name">{snap.dialog.speaker}</span> : null}
-      <p className="dialog-text">{snap.dialog.text}</p>
-      <span className="dialog-next">{snap.dialog.last ? "Close" : "Next"}</span>
-    </button>
+    <>
+      {portrait ? (
+        <>
+          <div className="dialog-scene" aria-hidden />
+          <div
+            className={`dialog-portrait${portrait.art ? "" : " is-fallback"}`}
+            style={{ "--portrait-accent": portrait.accent } as CSSProperties}
+            aria-hidden
+          >
+            <span className="dialog-portrait-halo" />
+            {portrait.art ? (
+              <img className="dialog-portrait-art" src={portrait.art} alt="" draggable={false} />
+            ) : (
+              <FallbackPortrait monogram={portrait.monogram} />
+            )}
+          </div>
+        </>
+      ) : null}
+      <button
+        type="button"
+        className={`dialog${portrait ? " dialog-with-portrait" : ""}`}
+        onClick={onAdvance}
+        data-portrait={view.portrait ?? "none"}
+      >
+        {portrait ? (
+          <span className="dialog-nameplate">
+            <span className="dialog-role">{portrait.role}</span>
+            <span className="dialog-name">{view.speaker}</span>
+          </span>
+        ) : view.speaker ? (
+          <span className="dialog-name">{view.speaker}</span>
+        ) : null}
+        <span className="dialog-text">{view.text}</span>
+        <span className="dialog-next">{view.last ? "Close" : "Next"}</span>
+      </button>
+    </>
+  );
+}
+
+/**
+ * Shared hooded silhouette for named NPCs without bespoke art. It carries the
+ * speaker's monogram so it reads as a deliberate placeholder, not as another
+ * character's portrait.
+ */
+function FallbackPortrait({ monogram }: { monogram: string }) {
+  return (
+    <svg
+      className="dialog-portrait-art portrait-fallback-art"
+      viewBox="0 0 420 560"
+      role="presentation"
+      focusable="false"
+    >
+      <defs>
+        <linearGradient id="fallback-cloak" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="var(--portrait-accent)" stopOpacity="0.78" />
+          <stop offset="1" stopColor="#14110e" stopOpacity="0.98" />
+        </linearGradient>
+        <radialGradient id="fallback-face" cx="50%" cy="42%" r="62%">
+          <stop offset="0" stopColor="#c79a73" />
+          <stop offset="0.58" stopColor="#8b654c" />
+          <stop offset="1" stopColor="#38281e" />
+        </radialGradient>
+        <linearGradient id="fallback-rim" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0" stopColor="#f3ead8" stopOpacity="0.34" />
+          <stop offset="0.45" stopColor="#f3ead8" stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      <path
+        d="M36 560c9-121 48-177 118-203l-2-35c-34-32-54-78-54-127C98 112 145 62 210 62s112 50 112 133c0 49-20 95-54 127l-2 35c70 26 109 82 118 203Z"
+        fill="#191511"
+      />
+      <path
+        d="M62 560c8-101 42-148 104-172l-4-46c-32-29-51-71-51-114C111 136 152 90 210 90s99 46 99 138c0 43-19 85-51 114l-4 46c62 24 96 71 104 172Z"
+        fill="url(#fallback-cloak)"
+      />
+      <ellipse cx="210" cy="258" rx="72" ry="102" fill="#100d0b" opacity="0.9" />
+      <path
+        d="M210 172c34 0 58 27 58 67 0 34-11 62-29 81l-29 27-29-27c-18-19-29-47-29-81 0-40 24-67 58-67Z"
+        fill="url(#fallback-face)"
+      />
+      <path d="M171 250c12-7 24-7 34-2-9 7-22 9-34 2Zm44 0c10-5 22-5 34 2-12 7-25 5-34-2Z" fill="#241a13" />
+      <circle cx="187" cy="252" r="2.4" fill="var(--portrait-accent)" opacity="0.95" />
+      <circle cx="233" cy="252" r="2.4" fill="var(--portrait-accent)" opacity="0.95" />
+      <path d="M200 313c7 4 14 4 21 0" fill="none" stroke="#4a3225" strokeWidth="2.5" strokeLinecap="round" />
+      <path d="M163 208c-8 54 1 104 47 140 46-36 55-86 47-140" fill="none" stroke="#0d0b09" strokeOpacity="0.45" strokeWidth="9" />
+      <path
+        d="M111 136c9-35 30-60 61-74-6 22-18 42-37 58Z"
+        fill="url(#fallback-rim)"
+      />
+      <path d="M128 388c48 25 116 25 164 0l30 172H98Z" fill="#14110e" opacity="0.5" />
+      <circle cx="210" cy="458" r="30" fill="#231e19" stroke="var(--portrait-accent)" strokeWidth="2" />
+      <circle cx="210" cy="458" r="23" fill="none" stroke="var(--portrait-accent)" strokeOpacity="0.5" />
+      <text
+        x="210"
+        y="468"
+        textAnchor="middle"
+        fill="#f3ead8"
+        fontFamily="Cinzel, Palatino Linotype, serif"
+        fontSize="24"
+        fontWeight="600"
+      >
+        {monogram}
+      </text>
+    </svg>
   );
 }
 

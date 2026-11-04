@@ -768,6 +768,36 @@ test("the inn names the A/B choice, charges on confirm, and skips on cancel", as
   });
 });
 
+test("NPC dialogue carries an explicit portrait key through the snapshot", async () => {
+  await withGame((game) => {
+    game.mode = "world";
+    const talk = (id: string, name: string) =>
+      (game as unknown as { talk(id: string, name: string): void }).talk(id, name);
+    talk("maren", "Elder Maren");
+    assert.equal(game.getSnapshot().dialog!.portrait, "maren");
+    assert.equal(game.getSnapshot().dialog!.speaker, "Elder Maren");
+    game.cancel();
+    talk("cael", "Warden Cael");
+    assert.equal(game.getSnapshot().dialog!.portrait, "cael");
+    game.cancel();
+    talk("guard", "Gateward");
+    assert.equal(game.getSnapshot().dialog!.portrait, "guard");
+    assert.notEqual(game.getSnapshot().dialog!.portrait, "keep-guard");
+  });
+});
+
+test("dialogue identity is keyed by talk id, never by the rendered name", async () => {
+  await withGame((game) => {
+    game.openDialog("Warden Cael", ["A system line that happens to name a character."]);
+    assert.equal(game.getSnapshot().dialog!.speaker, "Warden Cael");
+    assert.equal(game.getSnapshot().dialog!.portrait, null);
+    game.openDialog("Sign", ["THORNKEEP — keep to the road."]);
+    assert.equal(game.getSnapshot().dialog!.portrait, null);
+    game.openDialog("", ["The lantern ticks."]);
+    assert.equal(game.getSnapshot().dialog!.portrait, null);
+  });
+});
+
 test("Cael telegraphs the trial, advises a weak party, and only begins on confirm", async () => {
   await withGame((game) => {
     game.mode = "world";

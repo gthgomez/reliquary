@@ -90,7 +90,7 @@ if (serveOnly) {
     a11y: ["modal-a11y.mjs", "modal-focus-trap.mjs"],
     touch: ["touch-arbitration.mjs"],
     pwa: ["pwa.mjs", "pwa-update.mjs"],
-    journey: ["journey.mjs"],
+    journey: ["journey.mjs", "dialogue-portraits.mjs"],
   };
   const files = map[suite] ?? map.all;
 
