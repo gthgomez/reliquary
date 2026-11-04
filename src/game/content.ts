@@ -13,6 +13,7 @@ import { mathRandom, type RandomSource } from "./rng.ts";
 export const MAX_LEVEL = 40;
 export const PRACTICE_COST = 45;
 export const PRACTICE_LORE = 80;
+export const STARTING_GOLD = 180;
 
 export const ELEMENTS: Record<
   ElementId,
@@ -23,8 +24,8 @@ export const ELEMENTS: Record<
   verdant: { name: "Verdant", color: "#4a6b4a", strong: ["tide", "stone"], weak: ["ember", "umbra"] },
   stone: { name: "Stone", color: "#6e6862", strong: ["ember", "gale"], weak: ["tide", "verdant"] },
   gale: { name: "Gale", color: "#7a8a8a", strong: ["verdant", "umbra"], weak: ["stone", "steel"] },
-  light: { name: "Light", color: "#d4c4a0", strong: ["umbra", "steel"], weak: ["umbra"] },
-  umbra: { name: "Umbra", color: "#4a3d4e", strong: ["light", "verdant"], weak: ["light", "gale"] },
+  light: { name: "Light", color: "#d4c4a0", strong: ["umbra", "steel"], weak: [] },
+  umbra: { name: "Umbra", color: "#4a3d4e", strong: ["light", "verdant"], weak: ["gale"] },
   steel: { name: "Steel", color: "#7a756c", strong: ["stone", "gale"], weak: ["ember", "light"] },
 };
 

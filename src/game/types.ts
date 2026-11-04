@@ -222,7 +222,6 @@ export interface BattleState {
   animCue: { skillId: string; attacker: "player" | "foe"; hit: boolean } | null;
   animElapsedMs: number;
   catchStone: string | null;
-  pendingXp: number;
   escaped: boolean;
   canFlee: boolean;
   canBind: boolean;

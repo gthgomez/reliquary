@@ -906,5 +906,5 @@ export function TouchPad({ game, variant = "full" }: { game: ReliquaryGame; vari
 }
 
 export function Toast({ text, className }: { text: string; className?: string }) {
-  return <div className={className ? `toast ${className}` : "toast"}>{text}</div>;
+  return <div role="status" className={className ? `toast ${className}` : "toast"}>{text}</div>;
 }

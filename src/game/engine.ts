@@ -10,6 +10,7 @@ import {
   SKILLS,
   SPECIES,
   typeMod,
+	STARTING_GOLD,
 } from "./content.ts";
 import { MAPS } from "./maps.ts";
 import { resolveNpcPortrait, type PortraitKey } from "./portraits.ts";
@@ -149,7 +150,7 @@ export class ReliquaryGame {
 	toY = 0;
 	moveT = 0;
 	walkFrame = 0;
-	gold = 200;
+	gold = STARTING_GOLD;
 	playTime = 0;
 	party: Beast[] = [];
 	box: Beast[] = [];
@@ -533,7 +534,7 @@ export class ReliquaryGame {
 		this.px = this.tx * TILE;
 		this.py = this.ty * TILE;
 		this.dir = 0;
-		this.gold = 180;
+		this.gold = STARTING_GOLD;
 		this.party = [];
 		this.box = [];
 		this.inventory = {
@@ -1251,7 +1252,6 @@ export class ReliquaryGame {
 			animCue: null,
 			animElapsedMs: 0,
 			catchStone: null,
-			pendingXp: 0,
 			escaped: false,
 			canFlee: true,
 			canBind: true,
@@ -1278,6 +1278,7 @@ export class ReliquaryGame {
 	}
 	startEncounter(id: string): boolean {
 		if (this.mode !== "world" || this.battle) return false;
+		if (!this.party.some((beast) => beast.hp > 0)) return false;
 		const def = FIXED_ENCOUNTERS[id];
 		if (!def || def.mapId !== this.mapId) return false;
 		if (def.requiredFlags.some((flag) => !this.flags[flag])) return false;
@@ -1304,7 +1305,6 @@ export class ReliquaryGame {
 			animCue: null,
 			animElapsedMs: 0,
 			catchStone: null,
-			pendingXp: 0,
 			escaped: false,
 			canFlee: def.canFlee,
 			canBind: def.canBind,
@@ -1338,7 +1338,6 @@ export class ReliquaryGame {
 			animCue: null,
 			animElapsedMs: 0,
 			catchStone: null,
-			pendingXp: 0,
 			escaped: false,
 			canFlee: false,
 			canBind: false,
@@ -1462,7 +1461,9 @@ export class ReliquaryGame {
 			this.emit();
 			return;
 		}
-		const chance = .4 + (me.spd - foe.spd) / 200;
+		// Mirror the capture cap: extreme speed gaps can never make fleeing
+		// certain or impossible.
+		const chance = Math.min(.95, Math.max(.05, .4 + (me.spd - foe.spd) / 200));
 		if (this.random() < chance) {
 			b.log = ["You break from the grass."];
 			b.escaped = true;
@@ -1731,11 +1732,11 @@ export class ReliquaryGame {
 				this.emit();
 			} else {
 				const failedBind = `${sp.name} breaks the sigil.`;
-				this.battle.log = [failedBind];
+				if (this.battle) this.battle.log = [failedBind];
 				this.battle.phase = "command";
 				sfxPlay.fail();
 				this.afterPlayer();
-				this.battle.log = [`${failedBind} ${this.battle.log.join(" ")}`];
+				if (this.battle) this.battle.log = [`${failedBind} ${this.battle.log.join(" ")}`];
 				this.emit();
 			}
 		};
