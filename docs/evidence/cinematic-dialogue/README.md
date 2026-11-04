@@ -2,6 +2,9 @@
 
 Integration base: `3b8bcc1a1d8eca9a2fde12478dd32b26b5e514ef` (latest fetched
 main when this isolated branch was created). No experimental PR was merged.
+During implementation, PR #30 landed. Its main commit
+`62f0008fe40646f3010e6ef90ace4bcf26e0f23f` was integrated to preserve its security,
+gameplay and CI additions, and the local gates were rerun on that integration.
 
 ## Source evaluation and decisions
 
@@ -55,6 +58,9 @@ These are browser emulations, not physical-device photographs.
 | Small landscape 568×320 | [Maren](568x320-maren.png) | [Cael](568x320-cael-long.png) |
 | Narrow phone 360×740 | [Maren](360x740-maren.png) | [Cael](360x740-cael-long.png) |
 | Landscape with safe insets (top 12, sides 44, bottom 21) | [Maren](844x390-safe-area-maren.png) | [Cael](844x390-safe-area-cael-long.png) |
+| Classic controls, small landscape 568×320 | [Maren](568x320-classic-maren.png) | [Cael](568x320-classic-cael-long.png) |
+| Classic controls, landscape safe insets | [Maren](844x390-classic-safe-area-maren.png) | [Cael](844x390-classic-safe-area-cael-long.png) |
+| Classic controls and reduced motion, 360×740 | [Maren](360x740-classic-reduced-maren.png) | [Cael](360x740-classic-reduced-cael-long.png) |
 
 [Patch](1440x900-briar_camp-patch.png) ·
 [Guard role fallback](1440x900-elderhall-guard.png) ·
@@ -98,7 +104,7 @@ The lockfile and dependency versions are unchanged.
 |---|---|
 | `npm run typecheck` | Exit 0 |
 | `npm run lint` | Exit 0; 11 existing warnings, no new warning locations |
-| `npm test` | Exit 0; 212 tests passed (14 focused portrait/flow tests) |
+| `npm test` | Exit 0; 222 tests passed (14 focused portrait/flow tests) |
 | `npm run validate:content` | Exit 0; valid |
 | `npm run build` | Exit 0 |
 | `npm run build:web` | Exit 0; production shell gate passed |
@@ -107,6 +113,7 @@ The lockfile and dependency versions are unchanged.
 | `npm run test:pwa` | Exit 0; 5 tests passed |
 | `npm run test:browser -- --suite=all` | Exit 0; all 11 browser files plus renderer overlap check passed |
 | `node tests/browser/cinematic-dialogue.mjs` | Exit 0; expanded suite measured 100 dialogue states across 10 configurations, including classic landscape and safe areas |
+| `node scripts/journeys-ci.mjs` | Exit 0; all 5 deep journeys passed in Edge, including inn decline/rest, natural capture, save transfer, gameplay and trial fixtures |
 | `node --test scripts/vite-browser-test-flag.test.mjs` | Exit 0; 6 tests passed |
 | `node --test --test-name-pattern="production web artifact\|deploy build" scripts/assert-production-web-shell.test.mjs` | Exit 0; 2 tests passed |
 
@@ -117,7 +124,16 @@ A fresh independent read-only review of `75a42f8` identified narrow-landscape
 height as an uncertainty. Browser reproduction confirmed Maren's second page
 clipped at 568×320. Releasing the unused conversation D-pad gutter fixed it;
 both 667×375 and 568×320 now run through the full dialogue scenario matrix.
-Review disposition for the final candidate is recorded in the draft PR.
+The same review found classic landscape's redundant bottom reservation; the
+classic D-pad remains visible while corrected spacing keeps its long pages
+contained. Fresh review of `d84c534` against updated main found no remaining
+actionable findings. The final screenshots and full browser rerun confirm those
+layouts; exact final candidate disposition is recorded in the draft PR.
+
+New main's deeper CI journey exposed an assertion that read `innerText` from
+the intentionally hidden HUD. The reader now uses mounted `textContent` with
+an explicit numeric guard; the unchanged checks still require declining the
+inn to preserve crowns and accepting it to charge exactly 15.
 
 ## Limitations
 
