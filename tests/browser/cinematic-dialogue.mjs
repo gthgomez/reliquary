@@ -13,6 +13,8 @@ const viewports = [
   { width: 360, height: 740, mobile: true },
   { width: 360, height: 740, mobile: true, classic: true, reduced: true },
   { width: 844, height: 390, mobile: true, safe: true },
+  { width: 667, height: 375, mobile: true },
+  { width: 568, height: 320, mobile: true },
 ];
 const { server, baseUrl } = await startStaticServer(0);
 

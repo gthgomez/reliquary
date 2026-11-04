@@ -29,6 +29,8 @@ space, including long pages. The nameplate and Next/Close cue are in normal text
 flow, preventing plaque clipping and wrapped-text collisions. HUD/toast chrome
 yields for NPC conversations; AppStatus stays mounted and yields for all dialogue.
 Everything returns on close. Landscape A/B controls use the safe side gutter.
+The default conversation layout releases the unused left D-pad gutter, so even
+568×320 screens retain enough width for long speech without shrinking the font.
 Entrance motion obeys reduced-motion; there is no delayed interactive exit.
 
 The alternative of copying A's absolute positions would retain its phone text
@@ -47,6 +49,8 @@ These are browser emulations, not physical-device photographs.
 | Desktop 1440×900 | [Maren](1440x900-maren.png) | [Cael](1440x900-cael-long.png) |
 | Phone 390×844 | [Maren](390x844-maren.png) | [Cael](390x844-cael-long.png) |
 | Short landscape 844×390 | [Maren](844x390-maren.png) | [Cael](844x390-cael-long.png) |
+| Smaller landscape 667×375 | [Maren](667x375-maren.png) | [Cael](667x375-cael-long.png) |
+| Small landscape 568×320 | [Maren](568x320-maren.png) | [Cael](568x320-cael-long.png) |
 | Narrow phone 360×740 | [Maren](360x740-maren.png) | [Cael](360x740-cael-long.png) |
 | Landscape with safe insets (top 12, sides 44, bottom 21) | [Maren](844x390-safe-area-maren.png) | [Cael](844x390-safe-area-cael-long.png) |
 
@@ -99,12 +103,19 @@ The lockfile and dependency versions are unchanged.
 | `npm run verify:web:runtime` | Exit 0; production controls/economy/battle test hooks absent or unusable |
 | `npm run verify:pwa` | Exit 0 |
 | `npm run test:pwa` | Exit 0; 5 tests passed |
-| `npm run test:browser -- --suite=all` | Exit 0; all 11 browser files plus renderer overlap check passed; cinematic suite measured 60 dialogue states across 6 configurations |
+| `npm run test:browser -- --suite=all` | Exit 0; all 11 browser files plus renderer overlap check passed |
+| `node tests/browser/cinematic-dialogue.mjs` | Exit 0; expanded suite measured 80 dialogue states across 8 configurations |
 | `node --test scripts/vite-browser-test-flag.test.mjs` | Exit 0; 6 tests passed |
 | `node --test --test-name-pattern="production web artifact\|deploy build" scripts/assert-production-web-shell.test.mjs` | Exit 0; 2 tests passed |
 
 Exact-head GitHub Actions status is recorded in the draft PR. No deployment or
 merge is part of this change.
+
+A fresh independent read-only review of `75a42f8` identified narrow-landscape
+height as an uncertainty. Browser reproduction confirmed Maren's second page
+clipped at 568×320. Releasing the unused conversation D-pad gutter fixed it;
+both 667×375 and 568×320 now run through the full dialogue scenario matrix.
+Review disposition for the final candidate is recorded in the draft PR.
 
 ## Limitations
 

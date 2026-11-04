@@ -121,6 +121,11 @@
   }
 }
 @media (orientation: landscape) and (max-height: 520px) {
+  /* Conversation controls only need the right gutter. Keeping the overworld's
+     unused D-pad reservation can force a tiny portrait viewport on short phones. */
+  .game-root.is-dialog.has-dialog-touch .stage {
+    padding: 0 88px 0 0;
+  }
   .game-root.is-dialog .touch-dialog-hint {
     display: none;
   }
