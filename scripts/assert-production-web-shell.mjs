@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 /**
- * Ensure production web bundles do not ship browser-regression economy cheats.
+ * Ensure production web bundles do not ship browser-regression economy, battle UI,
+ * render QA reports, or browser-test build markers.
  */
 import assert from "node:assert/strict";
 import { readFileSync, existsSync } from "node:fs";
@@ -24,7 +25,16 @@ const bundle = clientBundlePath();
 assert.ok(bundle, `[assert:web-shell] missing client bundle under ${staticDir}`);
 
 const source = readFileSync(bundle, "utf8");
-const forbidden = ["getEconomy", "setGold", "openShop", 'VITE_RELIQUARY_BROWSER_TEST":"1"'];
+/** Union of HUD (19f75c2) and renderer (130ea1d) forbidden needles — do not weaken. */
+const forbidden = [
+  "getEconomy",
+  "setGold",
+  "openShop",
+  "seedForcedSwitch",
+  "setBattlePhase",
+  "primeSkillMenu",
+  'VITE_RELIQUARY_BROWSER_TEST":"1"',
+];
 for (const needle of forbidden) {
   assert.equal(
     source.includes(needle),

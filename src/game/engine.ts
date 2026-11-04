@@ -37,10 +37,12 @@ import {
   computeBattleStageGeometry,
   reportBattleStageGeometry,
 } from "./render/battle-stage-geometry.ts";
+import { shouldExposeControlsTestOnWindow } from "./render/render-report-gate.ts";
 import {
   adjustCamYForHudInset,
   readUiSafeTopCanvas,
   reportWorldCameraGeometry,
+  resetWorldCamRelief,
   type WorldCamReliefState,
 } from "./render/world-camera-safe.ts";
 import { drawAtlasTile, paintTileAccent, tileAtlasQuadrant } from "./render/tile-surface.ts";
@@ -190,7 +192,7 @@ export class ReliquaryGame {
 	private battleLayoutCanvasKey: string | null = null;
 	private battleIdlePhase = 0;
 	private reducedMotion = false;
-	private worldCamRelief: WorldCamReliefState = { relief: 0 };
+	private worldCamRelief: WorldCamReliefState = { relief: 0, contentPanY: 0 };
 	constructor(options: { random?: RandomSource } = {}) {
 		this.random = options.random ?? mathRandom;
 		this.snap = this.buildSnap();
@@ -382,6 +384,7 @@ export class ReliquaryGame {
 		this.viewH = vh;
 		this.cssW = cssW;
 		this.cssH = cssH;
+		resetWorldCamRelief(this.worldCamRelief);
 		canvas.width = vw * TILE;
 		canvas.height = vh * TILE;
 		if (this.mode === "battle") {
@@ -470,7 +473,7 @@ export class ReliquaryGame {
 				this.startWild();
 			}
 		};
-		window.__controlsTest = this.probe;
+		if (shouldExposeControlsTestOnWindow()) window.__controlsTest = this.probe;
 	}
 	startNew(notice?: string): void {
 		unlockAudio();
@@ -765,8 +768,12 @@ export class ReliquaryGame {
 			if (rolled) this.startWildFrom(rolled.species, rolled.level);
 		}
 	}
+	private resetWorldCameraRelief(): void {
+		resetWorldCamRelief(this.worldCamRelief);
+	}
 	private warp(to: string, x: number, y: number, dir: Dir): void {
 		if (!MAPS[to]) return;
+		this.resetWorldCameraRelief();
 		this.mapId = to;
 		this.tx = x;
 		this.ty = y;
@@ -1200,6 +1207,7 @@ export class ReliquaryGame {
 		this.emit();
 	}
 	private startWildFrom(speciesId: string, level: number): void {
+		this.resetWorldCameraRelief();
 		const foe = makeBeast(speciesId, level, { random: this.random });
 		this.seen[speciesId] = true;
 		this.encounterLock = true;
@@ -1490,35 +1498,27 @@ export class ReliquaryGame {
 		if (playerFirst) {
 			doPlayer();
 			if (b.phase === "catch") return;
-			if (foe.hp <= 0) {
-				this.foeDown();
-				return;
-			}
-			doFoe();
-			if (me.hp <= 0) { this.playerDown(); return; }
+			if (foe.hp > 0) doFoe();
 		} else {
 			doFoe();
-			if (me.hp <= 0) {
-				this.playerDown();
-				return;
-			}
-			doPlayer();
+			if (me.hp > 0) doPlayer();
 			if (b.phase === "catch") return;
-			if (foe.hp <= 0) { this.foeDown(); return; }
 		}
+		// Resolve the completed turn before a KO handler changes active beasts.
+		// Only survivors tick: burn's minimum-HP rule must not revive the fallen.
+		if (me.hp > 0) this.tickStatus(me);
+		if (foe.hp > 0) this.tickStatus(foe);
+		if (foe.hp <= 0) { this.foeDown(); return; }
+		if (me.hp <= 0) { this.playerDown(); return; }
 		if (b.phase !== "win" && b.phase !== "lose") {
 			if (strikeAnim) {
 				b.animCue = strikeAnim;
 				b.animElapsedMs = 0;
 				b.phase = "anim";
-				this.tickStatus(me);
-				this.tickStatus(foe);
 			} else {
 				b.phase = "command";
 				b.menuIndex = 0;
 				this.menuIndex = 0;
-				this.tickStatus(me);
-				this.tickStatus(foe);
 			}
 		}
 		if (fumbleNotice && !b.log.includes(fumbleNotice)) b.log = [fumbleNotice, ...b.log];
@@ -1731,6 +1731,9 @@ export class ReliquaryGame {
 		const me = this.party[b.playerIndex]!;
 		const foe = b.foes[b.foeIndex]!;
 		if (foe.hp > 0 && me.hp > 0) this.foeTurn(foe, me);
+		// A failed flee or binding attempt completes its turn after retaliation.
+		if (me.hp > 0) this.tickStatus(me);
+		if (foe.hp > 0) this.tickStatus(foe);
 		if (me.hp <= 0) this.playerDown();
 	}
 	private itemHasEffect(id: string, target: Beast, inBattle: boolean): boolean {
@@ -1773,6 +1776,7 @@ export class ReliquaryGame {
 	}
 	private endBattle(victory: boolean): void {
 		const wasTrial = this.battle?.kind === "trial";
+		this.resetWorldCameraRelief();
 		this.battle = null;
 		this.battleStableReserve = null;
 		this.battleIdlePhase = 0;
@@ -2044,15 +2048,26 @@ export class ReliquaryGame {
 				const adjusted = adjustCamYForHudInset(camY, playerHeadCanvasY, insetCanvas, this.worldCamRelief);
 				camY = adjusted.camY;
 				this.worldCamRelief.relief = adjusted.relief;
+				this.worldCamRelief.contentPanY = adjusted.contentPanY;
 				reportWorldCameraGeometry(this.cw(), this.ch(), {
 					hudInsetBottom: insetCanvas,
 					hudInsetSource: source,
 					camRelief: adjusted.relief,
-					playerHeadCanvasY: this.py + TILE - TILE * 1.5 - camY,
+					contentPanY: adjusted.contentPanY,
+					headAfterCamRelief: adjusted.headAfterCamRelief,
+					effectivePlayerHeadCanvasY: adjusted.effectiveHeadCanvasY,
+					playerHeadCanvasY: adjusted.headAfterCamRelief,
 				});
+			} else {
+				this.resetWorldCameraRelief();
 			}
 		} else if (canvas && typeof document !== "undefined") {
-			this.worldCamRelief.relief = 0;
+			this.resetWorldCameraRelief();
+		}
+		const worldPanY = this.worldCamRelief.contentPanY;
+		if (worldPanY > 0) {
+			ctx.save();
+			ctx.translate(0, worldPanY);
 		}
 		if (this.terrain?.map !== m) {
 			const canvas = document.createElement("canvas");
@@ -2156,6 +2171,7 @@ export class ReliquaryGame {
 		});
 		list.sort((a, b) => a.y - b.y);
 		for (const s of list) s.draw();
+		if (worldPanY > 0) ctx.restore();
 	}
 	private drawBattle(ctx: CanvasRenderingContext2D): void {
 		const b = this.battle!;

@@ -6,6 +6,8 @@ import {
   shouldShowDialogTouch,
   shouldShowExplorationTouch,
   shopBuyAffordability,
+  skillMpAffordability,
+  skillMpHint,
 } from "./ui-chrome.ts";
 
 test("isUiModalOpen when root menu, shop, or world exploration", () => {
@@ -39,4 +41,10 @@ test("shopBuyAffordability at 35 cr purse", () => {
   assert.equal(shopBuyAffordability(35, 20), "affordable");
   assert.equal(shopBuyAffordability(35, 60), "unaffordable");
   assert.equal(isClassicTouchEnabled(), false);
+});
+
+test("skillMpAffordability and hint communicate insufficient MP", () => {
+  assert.equal(skillMpAffordability(2, 5), "unaffordable");
+  assert.match(skillMpHint(2, 5), /Need 5 MP · have 2/);
+  assert.equal(skillMpHint(5, 5), "5 MP");
 });

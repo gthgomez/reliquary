@@ -146,6 +146,10 @@ function authPopupPlugin(): Plugin {
 // The dev server starts once `src/router.tsx` and `src/routes/` exist — see
 // AGENTS.md § "First scaffold".
 export default defineConfig(({ command, isPreview }) => ({
+  define: {
+    // Fixture hooks are enabled only by the dedicated public browser-test build.
+    __RELIQUARY_BROWSER_TEST__: "false",
+  },
   server: {
     host: "0.0.0.0",
     port: 8080,

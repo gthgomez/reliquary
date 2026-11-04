@@ -1,6 +1,11 @@
 import assert from "node:assert/strict";
 import { writeFileSync, mkdirSync } from "node:fs";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { startStaticServer, withBrowser, waitForGameBoot } from "./helpers.mjs";
+
+const artifactDir = process.env.RELIQUARY_BROWSER_ARTIFACTS
+  ?? fileURLToPath(new URL("../../artifacts/browser/", import.meta.url));
 
 async function measureSelectors(page, pairs) {
   return page.evaluate((selectors) => {
@@ -206,8 +211,8 @@ try {
     const battleReport = await measureBattleComposited(page, ["#ffffff", "#000000"]);
 
     const report = [...hudReport, ...panelReport, ...battleReport];
-    mkdirSync("/opt/cursor/artifacts", { recursive: true });
-    writeFileSync("/opt/cursor/artifacts/ui-contrast-report.json", JSON.stringify(report, null, 2));
+    mkdirSync(artifactDir, { recursive: true });
+    writeFileSync(join(artifactDir, "ui-contrast-report.json"), JSON.stringify(report, null, 2));
 
     for (const row of report) {
       if (row.ratio == null) continue;

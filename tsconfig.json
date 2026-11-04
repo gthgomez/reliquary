@@ -28,6 +28,9 @@
       ],
       "reliquary-economy-probes": [
         "./src/game/shell/reliquary-economy-probes.stub.ts"
+      ],
+      "reliquary-battle-browser-probes": [
+        "./src/game/ui/battle-browser-probes.stub.ts"
       ]
     },
     "allowImportingTsExtensions": true

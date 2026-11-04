@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 import { chromium } from "playwright";
 
 const root = join(fileURLToPath(new URL(".", import.meta.url)), "..", "..");
-const staticDir = join(root, ".vercel/output/static");
+const staticDir = process.env.RELIQUARY_STATIC_ROOT ?? join(root, ".vercel/output/static");
 
 const MIME = {
   ".html": "text/html; charset=utf-8",
@@ -60,7 +60,7 @@ export async function withBrowser(fn, options = {}) {
   try {
     const context = await browser.newContext({ serviceWorkers: "block", ...(options.context ?? {}) });
     const page = await context.newPage();
-    await fn(page, context);
+    return await fn(page, context);
   } finally {
     await browser.close();
   }

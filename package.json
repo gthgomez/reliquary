@@ -24,6 +24,7 @@
     "verify:pwa": "node scripts/verify-pwa.mjs",
     "test:browser": "node scripts/browser-regression.mjs",
     "build:web": "node scripts/build-web.mjs && node scripts/assert-production-web-shell.mjs",
+    "verify:web:runtime": "node scripts/assert-production-runtime.mjs",
     "build:web:test": "node scripts/build-web-test.mjs",
     "test:platform": "node scripts/run-tests.mjs --all",
     "validate:content": "node --experimental-strip-types scripts/validate-content.mjs",

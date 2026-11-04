@@ -9,6 +9,9 @@ const browserTestBuild = process.env.VITE_RELIQUARY_BROWSER_TEST === "1";
 
 /** Client-only Reliquary shell for static PWA hosting (no TanStack SSR). */
 export default defineConfig({
+  define: {
+    __RELIQUARY_BROWSER_TEST__: JSON.stringify(browserTestBuild),
+  },
   publicDir: "public",
   build: {
     outDir: ".vercel/output/static",
@@ -27,6 +30,12 @@ export default defineConfig({
         browserTestBuild
           ? "src/game/shell/reliquary-economy-probes.ts"
           : "src/game/shell/reliquary-economy-probes.stub.ts",
+      ),
+      "reliquary-battle-browser-probes": resolve(
+        root,
+        browserTestBuild
+          ? "src/game/ui/battle-browser-probes.ts"
+          : "src/game/ui/battle-browser-probes.stub.ts",
       ),
     },
   },

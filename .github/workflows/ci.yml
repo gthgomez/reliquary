@@ -33,6 +33,8 @@ jobs:
         run: npm ci
       - name: Typecheck
         run: npm run typecheck
+      - name: Vite browser-test flag regression
+        run: node --test scripts/vite-browser-test-flag.test.mjs
       - name: Lint
         run: npm run lint
       - name: Gameplay and core tests
@@ -41,5 +43,16 @@ jobs:
         run: npm run validate:content
       - name: Production build
         run: npm run build
-      - name: Public web build and PWA gates
-        run: npm run build:web && npm run test:pwa && npm run verify:pwa && npx playwright install chromium && npm run test:browser -- --suite=all
+      - name: Browser-free deploy build regression
+        run: node --test --test-name-pattern="production web artifact|deploy build" scripts/assert-production-web-shell.test.mjs
+      - name: Public web build
+        run: npm run build:web
+      - name: Install Chromium for browser verification
+        run: npx playwright install --with-deps chromium
+      - name: Production runtime gate
+        run: npm run verify:web:runtime
+      # test:pwa rewrites index.html, so verify the production artifact first.
+      - name: PWA verification and tests
+        run: npm run verify:pwa && npm run test:pwa
+      - name: Browser regressions
+        run: npm run test:browser -- --suite=all

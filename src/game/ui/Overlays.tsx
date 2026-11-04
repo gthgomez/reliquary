@@ -19,7 +19,8 @@ import {
   practiceActionHint,
   practiceEnabledHint,
 } from "./party-actions.ts";
-import { shopBuyAffordability } from "./ui-chrome.ts";
+import { battlePanelHeading, isBattleSubmenuPhase } from "./battle-chrome.ts";
+import { shopBuyAffordability, skillMpAffordability, skillMpHint } from "./ui-chrome.ts";
 
 export function TitleScreen({ game, snap }: { game: ReliquaryGame; snap: Snapshot }) {
   return (
@@ -109,42 +110,48 @@ export function Hud({
   const st = lead ? currentStats(lead) : null;
   const [objectiveOpen, setObjectiveOpen] = useState(false);
   return (
-    <div className={`hud${dormant ? " hud-dormant" : ""}`} aria-hidden={dormant}>
-      <div className="hud-chip hud-chip-grow">
-        <span className="hud-place">{snap.mapName}</span>
-        <span className="hud-muted">{snap.region}</span>
-        {snap.objective ? (
-          <div className="hud-objective-wrap">
-            <button
-              type="button"
-              className="hud-objective-btn"
-              aria-expanded={objectiveOpen}
-              onClick={() => setObjectiveOpen((open) => !open)}
-            >
-              <span className="hud-objective-label">Objective</span>
-              <span className="hud-objective-preview">{snap.objective}</span>
-              <span className="hud-objective-chevron">{objectiveOpen ? "▾" : "▸"}</span>
-            </button>
-            {objectiveOpen ? <p className="hud-objective-full">{snap.objective}</p> : null}
-            <button type="button" className="hud-objective-lantern" onClick={onMenu}>
-              Open in Lantern menu
-            </button>
-          </div>
-        ) : null}
+    <div className={`hud${dormant ? " hud-dormant" : ""}${objectiveOpen ? " hud-objective-expanded" : ""}`} aria-hidden={dormant}>
+      <div className="hud-row">
+        <div className="hud-chip hud-chip-grow">
+          <span className="hud-place">{snap.mapName}</span>
+          <span className="hud-muted hud-region">{snap.region}</span>
+          {snap.objective ? (
+            <div className="hud-objective-slot">
+              <button
+                type="button"
+                className="hud-objective-btn"
+                aria-expanded={objectiveOpen}
+                onClick={() => setObjectiveOpen((open) => !open)}
+              >
+                <span className="hud-objective-label">Objective</span>
+                <span className="hud-objective-preview">{snap.objective}</span>
+                <span className="hud-objective-chevron">{objectiveOpen ? "▾" : "▸"}</span>
+              </button>
+              {objectiveOpen ? (
+                <div className="hud-objective-popover" role="region" aria-label="Current objective">
+                  <p className="hud-objective-full">{snap.objective}</p>
+                  <button type="button" className="hud-objective-lantern" onClick={onMenu}>
+                    Open in Lantern menu
+                  </button>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+        </div>
+        <div className="hud-chip hud-chip-stats">
+          <span className="hud-gold">{snap.gold} cr</span>
+          {lead && st ? (
+            <span className="hud-muted">
+              {lead.nickname} {lead.hp}/{st.hp}
+            </span>
+          ) : (
+            <span className="hud-muted">No pact yet</span>
+          )}
+        </div>
+        <button type="button" className="hud-menu" ref={menuButtonRef} onClick={onMenu}>
+          Menu
+        </button>
       </div>
-      <div className="hud-chip">
-        <span className="hud-gold">{snap.gold} cr</span>
-        {lead && st ? (
-          <span className="hud-muted">
-            {lead.nickname} {lead.hp}/{st.hp}
-          </span>
-        ) : (
-          <span className="hud-muted">No pact yet</span>
-        )}
-      </div>
-      <button type="button" className="hud-menu" ref={menuButtonRef} onClick={onMenu}>
-        Menu
-      </button>
     </div>
   );
 }
@@ -601,12 +608,19 @@ export function Meter({
   kind: "hp" | "mp";
 }) {
   const pct = max <= 0 ? 0 : Math.max(0, Math.min(100, (value / max) * 100));
+  const longLabel = kind === "hp" ? "Health" : "Skill points";
   return (
-    <div className="meter">
-      <span>
-        {label} {value}/{max}
-      </span>
-      <div className="meter-track">
+    <div className="meter" role="group" aria-label={`${longLabel} ${value} of ${max}`}>
+      <div className="meter-head">
+        <span className="meter-kicker">{longLabel}</span>
+        <span className="meter-frac">
+          <abbr title={longLabel} className="meter-abbr">
+            {label}
+          </abbr>{" "}
+          {value}/{max}
+        </span>
+      </div>
+      <div className="meter-track" aria-hidden>
         <div className={`meter-fill ${kind}`} style={{ width: `${pct}%` }} />
       </div>
     </div>
@@ -621,131 +635,174 @@ export function BattleHud({ game, snap }: { game: ReliquaryGame; snap: Snapshot 
   const meS = me ? currentStats(me) : null;
   const foS = foe ? currentStats(foe) : null;
   const cmds = battleCommands(b);
+  const panelHeading = battlePanelHeading(b.phase);
+  const showBack = isBattleSubmenuPhase(b.phase);
+
+  const renderCmdList = (items: ReactNode, className = "cmd") => (
+    <ul className={className}>{items}</ul>
+  );
+
+  let scrollBody: ReactNode = null;
+  if (b.phase === "skills" && me) {
+    scrollBody = renderCmdList(
+      me.skills.map((sid, i) => {
+        const sk = SKILLS[sid];
+        const cost = sk?.mp ?? 0;
+        const afford = skillMpAffordability(me.mp, cost);
+        const hint = skillMpHint(me.mp, cost);
+        return (
+          <li key={sid}>
+            <button
+              type="button"
+              className={`${i === b.menuIndex ? "active" : ""} skill-${afford}`}
+              aria-describedby={afford === "unaffordable" ? `skill-mp-${sid}` : undefined}
+              onClick={() => {
+                game.menuIndex = i;
+                if (game.battle) game.battle.menuIndex = i;
+                if (afford === "unaffordable") return;
+                game.confirm();
+              }}
+            >
+              <span className="cmd-skill-main">
+                <span className="cmd-skill-name">{sk?.name}</span>
+                <em id={afford === "unaffordable" ? `skill-mp-${sid}` : undefined}>{hint}</em>
+              </span>
+            </button>
+          </li>
+        );
+      }),
+      "cmd cmd-scroll cmd-skills",
+    );
+  } else if (b.phase === "items") {
+    scrollBody = renderCmdList(
+      game.usableItems().map((id, i) => (
+        <li key={id}>
+          <button
+            type="button"
+            className={i === b.menuIndex ? "active" : ""}
+            onClick={() => {
+              game.menuIndex = i;
+              if (game.battle) game.battle.menuIndex = i;
+              game.confirm();
+            }}
+          >
+            {ITEMS[id]?.name} <em>×{snap.inventory[id]}</em>
+          </button>
+        </li>
+      )),
+      "cmd cmd-scroll",
+    );
+  } else if (b.phase === "bind") {
+    scrollBody = renderCmdList(
+      ["common_sigil", "thorn_sigil", "relic_sigil"]
+        .filter((s) => (snap.inventory[s] ?? 0) > 0)
+        .map((id, i) => (
+          <li key={id}>
+            <button
+              type="button"
+              className={i === b.menuIndex ? "active" : ""}
+              onClick={() => {
+                game.menuIndex = i;
+                if (game.battle) game.battle.menuIndex = i;
+                game.confirm();
+              }}
+            >
+              {ITEMS[id]?.name} <em>×{snap.inventory[id]}</em>
+            </button>
+          </li>
+        )),
+      "cmd cmd-scroll",
+    );
+  } else if (b.phase === "party") {
+    scrollBody = renderCmdList(
+      snap.party.map((p, i) => {
+        const pst = currentStats(p);
+        return (
+          <li key={p.uid}>
+            <button
+              type="button"
+              className={`cmd-party-row${i === b.menuIndex ? " active" : ""}`}
+              disabled={p.hp <= 0}
+              onClick={() => {
+                game.menuIndex = i;
+                if (game.battle) game.battle.menuIndex = i;
+                game.confirm();
+              }}
+            >
+              <span className="cmd-party-name">{p.nickname}</span>
+              <span className="cmd-party-meta">
+                <em>
+                  {p.hp}/{pst.hp} hp
+                </em>
+              </span>
+            </button>
+          </li>
+        );
+      }),
+      "cmd cmd-scroll cmd-party",
+    );
+  }
+
   return (
     <div className="battle-ui">
-      {foe && foS ? (
-        <div className="battler foe">
-          <strong>{SPECIES[foe.speciesId]?.name}</strong>
-          <span>Lv {foe.level}</span>
-          <Meter label="HP" value={foe.hp} max={foS.hp} kind="hp" />
-        </div>
-      ) : null}
-      <div className="battle-controls">
+      <div className="battle-status-zone">
+        {foe && foS ? (
+          <div className="battler foe">
+            <strong>{SPECIES[foe.speciesId]?.name}</strong>
+            <span>Lv {foe.level}</span>
+            <Meter label="HP" value={foe.hp} max={foS.hp} kind="hp" />
+          </div>
+        ) : null}
+      </div>
+      <div className="battle-controls" data-battle-phase={b.phase}>
         {me && meS ? (
           <div className="battler me">
             <strong>{me.nickname}</strong>
             <span>Lv {me.level}</span>
-            <Meter label="HP" value={me.hp} max={meS.hp} kind="hp" />
-            <Meter label="MP" value={me.mp} max={meS.mp} kind="mp" />
+            <div className="meter-row">
+              <Meter label="HP" value={me.hp} max={meS.hp} kind="hp" />
+              <Meter label="MP" value={me.mp} max={meS.mp} kind="mp" />
+            </div>
           </div>
         ) : null}
-        <div className="battle-log">{b.log[b.log.length - 1]}</div>
-        {b.phase === "command" ? (
-          <ul className="cmd">
-            {cmds.map((c, i) => (
-              <li key={c}>
-                <button
-                  type="button"
-                  className={i === b.menuIndex ? "active" : ""}
-                  onClick={() => {
-                    game.menuIndex = i;
-                    if (game.battle) game.battle.menuIndex = i;
-                    game.confirm();
-                  }}
-                >
-                  {c}
-                </button>
-              </li>
-            ))}
-          </ul>
-        ) : null}
-        {b.phase === "skills" && me ? (
-          <ul className="cmd">
-            {me.skills.map((sid, i) => {
-              const sk = SKILLS[sid];
-              return (
-                <li key={sid}>
-                  <button
-                    type="button"
-                    className={i === b.menuIndex ? "active" : ""}
-                    onClick={() => {
-                      game.menuIndex = i;
-                      if (game.battle) game.battle.menuIndex = i;
-                      game.confirm();
-                    }}
-                  >
-                    {sk?.name} <em>{sk?.mp} mp</em>
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-        ) : null}
-        {b.phase === "items" ? (
-          <ul className="cmd">
-            {game.usableItems().map((id, i) => (
-              <li key={id}>
-                <button
-                  type="button"
-                  className={i === b.menuIndex ? "active" : ""}
-                  onClick={() => {
-                    game.menuIndex = i;
-                    if (game.battle) game.battle.menuIndex = i;
-                    game.confirm();
-                  }}
-                >
-                  {ITEMS[id]?.name} <em>×{snap.inventory[id]}</em>
-                </button>
-              </li>
-            ))}
-          </ul>
-        ) : null}
-        {b.phase === "bind" ? (
-          <ul className="cmd">
-            {["common_sigil", "thorn_sigil", "relic_sigil"]
-              .filter((s) => (snap.inventory[s] ?? 0) > 0)
-              .map((id, i) => (
-                <li key={id}>
-                  <button
-                    type="button"
-                    className={i === b.menuIndex ? "active" : ""}
-                    onClick={() => {
-                      game.menuIndex = i;
-                      if (game.battle) game.battle.menuIndex = i;
-                      game.confirm();
-                    }}
-                  >
-                    {ITEMS[id]?.name} <em>×{snap.inventory[id]}</em>
-                  </button>
-                </li>
-              ))}
-          </ul>
-        ) : null}
-        {b.phase === "party" ? (
-          <ul className="cmd">
-            {snap.party.map((p, i) => (
-              <li key={p.uid}>
-                <button
-                  type="button"
-                  className={i === b.menuIndex ? "active" : ""}
-                  disabled={p.hp <= 0}
-                  onClick={() => {
-                    game.menuIndex = i;
-                    if (game.battle) game.battle.menuIndex = i;
-                    game.confirm();
-                  }}
-                >
-                  {p.nickname} <em>{p.hp} hp</em>
-                </button>
-              </li>
-            ))}
-          </ul>
-        ) : null}
-        {b.phase === "win" || b.phase === "lose" ? (
-          <button type="button" className="btn-primary" onClick={() => game.confirm()}>
-            {b.phase === "win" ? "Continue" : "Wake"}
-          </button>
-        ) : null}
+        <div className="battle-log" aria-live="polite">
+          <span className="battle-log-text">{b.log[b.log.length - 1]}</span>
+        </div>
+        <div className={`battle-controls-body${scrollBody ? "" : " is-empty"}`}>
+          {panelHeading ? <p className="battle-panel-title">{panelHeading}</p> : null}
+          {scrollBody}
+        </div>
+        <div className="battle-controls-actions">
+          {showBack && b.phase !== "win" && b.phase !== "lose" ? (
+            <button type="button" className="btn-ghost battle-back" onClick={() => game.cancel()}>
+              Back
+            </button>
+          ) : null}
+          {b.phase === "command"
+            ? renderCmdList(
+                cmds.map((c, i) => (
+                  <li key={c}>
+                    <button
+                      type="button"
+                      className={i === b.menuIndex ? "active" : ""}
+                      onClick={() => {
+                        game.menuIndex = i;
+                        if (game.battle) game.battle.menuIndex = i;
+                        game.confirm();
+                      }}
+                    >
+                      {c}
+                    </button>
+                  </li>
+                )),
+              )
+            : null}
+          {b.phase === "win" || b.phase === "lose" ? (
+            <button type="button" className="btn-primary battle-continue" onClick={() => game.confirm()}>
+              {b.phase === "win" ? "Continue" : "Wake"}
+            </button>
+          ) : null}
+        </div>
       </div>
     </div>
   );
