@@ -262,16 +262,22 @@ try {
           console.log(`[warden-trial] round ${rounds}: cmd=${cmd} cont=${cont} dialog=${dialog} phase=${phase} rows=${JSON.stringify(rowTexts)} hud=${battleHud.slice(0, 80).replace(/\s+/g, " ")}`);
           if (rounds % 50 === 0) await page.screenshot({ path: join(output, `warden-trial-stuck-${rounds}.png`) });
         }
-        // Forced-switch phase: member rows read "<name> <hp> hp"; command,
-        // skill and item rows never do. Send in a beast that can still fight.
-        const activeName = (await page.locator(".battle-ui .battler.me strong").innerText().catch(() => "")).trim();
-        const memberRows = page.locator(".battle-ui ul.cmd button").filter({ hasText: /\d+ hp$/ });
-        const survivors = memberRows
-          .filter({ hasNotText: /\b0 hp$/ })
-          .filter({ hasNotText: activeName || "\u0000" });
-        if ((await survivors.count()) > 0) {
-          await survivors.first().click({ timeout: 4000 }).catch(() => {});
-          await page.waitForTimeout(250);
+        // Forced-switch phase: the engine marks it data-battle-phase="party"
+        // and disables fainted rows; send in a beast that can still fight.
+        const phase = await page.locator(".battle-controls").getAttribute("data-battle-phase").catch(() => null);
+        if (phase === "party") {
+          const row = page
+            .locator(".battle-controls[data-battle-phase='party'] ul.cmd button")
+            .filter({ hasNotText: /0\/\d+ hp/ })
+            .first();
+          if ((await row.count()) > 0) {
+            await row.click({ timeout: 4000 }).catch(() => {});
+            await page.waitForTimeout(250);
+            continue;
+          }
+          // No enabled row: the whole party is down; Wake (the loss flow)
+          // appears next and the wake check above ends the scenario.
+          await page.waitForTimeout(150);
           continue;
         }
         if (!cmd) {
