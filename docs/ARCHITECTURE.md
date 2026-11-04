@@ -12,6 +12,9 @@ src/game/
   maps.ts           Hollowmere map data and tile constants
   save.ts           versioned local save validation, migration, recovery
   rng.ts            production random source and deterministic test source
+  portraits.ts      single typed registry: placed NPC identity, role fallback, art
+  ui/DialogScene.tsx shared dialogue button and cinematic portrait composition
+  ui/dialogue.css   responsive conversation layout, motion, secondary chrome
   systems/
     combat.ts       accuracy, turn order, elemental damage primitives
     capture.ts      binding probability and deterministic result

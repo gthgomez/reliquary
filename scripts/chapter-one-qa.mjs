@@ -228,7 +228,14 @@ try {
   await press("KeyZ");
   const innPrompt = await page.locator("button.dialog").innerText();
   if (!innPrompt.includes("(A rest · B not now)")) throw new Error(`inn prompt lacks the A/B line: ${innPrompt}`);
-  const readGold = async () => Number((await page.locator(".hud-gold").innerText()).match(/\d+/)?.[0]);
+  // Conversation chrome is hidden, but the mounted HUD still reflects state.
+  // innerText omits visibility:hidden content and would turn this into NaN.
+  const readGold = async () => {
+    const text = await page.locator(".hud-gold").textContent();
+    const match = text?.match(/\d+/);
+    if (!match) throw new Error(`HUD gold is not numeric: ${text}`);
+    return Number(match[0]);
+  };
   const goldBefore = await readGold();
   await press("Shift");
   await page.waitForTimeout(200);
