@@ -104,9 +104,10 @@ function migrateParsed(value: unknown): GameSave | null {
   if (version === SAVE_VERSION) {
     const parsed = GameSaveSchema.safeParse(value);
     if (!parsed.success) return null;
+    if (parsed.data.worldRevision > WORLD_REVISION) return null;
     // A save written against an older world may stand where tiles have since
     // solidified: relocate it like the legacy paths instead of discarding it.
-    const worldChanged = parsed.data.worldRevision !== WORLD_REVISION;
+    const worldChanged = parsed.data.worldRevision < WORLD_REVISION;
     return validateSemantics(parsed.data as GameSave, { migrate: worldChanged ? "relocated" : "none" });
   }
   if (version === 2) {
@@ -133,6 +134,7 @@ export function cloneSave(save: GameSave): GameSave {
 }
 
 export function serializeSave(save: GameSave): string | null {
+  if (save.version > SAVE_VERSION || (save.worldRevision ?? WORLD_REVISION) > WORLD_REVISION) return null;
   const normalized = { ...save, version: SAVE_VERSION, worldRevision: WORLD_REVISION } as GameSave;
   if (!GameSaveSchema.safeParse(normalized).success) return null;
   const validated = validateSemantics(normalized, { migrate: "none" });
@@ -155,21 +157,34 @@ export function loadSave(source: SaveStorage | null = browserStorage()): GameSav
   return null;
 }
 
+function isForwardSave(raw: string): boolean {
+  let parsed: { version?: unknown; worldRevision?: unknown } | null;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    // Unreadable JSON is not a known forward save; nothing to preserve.
+    return false;
+  }
+  return Boolean(parsed && (
+    typeof parsed.version === "number" && parsed.version > SAVE_VERSION
+    || typeof parsed.worldRevision === "number" && parsed.worldRevision > WORLD_REVISION
+  ));
+}
+
 /**
  * Preserve a save written by a NEWER build before an older build overwrites
- * it: the primary slot would otherwise be destroyed by a version this build
- * cannot even parse. Best-effort — under quota the quarantine may fail.
+ * it: a primary or backup slot would otherwise be destroyed by a version
+ * this build cannot even parse. Refuse the overwrite unless an exact copy
+ * is preserved; a different forward archive must not be displaced.
  */
-function quarantineForwardSave(target: SaveStorage, previous: string | null): void {
-  if (previous === null) return;
-  try {
-    const parsed = JSON.parse(previous) as { version?: unknown } | null;
-    if (parsed && typeof parsed.version === "number" && parsed.version > SAVE_VERSION) {
-      target.setItem(SAVE_FORWARD_KEY, previous);
-    }
-  } catch {
-    // An unreadable primary is not a forward save; nothing to preserve.
-  }
+function quarantineForwardSave(target: SaveStorage, previous: string | null): boolean {
+  if (previous === null || !isForwardSave(previous)) return true;
+  // Storage errors propagate to writeSave's failure handler before any primary
+  // write, backup rotation or legacy cleanup can occur.
+  const archived = target.getItem(SAVE_FORWARD_KEY);
+  if (archived !== null) return archived === previous;
+  target.setItem(SAVE_FORWARD_KEY, previous);
+  return target.getItem(SAVE_FORWARD_KEY) === previous;
 }
 
 export function writeSave(save: GameSave, target: SaveStorage | null = browserStorage()): boolean {
@@ -184,17 +199,26 @@ export function writeSave(save: GameSave, target: SaveStorage | null = browserSt
       || target.getItem(LEGACY_SAVE_BACKUP) !== null
       || target.getItem(LEGACY_V1_KEY) !== null
       || target.getItem(LEGACY_V1_BACKUP) !== null;
-    quarantineForwardSave(target, previous);
-    // Primary first: a failure here must leave every existing slot untouched.
+    if (!quarantineForwardSave(target, previous)) return false;
+    const rotateBackup = previous !== null && parseSave(previous) !== null;
+    // Check backup rotation before touching the primary.
+    // A forward backup may be the only remaining copy of a newer-build save.
+    if (rotateBackup && !quarantineForwardSave(target, target.getItem(SAVE_BACKUP))) return false;
+    // Write the primary before rotating backups or removing legacy slots.
     target.setItem(SAVE_KEY, text);
     // Backup rotation is best-effort — under quota a failed backup must not
     // undo a durable primary write.
-    if (previous !== null && parseSave(previous) !== null) {
+    if (rotateBackup) {
       try { target.setItem(SAVE_BACKUP, previous); } catch { /* primary is durable */ }
     }
     if (hadLegacySlots) {
       for (const key of [LEGACY_SAVE_KEY, LEGACY_SAVE_BACKUP, LEGACY_V1_KEY, LEGACY_V1_BACKUP]) {
-        try { target.removeItem(key); } catch { /* keep going: primary is durable */ }
+        try {
+          const legacy = target.getItem(key);
+          // Unknown forward records keep their original slot. Cleanup must not
+          // discard them or compete with a different record in the archive.
+          if (legacy !== null && !isForwardSave(legacy)) target.removeItem(key);
+        } catch { /* retain unreadable legacy slots: primary is durable */ }
       }
     }
     return true;
