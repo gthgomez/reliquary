@@ -14,6 +14,7 @@ import type { ReliquaryGame } from "../engine";
 import { ROOT_MENU } from "../engine";
 import type { Beast, Snapshot } from "../types";
 import { OverlayPanel } from "./OverlayPanel";
+import { NpcDialogScene } from "./NpcDialogScene";
 import {
   leadActionHint,
   practiceActionHint,
@@ -151,11 +152,13 @@ export function Hud({
 
 export function DialogBox({ snap, onAdvance }: { snap: Snapshot; onAdvance: () => void }) {
   if (!snap.dialog) return null;
+  const d = snap.dialog;
+  if (d.portraitKey) return <NpcDialogScene dialog={d} onAdvance={onAdvance} />;
   return (
     <button type="button" className="dialog" onClick={onAdvance}>
-      {snap.dialog.speaker ? <span className="dialog-name">{snap.dialog.speaker}</span> : null}
-      <p className="dialog-text">{snap.dialog.text}</p>
-      <span className="dialog-next">{snap.dialog.last ? "Close" : "Next"}</span>
+      {d.speaker ? <span className="dialog-name">{d.speaker}</span> : null}
+      <p className="dialog-text">{d.text}</p>
+      <span className="dialog-next">{d.last ? "Close" : "Next"}</span>
     </button>
   );
 }

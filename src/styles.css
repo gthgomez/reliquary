@@ -400,7 +400,114 @@
   font-size: 0.72rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--color-copper);
+  color: color-mix(in oklab, var(--color-copper) 74%, var(--color-ink));
+}
+
+/* --- NPC dialogue focus scene (cinematic close-ups) --- */
+.npc-scene {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: flex;
+  align-items: flex-end;
+  gap: 1.1rem;
+  padding: 0 1.2rem 1rem;
+  pointer-events: none;
+}
+.npc-scrim {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(
+      to top,
+      rgba(10, 8, 6, 0.74) 0%,
+      rgba(10, 8, 6, 0.42) 34%,
+      rgba(10, 8, 6, 0.14) 62%,
+      transparent 85%
+    ),
+    radial-gradient(120% 90% at 50% 112%, rgba(8, 6, 4, 0.5) 0%, transparent 60%);
+}
+.npc-scene-portrait {
+  position: relative;
+  flex: 0 0 auto;
+  width: min(300px, 36vh, 44vw);
+  margin-bottom: 0.4rem;
+}
+.npc-portrait-frame {
+  position: relative;
+  overflow: hidden;
+  border-radius: 96px 96px 14px 14px;
+  border: 2px solid color-mix(in oklab, var(--color-copper) 62%, transparent);
+  background: var(--color-ink);
+  box-shadow:
+    0 0 0 5px rgba(12, 10, 8, 0.6),
+    0 18px 44px rgba(0, 0, 0, 0.55),
+    0 0 44px var(--portrait-glow, transparent),
+    inset 0 0 0 1px rgba(243, 234, 216, 0.08);
+}
+.npc-portrait-frame svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.npc-plaque {
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  transform: translate(-50%, 58%);
+  z-index: 2;
+  max-width: 112%;
+  padding: 0.3rem 0.85rem 0.34rem;
+  border-radius: 999px;
+  border: 1px solid color-mix(in oklab, var(--color-copper) 70%, transparent);
+  background: color-mix(in oklab, var(--color-parchment) 94%, transparent);
+  color: var(--color-ink);
+  font-family: var(--font-display);
+  font-size: 0.72rem;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
+}
+.npc-scene-dialog {
+  pointer-events: auto;
+  position: relative;
+  left: auto;
+  right: auto;
+  bottom: auto;
+  z-index: 1;
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: 680px;
+  margin: 0;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .npc-scrim {
+    animation: npc-scene-fade 0.18s ease-out;
+  }
+  .npc-scene-portrait {
+    animation: npc-portrait-in 0.3s ease-out;
+  }
+  .npc-scene-dialog {
+    animation: npc-dialog-in 0.24s ease-out;
+  }
+}
+@keyframes npc-scene-fade {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes npc-portrait-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+@keyframes npc-dialog-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
 }
 
 .sheet {
@@ -973,6 +1080,31 @@
   .dialog-text {
     font-size: 0.95rem;
   }
+  .npc-scene {
+    display: block;
+    padding: 0;
+  }
+  .npc-scene-portrait {
+    position: absolute;
+    top: 6.5rem;
+    right: 0.7rem;
+    width: clamp(96px, 28vw, 132px);
+    margin-bottom: 0;
+  }
+  .npc-plaque {
+    left: auto;
+    right: 0;
+    transform: none;
+    max-width: 100%;
+    font-size: 0.6rem;
+    padding: 0.22rem 0.6rem 0.26rem;
+  }
+  .npc-scene-dialog {
+    position: absolute;
+    left: 0.45rem;
+    right: 0.45rem;
+    bottom: 0.45rem;
+  }
   .top-stack {
     top: 0.4rem;
     left: 0.4rem;
@@ -1086,12 +1218,35 @@
     grid-template-columns: repeat(3, 1fr);
     width: min(360px, 100%);
   }
+  .npc-scene {
+    display: flex;
+    gap: 0.8rem;
+    padding-bottom: 0.5rem;
+  }
+  .npc-scene-portrait {
+    position: relative;
+    top: auto;
+    right: auto;
+    width: min(132px, 36vh);
+    margin-bottom: 0.2rem;
+  }
+  .npc-scene-dialog {
+    position: relative;
+    left: auto;
+    right: auto;
+    bottom: auto;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .btn-primary:active,
   .load-fill {
     transition: none;
+  }
+  .npc-scrim,
+  .npc-scene-portrait,
+  .npc-scene-dialog {
+    animation: none;
   }
 }
 
