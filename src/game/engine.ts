@@ -845,6 +845,12 @@ export class ReliquaryGame {
 		this.emitPublic();
 	}
 
+	/** Highlight a shop row without purchasing. */
+	previewShopRow(i: number): void {
+		this.shopIndex = i;
+		this.emitPublic();
+	}
+
 	/** Victory epilogue dismissal from the UI. */
 	dismissVictory(): void {
 		this.mode = "world";
