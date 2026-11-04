@@ -64,7 +64,15 @@ export function spendSkillMp(attacker: Beast, skill: Skill): boolean {
   return true;
 }
 
+/** Pure heal computation: actual HP gained, bounded by current max. */
+export function healAmount(target: Beast, amount: number): number {
+  const gain = Math.max(0, Math.floor(amount));
+  const healed = Math.min(currentStats(target).hp, target.hp + gain) - target.hp;
+  return Math.max(0, healed);
+}
+
 export function healBeast(target: Beast, amount: number): number {
+  // Delegates to the pure calculation; kept for call sites that want the mutation.
   const before = target.hp;
   target.hp = Math.min(currentStats(target).hp, target.hp + Math.max(0, Math.floor(amount)));
   return target.hp - before;

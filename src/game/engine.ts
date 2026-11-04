@@ -64,7 +64,9 @@ import {
 import { drawAtlasTile, paintTileAccent, tileAtlasQuadrant } from "./render/tile-surface.ts";
 import { paintWorldActorShadow } from "./render/world-actors.ts";
 import { captureChance, captureSucceeds, storeCapturedBeast } from "./systems/capture.ts";
-import { applyCombatContextModifiers, healBeast, playerActsFirst, resolveElementalDamage, spendSkillMp, statusSucceeds } from "./systems/combat.ts";
+import { healBeast, playerActsFirst, spendSkillMp } from "./systems/combat.ts";
+import { applySkillEvents, resolveSkillUse } from "./systems/battle-engine.ts";
+
 import { purchaseItem, sellItem } from "./systems/economy.ts";
 import { awardExperience } from "./systems/progression.ts";
 import { moveToLead, renameCreature, transferBeast } from "./systems/party.ts";
@@ -1550,48 +1552,24 @@ export class ReliquaryGame {
 	}
 	private useSkill(atk: Beast, def: Beast, foeSide: boolean, skill: Skill, logIt: boolean): BattleAnimCue | null {
 		const b = this.battle!;
-		const aS = currentStats(atk);
 		const animSide: BattleAnimCue["attacker"] = foeSide ? "foe" : "player";
 		const maybeAnim = (hit: boolean): BattleAnimCue | null =>
 			logIt && shouldPlayBattleAnim(skill.id) ? { skillId: skill.id, attacker: animSide, hit } : null;
-		// Resolve through the canonical combat rules (accuracy, heal/ward
-		// early-outs, base damage, STAB, type chart, crit, variance) so engine
-		// damage and the tested resolver can never drift.
-		const resolved = resolveElementalDamage(atk, def, skill, SPECIES[atk.speciesId].elements, SPECIES[def.speciesId].elements, this.random);
-		if (!resolved.hit) {
-			if (logIt) b.log = [`${atk.nickname}'s ${skill.name} misses.`];
-			sfxPlay.fail();
-			return maybeAnim(false);
-		}
-		if (skill.kind === "heal") {
-			const heal = healBeast(atk, skill.power * (aS.mag / 40));
-			b.log = [`${atk.nickname} mends for ${heal}.`];
-			sfxPlay.heal();
-			return null;
-		}
-		if (resolved.damage === 0) {
-			if (skill.status) {
-				const target = skill.kind === "ward" ? atk : def;
-				applyStatus(target, skill.status);
-				b.log = [`${skill.name}: ${target.nickname} is ${STATUS_ADJECTIVES[skill.status]}.`];
-			}
-			sfxPlay.menu();
-			return null;
-		}
-		const dmg = applyCombatContextModifiers(resolved.damage, atk, def);
-		def.hp = Math.max(0, def.hp - dmg);
-		let line = `${atk.nickname} uses ${skill.name}! ${dmg} harm.`;
-		if (resolved.multiplier > 1.2) line += " It bites deep.";
-		else if (resolved.multiplier < .8) line += " It glances.";
-		if (resolved.critical) line += " A true cut.";
-		if (skill.status && statusSucceeds(skill.statusChance ?? 0, this.random) && def.hp > 0) {
-				applyStatus(def, skill.status);
-			line += ` ${def.nickname} is ${STATUS_ADJECTIVES[skill.status]}.`;
-		}
-		b.log = [line];
-		if (resolved.critical) sfxPlay.crit();
-		else sfxPlay.hit();
-		return maybeAnim(true);
+		// Resolution lives in the pure, headless-tested battle core (issue #34
+		// stage 1); this method is presentation: apply events, log, sound, anim.
+		const events = resolveSkillUse(atk, def, skill, this.random);
+		const log = applySkillEvents(atk, def, skill, events);
+		const sfxCue = events[events.length - 1]!.sfx;
+		if (log !== null) b.log = [log];
+		const event = events[0]!;
+		if (event.kind === "miss") sfxPlay.fail();
+		else if (event.sfx === "heal") sfxPlay.heal();
+		else if (event.sfx === "menu") sfxPlay.menu();
+		else if (event.sfx === "crit") sfxPlay.crit();
+		else if (event.kind === "damage") sfxPlay.hit();
+		if (event.kind === "miss") return maybeAnim(false);
+		if (event.kind === "damage") return maybeAnim(true);
+		return null;
 	}
 	private foeTurn(foe: Beast, me: Beast): BattleAnimCue | null {
 		const skills = foe.skills.map((id) => SKILLS[id]).filter(Boolean);
