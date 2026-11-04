@@ -3,7 +3,7 @@ import { test } from "node:test";
 import { ReliquaryGame, ROOT_MENU, TILE } from "./engine.ts";
 import { currentStats, makeBeast } from "./content.ts";
 import { playerActsFirst } from "./systems/combat.ts";
-import { SAVE_BACKUP, SAVE_KEY, loadSave, parseSave } from "./save.ts";
+import { SAVE_BACKUP, SAVE_FORWARD_KEY, SAVE_KEY, SAVE_VERSION, WORLD_REVISION, loadSave, parseSave } from "./save.ts";
 import type { Beast } from "./types.ts";
 
 async function withGame(
@@ -408,6 +408,54 @@ test("importing an unreadable file changes nothing", async () => {
     assert.equal(slots.get(SAVE_KEY), good);
   });
 });
+
+test("importing a future-world file leaves the current run and stored saves untouched", async () => {
+  await withGame((game) => {
+    const slots = new Map<string, string>();
+    (globalThis as Record<string, unknown>).localStorage = {
+      getItem: (key: string) => slots.get(key) ?? null,
+      setItem: (key: string, value: string) => slots.set(key, value),
+      removeItem: (key: string) => slots.delete(key),
+    };
+    game.mode = "world";
+    game.gold = 200;
+    assert.equal(game.persist(), true);
+    const before = new Map(slots);
+    const current = game.currentSave();
+    assert.equal(game.importGame(JSON.stringify({ ...current, worldRevision: WORLD_REVISION + 1, gold: 999 })), false);
+    assert.deepEqual(game.currentSave(), current);
+    assert.deepEqual(slots, before);
+    assert.match(game.getSnapshot().dialog?.text ?? "", /nothing was changed/i);
+  });
+});
+
+for (const slot of [SAVE_KEY, SAVE_BACKUP]) {
+  test(`importing a compatible save aborts if the forward record in ${slot} cannot be archived`, async () => {
+    await withGame((game) => {
+      game.mode = "world";
+      game.gold = 200;
+      const current = game.currentSave();
+      const slots = new Map([
+        [SAVE_KEY, JSON.stringify(current)],
+        [SAVE_BACKUP, JSON.stringify(current)],
+      ]);
+      slots.set(slot, JSON.stringify({ ...current, version: SAVE_VERSION + 1 }));
+      const before = new Map(slots);
+      (globalThis as Record<string, unknown>).localStorage = {
+        getItem: (key: string) => slots.get(key) ?? null,
+        setItem: (key: string, value: string) => {
+          if (key === SAVE_FORWARD_KEY) throw new Error("archive quota exceeded");
+          slots.set(key, value);
+        },
+        removeItem: (key: string) => slots.delete(key),
+      };
+      assert.equal(game.importGame(JSON.stringify({ ...current, gold: 999 })), false);
+      assert.deepEqual(game.currentSave(), current);
+      assert.deepEqual(slots, before);
+      assert.match(game.getSnapshot().dialog?.text ?? "", /last save is untouched/i);
+    });
+  });
+}
 
 test("importing a valid file replaces the run and keeps the old save as backup", async () => {
   await withGame((game) => {

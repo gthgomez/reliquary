@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { makeBeast } from "./content.ts";
-import { LEGACY_SAVE_KEY, SAVE_BACKUP, SAVE_FORWARD_KEY, SAVE_KEY, SAVE_VERSION, WORLD_REVISION, loadSave, parseSave, serializeSave, writeSave, type SaveStorage } from "./save.ts";
+import { LEGACY_SAVE_BACKUP, LEGACY_SAVE_KEY, LEGACY_V1_BACKUP, LEGACY_V1_KEY, SAVE_BACKUP, SAVE_FORWARD_KEY, SAVE_KEY, SAVE_VERSION, WORLD_REVISION, loadSave, parseSave, serializeSave, writeSave, type SaveStorage } from "./save.ts";
 import { MAPS } from "./maps.ts";
 import { isOccupied } from "./world/movement.ts";
 
@@ -204,3 +204,245 @@ test("same-revision saves on an impossible tile are still rejected", () => {
   const corrupt = { ...validSave(), worldRevision: WORLD_REVISION, x: blocked.x, y: blocked.y };
   assert.equal(parseSave(JSON.stringify(corrupt)), null);
 });
+
+for (const kind of ["format", "world"] as const) {
+  const forwardSave = () => ({
+    ...validSave(),
+    ...(kind === "format" ? { version: SAVE_VERSION + 1 } : { worldRevision: WORLD_REVISION + 1 }),
+  });
+
+  for (const fault of ["write throws", "write is dropped", "read throws"] as const) {
+    test(`a forward ${kind} save survives when its archive ${fault}`, () => {
+      const store = new MemoryStorage();
+      store.data.set(SAVE_KEY, JSON.stringify(forwardSave()));
+      store.data.set(SAVE_BACKUP, JSON.stringify(validSave()));
+      store.data.set(LEGACY_SAVE_KEY, "legacy record must survive refusal");
+      const before = new Map(store.data);
+      const failing: SaveStorage = {
+        getItem(key) {
+          if (key === SAVE_FORWARD_KEY && fault === "read throws") throw new Error("archive read failed");
+          return store.getItem(key);
+        },
+        setItem(key, value) {
+          if (key === SAVE_FORWARD_KEY) {
+            if (fault === "write throws") throw new Error("archive quota exceeded");
+            if (fault === "write is dropped") return;
+          }
+          store.setItem(key, value);
+        },
+        removeItem: (key) => store.removeItem(key),
+      };
+      assert.equal(writeSave(validSave(), failing), false);
+      assert.deepEqual(store.data, before, "primary, backup and legacy records remain byte-for-byte intact");
+    });
+  }
+
+  test(`a forward ${kind} save does not displace a different forward archive`, () => {
+    const store = new MemoryStorage();
+    store.data.set(SAVE_KEY, JSON.stringify(forwardSave()));
+    store.data.set(SAVE_FORWARD_KEY, "a distinct newer-build record");
+    store.data.set(SAVE_BACKUP, JSON.stringify(validSave()));
+    const before = new Map(store.data);
+    assert.equal(writeSave(validSave(), store), false);
+    assert.deepEqual(store.data, before);
+  });
+
+  test(`a verified forward ${kind} archive permits a safe primary replacement`, () => {
+    const store = new MemoryStorage();
+    const forward = JSON.stringify(forwardSave());
+    const backup = JSON.stringify(validSave());
+    store.data.set(SAVE_KEY, forward);
+    store.data.set(SAVE_BACKUP, backup);
+    assert.equal(writeSave({ ...validSave(), gold: 77 }, store), true);
+    assert.equal(store.data.get(SAVE_FORWARD_KEY), forward);
+    assert.equal(store.data.get(SAVE_BACKUP), backup, "an unreadable forward primary never rotates over a good backup");
+    assert.equal(loadSave(store)?.gold, 77);
+  });
+
+  for (const fault of ["write throws", "write is dropped", "read throws"] as const) {
+    test(`a forward ${kind} backup survives when its archive ${fault}`, () => {
+      const store = new MemoryStorage();
+      store.data.set(SAVE_KEY, JSON.stringify(validSave()));
+      store.data.set(SAVE_BACKUP, JSON.stringify(forwardSave()));
+      store.data.set(LEGACY_SAVE_KEY, "legacy record must survive refusal");
+      const before = new Map(store.data);
+      const failing: SaveStorage = {
+        getItem(key) {
+          if (key === SAVE_FORWARD_KEY && fault === "read throws") throw new Error("archive read failed");
+          return store.getItem(key);
+        },
+        setItem(key, value) {
+          if (key === SAVE_FORWARD_KEY) {
+            if (fault === "write throws") throw new Error("archive quota exceeded");
+            if (fault === "write is dropped") return;
+          }
+          store.setItem(key, value);
+        },
+        removeItem: (key) => store.removeItem(key),
+      };
+      assert.equal(writeSave({ ...validSave(), gold: 77 }, failing), false);
+      assert.deepEqual(store.data, before, "backup archival must succeed before primary replacement or legacy cleanup");
+    });
+  }
+
+  test(`a forward ${kind} backup does not displace a different forward archive`, () => {
+    const store = new MemoryStorage();
+    store.data.set(SAVE_KEY, JSON.stringify(validSave()));
+    store.data.set(SAVE_BACKUP, JSON.stringify(forwardSave()));
+    store.data.set(SAVE_FORWARD_KEY, "a distinct newer-build record");
+    const before = new Map(store.data);
+    assert.equal(writeSave({ ...validSave(), gold: 77 }, store), false);
+    assert.deepEqual(store.data, before);
+  });
+
+  test(`a forward ${kind} backup is archived before ordinary rotation`, () => {
+    const store = new MemoryStorage();
+    const primary = JSON.stringify(validSave());
+    const forward = JSON.stringify(forwardSave());
+    store.data.set(SAVE_KEY, primary);
+    store.data.set(SAVE_BACKUP, forward);
+    assert.equal(writeSave({ ...validSave(), gold: 77 }, store), true);
+    assert.equal(store.data.get(SAVE_FORWARD_KEY), forward);
+    assert.equal(store.data.get(SAVE_BACKUP), primary);
+    assert.equal(loadSave(store)?.gold, 77);
+  });
+
+  for (const sameRecord of [false, true]) {
+    test(`a second save ${sameRecord ? "reuses" : "does not replace"} the quarantined ${kind} primary when rotating a ${sameRecord ? "matching" : "distinct"} forward backup`, () => {
+      const store = new MemoryStorage();
+      const newer = forwardSave();
+      const primary = JSON.stringify(newer);
+      const backup = JSON.stringify(sameRecord ? newer : { ...newer, gold: 999 });
+      store.data.set(SAVE_KEY, primary);
+      store.data.set(SAVE_BACKUP, backup);
+      assert.equal(writeSave({ ...validSave(), gold: 77 }, store), true);
+      assert.equal(store.data.get(SAVE_FORWARD_KEY), primary);
+      assert.equal(store.data.get(SAVE_BACKUP), backup);
+      const beforeSecondSave = new Map(store.data);
+      store.failOn = SAVE_FORWARD_KEY;
+      assert.equal(writeSave({ ...validSave(), gold: 88 }, store), sameRecord);
+      assert.equal(store.data.get(SAVE_FORWARD_KEY), primary);
+      if (sameRecord) {
+        assert.equal(parseSave(store.data.get(SAVE_BACKUP)!)?.gold, 77);
+        assert.equal(loadSave(store)?.gold, 88);
+      } else {
+        assert.deepEqual(store.data, beforeSecondSave);
+      }
+    });
+  }
+
+  for (const legacyKey of [LEGACY_SAVE_KEY, LEGACY_SAVE_BACKUP, LEGACY_V1_KEY, LEGACY_V1_BACKUP]) {
+    test(`cleanup preserves a forward ${kind} record in ${legacyKey} without replacing a distinct archive`, () => {
+      const store = new MemoryStorage();
+      const forward = JSON.stringify(forwardSave());
+      const ordinaryKey = legacyKey === LEGACY_SAVE_KEY ? LEGACY_V1_KEY : LEGACY_SAVE_KEY;
+      const { worldRevision: _world, ...legacy } = validSave();
+      store.data.set(SAVE_KEY, JSON.stringify(validSave()));
+      store.data.set(legacyKey, forward);
+      store.data.set(ordinaryKey, JSON.stringify({ ...legacy, version: ordinaryKey === LEGACY_V1_KEY ? 1 : 2 }));
+      store.data.set(SAVE_FORWARD_KEY, "a distinct newer-build record");
+      assert.equal(writeSave({ ...validSave(), gold: 77 }, store), true);
+      assert.equal(store.data.get(legacyKey), forward, "unknown forward legacy data stays intact in its original slot");
+      assert.equal(store.data.get(SAVE_FORWARD_KEY), "a distinct newer-build record");
+      assert.equal(store.data.has(ordinaryKey), false, "ordinary legacy cleanup still follows the durable primary write");
+      assert.equal(loadSave(store)?.gold, 77);
+    });
+  }
+
+  test(`an identical forward ${kind} archive can be reused when another archive write would fail`, () => {
+    const store = new MemoryStorage();
+    const forward = JSON.stringify(forwardSave());
+    store.data.set(SAVE_KEY, forward);
+    store.data.set(SAVE_FORWARD_KEY, forward);
+    store.failOn = SAVE_FORWARD_KEY;
+    assert.equal(writeSave({ ...validSave(), gold: 77 }, store), true);
+    assert.equal(store.data.get(SAVE_FORWARD_KEY), forward);
+    assert.equal(loadSave(store)?.gold, 77);
+  });
+}
+
+test("future world revisions are rejected instead of being relocated or downgraded", () => {
+  for (const position of [{ x: 12, y: 14 }, occupiedTileOnElderhall()]) {
+    const future = { ...validSave(), ...position, worldRevision: WORLD_REVISION + 1 };
+    assert.equal(parseSave(JSON.stringify(future)), null);
+  }
+});
+
+for (const field of ["version", "worldRevision"] as const) {
+  test(`serializing or writing a future ${field} refuses the downgrade without changing stored saves`, () => {
+    const store = new MemoryStorage();
+    assert.equal(writeSave(validSave(), store), true);
+    const before = new Map(store.data);
+    const future = { ...validSave(), [field]: field === "version" ? SAVE_VERSION + 1 : WORLD_REVISION + 1 };
+    const inputBefore = structuredClone(future);
+    assert.equal(serializeSave(future), null);
+    assert.equal(writeSave(future, store), false);
+    assert.deepEqual(store.data, before);
+    assert.deepEqual(future, inputBefore);
+  });
+}
+
+test("an unreadable backup blocks rotation before any saved record changes", () => {
+  const store = new MemoryStorage();
+  store.data.set(SAVE_KEY, JSON.stringify(validSave()));
+  store.data.set(SAVE_BACKUP, JSON.stringify({ ...validSave(), version: SAVE_VERSION + 1 }));
+  const before = new Map(store.data);
+  const failing: SaveStorage = {
+    getItem(key) {
+      if (key === SAVE_BACKUP) throw new Error("backup read failed");
+      return store.getItem(key);
+    },
+    setItem: (key, value) => store.setItem(key, value),
+    removeItem: (key) => store.removeItem(key),
+  };
+  assert.equal(writeSave({ ...validSave(), gold: 77 }, failing), false);
+  assert.deepEqual(store.data, before);
+});
+
+test("a future-world primary is left intact when loading a compatible backup", () => {
+  const store = new MemoryStorage();
+  store.data.set(SAVE_KEY, JSON.stringify({ ...validSave(), worldRevision: WORLD_REVISION + 1, gold: 999 }));
+  store.data.set(SAVE_BACKUP, JSON.stringify({ ...validSave(), gold: 77 }));
+  const before = new Map(store.data);
+  assert.equal(loadSave(store)?.gold, 77);
+  assert.deepEqual(store.data, before);
+});
+
+for (const legacyKey of [LEGACY_SAVE_KEY, LEGACY_SAVE_BACKUP, LEGACY_V1_KEY, LEGACY_V1_BACKUP]) {
+  test(`cleanup retains ${legacyKey} when its contents cannot be read safely`, () => {
+    const store = new MemoryStorage();
+    const forward = JSON.stringify({ ...validSave(), version: SAVE_VERSION + 1 });
+    store.data.set(SAVE_KEY, JSON.stringify(validSave()));
+    store.data.set(legacyKey, forward);
+    let reads = 0;
+    const failing: SaveStorage = {
+      getItem(key) {
+        if (key === legacyKey && ++reads > 1) throw new Error("cleanup read failed");
+        return store.getItem(key);
+      },
+      setItem: (key, value) => store.setItem(key, value),
+      removeItem: (key) => store.removeItem(key),
+    };
+    assert.equal(writeSave({ ...validSave(), gold: 77 }, failing), true);
+    assert.equal(store.data.get(legacyKey), forward);
+    assert.equal(loadSave(store)?.gold, 77);
+  });
+}
+
+for (const version of [1, 2]) {
+  test(`future-world metadata remains protected even when its format claims legacy version ${version}`, () => {
+    const store = new MemoryStorage();
+    const backup = JSON.stringify({ ...validSave(), version, worldRevision: WORLD_REVISION + 1 });
+    store.data.set(SAVE_KEY, JSON.stringify(validSave()));
+    store.data.set(SAVE_BACKUP, backup);
+    const legacyRecords = [LEGACY_SAVE_KEY, LEGACY_SAVE_BACKUP, LEGACY_V1_KEY, LEGACY_V1_BACKUP].map((key, index) => {
+      const raw = JSON.stringify({ ...validSave(), version, worldRevision: WORLD_REVISION + 1, gold: 500 + index });
+      store.data.set(key, raw);
+      return [key, raw] as const;
+    });
+    assert.equal(writeSave({ ...validSave(), gold: 77 }, store), true);
+    assert.equal(store.data.get(SAVE_FORWARD_KEY), backup);
+    for (const [key, raw] of legacyRecords) assert.equal(store.data.get(key), raw);
+    assert.equal(loadSave(store)?.gold, 77);
+  });
+}
