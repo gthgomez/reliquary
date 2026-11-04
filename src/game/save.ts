@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { currentStats, ITEMS, SKILLS, SPECIES } from "./content.ts";
+import { currentStats, ITEMS, MAX_LEVEL, SKILLS, SPECIES } from "./content.ts";
 import { MAPS } from "./maps.ts";
 import type { GameSave } from "./types.ts";
 import { isOccupied } from "./world/movement.ts";
@@ -9,6 +9,7 @@ export const SAVE_VERSION = 3;
 export const WORLD_REVISION = 1;
 export const SAVE_KEY = "reliquary.save.v3";
 export const SAVE_BACKUP = "reliquary.save.v3.bak";
+export const SAVE_FORWARD_KEY = "reliquary.save.forward";
 export const LEGACY_SAVE_KEY = "reliquary.save.v2";
 export const LEGACY_SAVE_BACKUP = "reliquary.save.v2.bak";
 export const LEGACY_V1_KEY = "reliquary.save.v1";
@@ -29,7 +30,7 @@ const statSchema = z.object({
 
 const beastSchema = z.object({
   uid: z.string().min(1), speciesId: z.string().min(1), nickname: z.string().min(1).max(40),
-  level: z.number().int().min(1).max(40), exp: z.number().finite().nonnegative(),
+  level: z.number().int().min(1).max(MAX_LEVEL), exp: z.number().finite().nonnegative(),
   hp: z.number().finite().nonnegative(), mp: z.number().finite().nonnegative(),
   ivs: statSchema, temperament: z.enum(["fierce", "warding", "keen", "sage", "stalwart", "lucid", "wild", "calm"]),
   skills: z.array(z.string().min(1)).max(4),
@@ -50,7 +51,7 @@ const saveFields = {
 export const GameSaveV1Schema = z.object({ version: z.literal(1), ...saveFields }).strict();
 export const GameSaveV2Schema = z.object({ version: z.literal(2), ...saveFields }).strict();
 export const GameSaveSchema = z
-  .object({ version: z.literal(SAVE_VERSION), worldRevision: z.literal(WORLD_REVISION), ...saveFields })
+  .object({ version: z.literal(SAVE_VERSION), worldRevision: z.number().int(), ...saveFields })
   .strict();
 
 function browserStorage(): SaveStorage | null {
@@ -73,13 +74,23 @@ function validateBeasts(save: Omit<GameSave, "version">): boolean {
   return true;
 }
 
-function validateSemantics(save: GameSave, options: { migratePosition?: boolean }): GameSave | null {
+/**
+ * How to treat the save's position during validation:
+ * - "none": the coordinate must still be standable (same-revision corruption guard).
+ * - "legacy": v1/v2 coordinates are untrusted — reject walls outright, then relocate.
+ * - "relocated": the coordinate was valid when the save was written against an
+ *   older world; trust it and let resolveSafeSpawn move it if the world moved.
+ */
+function validateSemantics(save: GameSave, options: { migrate?: "none" | "legacy" | "relocated" }): GameSave | null {
   const map = MAPS[save.mapId];
   if (!map) return null;
   if (!validateBeasts(save)) return null;
   let { x, y } = save;
-  if (options.migratePosition) {
+  const migrate = options.migrate ?? "none";
+  if (migrate === "legacy") {
     if (!isLegacyCoordinateValid(map, x, y)) return null;
+    ({ x, y } = resolveSafeSpawn(map, { x, y }, save.flags));
+  } else if (migrate === "relocated") {
     ({ x, y } = resolveSafeSpawn(map, { x, y }, save.flags));
   } else if (isOccupied(map, save.flags, x, y)) {
     return null;
@@ -93,19 +104,22 @@ function migrateParsed(value: unknown): GameSave | null {
   if (version === SAVE_VERSION) {
     const parsed = GameSaveSchema.safeParse(value);
     if (!parsed.success) return null;
-    return validateSemantics(parsed.data as GameSave, { migratePosition: false });
+    // A save written against an older world may stand where tiles have since
+    // solidified: relocate it like the legacy paths instead of discarding it.
+    const worldChanged = parsed.data.worldRevision !== WORLD_REVISION;
+    return validateSemantics(parsed.data as GameSave, { migrate: worldChanged ? "relocated" : "none" });
   }
   if (version === 2) {
     const parsed = GameSaveV2Schema.safeParse(value);
     if (!parsed.success) return null;
     const draft = { ...parsed.data, version: SAVE_VERSION, worldRevision: WORLD_REVISION } as GameSave;
-    return validateSemantics(draft, { migratePosition: true });
+    return validateSemantics(draft, { migrate: "legacy" });
   }
   if (version === 1) {
     const parsed = GameSaveV1Schema.safeParse(value);
     if (!parsed.success) return null;
     const draft = { ...parsed.data, version: SAVE_VERSION, worldRevision: WORLD_REVISION } as GameSave;
-    return validateSemantics(draft, { migratePosition: true });
+    return validateSemantics(draft, { migrate: "legacy" });
   }
   return null;
 }
@@ -121,7 +135,7 @@ export function cloneSave(save: GameSave): GameSave {
 export function serializeSave(save: GameSave): string | null {
   const normalized = { ...save, version: SAVE_VERSION, worldRevision: WORLD_REVISION } as GameSave;
   if (!GameSaveSchema.safeParse(normalized).success) return null;
-  const validated = validateSemantics(normalized, { migratePosition: false });
+  const validated = validateSemantics(normalized, { migrate: "none" });
   if (!validated) return null;
   return JSON.stringify(validated);
 }
@@ -141,6 +155,23 @@ export function loadSave(source: SaveStorage | null = browserStorage()): GameSav
   return null;
 }
 
+/**
+ * Preserve a save written by a NEWER build before an older build overwrites
+ * it: the primary slot would otherwise be destroyed by a version this build
+ * cannot even parse. Best-effort — under quota the quarantine may fail.
+ */
+function quarantineForwardSave(target: SaveStorage, previous: string | null): void {
+  if (previous === null) return;
+  try {
+    const parsed = JSON.parse(previous) as { version?: unknown } | null;
+    if (parsed && typeof parsed.version === "number" && parsed.version > SAVE_VERSION) {
+      target.setItem(SAVE_FORWARD_KEY, previous);
+    }
+  } catch {
+    // An unreadable primary is not a forward save; nothing to preserve.
+  }
+}
+
 export function writeSave(save: GameSave, target: SaveStorage | null = browserStorage()): boolean {
   if (!target) return false;
   const text = serializeSave(save);
@@ -153,10 +184,14 @@ export function writeSave(save: GameSave, target: SaveStorage | null = browserSt
       || target.getItem(LEGACY_SAVE_BACKUP) !== null
       || target.getItem(LEGACY_V1_KEY) !== null
       || target.getItem(LEGACY_V1_BACKUP) !== null;
-    if (previous !== null && parseSave(previous) !== null) {
-      target.setItem(SAVE_BACKUP, previous);
-    }
+    quarantineForwardSave(target, previous);
+    // Primary first: a failure here must leave every existing slot untouched.
     target.setItem(SAVE_KEY, text);
+    // Backup rotation is best-effort — under quota a failed backup must not
+    // undo a durable primary write.
+    if (previous !== null && parseSave(previous) !== null) {
+      try { target.setItem(SAVE_BACKUP, previous); } catch { /* primary is durable */ }
+    }
     if (hadLegacySlots) {
       for (const key of [LEGACY_SAVE_KEY, LEGACY_SAVE_BACKUP, LEGACY_V1_KEY, LEGACY_V1_BACKUP]) {
         try { target.removeItem(key); } catch { /* keep going: primary is durable */ }
@@ -174,7 +209,7 @@ export function hasSave(source: SaveStorage | null = browserStorage()): boolean 
 
 export function clearSave(target: SaveStorage | null = browserStorage()): void {
   if (!target) return;
-  for (const key of [SAVE_KEY, SAVE_BACKUP, LEGACY_SAVE_KEY, LEGACY_SAVE_BACKUP, LEGACY_V1_KEY, LEGACY_V1_BACKUP]) {
+  for (const key of [SAVE_KEY, SAVE_BACKUP, SAVE_FORWARD_KEY, LEGACY_SAVE_KEY, LEGACY_SAVE_BACKUP, LEGACY_V1_KEY, LEGACY_V1_BACKUP]) {
     try { target.removeItem(key); } catch { /* storage unavailable */ }
   }
 }

@@ -1,7 +1,21 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { makeBeast } from "./content.ts";
-import { LEGACY_SAVE_KEY, SAVE_BACKUP, SAVE_KEY, SAVE_VERSION, WORLD_REVISION, loadSave, parseSave, serializeSave, writeSave, type SaveStorage } from "./save.ts";
+import { LEGACY_SAVE_KEY, SAVE_BACKUP, SAVE_FORWARD_KEY, SAVE_KEY, SAVE_VERSION, WORLD_REVISION, loadSave, parseSave, serializeSave, writeSave, type SaveStorage } from "./save.ts";
+import { MAPS } from "./maps.ts";
+import { isOccupied } from "./world/movement.ts";
+
+/** The first tile on elderhall the player cannot stand on (object or OOB). */
+function occupiedTileOnElderhall(): { x: number; y: number } {
+  const map = MAPS.elderhall;
+  for (let y = 0; y < map.ground.length; y += 1) {
+    for (let x = 0; x < (map.ground[y]?.length ?? 0); x += 1) {
+      if (isOccupied(map, {}, x, y)) return { x, y };
+    }
+  }
+  // Out of bounds also counts as occupied for every code path under test.
+  return { x: -1, y: -1 };
+}
 import type { GameSave } from "./types.ts";
 
 class MemoryStorage implements SaveStorage {
@@ -153,12 +167,40 @@ test("legacy keys are removed only after a validated new save is durable", () =>
   assert.equal(store.data.has(LEGACY_SAVE_KEY), false);
 });
 
-test("a failed backup write preserves the last-known-good primary", () => {
+test("a failed backup write still leaves the new primary durable", () => {
   const store = new MemoryStorage();
   const original = validSave();
   assert.equal(writeSave(original, store), true);
   store.failOn = SAVE_BACKUP;
-  assert.equal(writeSave({ ...original, gold: 999 }, store), false);
-  assert.equal(loadSave(store)?.gold, original.gold);
+  // Backup rotation is best-effort: under quota the primary must survive.
+  assert.equal(writeSave({ ...original, gold: 999 }, store), true);
+  assert.equal(loadSave(store)?.gold, 999);
+  assert.equal(store.data.get(SAVE_BACKUP) ?? null, null);
   assert.equal(store.data.has(LEGACY_SAVE_KEY), false);
+});
+
+test("a save from a newer build is quarantined, not silently overwritten", () => {
+  const store = new MemoryStorage();
+  const forward = { ...validSave(), version: SAVE_VERSION + 1 };
+  store.data.set(SAVE_KEY, JSON.stringify(forward));
+  assert.equal(parseSave(store.data.get(SAVE_KEY)!), null); // this build cannot read it
+  assert.equal(writeSave(validSave(), store), true);
+  assert.equal(JSON.parse(store.data.get(SAVE_FORWARD_KEY)!).version, SAVE_VERSION + 1);
+});
+
+test("saves from an older world revision relocate instead of being discarded", () => {
+  const blocked = occupiedTileOnElderhall();
+  const stale = { ...validSave(), worldRevision: WORLD_REVISION - 1, x: blocked.x, y: blocked.y };
+  const loaded = parseSave(JSON.stringify(stale));
+  assert.notEqual(loaded, null);
+  assert.equal(loaded!.worldRevision, WORLD_REVISION);
+  // The unreachable coordinate moved somewhere reachable from spawn.
+  const ok = loaded!.x !== blocked.x || loaded!.y !== blocked.y;
+  assert.equal(ok, true);
+});
+
+test("same-revision saves on an impossible tile are still rejected", () => {
+  const blocked = occupiedTileOnElderhall();
+  const corrupt = { ...validSave(), worldRevision: WORLD_REVISION, x: blocked.x, y: blocked.y };
+  assert.equal(parseSave(JSON.stringify(corrupt)), null);
 });

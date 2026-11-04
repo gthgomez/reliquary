@@ -2,7 +2,7 @@
 
 ## Scope and evidence
 
-Audited fetched `origin/main` at `64e2a2466b6146bc2d2c8e9934294fa7a52170c1`. The performance branch starts there; gameplay branches are stacked separately on it. **OBSERVED:** the game is a React UI around a canvas engine, with 14 maps, 21 species, level-based starter evolutions, turn-based combat, local v2 saves and a four-creature party. The previous repository audit is historical, not proof that current behavior was exercised.
+Audited fetched `origin/main` at `64e2a2466b6146bc2d2c8e9934294fa7a52170c1`. The performance branch starts there; gameplay branches are stacked separately on it. **OBSERVED:** the game is a React UI around a canvas engine, with 14 maps, 21 species, level-based starter evolutions, turn-based combat, local v2 saves and a four-creature party. (Audit snapshot: current main has 17 maps and 28 species.) The previous repository audit is historical, not proof that current behavior was exercised.
 
 **VERIFIED:** The original focused tests reproduced stale toast display, false save success, accumulating audio listeners and forced-switch selection. Fixes have focused regression tests. The test journey opened the game, started a new save, advanced the introduction, walked in the house, saved, and used an existing diagnostic probe to reach two outdoor maps and a wild battle. Probe-assisted scenes are not evidence of natural progression or a complete playthrough.
 

@@ -17,7 +17,7 @@ keyboard/touch controls.
 
 **[Watch the full gameplay recording](docs/showcase/gameplay.mp4)** ·
 [Capture details and reproduction](docs/showcase/README.md) ·
-[Meet all 21 creatures](docs/showcase/CREATURES.md)
+[Meet the creatures (21 of 28 profiled)](docs/showcase/CREATURES.md)
 
 Actual local browser gameplay operated by AI through keyboard and on-screen
 buttons, starting from a fresh game. The silent recording follows Rowan out of
