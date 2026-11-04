@@ -31,6 +31,10 @@ jobs:
           cache: npm
       - name: Install pinned dependencies
         run: npm ci
+      # Script-level gates (assert-production-web-shell.test.mjs) launch a
+      # browser, so chromium must exist before test:platform runs.
+      - name: Install Chromium for browser gates
+        run: npx playwright install --with-deps chromium
       - name: Typecheck
         run: npm run typecheck
       - name: Vite browser-test flag regression
@@ -47,8 +51,6 @@ jobs:
         run: node --test --test-name-pattern="production web artifact|deploy build" scripts/assert-production-web-shell.test.mjs
       - name: Public web build
         run: npm run build:web
-      - name: Install Chromium for browser verification
-        run: npx playwright install --with-deps chromium
       - name: Production runtime gate
         run: npm run verify:web:runtime
       # test:pwa rewrites index.html, so verify the production artifact first.
@@ -75,6 +77,8 @@ jobs:
           cache: npm
       - name: Install pinned dependencies
         run: npm ci
+      - name: Build browser-test web bundle
+        run: node scripts/build-web-test.mjs
       - name: Run deep chapter journeys
         run: node scripts/journeys-ci.mjs
         env:
