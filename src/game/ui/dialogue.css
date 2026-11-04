@@ -126,11 +126,16 @@
   .game-root.is-dialog.has-dialog-touch .stage {
     padding: 0 88px 0 0;
   }
+  .game-root.classic-touch.is-dialog.has-touch.has-explore-touch .stage {
+    padding: 0 88px 0 132px;
+  }
   .game-root.is-dialog .touch-dialog-hint {
     display: none;
   }
   .game-root.is-dialog.has-dialog-touch .touch-dialog {
     justify-content: flex-end;
+  }
+  .game-root.is-dialog.has-touch .touch {
     top: env(safe-area-inset-top);
     right: env(safe-area-inset-right);
     bottom: env(safe-area-inset-bottom);
@@ -138,7 +143,7 @@
     height: auto;
     padding: 0 0.9rem;
   }
-  .game-root.is-dialog.has-dialog-touch .touch-dialog .ab {
+  .game-root.is-dialog.has-touch .touch .ab {
     flex-direction: column-reverse;
   }
   .dialog-scene-npc {
@@ -163,6 +168,13 @@
   .dialog-panel .dialog-text {
     font-size: 0.9rem;
     line-height: 1.4;
+  }
+}
+@media (orientation: landscape) and (max-height: 520px) and (max-width: 740px) {
+  /* Classic keeps its directional pad; give long prose the larger share of
+     the remaining scene instead of clipping it or reducing readable type. */
+  .game-root.classic-touch .dialog-scene-npc {
+    grid-template-columns: minmax(0, 30fr) minmax(0, 70fr);
   }
 }
 @media (prefers-reduced-motion: no-preference) {

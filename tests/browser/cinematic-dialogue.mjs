@@ -15,6 +15,8 @@ const viewports = [
   { width: 844, height: 390, mobile: true, safe: true },
   { width: 667, height: 375, mobile: true },
   { width: 568, height: 320, mobile: true },
+  { width: 568, height: 320, mobile: true, classic: true },
+  { width: 844, height: 390, mobile: true, classic: true, safe: true },
 ];
 const { server, baseUrl } = await startStaticServer(0);
 
@@ -147,7 +149,7 @@ async function checkLayout(page, label, shot = false) {
 
 try {
   for (const v of viewports) {
-    const prefix = `${v.width}x${v.height}${v.classic ? "-classic-reduced" : ""}${v.safe ? "-safe-area" : ""}`;
+    const prefix = `${v.width}x${v.height}${v.classic ? "-classic" : ""}${v.reduced ? "-reduced" : ""}${v.safe ? "-safe-area" : ""}`;
     await withBrowser(
       async (page, context) => {
         if (v.safe) {
@@ -175,7 +177,7 @@ try {
         const status = await page.locator(".app-status").textContent();
 
         await speak(page, "elderhall", 7, 10);
-        const maren = await checkLayout(page, `${prefix}-maren`, !v.classic);
+        const maren = await checkLayout(page, `${prefix}-maren`, true);
         assert.equal(maren.portraitKey, "elder-maren");
         assert.equal(maren.nameContent, "Elder Maren");
         if (v.reduced)
@@ -221,7 +223,7 @@ try {
         await speak(page, "thornkeep", 11, 7);
         assert.equal(await page.locator(".dialog").getAttribute("data-portrait"), "warden-cael");
         await page.locator(".dialog").click();
-        const cael = await checkLayout(page, `${prefix}-cael-long`, !v.classic);
+        const cael = await checkLayout(page, `${prefix}-cael-long`, true);
         assert.match(
           cael.textContent,
           /Your beast has weathered.*Iron. Chapel. Drake/,

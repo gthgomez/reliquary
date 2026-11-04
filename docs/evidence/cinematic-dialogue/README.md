@@ -31,6 +31,8 @@ yields for NPC conversations; AppStatus stays mounted and yields for all dialogu
 Everything returns on close. Landscape A/B controls use the safe side gutter.
 The default conversation layout releases the unused left D-pad gutter, so even
 568×320 screens retain enough width for long speech without shrinking the font.
+Classic touch retains its D-pad in the left gutter, removes its redundant bottom
+reservation in landscape, and gives prose a larger share on small screens.
 Entrance motion obeys reduced-motion; there is no delayed interactive exit.
 
 The alternative of copying A's absolute positions would retain its phone text
@@ -104,7 +106,7 @@ The lockfile and dependency versions are unchanged.
 | `npm run verify:pwa` | Exit 0 |
 | `npm run test:pwa` | Exit 0; 5 tests passed |
 | `npm run test:browser -- --suite=all` | Exit 0; all 11 browser files plus renderer overlap check passed |
-| `node tests/browser/cinematic-dialogue.mjs` | Exit 0; expanded suite measured 80 dialogue states across 8 configurations |
+| `node tests/browser/cinematic-dialogue.mjs` | Exit 0; expanded suite measured 100 dialogue states across 10 configurations, including classic landscape and safe areas |
 | `node --test scripts/vite-browser-test-flag.test.mjs` | Exit 0; 6 tests passed |
 | `node --test --test-name-pattern="production web artifact\|deploy build" scripts/assert-production-web-shell.test.mjs` | Exit 0; 2 tests passed |
 
