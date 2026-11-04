@@ -69,6 +69,10 @@ export function validateContent(tables: ContentTables = { ELEMENTS, SPECIES, SKI
     }
     if (def.onceFlag && typeof def.onceFlag !== "string") errors.push(`encounter ${encId}: invalid once flag`);
   }
+  for (const [id, element] of Object.entries(elements)) {
+    const clash = element.strong.filter((target) => element.weak.includes(target));
+    if (clash.length) errors.push(`element ${id}: ${clash.join(", ")} listed as both strong and weak (weak is unreachable)`);
+  }
   errors.push(...validateInteractions(mapsTable));
   return errors;
 }

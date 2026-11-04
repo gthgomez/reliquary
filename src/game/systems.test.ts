@@ -3,7 +3,7 @@ import { test } from "node:test";
 import { ITEMS, SKILLS, SPECIES, currentStats, expToNext, makeBeast, typeMod } from "./content.ts";
 import { sequenceRandom } from "./rng.ts";
 import { captureChance, captureSucceeds, storeCapturedBeast } from "./systems/capture.ts";
-import { accuracySucceeds, healBeast, playerActsFirst, resolveElementalDamage, spendSkillMp, statusSucceeds } from "./systems/combat.ts";
+import { accuracySucceeds, applyCombatContextModifiers, healBeast, playerActsFirst, resolveElementalDamage, spendSkillMp, statusSucceeds } from "./systems/combat.ts";
 import { purchaseItem, sellItem } from "./systems/economy.ts";
 import { awardExperience } from "./systems/progression.ts";
 import { applyStatus, tickStatus } from "./systems/status.ts";
@@ -96,6 +96,24 @@ test("a bound beast acts last even against the slowest possible foe", () => {
   applyStatus(slow, "bind");
   assert.equal(playerActsFirst(fast, slow, sequenceRandom([.1, .9])), false);
   assert.equal(playerActsFirst(fast, slow, sequenceRandom([.9, .1])), true);
+});
+
+test("battle-context modifiers: ward shrugs harm, bless raises it", () => {
+  const attacker = beast("emberkit", 20);
+  const defender = beast("pebblet", 20);
+  const skill = SKILLS.slash;
+  const plain = resolveElementalDamage(attacker, defender, skill, SPECIES.emberkit.elements, SPECIES.pebblet.elements, sequenceRandom([.99, .99, .99]));
+  assert.ok(plain.damage > 0);
+  applyStatus(defender, "ward");
+  const warded = applyCombatContextModifiers(plain.damage, attacker, defender);
+  assert.equal(warded, Math.floor(plain.damage * .7));
+  applyStatus(attacker, "bless");
+  const wardedAndBlessed = applyCombatContextModifiers(plain.damage, attacker, defender);
+  assert.equal(wardedAndBlessed, Math.floor(Math.floor(plain.damage * .7) * 1.15));
+  // The engine applies these after the canonical resolver — the pure
+  // resolver itself must not know about statuses.
+  const untouched = resolveElementalDamage(attacker, defender, skill, SPECIES.emberkit.elements, SPECIES.pebblet.elements, sequenceRandom([.99, .99, .99]));
+  assert.equal(untouched.damage, plain.damage);
 });
 
 test("world data is rectangular and every warp lands on a walkable tile", () => {

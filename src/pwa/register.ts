@@ -76,7 +76,9 @@ function tryApplyUpdate(): boolean {
   if (!updatePending) return false;
   const hidden = typeof document !== "undefined" && document.visibilityState === "hidden";
   const overdue = Date.now() - pendingSince > MAX_DEFER_MS;
-  const safe = !guard || guard.canReloadNow() || ((hidden || overdue) && guard.canForceReload());
+  // No guard means no flush callback exists (post-unmount) — deferring is
+  // always safer than reloading without one.
+  const safe = guard ? (guard.canReloadNow() || ((hidden || overdue) && guard.canForceReload())) : false;
   if (!safe || recentlyReloaded()) return false;
   try {
     guard?.beforeReload();

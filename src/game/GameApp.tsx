@@ -163,7 +163,9 @@ export function GameApp() {
     requestAnimationFrame(() => {
       menuButtonRef.current?.focus({ preventScroll: true });
     });
-  }, [uiModal, snap.menu, snap.mode]);
+  // cardMenu?.uid: a nested sheet swaps panels without changing menu/mode,
+  // so focus would fall to <body> between the unmount and the next Tab.
+  }, [uiModal, snap.menu, snap.mode, snap.cardMenu?.uid]);
 
   useEffect(() => {
     const stage = stageRef.current;
@@ -216,7 +218,10 @@ export function GameApp() {
             />
           ) : null}
           {/* HUD and toast share one top column so the toast always lands below the HUD. */}
-          <div className={`top-stack${uiModal ? " top-stack-dormant" : ""}`} ref={topStackRef}>
+          {/* inert (not just aria-hidden): a dormant HUD whose Menu button
+              stays tabbable is an ARIA violation and leans on the document
+              trap to keep focus out. React 19 supports boolean inert. */}
+          <div className={`top-stack${uiModal ? " top-stack-dormant" : ""}`} ref={topStackRef} inert={uiModal}>
             {showHudBar ? (
               <Hud
                 snap={snap}

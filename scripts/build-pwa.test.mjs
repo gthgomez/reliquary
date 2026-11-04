@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
-import { existsSync, readFileSync } from "node:fs";
+import { cpSync, existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
 import { PNG } from "pngjs";
@@ -65,8 +66,16 @@ test("generateWebShell writes index.html referencing bundles", () => {
     assert.ok(true, "skipped without build output");
     return;
   }
-  const path = generateWebShell(staticDir);
-  const html = readFileSync(path, "utf8");
-  assert.match(html, /index-.*\.js/);
-  assert.match(html, /manifest\.webmanifest/);
+  // Work in a temp copy: writing the real .vercel output would strip the
+  // vite-injected tags (description meta, module preload) from the built shell.
+  const scratch = mkdtempSync(join(tmpdir(), "web-shell-test-"));
+  cpSync(staticDir, scratch, { recursive: true });
+  try {
+    const path = generateWebShell(scratch);
+    const html = readFileSync(path, "utf8");
+    assert.match(html, /index-.*\.js/);
+    assert.match(html, /manifest\.webmanifest/);
+  } finally {
+    rmSync(scratch, { recursive: true, force: true });
+  }
 });

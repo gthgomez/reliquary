@@ -10,6 +10,7 @@ import {
   SKILLS,
   SPECIES,
   typeMod,
+	STARTING_GOLD,
 } from "./content.ts";
 import { MAPS } from "./maps.ts";
 import { resolveNpcPortrait, type PortraitKey } from "./portraits.ts";
@@ -24,10 +25,12 @@ import { pickInteractObject } from "./world/interaction.ts";
 import {
 	CHEST_LOOT,
 	NPC_DIALOGS,
+	WARDEN_TRIAL_TEAM,
 	SIGN_TEXTS,
 	SPECIAL_INTERACTIONS,
 	WARP_TABLE,
 	wardenPages,
+	wardenTeamLevels,
 	type SpecialInteraction,
 } from "./world/interactions.ts";
 import { bakeMapTerrain } from "./world/terrain.ts";
@@ -61,7 +64,7 @@ import {
 import { drawAtlasTile, paintTileAccent, tileAtlasQuadrant } from "./render/tile-surface.ts";
 import { paintWorldActorShadow } from "./render/world-actors.ts";
 import { captureChance, captureSucceeds, storeCapturedBeast } from "./systems/capture.ts";
-import { accuracySucceeds, healBeast, playerActsFirst, spendSkillMp, statusSucceeds } from "./systems/combat.ts";
+import { applyCombatContextModifiers, healBeast, playerActsFirst, resolveElementalDamage, spendSkillMp, statusSucceeds } from "./systems/combat.ts";
 import { purchaseItem, sellItem } from "./systems/economy.ts";
 import { awardExperience } from "./systems/progression.ts";
 import { moveToLead, renameCreature, transferBeast } from "./systems/party.ts";
@@ -147,7 +150,7 @@ export class ReliquaryGame {
 	toY = 0;
 	moveT = 0;
 	walkFrame = 0;
-	gold = 200;
+	gold = STARTING_GOLD;
 	playTime = 0;
 	party: Beast[] = [];
 	box: Beast[] = [];
@@ -531,7 +534,7 @@ export class ReliquaryGame {
 		this.px = this.tx * TILE;
 		this.py = this.ty * TILE;
 		this.dir = 0;
-		this.gold = 180;
+		this.gold = STARTING_GOLD;
 		this.party = [];
 		this.box = [];
 		this.inventory = {
@@ -1249,7 +1252,6 @@ export class ReliquaryGame {
 			animCue: null,
 			animElapsedMs: 0,
 			catchStone: null,
-			pendingXp: 0,
 			escaped: false,
 			canFlee: true,
 			canBind: true,
@@ -1276,6 +1278,7 @@ export class ReliquaryGame {
 	}
 	startEncounter(id: string): boolean {
 		if (this.mode !== "world" || this.battle) return false;
+		if (!this.party.some((beast) => beast.hp > 0)) return false;
 		const def = FIXED_ENCOUNTERS[id];
 		if (!def || def.mapId !== this.mapId) return false;
 		if (def.requiredFlags.some((flag) => !this.flags[flag])) return false;
@@ -1302,7 +1305,6 @@ export class ReliquaryGame {
 			animCue: null,
 			animElapsedMs: 0,
 			catchStone: null,
-			pendingXp: 0,
 			escaped: false,
 			canFlee: def.canFlee,
 			canBind: def.canBind,
@@ -1314,11 +1316,9 @@ export class ReliquaryGame {
 		return true;
 	}
 	private startWarden(): void {
-		const foes = [
-			makeBeast("ironnewt", 12, { random: this.random }),
-			makeBeast("chapelite", 13, { random: this.random }),
-			makeBeast("keepdrake", 15, { random: this.random })
-		];
+		const strongest = this.party.reduce((max, beast) => Math.max(max, beast.level), 0);
+		const levels = wardenTeamLevels(strongest);
+		const foes = WARDEN_TRIAL_TEAM.map((foe, i) => makeBeast(foe.speciesId, levels[i]!, { random: this.random }));
 		foes.forEach((f) => {
 			this.seen[f.speciesId] = true;
 		});
@@ -1338,7 +1338,6 @@ export class ReliquaryGame {
 			animCue: null,
 			animElapsedMs: 0,
 			catchStone: null,
-			pendingXp: 0,
 			escaped: false,
 			canFlee: false,
 			canBind: false,
@@ -1462,7 +1461,9 @@ export class ReliquaryGame {
 			this.emit();
 			return;
 		}
-		const chance = .4 + (me.spd - foe.spd) / 200;
+		// Mirror the capture cap: extreme speed gaps can never make fleeing
+		// certain or impossible.
+		const chance = Math.min(.95, Math.max(.05, .4 + (me.spd - foe.spd) / 200));
 		if (this.random() < chance) {
 			b.log = ["You break from the grass."];
 			b.escaped = true;
@@ -1550,12 +1551,14 @@ export class ReliquaryGame {
 	private useSkill(atk: Beast, def: Beast, foeSide: boolean, skill: Skill, logIt: boolean): BattleAnimCue | null {
 		const b = this.battle!;
 		const aS = currentStats(atk);
-		const dS = currentStats(def);
-		const sp = SPECIES[atk.speciesId];
 		const animSide: BattleAnimCue["attacker"] = foeSide ? "foe" : "player";
 		const maybeAnim = (hit: boolean): BattleAnimCue | null =>
 			logIt && shouldPlayBattleAnim(skill.id) ? { skillId: skill.id, attacker: animSide, hit } : null;
-		if (!accuracySucceeds(skill, atk, this.random)) {
+		// Resolve through the canonical combat rules (accuracy, heal/ward
+		// early-outs, base damage, STAB, type chart, crit, variance) so engine
+		// damage and the tested resolver can never drift.
+		const resolved = resolveElementalDamage(atk, def, skill, SPECIES[atk.speciesId].elements, SPECIES[def.speciesId].elements, this.random);
+		if (!resolved.hit) {
 			if (logIt) b.log = [`${atk.nickname}'s ${skill.name} misses.`];
 			sfxPlay.fail();
 			return maybeAnim(false);
@@ -1566,7 +1569,7 @@ export class ReliquaryGame {
 			sfxPlay.heal();
 			return null;
 		}
-		if (skill.kind === "ward" || skill.kind === "hex" && skill.power === 0) {
+		if (resolved.damage === 0) {
 			if (skill.status) {
 				const target = skill.kind === "ward" ? atk : def;
 				applyStatus(target, skill.status);
@@ -1575,27 +1578,18 @@ export class ReliquaryGame {
 			sfxPlay.menu();
 			return null;
 		}
-		const phys = skill.kind === "strike";
-		const atkStat = phys ? aS.atk : aS.mag;
-		const defStat = phys ? dS.def : dS.res;
-		let dmg = Math.floor((2 * atk.level / 5 + 2) * skill.power * atkStat / Math.max(1, defStat) / 50) + 2;
-		const stab = sp.elements.includes(skill.element) ? 1.25 : 1;
-		const tmod = typeMod(skill.element, SPECIES[def.speciesId].elements);
-		const crit = this.random() < .06 + aS.lck / 400;
-		dmg = Math.max(1, Math.floor(dmg * stab * tmod * (crit ? 1.6 : 1) * (.85 + this.random() * .15)));
-		if (def.status === "ward") dmg = Math.floor(dmg * .7);
-		if (atk.status === "bless") dmg = Math.floor(dmg * 1.15);
+		const dmg = applyCombatContextModifiers(resolved.damage, atk, def);
 		def.hp = Math.max(0, def.hp - dmg);
 		let line = `${atk.nickname} uses ${skill.name}! ${dmg} harm.`;
-		if (tmod > 1.2) line += " It bites deep.";
-		else if (tmod < .8) line += " It glances.";
-		if (crit) line += " A true cut.";
+		if (resolved.multiplier > 1.2) line += " It bites deep.";
+		else if (resolved.multiplier < .8) line += " It glances.";
+		if (resolved.critical) line += " A true cut.";
 		if (skill.status && statusSucceeds(skill.statusChance ?? 0, this.random) && def.hp > 0) {
 				applyStatus(def, skill.status);
 			line += ` ${def.nickname} is ${STATUS_ADJECTIVES[skill.status]}.`;
 		}
 		b.log = [line];
-		if (crit) sfxPlay.crit();
+		if (resolved.critical) sfxPlay.crit();
 		else sfxPlay.hit();
 		return maybeAnim(true);
 	}
@@ -1738,11 +1732,11 @@ export class ReliquaryGame {
 				this.emit();
 			} else {
 				const failedBind = `${sp.name} breaks the sigil.`;
-				this.battle.log = [failedBind];
+				if (this.battle) this.battle.log = [failedBind];
 				this.battle.phase = "command";
 				sfxPlay.fail();
 				this.afterPlayer();
-				this.battle.log = [`${failedBind} ${this.battle.log.join(" ")}`];
+				if (this.battle) this.battle.log = [`${failedBind} ${this.battle.log.join(" ")}`];
 				this.emit();
 			}
 		};

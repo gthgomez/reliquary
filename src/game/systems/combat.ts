@@ -41,6 +41,19 @@ export function resolveElementalDamage(
   return { hit: true, critical, damage, multiplier };
 }
 
+/**
+ * Battle-context damage modifiers the pure resolver does not know about:
+ * a warded defender shrugs some harm, a blessed attacker deals more.
+ * Kept here (not in resolveElementalDamage) so the resolver stays a pure
+ * stat/skill computation and status interactions stay unit-testable.
+ */
+export function applyCombatContextModifiers(damage: number, attacker: Beast, defender: Beast): number {
+  let out = damage;
+  if (defender.status === "ward") out = Math.floor(out * .7);
+  if (attacker.status === "bless") out = Math.floor(out * 1.15);
+  return out;
+}
+
 export function statusSucceeds(chance: number, random: RandomSource): boolean {
   return random() * 100 < chance;
 }
