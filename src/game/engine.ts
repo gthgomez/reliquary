@@ -61,7 +61,7 @@ import {
 import { drawAtlasTile, paintTileAccent, tileAtlasQuadrant } from "./render/tile-surface.ts";
 import { paintWorldActorShadow } from "./render/world-actors.ts";
 import { captureChance, captureSucceeds, storeCapturedBeast } from "./systems/capture.ts";
-import { accuracySucceeds, healBeast, playerActsFirst, spendSkillMp, statusSucceeds } from "./systems/combat.ts";
+import { applyCombatContextModifiers, healBeast, playerActsFirst, resolveElementalDamage, spendSkillMp, statusSucceeds } from "./systems/combat.ts";
 import { purchaseItem, sellItem } from "./systems/economy.ts";
 import { awardExperience } from "./systems/progression.ts";
 import { moveToLead, renameCreature, transferBeast } from "./systems/party.ts";
@@ -1550,12 +1550,14 @@ export class ReliquaryGame {
 	private useSkill(atk: Beast, def: Beast, foeSide: boolean, skill: Skill, logIt: boolean): BattleAnimCue | null {
 		const b = this.battle!;
 		const aS = currentStats(atk);
-		const dS = currentStats(def);
-		const sp = SPECIES[atk.speciesId];
 		const animSide: BattleAnimCue["attacker"] = foeSide ? "foe" : "player";
 		const maybeAnim = (hit: boolean): BattleAnimCue | null =>
 			logIt && shouldPlayBattleAnim(skill.id) ? { skillId: skill.id, attacker: animSide, hit } : null;
-		if (!accuracySucceeds(skill, atk, this.random)) {
+		// Resolve through the canonical combat rules (accuracy, heal/ward
+		// early-outs, base damage, STAB, type chart, crit, variance) so engine
+		// damage and the tested resolver can never drift.
+		const resolved = resolveElementalDamage(atk, def, skill, SPECIES[atk.speciesId].elements, SPECIES[def.speciesId].elements, this.random);
+		if (!resolved.hit) {
 			if (logIt) b.log = [`${atk.nickname}'s ${skill.name} misses.`];
 			sfxPlay.fail();
 			return maybeAnim(false);
@@ -1566,7 +1568,7 @@ export class ReliquaryGame {
 			sfxPlay.heal();
 			return null;
 		}
-		if (skill.kind === "ward" || skill.kind === "hex" && skill.power === 0) {
+		if (resolved.damage === 0) {
 			if (skill.status) {
 				const target = skill.kind === "ward" ? atk : def;
 				applyStatus(target, skill.status);
@@ -1575,27 +1577,18 @@ export class ReliquaryGame {
 			sfxPlay.menu();
 			return null;
 		}
-		const phys = skill.kind === "strike";
-		const atkStat = phys ? aS.atk : aS.mag;
-		const defStat = phys ? dS.def : dS.res;
-		let dmg = Math.floor((2 * atk.level / 5 + 2) * skill.power * atkStat / Math.max(1, defStat) / 50) + 2;
-		const stab = sp.elements.includes(skill.element) ? 1.25 : 1;
-		const tmod = typeMod(skill.element, SPECIES[def.speciesId].elements);
-		const crit = this.random() < .06 + aS.lck / 400;
-		dmg = Math.max(1, Math.floor(dmg * stab * tmod * (crit ? 1.6 : 1) * (.85 + this.random() * .15)));
-		if (def.status === "ward") dmg = Math.floor(dmg * .7);
-		if (atk.status === "bless") dmg = Math.floor(dmg * 1.15);
+		const dmg = applyCombatContextModifiers(resolved.damage, atk, def);
 		def.hp = Math.max(0, def.hp - dmg);
 		let line = `${atk.nickname} uses ${skill.name}! ${dmg} harm.`;
-		if (tmod > 1.2) line += " It bites deep.";
-		else if (tmod < .8) line += " It glances.";
-		if (crit) line += " A true cut.";
+		if (resolved.multiplier > 1.2) line += " It bites deep.";
+		else if (resolved.multiplier < .8) line += " It glances.";
+		if (resolved.critical) line += " A true cut.";
 		if (skill.status && statusSucceeds(skill.statusChance ?? 0, this.random) && def.hp > 0) {
 				applyStatus(def, skill.status);
 			line += ` ${def.nickname} is ${STATUS_ADJECTIVES[skill.status]}.`;
 		}
 		b.log = [line];
-		if (crit) sfxPlay.crit();
+		if (resolved.critical) sfxPlay.crit();
 		else sfxPlay.hit();
 		return maybeAnim(true);
 	}
