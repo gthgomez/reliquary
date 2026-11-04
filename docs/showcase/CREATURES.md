@@ -2,7 +2,8 @@
 
 [Back to Reliquary](../../README.md) · [Gameplay and capture notes](README.md)
 
-21 creatures from the current prototype. These are **existing shipped creature
+21 of the 28 creatures in the current prototype (PR #15 added seven more; this
+gallery predates them). These are **existing shipped creature
 artwork**, not gameplay screenshots or newly generated art. Names, epithets,
 elements and lore come directly from [the game content](../../src/game/content.ts).
 Some forms require progression; this gallery does not claim the opening demo
