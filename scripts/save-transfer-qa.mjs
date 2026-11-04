@@ -23,7 +23,7 @@ const check = (condition, message) => {
   if (!condition) report.failures.push(message);
 };
 
-const browser = await chromium.launch({ channel: "msedge", headless: true });
+const browser = await chromium.launch({ channel: process.env.RELIQUARY_QA_CHANNEL ?? "msedge", headless: true });
 report.browser = browser.version();
 try {
   const context = await browser.newContext({

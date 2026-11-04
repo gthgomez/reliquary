@@ -35,11 +35,42 @@ jobs:
         run: npm run typecheck
       - name: Lint
         run: npm run lint
-      - name: Gameplay and core tests
-        run: npm test
+      - name: Gameplay, core, and script tests
+        run: npm run test:platform
       - name: Validate game content
         run: npm run validate:content
       - name: Production build
         run: npm run build
       - name: Public web build and PWA gates
         run: npm run build:web && npm run test:pwa && npm run verify:pwa && npx playwright install chromium && npm run test:browser -- --suite=all
+
+  journeys:
+    name: Deep chapter journeys (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - name: Install pinned dependencies
+        run: npm ci
+      - name: Run deep chapter journeys
+        run: node scripts/journeys-ci.mjs
+        env:
+          RELIQUARY_QA_CHANNEL: ${{ matrix.os == 'ubuntu-latest' && 'chrome' || 'msedge' }}
+      - name: Upload journey evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: journey-evidence-${{ matrix.os }}
+          path: .qa-evidence
+          retention-days: 7
+          if-no-files-found: ignore
