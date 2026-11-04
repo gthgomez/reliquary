@@ -257,7 +257,10 @@ try {
         }
         if (rounds % 10 === 0) {
           const battleHud = await page.locator(".battle-ui").innerText().catch(() => "");
-          console.log(`[warden-trial] round ${rounds}: cmd=${cmd} cont=${cont} dialog=${dialog} hud=${battleHud.slice(0, 80).replace(/\s+/g, " ")}`);
+          const phase = await page.locator(".battle-controls").getAttribute("data-battle-phase").catch(() => "?");
+          const rowTexts = await page.locator(".battle-ui ul.cmd button").allInnerTexts().catch(() => []);
+          console.log(`[warden-trial] round ${rounds}: cmd=${cmd} cont=${cont} dialog=${dialog} phase=${phase} rows=${JSON.stringify(rowTexts)} hud=${battleHud.slice(0, 80).replace(/\s+/g, " ")}`);
+          if (rounds % 50 === 0) await page.screenshot({ path: join(output, `warden-trial-stuck-${rounds}.png`) });
         }
         // Forced-switch phase: member rows read "<name> <hp> hp"; command,
         // skill and item rows never do. Send in a beast that can still fight.
