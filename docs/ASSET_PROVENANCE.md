@@ -5,6 +5,27 @@ source-license file was present in the initial repository, and the repository
 has one initial commit. Unresolved entries are retained and flagged rather than
 deleted.
 
+## Cinematic dialogue synthesis (issue #31, November 2026)
+
+Seven standalone SVGs in `public/game/portraits/` share the game's moss, copper,
+parchment and ink palette. They contain no external resources or embedded scripts.
+
+| Files | Source and integration edits |
+|---|---|
+| `maren.svg`, `cael.svg` | Original hand-authored vector artwork from experiment A, PR #27, commit `7b4f428c0c6f540df659f975ccdd9f63181594ab`; retained geometry and colors. |
+| `guard.svg`, `traveler.svg`, `innkeep.svg`, `shopkeep.svg` | Original hand-authored vectors from experiment B, PR #26, commit `27ebd76d5d08d6ca9b6facd787f6f6a954f7c489`. Removed rectangular backgrounds/vignettes for the shared scene; connected collars/necks and adjusted guard/chandler head placement for large presentation. Generic role art, deliberately shared by same-role supporting NPCs. |
+| `patch.svg` | New original SVG geometry for this integration: goblin ears, green skin, patched cloak and coin clasp. Builds on C's goblin-specific identity/directional art idea (PR #29, `a8fdfa77ee7047c30054ae71981a0deebdfee601`), with B's restrained supporting-character palette; no C SVG framework copied. |
+
+DOCUMENTED: source PRs describe their SVGs as original in-repository agent-authored
+markup, without external art or image-generation services. OBSERVED: this
+integration reuses the committed SVG source above and authors Patch directly;
+it introduces no downloaded or franchise art. Experiment attribution per issue
+#31: A = DeepSeek Flash 4.1, B = GLM Flash 5.3, C = Ling 3.1 Flash (the latter
+corrects PR #29's body attribution; it does not affect runtime behavior).
+
+All seven files are included by the existing PWA public-asset precache. The
+canvas preload inventory and existing source-art provenance remain unchanged.
+
 | Path/category | Likely source | Transformation | Status/confidence | Action |
 |---|---|---|---|---|
 | `assets/sprites/**/raw-sheet*.png` (smaller intermediates still in tree: 5 `raw-sheet-clean.png` under 1 MB plus `assets/sprites/panel/raw-sheet.png`; the 23 full-resolution sheets over 1 MB were removed, see below) | Original-looking source sheets; AI/Grok involvement cannot be established | Source inputs for sprite processing scripts | Unclear / low | Record generator/source and retain proof of rights |

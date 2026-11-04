@@ -14,6 +14,7 @@ import type { ReliquaryGame } from "../engine";
 import { ROOT_MENU } from "../engine";
 import type { Beast, Snapshot } from "../types";
 import { OverlayPanel } from "./OverlayPanel";
+import { DialogScene } from "./DialogScene";
 import {
   leadActionHint,
   practiceActionHint,
@@ -158,13 +159,7 @@ export function Hud({
 
 export function DialogBox({ snap, onAdvance }: { snap: Snapshot; onAdvance: () => void }) {
   if (!snap.dialog) return null;
-  return (
-    <button type="button" className="dialog" onClick={onAdvance}>
-      {snap.dialog.speaker ? <span className="dialog-name">{snap.dialog.speaker}</span> : null}
-      <p className="dialog-text">{snap.dialog.text}</p>
-      <span className="dialog-next">{snap.dialog.last ? "Close" : "Next"}</span>
-    </button>
-  );
+  return <DialogScene dialog={snap.dialog} onAdvance={onAdvance} />;
 }
 
 export function MenuPanel({ game, snap }: { game: ReliquaryGame; snap: Snapshot }) {

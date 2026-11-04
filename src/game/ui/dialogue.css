@@ -1,0 +1,181 @@
+/* Dialogue lives inside the safe-area-aware game viewport. The touch row is
+   reserved by the existing stage layout, never overlaid on this composition. */
+.dialog-scene {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+}
+.dialog-scene .dialog {
+  pointer-events: auto;
+  padding-bottom: 0.8rem;
+}
+.dialog-scene .dialog-next {
+  position: static;
+  display: block;
+  margin-top: 0.5rem;
+  text-align: right;
+}
+.dialog-scene .dialog-text {
+  display: block;
+}
+.dialog-scene .dialog-name,
+.dialog-scene .dialog-next {
+  color: #68452f;
+}
+.dialog-scene .dialog:focus-visible {
+  outline: 2px solid var(--color-cream);
+  outline-offset: 3px;
+}
+.dialog-scene-npc {
+  display: grid;
+  grid-template-columns: minmax(0, 44fr) minmax(0, 56fr);
+  grid-template-rows: minmax(0, 1fr);
+  align-items: end;
+  gap: 1rem;
+  padding: 1.5rem;
+  background:
+    radial-gradient(ellipse at 28% 48%, transparent, #14110eb8 100%),
+    linear-gradient(to top, #14110eeb, #14110e20 85%);
+}
+.dialog-portrait {
+  height: 100%;
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+  align-items: end;
+  justify-content: center;
+  filter: drop-shadow(0 12px 24px #14110e80);
+}
+.dialog-portrait img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: bottom;
+}
+.dialog.dialog-panel {
+  position: relative;
+  inset: auto;
+  min-width: 0;
+  min-height: 0;
+  margin-bottom: 1rem;
+  padding: 1.15rem 1.25rem 0.8rem;
+  border: 1px solid var(--color-copper);
+  border-radius: 12px;
+  background: linear-gradient(135deg, #f0e3c9, var(--color-parchment));
+  box-shadow: 0 12px 40px #14110e80;
+}
+.dialog-nameplate {
+  display: block;
+}
+.dialog-panel .dialog-nameplate {
+  margin-bottom: 0.65rem;
+}
+.dialog-role {
+  display: block;
+  margin-bottom: 0.25rem;
+  color: #68452f;
+  font-family: var(--font-display);
+  font-size: 0.65rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.dialog-panel .dialog-name {
+  margin: 0;
+  font-size: 1.2rem;
+  letter-spacing: 0.035em;
+  color: var(--color-ink);
+}
+.dialog-panel .dialog-text {
+  font-size: 1.05rem;
+  line-height: 1.5;
+}
+/* Secondary chrome yields for a conversation, and returns immediately on
+   close. AppStatus stays mounted so offline/update state is never reset. */
+.game-root.is-dialog .app-status,
+.game-root.is-dialog-portrait .top-stack {
+  visibility: hidden;
+  pointer-events: none;
+}
+@media (max-width: 600px) and (orientation: portrait) {
+  .dialog-scene-npc {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr) auto;
+    gap: 0;
+    padding: 0.5rem;
+  }
+  .dialog-portrait {
+    overflow: hidden;
+  }
+  .dialog.dialog-panel {
+    margin: 0;
+    padding: 0.85rem 1rem 0.8rem;
+  }
+  .dialog-panel .dialog-name {
+    font-size: 1.05rem;
+  }
+  .dialog-panel .dialog-text {
+    font-size: 0.96rem;
+    line-height: 1.45;
+  }
+}
+@media (orientation: landscape) and (max-height: 520px) {
+  .game-root.is-dialog .touch-dialog-hint {
+    display: none;
+  }
+  .game-root.is-dialog.has-dialog-touch .touch-dialog {
+    justify-content: flex-end;
+    top: env(safe-area-inset-top);
+    right: env(safe-area-inset-right);
+    bottom: env(safe-area-inset-bottom);
+    left: env(safe-area-inset-left);
+    height: auto;
+    padding: 0 0.9rem;
+  }
+  .game-root.is-dialog.has-dialog-touch .touch-dialog .ab {
+    flex-direction: column-reverse;
+  }
+  .dialog-scene-npc {
+    grid-template-columns: minmax(0, 42fr) minmax(0, 58fr);
+    gap: 0.5rem;
+    padding: 0.5rem;
+  }
+  .dialog.dialog-panel {
+    margin: 0;
+    padding: 0.65rem 0.8rem;
+  }
+  .dialog-panel .dialog-nameplate {
+    margin-bottom: 0.4rem;
+  }
+  .dialog-panel .dialog-name {
+    font-size: 0.95rem;
+  }
+  .dialog-role {
+    font-size: 0.6rem;
+    letter-spacing: 0.06em;
+  }
+  .dialog-panel .dialog-text {
+    font-size: 0.9rem;
+    line-height: 1.4;
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .dialog-scene-npc {
+    animation: dialogue-appear 180ms ease-out;
+  }
+  .dialog-portrait {
+    animation: dialogue-arrive 240ms ease-out;
+  }
+}
+@keyframes dialogue-appear {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes dialogue-arrive {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
