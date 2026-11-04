@@ -202,6 +202,22 @@ export function knownTalkIds(): Set<string> {
 	return new Set(Object.keys(NPC_DIALOGS));
 }
 
+/**
+ * The Warden trial team, as the content promises it: a party below the
+ * advised level meets a lighter trio (the advisory "this goes lighter" is
+ * real), a prepared party meets the full 12/13/15 line.
+ */
+export const WARDEN_TRIAL_TEAM: { speciesId: string; level: number }[] = [
+  { speciesId: "ironnewt", level: 12 },
+  { speciesId: "chapelite", level: 13 },
+  { speciesId: "keepdrake", level: 15 },
+];
+
+export function wardenTeamLevels(strongestLevel: number): number[] {
+  const adjust = strongestLevel < 12 ? -2 : 0;
+  return WARDEN_TRIAL_TEAM.map((foe) => Math.max(1, foe.level + adjust));
+}
+
 /** Cael's advisory pages, kept here so the content stays in the content layer. */
 export function wardenPages(ctx: DialogContext): string[] {
 	const pages = ["Warden Cael. I keep Thornkeep's road."];

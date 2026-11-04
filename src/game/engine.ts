@@ -24,10 +24,12 @@ import { pickInteractObject } from "./world/interaction.ts";
 import {
 	CHEST_LOOT,
 	NPC_DIALOGS,
+	WARDEN_TRIAL_TEAM,
 	SIGN_TEXTS,
 	SPECIAL_INTERACTIONS,
 	WARP_TABLE,
 	wardenPages,
+	wardenTeamLevels,
 	type SpecialInteraction,
 } from "./world/interactions.ts";
 import { bakeMapTerrain } from "./world/terrain.ts";
@@ -1314,11 +1316,9 @@ export class ReliquaryGame {
 		return true;
 	}
 	private startWarden(): void {
-		const foes = [
-			makeBeast("ironnewt", 12, { random: this.random }),
-			makeBeast("chapelite", 13, { random: this.random }),
-			makeBeast("keepdrake", 15, { random: this.random })
-		];
+		const strongest = this.party.reduce((max, beast) => Math.max(max, beast.level), 0);
+		const levels = wardenTeamLevels(strongest);
+		const foes = WARDEN_TRIAL_TEAM.map((foe, i) => makeBeast(foe.speciesId, levels[i]!, { random: this.random }));
 		foes.forEach((f) => {
 			this.seen[f.speciesId] = true;
 		});
