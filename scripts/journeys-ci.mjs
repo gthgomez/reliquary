@@ -8,7 +8,7 @@
  * evidence directory and every failure fails the run — a silently skipped
  * journey would be exactly the regression net this script exists to be.
  */
-import { spawnSync } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { createServer } from "node:http";
 import { existsSync, mkdirSync, readFileSync } from "node:fs";
 import { dirname, join, extname } from "node:path";
@@ -32,19 +32,37 @@ const MIME = {
   ".webmanifest": "application/manifest+json",
 };
 
+/**
+ * Async spawn: the static server lives on this process's event loop, so a
+ * spawnSync here would block the loop and starve every journey request.
+ */
 function run(cmd, cmdArgs, env, timeoutMs) {
-  const result = spawnSync(cmd, cmdArgs, {
-    cwd: root,
-    stdio: "inherit",
-    timeout: timeoutMs,
-    killSignal: "SIGKILL",
-    env: { ...process.env, ...env },
+  return new Promise((resolve) => {
+    const child = spawn(cmd, cmdArgs, {
+      cwd: root,
+      stdio: "inherit",
+      env: { ...process.env, ...env },
+    });
+    const label = cmdArgs.at(-2) ?? cmd;
+    const timer = setTimeout(() => {
+      console.error(`[journeys] ${label} exceeded ${Math.round(timeoutMs / 1000)}s — killing process tree`);
+      if (process.platform === "win32") {
+        spawnSync("taskkill", ["/pid", String(child.pid), "/T", "/F"], { stdio: "ignore" });
+      } else {
+        child.kill("SIGKILL");
+      }
+      resolve(false);
+    }, timeoutMs);
+    child.on("error", (error) => {
+      clearTimeout(timer);
+      console.error(`[journeys] ${label} could not start: ${error.message}`);
+      resolve(false);
+    });
+    child.on("exit", (code) => {
+      clearTimeout(timer);
+      resolve(code === 0);
+    });
   });
-  if (result.error) {
-    console.error(`[journeys] ${cmdArgs.at(-2)} could not start: ${result.error.message}`);
-    return false;
-  }
-  return result.status === 0;
 }
 
 async function main() {
@@ -90,7 +108,7 @@ async function main() {
     const evidence = join(evidenceRoot, file.replace(/\.mjs$/, ""));
     mkdirSync(evidence, { recursive: true });
     console.log(`[journeys] running ${file}`);
-    const ok = run(
+    const ok = await run(
       process.execPath,
       [join(root, "scripts", file), url, evidence],
       { RELIQUARY_QA_CHANNEL: channel },
