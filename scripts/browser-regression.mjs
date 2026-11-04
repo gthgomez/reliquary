@@ -82,13 +82,14 @@ if (serveOnly) {
       "touch-arbitration.mjs",
       "battle-hud-layout.mjs",
       "pwa.mjs",
+      "pwa-update.mjs",
       "journey.mjs",
     ],
     layout: ["layout.mjs"],
     contrast: ["contrast.mjs"],
     a11y: ["modal-a11y.mjs", "modal-focus-trap.mjs"],
     touch: ["touch-arbitration.mjs"],
-    pwa: ["pwa.mjs"],
+    pwa: ["pwa.mjs", "pwa-update.mjs"],
     journey: ["journey.mjs"],
   };
   const files = map[suite] ?? map.all;

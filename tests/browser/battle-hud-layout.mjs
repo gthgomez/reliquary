@@ -4,7 +4,12 @@
  */
 import assert from "node:assert/strict";
 import { mkdirSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { startStaticServer, withBrowser, waitForGameBoot } from "./helpers.mjs";
+
+const artifactDir = process.env.RELIQUARY_BROWSER_ARTIFACTS
+  ?? fileURLToPath(new URL("../../artifacts/browser/", import.meta.url));
 
 async function dismissIntro(page) {
   for (let i = 0; i < 24; i += 1) {
@@ -78,7 +83,7 @@ const VIEWPORTS = [
 ];
 
 const { server, baseUrl } = await startStaticServer(0);
-mkdirSync("/opt/cursor/artifacts", { recursive: true });
+mkdirSync(artifactDir, { recursive: true });
 
 try {
   for (const vp of VIEWPORTS) {
@@ -110,7 +115,7 @@ try {
       await page.waitForSelector('.battle-controls[data-battle-phase="command"]');
 
       await page.screenshot({
-        path: `/opt/cursor/artifacts/battle-hud-${vp.name}-command.png`,
+        path: join(artifactDir, `battle-hud-${vp.name}-command.png`),
       });
     });
     console.log(`[battle-hud-layout] ok ${vp.name} command/skills`);
@@ -157,9 +162,8 @@ try {
         assert.ok(/Choose another/i.test(logText), `party ${size} log clipped (${JSON.stringify(logText)})`);
         assert.ok(!/^hoose/i.test(logText.trim()), `party ${size} log missing leading letter`);
       }
-      await page.screenshot({ path: "/opt/cursor/artifacts/battle-hud-forced-switch-320x568.png" });
+      await page.screenshot({ path: join(artifactDir, "battle-hud-forced-switch-320x568.png") });
     },
-    { context: { fontSize: "100%" } },
   );
   console.log("[battle-hud-layout] ok forced-switch scroll + pinned Back");
 
@@ -171,7 +175,39 @@ try {
       await startBattle(page);
       await page.waitForFunction(() => typeof window.__reliquary?.setBattlePhase === "function");
       await page.evaluate(() => window.__reliquary?.setBattlePhase?.("party"));
+      await page.waitForSelector('.battle-controls[data-battle-phase="party"]');
+      // Text-only enlargement: snapshot first so inherited sizes do not compound.
+      // This also scales px-sized labels that changing only the root font would miss.
+      const enlargedText = await page.evaluate(async () => {
+        const samples = [...document.querySelectorAll(".battle-ui, .battle-ui *")]
+          .filter((el) => el instanceof HTMLElement && el.getClientRects().length)
+          .map((el) => ({
+            el,
+            before: Number.parseFloat(getComputedStyle(el).fontSize),
+            text: el.textContent?.trim().slice(0, 40),
+          }));
+        for (const { el, before } of samples) {
+          el.style.setProperty("font-size", `${before * 2}px`, "important");
+        }
+        await new Promise((resolve) => requestAnimationFrame(resolve));
+        return samples.map(({ el, before, text }) => ({
+          text,
+          before,
+          after: Number.parseFloat(getComputedStyle(el).fontSize),
+          connected: el.isConnected,
+        }));
+      });
+      assert.ok(enlargedText.length > 0, "200% text requires visible battle UI samples");
+      for (const sample of enlargedText) {
+        assert.ok(sample.connected, `200% text sample was replaced: ${sample.text}`);
+        assert.ok(
+          sample.before > 0 && Math.abs(sample.after - sample.before * 2) < 0.1,
+          `Text not doubled: ${JSON.stringify(sample)}`,
+        );
+      }
       await assertTouchTargets(page, "200% party");
+      await assertDockStable(page, "200% party");
+      await page.screenshot({ path: join(artifactDir, "battle-hud-200-percent-party.png") });
       const meter = await page.evaluate(() => {
         const el = document.querySelector(".battle-controls .meter");
         if (!el) return null;
@@ -180,11 +216,10 @@ try {
       });
       assert.ok(meter?.label?.match(/Health|Skill/i), "meter aria-label explains HP/MP");
       writeFileSync(
-        "/opt/cursor/artifacts/battle-hud-meter-sample.json",
-        JSON.stringify(meter, null, 2),
+        join(artifactDir, "battle-hud-meter-sample.json"),
+        JSON.stringify({ meter, enlargedText }, null, 2),
       );
     },
-    { context: { fontSize: "200%" } },
   );
   console.log("[battle-hud-layout] ok 200% text + meter labels");
 
@@ -207,7 +242,7 @@ try {
       1,
       "unaffordable skill click must not leave skills menu (no spend)",
     );
-    await page.screenshot({ path: "/opt/cursor/artifacts/battle-hud-skill-mp-390x667.png" });
+    await page.screenshot({ path: join(artifactDir, "battle-hud-skill-mp-390x667.png") });
   });
   console.log("[battle-hud-layout] ok skill MP insufficiency surfaced in UI");
 } finally {

@@ -7,7 +7,7 @@ export function AppStatus() {
   const label =
     status === "ready" ? "Available offline"
     : status === "downloading" ? "Caching for offline…"
-    : status === "updateWaiting" ? "Update ready — finish your session, then reopen"
+    : status === "updating" ? "Updating…"
     : status === "failed" ? "Offline cache incomplete"
     : "";
   if (!label) return null;
