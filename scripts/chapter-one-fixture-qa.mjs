@@ -15,7 +15,7 @@ const output = process.argv[3];
 if (!output || !["localhost", "127.0.0.1"].includes(new URL(url).hostname))
   throw new Error("usage: node scripts/chapter-one-fixture-qa.mjs <local-url> <evidence-directory>");
 mkdirSync(output, { recursive: true });
-const browser = await chromium.launch({ channel: "msedge", headless: true });
+const browser = await chromium.launch({ channel: process.env.RELIQUARY_QA_CHANNEL ?? "msedge", headless: true });
 const report = { browser: browser.version(), scenarios: [], errors: [] };
 const assert = (condition, message) => {
   if (!condition) throw new Error(message);
@@ -48,7 +48,7 @@ async function withFixture(name, viewport, fixture, run) {
     console.error(`WATCHDOG: scenario ${name} exceeded 180s`);
     process.exit(2);
   }, 180_000);
-  const context = await browser.newContext({ viewport });
+  const context = await browser.newContext({ viewport, serviceWorkers: "block" });
   const page = await context.newPage();
   const extend = () => {
     clearTimeout(watchdog);
@@ -62,9 +62,9 @@ async function withFixture(name, viewport, fixture, run) {
     if (message.type() === "error") report.errors.push(`[${name}] console: ${message.text()}`);
   });
   try {
-    await page.goto(url, { waitUntil: "networkidle" });
-    await page.evaluate((value) => localStorage.setItem("reliquary.save.v2", JSON.stringify(value)), fixture);
-    await page.reload({ waitUntil: "networkidle" });
+    await page.goto(url, { waitUntil: "load" });
+    await page.evaluate((value) => localStorage.setItem("reliquary.save.v3", JSON.stringify(value)), fixture);
+    await page.reload({ waitUntil: "load" });
     await page.getByRole("button", { name: "Continue", exact: true }).click();
     await run(page, extend);
     report.scenarios.push(`${name}: ok`);
@@ -100,11 +100,11 @@ try {
     for (let i = 0; i < learnIndex; i++) await page.keyboard.press("ArrowDown");
     await page.keyboard.press("KeyZ");
     const sheet = await page.locator(".sheet").innerText();
-    assert(/beckons/.test(sheet), `learn sheet missing: ${sheet}`);
+    assert(/Flare/.test(sheet) && /Decline/.test(sheet), `learn sheet missing the offer: ${sheet}`);
     await page.screenshot({ path: join(output, "learn-choice.png") });
     await page.getByRole("button", { name: /Replace Cinder/ }).click();
     await page.waitForTimeout(200);
-    const saved = await page.evaluate(() => JSON.parse(localStorage.getItem("reliquary.save.v2")));
+    const saved = await page.evaluate(() => JSON.parse(localStorage.getItem("reliquary.save.v3")));
     assertEq(saved.party[0].skills, ["nip", "flare", "scorch", "slash"], "skills after replace");
     assertEq(saved.party[0].pendingSkills ?? [], [], "replace must clear the offer");
     assertEq(saved.party[1].pendingSkills ?? [], ["wardveil"], "the other offer must be untouched");
@@ -118,7 +118,7 @@ try {
     await page.getByRole("button", { name: "Learn a new skill" }).click();
     await page.getByRole("button", { name: /Decline/ }).click();
     await page.waitForTimeout(200);
-    const saved2 = await page.evaluate(() => JSON.parse(localStorage.getItem("reliquary.save.v2")));
+    const saved2 = await page.evaluate(() => JSON.parse(localStorage.getItem("reliquary.save.v3")));
     assertEq(saved2.party[1].skills, ["nip", "torrent", "soak", "lickwounds"], "decline must not touch the list");
     assertEq(saved2.party[1].pendingSkills ?? [], [], "decline must clear the offer");
     report.scenarios.push("learn-choice: replace and decline persisted");
@@ -143,7 +143,7 @@ try {
     await page.screenshot({ path: join(output, "lost-battle.png") });
     await page.getByRole("button", { name: "Wake", exact: true }).click();
     await page.waitForTimeout(300);
-    const saved = await page.evaluate(() => JSON.parse(localStorage.getItem("reliquary.save.v2")));
+    const saved = await page.evaluate(() => JSON.parse(localStorage.getItem("reliquary.save.v3")));
     assertEq(saved.gold, 170, "gold after loss");
     assertEq(saved.mapId, "elderhall", "whiteout destination");
     const hud = await page.locator(".hud").innerText();
@@ -173,7 +173,7 @@ try {
       // B declines on the last page: no battle, no flag.
       await page.keyboard.press("Shift");
       await page.waitForTimeout(300);
-      const saved = await page.evaluate(() => JSON.parse(localStorage.getItem("reliquary.save.v2")));
+      const saved = await page.evaluate(() => JSON.parse(localStorage.getItem("reliquary.save.v3")));
       assert((saved.flags.trial ?? false) === false, "declined trial must not record");
       report.scenarios.push("cael-advisory: telegraph + weakness advice + decline");
     },
@@ -197,14 +197,14 @@ try {
       true,
       "target previews render",
     );
-    const saved = await page.evaluate(() => JSON.parse(localStorage.getItem("reliquary.save.v2")));
+    const saved = await page.evaluate(() => JSON.parse(localStorage.getItem("reliquary.save.v3")));
     assertEq(saved.inventory.tonic, 2, "nothing consumed while previewing");
     await page.getByRole("button", { name: "Back to the pack" }).click();
     // Choose from the list: the second beast is the wounded one.
     await page.getByRole("button", { name: /^Field Tonic\b/ }).first().click();
     await page.locator("ul.menu-list button").filter({ hasText: "Emberkit" }).click();
     await page.waitForTimeout(400);
-    const after = await page.evaluate(() => JSON.parse(localStorage.getItem("reliquary.save.v2")));
+    const after = await page.evaluate(() => JSON.parse(localStorage.getItem("reliquary.save.v3")));
     assertEq(after.inventory.tonic, 1, "tonic consumed on the chosen target");
     assert(after.party[1].hp > 7, "wounded emberkit healed");
     report.scenarios.push("pack-target-ui: eligible targets, preview, tap-through");
@@ -288,16 +288,16 @@ try {
         }
         await page.waitForTimeout(250);
       }
-      const saved = await page.evaluate(() => JSON.parse(localStorage.getItem("reliquary.save.v2")));
+      const saved = await page.evaluate(() => JSON.parse(localStorage.getItem("reliquary.save.v3")));
       assertEq(saved.flags.trial, true, "trial flag after victory");
       assert((saved.inventory.thorn_sigil ?? 0) >= 3, "thorn sigils missing");
       assert((saved.inventory.greater_tonic ?? 0) >= 2, "reward tonics missing");
       await page.screenshot({ path: join(output, "warden-trial-victory.png") });
       await page.getByRole("button", { name: "Walk on", exact: true }).click();
       await page.waitForTimeout(300);
-      await page.reload({ waitUntil: "networkidle" });
+      await page.reload({ waitUntil: "load" });
       await page.getByRole("button", { name: "Continue", exact: true }).click();
-      const objective = await page.locator(".hud-objective").innerText();
+      const objective = await page.locator(".hud-objective-preview").innerText();
       assert(/Hollow Crown/.test(objective), `post-trial objective wrong: ${objective}`);
       await page.screenshot({ path: join(output, "after-trial.png") });
       report.scenarios.push("warden-trial: won, Thorn Mark granted, objective advanced");

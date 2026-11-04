@@ -3,6 +3,9 @@ import {
   healFull,
   ITEMS,
   makeBeast,
+  MAX_LEVEL,
+  PRACTICE_COST,
+  PRACTICE_LORE,
   SHOP_STOCK,
   SKILLS,
   SPECIES,
@@ -331,7 +334,10 @@ export class ReliquaryGame {
 		this.emit();
 		this.raf = requestAnimationFrame(this.loop);
 		this.bindInput();
-		this.installProbe();
+		// The controls probe is a QA cheat: ship it only to dev servers and
+		// browser-test bundles (VITE_RELIQUARY_BROWSER_TEST=1), never to production.
+		const metaEnv = (import.meta as { env?: { DEV?: boolean; VITE_RELIQUARY_BROWSER_TEST?: string } }).env;
+		if (metaEnv?.DEV !== false || metaEnv?.VITE_RELIQUARY_BROWSER_TEST === "1") this.installProbe();
 		if (typeof window !== "undefined" && typeof window.matchMedia === "function") {
 			this.reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 		}
@@ -907,13 +913,13 @@ export class ReliquaryGame {
 	trainCreature(uid: string): void {
 		if (this.mode !== "world" || (this.menu !== "party" && this.menu !== "storage") || this.battle || this.dialog) return;
 		const beast = this.party.find((item) => item.uid === uid);
-		if (!beast || beast.hp <= 0 || beast.level >= 40 || this.gold < 45) return;
-		this.gold -= 45;
+		if (!beast || beast.hp <= 0 || beast.level >= MAX_LEVEL || this.gold < PRACTICE_COST) return;
+		this.gold -= PRACTICE_COST;
 		this.toast = null;
 		this.toastT = 0;
-		this.grantXp(beast, 80);
+		this.grantXp(beast, PRACTICE_LORE);
 		const announcement = this.toast;
-		if (this.persist() && !announcement) this.toastMsg(`${beast.nickname} gained 80 lore from practice.`);
+		if (this.persist() && !announcement) this.toastMsg(`${beast.nickname} gained ${PRACTICE_LORE} lore from practice.`);
 		this.emit();
 	}
 	transferBeast(uid: string, destination: "party" | "box"): void {
@@ -1856,12 +1862,12 @@ export class ReliquaryGame {
 		if (!beast) return [];
 		const actions: string[] = [];
 		if (this.menu === "storage" && partyIndex >= 0) {
-			if (beast.hp > 0 && beast.level < 40 && this.gold >= 45) actions.push("practice");
+			if (beast.hp > 0 && beast.level < MAX_LEVEL && this.gold >= PRACTICE_COST) actions.push("practice");
 			if (beast.pendingSkills?.length) actions.push("learn");
 		}
 		if (this.menu === "party" && partyIndex >= 0) {
 			if (partyIndex > 0 && beast.hp > 0) actions.push("lead");
-			if (beast.hp > 0 && beast.level < 40 && this.gold >= 45) actions.push("practice");
+			if (beast.hp > 0 && beast.level < MAX_LEVEL && this.gold >= PRACTICE_COST) actions.push("practice");
 			if (beast.pendingSkills?.length) actions.push("learn");
 		}
 		if (this.menu === "storage") {

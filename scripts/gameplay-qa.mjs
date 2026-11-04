@@ -10,7 +10,7 @@ const output = process.argv[3];
 if (!output || !["localhost", "127.0.0.1"].includes(new URL(url).hostname))
   throw new Error("usage: node scripts/gameplay-qa.mjs <local-url> <evidence-directory>");
 mkdirSync(output, { recursive: true });
-const browser = await chromium.launch({ channel: "msedge", headless: true });
+const browser = await chromium.launch({ channel: process.env.RELIQUARY_QA_CHANNEL ?? "msedge", headless: true });
 const report = { browser: browser.version(), url, scenarios: [], errors: [] };
 const assert = (condition, message) => {
   if (!condition) throw new Error(message);
@@ -20,7 +20,7 @@ try {
     { width: 1280, height: 800 },
     { width: 390, height: 844 },
   ]) {
-    const context = await browser.newContext({ viewport });
+    const context = await browser.newContext({ viewport, serviceWorkers: "block" });
     const page = await context.newPage();
     await page.addInitScript(() => {
       window.__qaVisibleDraws = 0;
@@ -35,7 +35,7 @@ try {
       if (response.status() >= 400)
         report.errors.push(`${response.status()} ${new URL(response.url()).pathname}`);
     });
-    await page.goto(url, { waitUntil: "networkidle" });
+    await page.goto(url, { waitUntil: "load" });
     await page.getByRole("button", { name: "Start", exact: true }).click();
     for (let i = 0; i < 3; i++) await page.locator("button.dialog").click();
     await page.keyboard.down("ArrowLeft");
@@ -44,7 +44,7 @@ try {
     await page.getByRole("button", { name: "Menu", exact: true }).click();
     await page.getByRole("button", { name: "Save", exact: true }).click();
     assert(
-      await page.evaluate(() => !!localStorage.getItem("reliquary.save.v2")),
+      await page.evaluate(() => !!localStorage.getItem("reliquary.save.v3")),
       "natural opening save was not written",
     );
 
@@ -70,11 +70,11 @@ try {
     };
     await page.addInitScript((value) => {
       if (!sessionStorage.getItem("qa-fixture-loaded")) {
-        localStorage.setItem("reliquary.save.v2", JSON.stringify(value));
+        localStorage.setItem("reliquary.save.v3", JSON.stringify(value));
         sessionStorage.setItem("qa-fixture-loaded", "yes");
       }
     }, fixture);
-    await page.reload({ waitUntil: "networkidle" });
+    await page.reload({ waitUntil: "load" });
     await page.getByRole("button", { name: "Continue", exact: true }).click();
     await page.getByRole("button", { name: "Menu", exact: true }).click();
     await page.getByRole("button", { name: "Party", exact: true }).click();
@@ -85,7 +85,7 @@ try {
         viewport,
         text: await page.locator(".sheet").innerText(),
         save: await page.evaluate(() => {
-          const value = JSON.parse(localStorage.getItem("reliquary.save.v2"));
+          const value = JSON.parse(localStorage.getItem("reliquary.save.v3"));
           return {
             map: value.mapId,
             party: value.party.map((beast) => beast.nickname),
@@ -103,7 +103,7 @@ try {
     await page.getByRole("button", { name: "Storage", exact: true }).click();
     await page.getByRole("button", { name: "Add Mothwisp to party" }).click();
     await page.getByRole("button", { name: "Store Kindling" }).click();
-    const saved = await page.evaluate(() => JSON.parse(localStorage.getItem("reliquary.save.v2")));
+    const saved = await page.evaluate(() => JSON.parse(localStorage.getItem("reliquary.save.v3")));
     assert(
       saved.gold === 135 &&
         saved.party[0].speciesId === "mirewhelp" &&
@@ -111,13 +111,13 @@ try {
       "management state did not persist",
     );
     await page.screenshot({ path: join(output, `${viewport.width}-storage.png`) });
-    await page.reload({ waitUntil: "networkidle" });
+    await page.reload({ waitUntil: "load" });
     await page.getByRole("button", { name: "Continue", exact: true }).click();
     await page.getByRole("button", { name: "Menu", exact: true }).click();
     await page.getByRole("button", { name: "Storage", exact: true }).click();
     await page.getByRole("button", { name: "Add Kindling to party" }).waitFor();
     await page.getByRole("button", { name: "Back", exact: true }).click();
-    await page.getByRole("button", { name: "Close", exact: true }).click();
+    await page.locator(".menu-list").getByRole("button", { name: "Close", exact: true }).click();
 
     const transitions = [];
     for (const [name, map] of Object.entries(MAPS)) {

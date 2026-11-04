@@ -23,7 +23,7 @@ const check = (condition, message) => {
   if (!condition) report.failures.push(message);
 };
 
-const browser = await chromium.launch({ channel: "msedge", headless: true });
+const browser = await chromium.launch({ channel: process.env.RELIQUARY_QA_CHANNEL ?? "msedge", headless: true });
 report.browser = browser.version();
 try {
   const context = await browser.newContext({
@@ -35,7 +35,7 @@ try {
   page.on("console", (message) => {
     if (message.type() === "error") report.failures.push(`console: ${message.text()}`);
   });
-  const readSave = () => page.evaluate(() => JSON.parse(localStorage.getItem("reliquary.save.v2")));
+  const readSave = () => page.evaluate(() => JSON.parse(localStorage.getItem("reliquary.save.v3")));
   const hudGold = async () => Number((await page.locator(".hud-gold").innerText()).match(/\d+/)?.[0]);
   const dismissDialogs = async (limit = 12) => {
     for (let i = 0; i < limit; i++) {
@@ -45,7 +45,7 @@ try {
     }
   };
 
-  await page.goto(url, { waitUntil: "networkidle" });
+  await page.goto(url, { waitUntil: "load" });
   await page.getByRole("button", { name: "Start", exact: true }).click();
   await page.locator("button.dialog").first().click();
   await dismissDialogs();
@@ -107,7 +107,7 @@ try {
   await page.keyboard.press("Escape");
 
   // The reload must keep the imported run, not the old one.
-  await page.reload({ waitUntil: "networkidle" });
+  await page.reload({ waitUntil: "load" });
   await page.getByRole("button", { name: /Continue/i }).click();
   await page.waitForTimeout(400);
   const afterReload = await readSave(page);

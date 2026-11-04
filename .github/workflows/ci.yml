@@ -31,14 +31,18 @@ jobs:
           cache: npm
       - name: Install pinned dependencies
         run: npm ci
+      # Script-level gates (assert-production-web-shell.test.mjs) launch a
+      # browser, so chromium must exist before test:platform runs.
+      - name: Install Chromium for browser gates
+        run: npx playwright install --with-deps chromium
       - name: Typecheck
         run: npm run typecheck
       - name: Vite browser-test flag regression
         run: node --test scripts/vite-browser-test-flag.test.mjs
       - name: Lint
         run: npm run lint
-      - name: Gameplay and core tests
-        run: npm test
+      - name: Gameplay, core, and script tests
+        run: npm run test:platform
       - name: Validate game content
         run: npm run validate:content
       - name: Production build
@@ -47,8 +51,6 @@ jobs:
         run: node --test --test-name-pattern="production web artifact|deploy build" scripts/assert-production-web-shell.test.mjs
       - name: Public web build
         run: npm run build:web
-      - name: Install Chromium for browser verification
-        run: npx playwright install --with-deps chromium
       - name: Production runtime gate
         run: npm run verify:web:runtime
       # test:pwa rewrites index.html, so verify the production artifact first.
@@ -56,3 +58,36 @@ jobs:
         run: npm run verify:pwa && npm run test:pwa
       - name: Browser regressions
         run: npm run test:browser -- --suite=all
+
+  journeys:
+    name: Deep chapter journeys (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - name: Install pinned dependencies
+        run: npm ci
+      - name: Build browser-test web bundle
+        run: node scripts/build-web-test.mjs
+      - name: Run deep chapter journeys
+        run: node scripts/journeys-ci.mjs
+        env:
+          RELIQUARY_QA_CHANNEL: ${{ matrix.os == 'ubuntu-latest' && 'chrome' || 'msedge' }}
+      - name: Upload journey evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: journey-evidence-${{ matrix.os }}
+          path: .qa-evidence
+          retention-days: 7
+          if-no-files-found: ignore

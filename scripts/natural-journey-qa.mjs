@@ -55,17 +55,17 @@ function pathFor(map, start, target, starterChosen) {
   throw new Error(`No route through ${map.id} to ${key(target.x, target.y)}`);
 }
 
-const browser = await chromium.launch({ channel: "msedge", headless: true });
+const browser = await chromium.launch({ channel: process.env.RELIQUARY_QA_CHANNEL ?? "msedge", headless: true });
 const report = { browser: browser.version(), events: [], errors: [] };
 try {
-  const context = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+  const context = await browser.newContext({ viewport: { width: 1280, height: 800 }, serviceWorkers: "block" });
   const page = await context.newPage();
   // Fix the random stream so the encounter and failed-bind path are reproducible.
   await page.addInitScript(() => {
     Math.random = () => 0.5;
   });
   page.on("pageerror", (error) => report.errors.push(error.message));
-  await page.goto(url, { waitUntil: "networkidle" });
+  await page.goto(url, { waitUntil: "load" });
   await page.getByRole("button", { name: "Start", exact: true }).click();
   for (let i = 0; i < 3; i++) await page.locator("button.dialog").click();
 
@@ -136,7 +136,7 @@ try {
     "No-effect tonic and salve preserved their counts; binding stones remained visible",
   );
   await page.getByRole("button", { name: "Back", exact: true }).click();
-  await page.getByRole("button", { name: "Close", exact: true }).click();
+  await page.locator(".menu-list").getByRole("button", { name: "Close", exact: true }).click();
   report.events.push(
     "Started, walked from home through Elderhall to the Grove, and chose Emberkit",
   );

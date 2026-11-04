@@ -16,10 +16,10 @@ if (!output || !["localhost", "127.0.0.1"].includes(new URL(url).hostname))
   throw new Error("usage: node scripts/chapter-one-qa.mjs <local-url> <evidence-directory>");
 mkdirSync(output, { recursive: true });
 
-const browser = await chromium.launch({ channel: "msedge", headless: true });
+const browser = await chromium.launch({ channel: process.env.RELIQUARY_QA_CHANNEL ?? "msedge", headless: true });
 const report = { browser: browser.version(), events: [], errors: [], warnings: [] };
 try {
-  const context = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+  const context = await browser.newContext({ viewport: { width: 1280, height: 800 }, serviceWorkers: "block" });
   const page = await context.newPage();
   await page.addInitScript(() => {
     Math.random = () => 0.5;
@@ -28,14 +28,14 @@ try {
   page.on("console", (message) => {
     if (message.type() === "error") report.errors.push(`console: ${message.text()}`);
   });
-  await page.goto(url, { waitUntil: "networkidle" });
+  await page.goto(url, { waitUntil: "load" });
   await page.screenshot({ path: join(output, "01-title.png") });
   await page.getByRole("button", { name: "Start", exact: true }).click();
   for (let i = 0; i < 3; i++) await page.locator("button.dialog").click();
   await page.screenshot({ path: join(output, "02-intro-world.png") });
 
   const objectiveAt = async (must) => {
-    const text = await page.locator(".hud-objective").innerText();
+    const text = await page.locator(".hud-objective-preview").innerText();
     if (!text.match(must)) throw new Error(`Objective expected /${must.source}/, got: ${text}`);
     return text;
   };
@@ -257,7 +257,7 @@ try {
   await press("KeyM");
   await page.getByRole("button", { name: "Save", exact: true }).click();
   await page.screenshot({ path: join(output, "10-saved.png") });
-  await page.reload({ waitUntil: "networkidle" });
+  await page.reload({ waitUntil: "load" });
   await page.getByRole("button", { name: "Continue", exact: true }).click();
   const partyCheck = await page.evaluate(() => window.__controlsTest.getPos());
   if (partyCheck.map !== "elderhall") throw new Error(`reload lost the position: ${partyCheck.map}`);

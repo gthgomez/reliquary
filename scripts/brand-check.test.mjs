@@ -16,6 +16,13 @@ import {
 } from "./brand-check.mjs";
 
 const TEMPLATE_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
+// The og-skill docs live in the developer workspace (.grok/ is gitignored);
+// CI and fresh clones do not have them, so those tests skip, not fail.
+const HAS_OG_SKILL = (() => {
+  try { readFileSync(join(TEMPLATE_ROOT, ".grok/skills/og/SKILL.md"), "utf8"); return true; }
+  catch { return false; }
+})();
+const SKIP_NO_SKILL = HAS_OG_SKILL ? false : "og skill docs are developer-local (.grok/) and absent";
 const SCRIPT = join(TEMPLATE_ROOT, "scripts/brand-check.mjs");
 
 const GAME_SITE = JSON.stringify({ title: "Wild Race", type: "x:game", card: "custom" });
@@ -305,7 +312,7 @@ test("cli: a non-game with a compliant card passes", () => {
 
 const readDoc = (rel) => readFileSync(join(TEMPLATE_ROOT, rel), "utf8");
 
-test("SKILL.md and AGENTS.md name the marker path and bound this script uses", () => {
+test("SKILL.md and AGENTS.md name the marker path and bound this script uses", { skip: SKIP_NO_SKILL }, () => {
   // Prose wraps, so the minute count may straddle a line break.
   const bound = new RegExp(`${OG_PENDING_MAX_AGE_MS / 60_000}\\s+minutes`);
   for (const rel of [".grok/skills/og/SKILL.md", "AGENTS.md"]) {
@@ -343,7 +350,7 @@ function prohibitionSection({ rel, label, from, until }) {
   return (from + (end === -1 ? rest : rest.slice(0, end))).replace(/[`*]/g, "").replace(/\s+/g, " ");
 }
 
-test("the sections that own the brand-task prohibition never affirm a wait", () => {
+test("the sections that own the brand-task prohibition never affirm a wait", { skip: SKIP_NO_SKILL }, () => {
   // Pinned on the shape of the prohibition, not on a negation being somewhere
   // nearby: "So: wait_tasks before the final verify, but never get_task_output"
   // keeps a negation in the sentence while instructing exactly the wait.
@@ -362,7 +369,7 @@ test("the sections that own the brand-task prohibition never affirm a wait", () 
   }
 });
 
-test("SKILL.md tells the pass to self-check with the flag this CLI accepts", () => {
+test("SKILL.md tells the pass to self-check with the flag this CLI accepts", { skip: SKIP_NO_SKILL }, () => {
   const skill = readDoc(".grok/skills/og/SKILL.md");
   const invocations = skill.match(/node scripts\/brand-check\.mjs[^\n`]*/g) ?? [];
   assert.ok(invocations.length > 0);
