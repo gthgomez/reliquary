@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="96" height="112" viewBox="0 0 96 112" role="img" aria-label="A hooded traveller on Hollowmere's roads">
+<!-- road cloak -->
+  <path d="M8 112 C11 93 26 83 43 80 L53 80 C70 83 85 93 88 112 Z" fill="#54452f"/>
+  <path d="M8 112 C11 93 26 83 43 80 L47 80 C32 84 18 93 14 112 Z" fill="#443826"/>
+  <path d="M33 57 Q48 67 63 57 L63 84 Q48 94 33 84 Z" fill="#443826"/>
+  <!-- hood, drawn forward -->
+  <path d="M48 14 C33 14 25 26 26 42 C27 54 33 62 40 66 L56 66 C63 62 69 54 70 42 C71 26 63 14 48 14 Z" fill="#443826"/>
+  <path d="M48 14 C33 14 25 26 26 42 C27 54 33 62 40 66 L44 66 C36 62 31 53 30 42 C29 27 36 16 48 14 Z" fill="#574833"/>
+  <path d="M48 14 C63 14 71 26 70 42 C69 54 63 62 56 66 L52 66 C60 62 65 53 66 42 C67 27 60 16 48 14 Z" fill="#3a2f20"/>
+  <!-- face, half in hood shadow -->
+  <path d="M38 40 C38 53 42 62 48 62 C54 62 58 53 58 40 C58 36 54 33 48 33 C42 33 38 36 38 40 Z" fill="#c1956a"/>
+  <path d="M48 33 C54 33 58 36 58 40 C58 53 54 62 48 62 L48 33 Z" fill="#9c7148"/>
+  <path d="M40.5 46 C42 44.8 44.2 44.8 45.5 46" stroke="#33261a" stroke-width="1.7" fill="none" stroke-linecap="round"/>
+  <path d="M50.5 46 C51.8 44.8 54 44.8 55.5 46" stroke="#33261a" stroke-width="1.7" fill="none" stroke-linecap="round"/>
+  <path d="M41.8 47.6 C42.5 46.6 44.2 46.6 44.9 47.6 C44.2 48.7 42.5 48.7 41.8 47.6 Z" fill="#22180f"/>
+  <path d="M51.1 47.6 C51.8 46.6 53.5 46.6 54.2 47.6 C53.5 48.7 51.8 48.7 51.1 47.6 Z" fill="#22180f"/>
+  <path d="M48 49 C47.5 51 46.9 52.2 46.2 53.1 C47 54 48.3 54.3 49.1 54.3" stroke="#8a6540" stroke-width="1.3" fill="none" stroke-linecap="round"/>
+  <path d="M44.4 57 C46.2 58 49.8 58 51.6 57" stroke="#6e4c30" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+  <!-- pack strap across the chest -->
+  <path d="M30 92 L44 74 L50 76 L38 96 Z" fill="#cbbfa3"/>
+  <path d="M30 92 L44 74 L47 75.2 L33 94 Z" fill="#b3a78b"/>
+  <!-- lantern rim light on the hood -->
+  <path d="M26 42 C25 26 33 14 48 14 C38 16 30 27 30 42 C30 47 31 52 33 56 C31 55 28.5 56 29.5 58 C27 54 26 48 26 42 Z" fill="#f3ead8" opacity="0.1"/>
+  <path d="M14 102 C20 91 31 84 44 82 C31 85 21 92 17 104 Z" fill="#f3ead8" opacity="0.09"/>
+</svg>

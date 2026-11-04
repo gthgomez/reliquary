@@ -189,7 +189,7 @@ export function GameApp() {
 
   return (
     <div
-      className={`game-root${showTouch ? " has-touch" : ""}${showExplorationTouch ? " has-explore-touch" : ""}${showDialogTouch ? " has-dialog-touch" : ""}${classicTouch ? " classic-touch" : ""}${uiModal ? " is-ui-modal" : ""}${snap.dialog ? " is-dialog" : ""}${snap.mode === "battle" ? " is-battle" : ""}${battleSubmenuRootClass(snap.battle?.phase)}`}
+      className={`game-root${showTouch ? " has-touch" : ""}${showExplorationTouch ? " has-explore-touch" : ""}${showDialogTouch ? " has-dialog-touch" : ""}${classicTouch ? " classic-touch" : ""}${uiModal ? " is-ui-modal" : ""}${snap.dialog ? " is-dialog" : ""}${snap.dialog?.portraitKey ? " is-dialog-portrait" : ""}${snap.mode === "battle" ? " is-battle" : ""}${battleSubmenuRootClass(snap.battle?.phase)}`}
     >
       <div className="stage" ref={stageRef}>
         <div
@@ -221,7 +221,7 @@ export function GameApp() {
               <Hud
                 snap={snap}
                 menuButtonRef={menuButtonRef}
-                dormant={uiModal}
+                dormant={uiModal || !!snap.dialog?.portraitKey}
                 onMenu={() => g.toggleMenu()}
               />
             ) : null}

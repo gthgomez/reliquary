@@ -1,3 +1,5 @@
+import type { PortraitKey } from "./portraits.ts";
+
 export type ElementId =
   | "ember"
   | "tide"
@@ -249,6 +251,10 @@ export interface DialogView {
   speaker: string;
   text: string;
   last: boolean;
+  /** Stable MapNpc.id of the speaker when the dialog came from a placed NPC. */
+  npcId: string | null;
+  /** Resolved portrait key (named art or a generic role); null means text-only. */
+  portraitKey: PortraitKey | null;
 }
 
 export interface LearnMenuView {
