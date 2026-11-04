@@ -356,8 +356,19 @@ export class ReliquaryGame {
 		this.bindInput();
 		// The controls probe is a QA cheat: ship it only to dev servers and
 		// browser-test bundles (VITE_RELIQUARY_BROWSER_TEST=1), never to production.
-		const metaEnv = (import.meta as { env?: { DEV?: boolean; VITE_RELIQUARY_BROWSER_TEST?: string } }).env;
-		if (metaEnv?.DEV !== false || metaEnv?.VITE_RELIQUARY_BROWSER_TEST === "1") this.installProbe();
+		// The controls probe is a QA cheat: dev servers and browser-test bundles
+		// only. Direct member reads (never bind import.meta.env to a variable) so
+		// Vite's per-key define replacement prevents env serialization in the
+		// production bundle. Node test runs have no import.meta.env at all and
+		// drive battles through the probe, so they keep it unconditionally.
+		let devServer = false;
+		try {
+			devServer = import.meta.env.DEV === true;
+		} catch {
+			/* node: import.meta.env is undefined */
+		}
+		const inNode = typeof process !== "undefined" && Boolean(process.versions?.node);
+		if (devServer || inNode || shouldExposeControlsTestOnWindow()) this.installProbe();
 		if (typeof window !== "undefined" && typeof window.matchMedia === "function") {
 			this.reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 		}
