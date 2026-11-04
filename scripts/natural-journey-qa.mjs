@@ -55,7 +55,7 @@ function pathFor(map, start, target, starterChosen) {
   throw new Error(`No route through ${map.id} to ${key(target.x, target.y)}`);
 }
 
-const browser = await chromium.launch({ channel: "msedge", headless: true });
+const browser = await chromium.launch({ channel: process.env.RELIQUARY_QA_CHANNEL ?? "msedge", headless: true });
 const report = { browser: browser.version(), events: [], errors: [] };
 try {
   const context = await browser.newContext({ viewport: { width: 1280, height: 800 } });

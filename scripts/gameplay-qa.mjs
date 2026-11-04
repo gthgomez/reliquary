@@ -10,7 +10,7 @@ const output = process.argv[3];
 if (!output || !["localhost", "127.0.0.1"].includes(new URL(url).hostname))
   throw new Error("usage: node scripts/gameplay-qa.mjs <local-url> <evidence-directory>");
 mkdirSync(output, { recursive: true });
-const browser = await chromium.launch({ channel: "msedge", headless: true });
+const browser = await chromium.launch({ channel: process.env.RELIQUARY_QA_CHANNEL ?? "msedge", headless: true });
 const report = { browser: browser.version(), url, scenarios: [], errors: [] };
 const assert = (condition, message) => {
   if (!condition) throw new Error(message);
