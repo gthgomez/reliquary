@@ -21,6 +21,15 @@ import { mathRandom, type RandomSource } from "./rng.ts";
 import { battleCommands, encounterAt, rollEncounter } from "./world/encounters.ts";
 import { isOccupied } from "./world/movement.ts";
 import { pickInteractObject } from "./world/interaction.ts";
+import {
+	CHEST_LOOT,
+	NPC_DIALOGS,
+	SIGN_TEXTS,
+	SPECIAL_INTERACTIONS,
+	WARP_TABLE,
+	wardenPages,
+	type SpecialInteraction,
+} from "./world/interactions.ts";
 import { bakeMapTerrain } from "./world/terrain.ts";
 import {
   computeBattleLayout,
@@ -347,8 +356,19 @@ export class ReliquaryGame {
 		this.bindInput();
 		// The controls probe is a QA cheat: ship it only to dev servers and
 		// browser-test bundles (VITE_RELIQUARY_BROWSER_TEST=1), never to production.
-		const metaEnv = (import.meta as { env?: { DEV?: boolean; VITE_RELIQUARY_BROWSER_TEST?: string } }).env;
-		if (metaEnv?.DEV !== false || metaEnv?.VITE_RELIQUARY_BROWSER_TEST === "1") this.installProbe();
+		// The controls probe is a QA cheat: dev servers and browser-test bundles
+		// only. Direct member reads (never bind import.meta.env to a variable) so
+		// Vite's per-key define replacement prevents env serialization in the
+		// production bundle. Node test runs have no import.meta.env at all and
+		// drive battles through the probe, so they keep it unconditionally.
+		let devServer = false;
+		try {
+			devServer = import.meta.env.DEV === true;
+		} catch {
+			/* node: import.meta.env is undefined */
+		}
+		const inNode = typeof process !== "undefined" && Boolean(process.versions?.node);
+		if (devServer || inNode || shouldExposeControlsTestOnWindow()) this.installProbe();
 		if (typeof window !== "undefined" && typeof window.matchMedia === "function") {
 			this.reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 		}
@@ -801,6 +821,70 @@ export class ReliquaryGame {
 		sfxPlay.step();
 		this.emit();
 	}
+	// ---- UI command surface -------------------------------------------------
+	// Overlays drive the game through these methods instead of assigning
+	// engine fields directly, so engine invariants (index mirroring, emit
+	// discipline) stay inside the engine.
+
+	/** Shared menu index; an open battle mirrors it into the battle state. */
+	setMenuIndex(i: number): void {
+		this.menuIndex = i;
+		if (this.battle) this.battle.menuIndex = i;
+	}
+
+	/** Select a world-menu item and confirm it. */
+	chooseMenu(i: number): void {
+		this.menuIndex = i;
+		this.menuConfirm();
+	}
+
+	/** Select a battle option (index mirrored) and confirm it. */
+	chooseBattle(i: number): void {
+		this.setMenuIndex(i);
+		this.confirm();
+	}
+
+	/** Highlight a battle option without committing to it. */
+	previewBattle(i: number): void {
+		this.setMenuIndex(i);
+	}
+
+	/** Shop tab switch from the UI. */
+	setShopTab(mode: "buy" | "sell"): void {
+		this.shopMode = mode;
+		this.shopIndex = 0;
+		this.emitPublic();
+	}
+
+	/** Highlight a shop row without purchasing. */
+	previewShopRow(i: number): void {
+		this.shopIndex = i;
+		this.emitPublic();
+	}
+
+	/** Victory epilogue dismissal from the UI. */
+	dismissVictory(): void {
+		this.mode = "world";
+		this.emitPublic();
+	}
+
+	/**
+	 * Claim a pending rename request for a beast. Returns true when the
+	 * request targeted this beast (and clears + emits it); false otherwise.
+	 */
+	takeRenameSelection(uid: string): boolean {
+		if (this.selectedUid !== uid) return false;
+		this.selectedUid = null;
+		this.emitPublic();
+		return true;
+	}
+
+	/** Touch pad key hold from the UI. */
+	holdKey(code: string, down: boolean): void {
+		if (down) this.keys.add(code);
+		else this.keys.delete(code);
+	}
+
 	confirm = (): void => {
 		unlockAudio();
 		if (this.mode === "title") return;
@@ -995,185 +1079,105 @@ export class ReliquaryGame {
 		}
 	}
 	private handleInteract(id: string): void {
-		const warps: Record<string, [string, number, number]> = {
-			enter_home: ["home", 5, 6],
-			enter_guild: ["guild_in", 6, 8],
-			enter_inn: ["inn_in", 6, 7],
-			enter_shop: ["shop_in", 5, 6],
-			enter_cave: ["ashenbarrow", 9, 14],
-			enter_cellar: ["elderhall_cellar", 7, 10],
-			enter_ashen_north: ["ashenbarrow", 9, 2],
-			enter_hall: ["warden_hall", 7, 10],
-			enter_keep_inn: ["keep_inn", 6, 7],
-			enter_keep_shop: ["keep_shop", 5, 6],
-		};
-		if (warps[id]) {
-			const [to, x, y] = warps[id]!;
-			this.warp(to, x, y, 3);
+		const warp = WARP_TABLE[id];
+		if (warp) {
+			this.warp(warp.to, warp.x, warp.y, 3);
 			return;
 		}
-		if (id === "shrine") {
+		const sign = SIGN_TEXTS[id];
+		if (sign) {
+			this.openDialog("Sign", [sign]);
+			return;
+		}
+		const loot = CHEST_LOOT[id];
+		if (loot) {
+			if (this.flags[id]) {
+				this.openDialog("", ["Already looted."]);
+				return;
+			}
+			this.flags[id] = true;
+			this.give(loot.item, loot.count);
+			sfxPlay.confirm();
+			this.openDialog("", [`Inside: ${ITEMS[loot.item]?.name ?? loot.item} ×${loot.count}.`]);
+			this.persist();
+			return;
+		}
+		const special = SPECIAL_INTERACTIONS[id];
+		if (special) {
+			this.runSpecialInteraction(special);
+			return;
+		}
+	}
+
+	private runSpecialInteraction(special: SpecialInteraction): void {
+		if (special.kind === "shrine") {
 			this.party.forEach(healFull);
 			const saved = this.persist();
 			if (saved) sfxPlay.save();
 			this.openDialog("Shrine", [saved ? "The old compact holds. Your beasts are whole. The lantern is written." : "Your beasts are whole, but the lantern could not be written. Keep this window open and retry saving."]);
 			return;
 		}
-		if (id === "bed") {
+		if (special.kind === "rest") {
 			this.party.forEach(healFull);
 			this.persist();
 			sfxPlay.heal();
 			this.openDialog("", ["You rest. The lantern ticks. Dawn, again."]);
 			return;
 		}
-		if (id === "books") {
+		if (special.kind === "books") {
 			this.openDialog("Ledger", ["Pactwardens do not own beasts. They keep them. The Reliquary is a promise, not a cage."]);
 			return;
 		}
-		if (id.startsWith("starter_")) {
-			this.chooseStarter(id.slice(8));
+		if (special.kind === "starter") {
+			this.chooseStarter(special.speciesId);
 			return;
 		}
-		if (id.startsWith("sign_")) {
-			const signs: Record<string, string> = {
-				sign_road: "BRIAR ROAD — north to Wildwood, east to Mirefen. Bind what you must.",
-				sign_grove: "BINDING GROVE — first pacts are spoken here.",
-				sign_grove_inner: "Choose with care. A first pact is a first name.",
-				sign_briar: "Keep to the path after dusk. The grass remembers hunger.",
-				sign_wildwood: "WILDWOOD — Ashenbarrow in the stone. Thornkeep beyond the trees.",
-				sign_mire: "MIREFEN — watch your step. The peat is older than the keep.",
-				sign_keep: "THORNKEEP — Warden Cael holds the first Mark.",
-				sign_crownpool: "CROWNPOOL — relic basin. Slimes gather where the crown cracked.",
-			};
-			this.openDialog("Sign", [signs[id] ?? "The letters have worn away."]);
+		const done = this.flags[`defeated_${special.encounterId}`];
+		if (done) {
+			this.openDialog(special.speaker, special.doneLines);
 			return;
 		}
-		if (id.startsWith("chest_")) {
-			if (this.flags[id]) {
-				this.openDialog("", ["Already looted."]);
-				return;
-			}
-			this.flags[id] = true;
-			const loot: Record<string, [string, number]> = {
-				chest_briar: ["thorn_sigil", 1],
-				chest_wood: ["greater_tonic", 2],
-				chest_mire: ["relic_sigil", 1],
-				chest_cave: ["phoenix_ash", 1],
-				chest_cellar: ["tonic", 2],
-			};
-			const [item, n] = loot[id] ?? ["tonic", 1];
-			this.give(item, n);
-			sfxPlay.confirm();
-			this.openDialog("", [`Inside: ${ITEMS[item]?.name ?? item} ×${n}.`]);
-			this.persist();
+		if (special.needsStarter && !this.flags.starter) {
+			this.openDialog("", [special.gateLine]);
 			return;
 		}
-		if (id === "slime_king") {
-			if (this.flags.defeated_slime_king) {
-				this.openDialog("", ["The basin is quiet now. Relic-light ripples without threat."]);
-				return;
-			}
-			if (!this.flags.starter) {
-				this.openDialog("", ["Something vast shifts in the water — not yet your fight."]);
-				return;
-			}
-			this.openDialog("", ["Challenge the Slime King? (A yes · B no)"], () => {
-				if (!this.startEncounter("slime_king")) this.openDialog("", ["The compact will not begin here."]);
-			});
+		if (special.needsFlag && !this.flags[special.needsFlag]) {
+			this.openDialog(special.speaker, [special.gateLine]);
 			return;
 		}
-		if (id === "goblin_scout") {
-			if (this.flags.defeated_goblin_scout) {
-				this.openDialog("Scout", ["You already proved your road-manners. The camp remembers."]);
-				return;
-			}
-			this.openDialog("Scout", ["I can show you the Wildwood paths — or we can settle it with pacts. (A duel · B talk)"], () => {
-				if (!this.startEncounter("goblin_scout")) this.openDialog("Scout", ["Another time. The east exit is marked."]);
-			});
-			return;
-		}
-		if (id === "goblin_king") {
-			if (this.flags.defeated_goblin_king) {
-				this.openDialog("Goblin King", ["The compact holds. My beasts sleep."]);
-				return;
-			}
-			if (!this.flags.trial) {
-				this.openDialog("Goblin King", ["Bring a Thorn Mark if you want a king's duel. Until then — trade, or leave."]);
-				return;
-			}
-			this.openDialog("Goblin King", ["A diplomatic compact, beast against beast. (A accept · B decline)"], () => {
-				if (!this.startEncounter("goblin_king")) this.openDialog("Goblin King", ["Wise. The fire is warm either way."]);
-			});
-			return;
-		}
+		const lines = special.lines.length ? special.lines : [];
+		this.openDialog(special.speaker, lines.length ? [...lines, special.offerLine] : [special.offerLine], () => {
+			if (!this.startEncounter(special.encounterId)) this.openDialog(special.speaker, [special.gateLine]);
+		});
 	}
 	private talk(id: string, name: string, npc?: DialogSpeaker): void {
-		if (id === "maren" || id === "maren_guild") {
-			if (!this.flags.starter) {
-				this.openDialog(name, ["The Crown cracked. We did not. That is the whole of our order.", "Walk west to the Binding Grove. Three beasts have waited the night. Speak a pact. Then the road is yours."], undefined, npc);
-				return;
-			}
-			if (!this.flags.trial) {
-				this.openDialog(name, ["Good. A pact is a name you intend to keep.", "Bind what you can on Briar Road. When you are ready, take the Wildwood north to Thornkeep. Warden Cael will test the compact."], undefined, npc);
-				return;
-			}
-			this.openDialog(name, ["The Thorn Sigil sits well on you. The Hollow Crown is still a rumor with teeth — but that is a later road.", "Rest. Bind. Walk. That is the work."], undefined, npc);
-			return;
-		}
-		if (id === "guard") {
-			this.openDialog(name, [this.flags.starter ? "Road's open. If the grass sings, you already know what that means." : "Not without a pact-beast. Maren's in the Chapter, or the Grove west of town."], undefined, npc);
-			return;
-		}
-		if (id === "lise") {
-			this.openDialog(name, ["Inns take crowns. Shrines take nothing but a moment. I know which I'd trust.", "If you see my cousin on the road, tell her the well's still sweet."], undefined, npc);
-			return;
-		}
-		if (id === "innkeep") {
-			this.openDialog(name, ["Fifteen crowns for a clean bed and a whole lantern. (A rest · B not now)"], () => this.offerInn(name, npc), npc);
-			return;
-		}
-		if (id === "shopkeep") {
-			this.mode = "shop";
-			this.shopMode = "buy";
-			this.shopIndex = 0;
-			sfxPlay.menu();
-			this.emit();
-			return;
-		}
-		if (id === "wayfarer") {
-			this.openDialog(name, [
-				"Tall grass means a fight. That's the old compact, gone feral.",
-				"Sigil stones bind. Common ones break often. Thorn ones less. Don't throw them at a full-health wyrm.",
-				"Know the signs: burn eats vigor each turn. Soak drinks mist. Daze makes one grip in four fumble. Bind roots the legs — the bound beast acts last, and cannot flee.",
-			], undefined, npc);
-			return;
-		}
-		if (id === "reedcutter") {
-			this.openDialog(name, ["Fenwitch walks the peat when the mist sits low. Pale eyes. Don't follow them off the bridge."], undefined, npc);
-			return;
-		}
-		if (id === "cael" || id === "cael_trial") {
-			if (this.flags.trial) {
-				this.openDialog(name, ["You already keep the Thorn Mark. Don't make me bored."], undefined, npc);
-				return;
-			}
-			if (!this.flags.starter) {
-				this.openDialog(name, ["Come back with a pact, green lantern."], undefined, npc);
-				return;
-			}
-			const strongest = this.party.reduce((max, beast) => Math.max(max, beast.level), 0);
-			const pages = ["Warden Cael. I keep Thornkeep's road."];
-			if (strongest < 12) {
-				pages.push(`Your beast has weathered ${strongest} season${strongest === 1 ? "" : "s"}. Come back after a dozen and this goes lighter. As you like — three of mine against yours: Iron. Chapel. Drake.`);
+		const dialog = NPC_DIALOGS[id];
+		if (!dialog) return;
+		if (dialog.kind === "action") {
+			if (dialog.action === "inn") {
+				this.openDialog(name, ["Fifteen crowns for a clean bed and a whole lantern. (A rest · B not now)"], () => this.offerInn(name, npc), npc);
+			} else if (dialog.action === "shop") {
+				this.mode = "shop";
+				this.shopMode = "buy";
+				this.shopIndex = 0;
+				sfxPlay.menu();
+				this.emit();
 			} else {
-				pages.push("Show me the compact is not a hobby. Three of mine against yours — Iron. Chapel. Drake. Bind or break.");
+				if (this.flags.trial) {
+					this.openDialog(name, ["You already keep the Thorn Mark. Don't make me bored."], undefined, npc);
+					return;
+				}
+				if (!this.flags.starter) {
+					this.openDialog(name, ["Come back with a pact, green lantern."], undefined, npc);
+					return;
+				}
+				const strongest = this.party.reduce((max, beast) => Math.max(max, beast.level), 0);
+				this.openDialog(name, wardenPages({ flags: this.flags, strongestLevel: strongest }), () => this.startWarden(), npc);
 			}
-			pages.push("(A begin · B later)");
-			this.openDialog(name, pages, () => this.startWarden(), npc);
 			return;
 		}
-		if (id === "keep_guard") this.openDialog(name, ["Hall's through the east cottage. Cael doesn't like small talk."], undefined, npc);
-		if (id === "goblin_trader") this.openDialog(name, ["Scrap for sale, stories for free. The camp keeps to itself — unless you pick a fight."], undefined, npc);
+		const pages = dialog.pages({ flags: this.flags, strongestLevel: this.party.reduce((max, beast) => Math.max(max, beast.level), 0) });
+		if (pages.length) this.openDialog(name, pages, undefined, npc);
 	}
 	private offerInn(name = "Innmother Cald", npc?: DialogSpeaker): void {
 		if (this.gold < 15) {

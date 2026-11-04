@@ -86,10 +86,7 @@ export function VictoryScreen({ game }: { game: ReliquaryGame }) {
           <button
             type="button"
             className="btn-primary"
-            onClick={() => {
-              game.mode = "world";
-              game.emitPublic();
-            }}
+            onClick={() => game.dismissVictory()}
           >
             Walk on
           </button>
@@ -186,10 +183,7 @@ export function MenuPanel({ game, snap, onImportActivate }: { game: ReliquaryGam
               <button
                 type="button"
                 className={i === snap.menuIndex ? "active" : ""}
-                onClick={() => {
-                  game.menuIndex = i;
-                  game.menuConfirm();
-                }}
+                onClick={() => game.chooseMenu(i)}
               >
                 {actionLabels[action]?.(beast?.nickname ?? "") ?? action}
               </button>
@@ -214,11 +208,10 @@ export function MenuPanel({ game, snap, onImportActivate }: { game: ReliquaryGam
                 type="button"
                 className={i === snap.menuIndex ? "active" : ""}
                 onClick={() => {
-                  game.menuIndex = i;
                   // Open the picker inside this gesture (Safari-safe); the
                   // engine ticket effect stays as the fallback path.
                   if (it === "Import") onImportActivate?.();
-                  game.menuConfirm();
+                  game.chooseMenu(i);
                 }}
               >
                 {it}
@@ -246,10 +239,7 @@ export function MenuPanel({ game, snap, onImportActivate }: { game: ReliquaryGam
               <button
                 type="button"
                 className={i === snap.menuIndex ? "active" : ""}
-                onClick={() => {
-                  game.menuIndex = i;
-                  game.menuConfirm();
-                }}
+                onClick={() => game.chooseMenu(i)}
               >
                 Replace {SKILLS[existingId]?.name ?? existingId}
               </button>
@@ -259,10 +249,7 @@ export function MenuPanel({ game, snap, onImportActivate }: { game: ReliquaryGam
             <button
               type="button"
               className={(beast?.skills.length ?? 0) === snap.menuIndex ? "active" : ""}
-              onClick={() => {
-                game.menuIndex = beast?.skills.length ?? 0;
-                game.menuConfirm();
-              }}
+              onClick={() => game.chooseMenu(beast?.skills.length ?? 0)}
             >
               Decline — keep what it knows
             </button>
@@ -448,10 +435,7 @@ export function MenuPanel({ game, snap, onImportActivate }: { game: ReliquaryGam
               <button
                 type="button"
                 className={i === snap.menuIndex ? "active" : ""}
-                onClick={() => {
-                  game.menuIndex = i;
-                  game.menuConfirm();
-                }}
+                onClick={() => game.chooseMenu(i)}
               >
                 {target.nickname} <em>{target.hp}</em>
                 <span className="muted"> — {target.note}</span>
@@ -478,10 +462,7 @@ export function MenuPanel({ game, snap, onImportActivate }: { game: ReliquaryGam
               <button
                 type="button"
                 className={i === snap.menuIndex ? "active" : ""}
-                onClick={() => {
-                  game.menuIndex = i;
-                  game.menuConfirm();
-                }}
+                onClick={() => game.chooseMenu(i)}
               >
                 {ITEMS[id]?.name ?? id}
                 <em>×{snap.inventory[id]}</em>
@@ -506,11 +487,9 @@ function RenameCreature({ game, beast }: { game: ReliquaryGame; beast: Beast }) 
   const [name, setName] = useState(beast.nickname);
   const [editing, setEditing] = useState(false);
   useEffect(() => {
-    if (game.selectedUid === beast.uid) {
+    if (game.takeRenameSelection(beast.uid)) {
       setName(beast.nickname);
       setEditing(true);
-      game.selectedUid = null;
-      game.emitPublic();
     }
   }, [game.selectedUid, beast.uid, beast.nickname, game]);
   if (!editing)
@@ -658,10 +637,11 @@ export function BattleHud({ game, snap }: { game: ReliquaryGame; snap: Snapshot 
               className={`${i === b.menuIndex ? "active" : ""} skill-${afford}`}
               aria-describedby={afford === "unaffordable" ? `skill-mp-${sid}` : undefined}
               onClick={() => {
-                game.menuIndex = i;
-                if (game.battle) game.battle.menuIndex = i;
-                if (afford === "unaffordable") return;
-                game.confirm();
+                if (afford === "unaffordable") {
+                  game.previewBattle(i);
+                  return;
+                }
+                game.chooseBattle(i);
               }}
             >
               <span className="cmd-skill-main">
@@ -681,11 +661,7 @@ export function BattleHud({ game, snap }: { game: ReliquaryGame; snap: Snapshot 
           <button
             type="button"
             className={i === b.menuIndex ? "active" : ""}
-            onClick={() => {
-              game.menuIndex = i;
-              if (game.battle) game.battle.menuIndex = i;
-              game.confirm();
-            }}
+            onClick={() => game.chooseBattle(i)}
           >
             {ITEMS[id]?.name} <em>×{snap.inventory[id]}</em>
           </button>
@@ -702,11 +678,7 @@ export function BattleHud({ game, snap }: { game: ReliquaryGame; snap: Snapshot 
             <button
               type="button"
               className={i === b.menuIndex ? "active" : ""}
-              onClick={() => {
-                game.menuIndex = i;
-                if (game.battle) game.battle.menuIndex = i;
-                game.confirm();
-              }}
+              onClick={() => game.chooseBattle(i)}
             >
               {ITEMS[id]?.name} <em>×{snap.inventory[id]}</em>
             </button>
@@ -724,11 +696,7 @@ export function BattleHud({ game, snap }: { game: ReliquaryGame; snap: Snapshot 
               type="button"
               className={`cmd-party-row${i === b.menuIndex ? " active" : ""}`}
               disabled={p.hp <= 0}
-              onClick={() => {
-                game.menuIndex = i;
-                if (game.battle) game.battle.menuIndex = i;
-                game.confirm();
-              }}
+              onClick={() => game.chooseBattle(i)}
             >
               <span className="cmd-party-name">{p.nickname}</span>
               <span className="cmd-party-meta">
@@ -786,11 +754,7 @@ export function BattleHud({ game, snap }: { game: ReliquaryGame; snap: Snapshot 
                     <button
                       type="button"
                       className={i === b.menuIndex ? "active" : ""}
-                      onClick={() => {
-                        game.menuIndex = i;
-                        if (game.battle) game.battle.menuIndex = i;
-                        game.confirm();
-                      }}
+                      onClick={() => game.chooseBattle(i)}
                     >
                       {c}
                     </button>
@@ -829,22 +793,14 @@ export function ShopPanel({ game, snap }: { game: ReliquaryGame; snap: Snapshot 
         <button
           type="button"
           className={snap.shopMode === "buy" ? "active" : ""}
-          onClick={() => {
-            game.shopMode = "buy";
-            game.shopIndex = 0;
-            game.emitPublic();
-          }}
+          onClick={() => game.setShopTab("buy")}
         >
           Buy
         </button>
         <button
           type="button"
           className={snap.shopMode === "sell" ? "active" : ""}
-          onClick={() => {
-            game.shopMode = "sell";
-            game.shopIndex = 0;
-            game.emitPublic();
-          }}
+          onClick={() => game.setShopTab("sell")}
         >
           Sell
         </button>
@@ -861,10 +817,7 @@ export function ShopPanel({ game, snap }: { game: ReliquaryGame; snap: Snapshot 
               <button
                 type="button"
                 className={`shop-row${i === snap.shopIndex ? " active" : ""}${unaffordable ? " unaffordable" : ""}${affordable ? " affordable" : ""}`}
-                onClick={() => {
-                  game.shopIndex = i;
-                  game.emitPublic();
-                }}
+                onClick={() => game.previewShopRow(i)}
               >
                 <span className="shop-row-main">
                   <span className="shop-row-name">{it.name}</span>
@@ -908,8 +861,7 @@ export function ShopPanel({ game, snap }: { game: ReliquaryGame; snap: Snapshot 
 
 export function TouchPad({ game, variant = "full" }: { game: ReliquaryGame; variant?: "full" | "dialog" }) {
   const hold = (code: string, on: boolean) => {
-    if (on) game.keys.add(code);
-    else game.keys.delete(code);
+    game.holdKey(code, on);
   };
   const dir = (code: string) => ({
     onPointerDown: (e: PointerEvent<HTMLButtonElement>) => {
