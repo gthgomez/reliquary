@@ -249,6 +249,8 @@ export interface DialogView {
   speaker: string;
   text: string;
   last: boolean;
+  /** Stable portrait key resolved from dialogue data; null renders text-only. */
+  portrait: string | null;
 }
 
 export interface LearnMenuView {

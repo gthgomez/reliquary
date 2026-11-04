@@ -12,6 +12,7 @@ src/game/
   maps.ts           Hollowmere map data and tile constants
   save.ts           versioned local save validation, migration, recovery
   rng.ts            production random source and deterministic test source
+  dialog-portraits.ts  data-driven NPC portrait keys for the dialogue close-up
   systems/
     combat.ts       accuracy, turn order, elemental damage primitives
     capture.ts      binding probability and deterministic result

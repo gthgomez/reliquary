@@ -1,5 +1,6 @@
 import type { PointerEvent, ReactNode, RefObject } from "react";
 import { useEffect, useState } from "react";
+import { portraitSrc } from "../dialog-portraits.ts";
 import {
   currentStats,
   expToNext,
@@ -151,11 +152,20 @@ export function Hud({
 
 export function DialogBox({ snap, onAdvance }: { snap: Snapshot; onAdvance: () => void }) {
   if (!snap.dialog) return null;
+  const dialog = snap.dialog;
+  const portrait = portraitSrc(dialog.portrait);
   return (
-    <button type="button" className="dialog" onClick={onAdvance}>
-      {snap.dialog.speaker ? <span className="dialog-name">{snap.dialog.speaker}</span> : null}
-      <p className="dialog-text">{snap.dialog.text}</p>
-      <span className="dialog-next">{snap.dialog.last ? "Close" : "Next"}</span>
+    <button type="button" className={`dialog${portrait ? " dialog-npc" : ""}`} onClick={onAdvance}>
+      {portrait ? (
+        <span className="dialog-portrait" aria-hidden="true">
+          <img src={portrait} alt="" draggable={false} />
+        </span>
+      ) : null}
+      <span className="dialog-body">
+        {dialog.speaker ? <span className="dialog-name">{dialog.speaker}</span> : null}
+        <p className="dialog-text">{dialog.text}</p>
+      </span>
+      <span className="dialog-next">{dialog.last ? "Close" : "Next"}</span>
     </button>
   );
 }

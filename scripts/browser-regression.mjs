@@ -84,6 +84,7 @@ if (serveOnly) {
       "pwa.mjs",
       "pwa-update.mjs",
       "journey.mjs",
+      "npc-portraits.mjs",
     ],
     layout: ["layout.mjs"],
     contrast: ["contrast.mjs"],
@@ -91,6 +92,7 @@ if (serveOnly) {
     touch: ["touch-arbitration.mjs"],
     pwa: ["pwa.mjs", "pwa-update.mjs"],
     journey: ["journey.mjs"],
+    portraits: ["npc-portraits.mjs"],
   };
   const files = map[suite] ?? map.all;
 

@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="96" height="112" viewBox="0 0 96 112" role="img" aria-label="Warden Cael, keeper of Thornkeep's road">
+  <defs>
+    <radialGradient id="cael-bg" cx="50%" cy="36%" r="78%">
+      <stop offset="0%" stop-color="#33302a"/>
+      <stop offset="62%" stop-color="#211e19"/>
+      <stop offset="100%" stop-color="#161310"/>
+    </radialGradient>
+    <radialGradient id="cael-vig" cx="50%" cy="46%" r="80%">
+      <stop offset="62%" stop-color="#000000" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#14110e" stop-opacity="0.55"/>
+    </radialGradient>
+  </defs>
+  <rect width="96" height="112" fill="url(#cael-bg)"/>
+  <!-- pauldrons and gorget -->
+  <path d="M4 112 C7 94 24 84 42 81 L54 81 C72 84 89 94 92 112 Z" fill="#3a362f"/>
+  <path d="M4 112 C7 94 24 84 42 81 L46 81 C30 85 16 94 12 112 Z" fill="#2c2925"/>
+  <!-- thorn-green tabard with the thorn mark -->
+  <path d="M34 112 C34 96 40 88 48 88 C56 88 62 96 62 112 Z" fill="#2c3d32"/>
+  <path d="M48 96 L51 100 L49 106 L47 100 Z" fill="#a36a45"/>
+  <path d="M45 104 C47 102 49 102 51 104" stroke="#c9926a" stroke-width="1.1" fill="none" stroke-linecap="round"/>
+  <path d="M42 81 L54 81 C53 86 50 88 48 88 C46 88 43 86 42 81 Z" fill="#2a2721"/>
+  <!-- neck -->
+  <path d="M42 68 L54 68 L54 82 C54 86 42 86 42 82 Z" fill="#bd8f63"/>
+  <path d="M42 68 L48 68 L48 84 C44.6 84 42 82 42 79 Z" fill="#a37950"/>
+  <!-- head: weathered, square jaw -->
+  <path d="M48 20 C61 20 68 29 68 42 C68 47 67 51 65 55 C63 59 61 61 61 65 C61 72 56 77 48 77 C40 77 35 72 35 65 C35 61 33 59 31 55 C29 51 28 47 28 42 C28 29 35 20 48 20 Z" fill="#c99a6f"/>
+  <path d="M48 20 C61 20 68 29 68 42 C68 47 67 51 65 55 C63 59 61 61 61 65 C61 72 56 77 48 77 C57 74 59 68 58 63 C57 57 61 52 61 42 C61 31 56 23 48 20 Z" fill="#b08557"/>
+  <!-- stubble shadow along the jaw -->
+  <path d="M38 64 C40 72 44 75 48 75 C52 75 56 72 58 64 C56 70 52 72.5 48 72.5 C44 72.5 40 70 38 64 Z" fill="#7d5b3c" opacity="0.7"/>
+  <!-- close-cropped dark hair, irregular fringe -->
+  <path d="M48 14 C36 14 27 23 27 36 C27 41 28 44 30 46 C30 38 32 32 36 30 L40 34.5 L44 29.5 L48 33.5 L52 29 L56 34.5 L60 30 C64 32 66 38 66 46 C68 44 69 41 69 36 C69 23 60 14 48 14 Z" fill="#241d17"/>
+  <path d="M30 44 C30 34 33 28 38 26 C45 24 55 24 60 27 C64 29 66 35 66 44 C64 36 61 31 56 30 C50 29 42 29 38 31 C34 33 31 37 30 44 Z" fill="#3a3129"/>
+  <path d="M30 46 C30.4 50 31.4 53 32.6 55.5 L35.4 52.5 C33.6 50.5 32.4 48 32 45 Z" fill="#241d17"/>
+  <path d="M66 46 C65.6 50 64.6 53 63.4 55.5 L60.6 52.5 C62.4 50.5 63.6 48 64 45 Z" fill="#241d17"/>
+  <!-- stern brows and old scar over the left brow -->
+  <path d="M36 42 C40 39.5 45 39.8 48 42" stroke="#241d17" stroke-width="2.2" fill="none" stroke-linecap="round"/>
+  <path d="M49 42 C52 39.8 57 39.5 61 42" stroke="#241d17" stroke-width="2.2" fill="none" stroke-linecap="round"/>
+  <path d="M57 34 L60 44" stroke="#a5775a" stroke-width="1.3" stroke-linecap="round"/>
+  <path d="M38 47 C39 45.4 42 45.4 43 47 C42 48.8 39 48.8 38 47 Z" fill="#241a12"/>
+  <path d="M54 47 C55 45.4 58 45.4 59 47 C58 48.8 55 48.8 54 47 Z" fill="#241a12"/>
+  <circle cx="41.6" cy="46.4" r="0.7" fill="#e8b06a" opacity="0.9"/>
+  <circle cx="57.6" cy="46.4" r="0.7" fill="#e8b06a" opacity="0.9"/>
+  <!-- nose -->
+  <path d="M48 50 C47.4 53 46.6 55 45.6 56.4 C46.6 57.6 48.2 58 49 58" stroke="#9a7148" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+  <!-- set mouth -->
+  <path d="M43 66 C45.4 65 50.6 65 53 66" stroke="#7a543a" stroke-width="1.7" fill="none" stroke-linecap="round"/>
+  <path d="M40 62 C39.4 63 39.2 64 39.4 65" stroke="#b08557" stroke-width="1.1" fill="none" stroke-linecap="round"/>
+  <path d="M57 62 C57.6 63 57.8 64 57.6 65" stroke="#b08557" stroke-width="1.1" fill="none" stroke-linecap="round"/>
+  <!-- torch rim light -->
+  <path d="M28 42 C28 29 35 20 48 20 C40 22 33 30 33 42 C33 46 34 50 36 54 C34 53 31 54 32 56 C29 52 28 47 28 42 Z" fill="#f3ead8" opacity="0.13"/>
+  <path d="M12 102 C18 90 30 83 44 82 C30 85 19 92 15 104 Z" fill="#f3ead8" opacity="0.1"/>
+  <rect width="96" height="112" fill="url(#cael-vig)"/>
+</svg>

@@ -51,6 +51,7 @@ import { purchaseItem, sellItem } from "./systems/economy.ts";
 import { awardExperience } from "./systems/progression.ts";
 import { moveToLead, renameCreature, transferBeast } from "./systems/party.ts";
 import { currentObjective } from "./systems/objective.ts";
+import { resolveNpcPortrait } from "./dialog-portraits.ts";
 import { STATUS_ADJECTIVES, applyStatus, dazeFumbles, tickStatus as tickBeastStatus } from "./systems/status.ts";
 import type {
   BattleState,
@@ -74,6 +75,8 @@ type Dialog = {
   speaker: string;
   pages: string[];
   index: number;
+  /** Stable portrait key from dialogue data; null renders the text-only card. */
+  portrait: string | null;
   onDone?: () => void;
 };
 
@@ -226,7 +229,8 @@ export class ReliquaryGame {
 			dialog: this.dialog ? {
 				speaker: this.dialog.speaker,
 				text: this.dialog.pages[this.dialog.index] ?? "",
-				last: this.dialog.index >= this.dialog.pages.length - 1
+				last: this.dialog.index >= this.dialog.pages.length - 1,
+				portrait: this.dialog.portrait,
 				} : null,
 			learnMenu:
 				this.menu === "learn" && this.learnMenu
@@ -733,7 +737,7 @@ export class ReliquaryGame {
 		const warp = this.map().warps.find((w) => w.x === nx && w.y === ny);
 		if (warp) {
 			if (!this.flags.starter && (warp.to === "briar_road" || this.mapId === "elderhall" && ny <= 0)) {
-				this.openDialog("Gateward", ["The Briar Road is no place without a pact-beast. Speak with Elder Maren."]);
+				this.openDialog("Gateward", ["The Briar Road is no place without a pact-beast. Speak with Elder Maren."], undefined, "guard");
 				return;
 			}
 			this.warp(warp.to, warp.tx, warp.ty, warp.dir ?? d);
@@ -1084,28 +1088,29 @@ export class ReliquaryGame {
 		}
 	}
 	private talk(id: string, name: string): void {
+		const portrait = resolveNpcPortrait(id);
 		if (id === "maren" || id === "maren_guild") {
 			if (!this.flags.starter) {
-				this.openDialog(name, ["The Crown cracked. We did not. That is the whole of our order.", "Walk west to the Binding Grove. Three beasts have waited the night. Speak a pact. Then the road is yours."]);
+				this.openDialog(name, ["The Crown cracked. We did not. That is the whole of our order.", "Walk west to the Binding Grove. Three beasts have waited the night. Speak a pact. Then the road is yours."], undefined, portrait);
 				return;
 			}
 			if (!this.flags.trial) {
-				this.openDialog(name, ["Good. A pact is a name you intend to keep.", "Bind what you can on Briar Road. When you are ready, take the Wildwood north to Thornkeep. Warden Cael will test the compact."]);
+				this.openDialog(name, ["Good. A pact is a name you intend to keep.", "Bind what you can on Briar Road. When you are ready, take the Wildwood north to Thornkeep. Warden Cael will test the compact."], undefined, portrait);
 				return;
 			}
-			this.openDialog(name, ["The Thorn Sigil sits well on you. The Hollow Crown is still a rumor with teeth — but that is a later road.", "Rest. Bind. Walk. That is the work."]);
+			this.openDialog(name, ["The Thorn Sigil sits well on you. The Hollow Crown is still a rumor with teeth — but that is a later road.", "Rest. Bind. Walk. That is the work."], undefined, portrait);
 			return;
 		}
 		if (id === "guard") {
-			this.openDialog(name, [this.flags.starter ? "Road's open. If the grass sings, you already know what that means." : "Not without a pact-beast. Maren's in the Chapter, or the Grove west of town."]);
+			this.openDialog(name, [this.flags.starter ? "Road's open. If the grass sings, you already know what that means." : "Not without a pact-beast. Maren's in the Chapter, or the Grove west of town."], undefined, portrait);
 			return;
 		}
 		if (id === "lise") {
-			this.openDialog(name, ["Inns take crowns. Shrines take nothing but a moment. I know which I'd trust.", "If you see my cousin on the road, tell her the well's still sweet."]);
+			this.openDialog(name, ["Inns take crowns. Shrines take nothing but a moment. I know which I'd trust.", "If you see my cousin on the road, tell her the well's still sweet."], undefined, portrait);
 			return;
 		}
 		if (id === "innkeep") {
-			this.openDialog(name, ["Fifteen crowns for a clean bed and a whole lantern. (A rest · B not now)"], () => this.offerInn());
+			this.openDialog(name, ["Fifteen crowns for a clean bed and a whole lantern. (A rest · B not now)"], () => this.offerInn(), portrait);
 			return;
 		}
 		if (id === "shopkeep") {
@@ -1121,20 +1126,20 @@ export class ReliquaryGame {
 				"Tall grass means a fight. That's the old compact, gone feral.",
 				"Sigil stones bind. Common ones break often. Thorn ones less. Don't throw them at a full-health wyrm.",
 				"Know the signs: burn eats vigor each turn. Soak drinks mist. Daze makes one grip in four fumble. Bind roots the legs — the bound beast acts last, and cannot flee.",
-			]);
+			], undefined, portrait);
 			return;
 		}
 		if (id === "reedcutter") {
-			this.openDialog(name, ["Fenwitch walks the peat when the mist sits low. Pale eyes. Don't follow them off the bridge."]);
+			this.openDialog(name, ["Fenwitch walks the peat when the mist sits low. Pale eyes. Don't follow them off the bridge."], undefined, portrait);
 			return;
 		}
 		if (id === "cael" || id === "cael_trial") {
 			if (this.flags.trial) {
-				this.openDialog(name, ["You already keep the Thorn Mark. Don't make me bored."]);
+				this.openDialog(name, ["You already keep the Thorn Mark. Don't make me bored."], undefined, portrait);
 				return;
 			}
 			if (!this.flags.starter) {
-				this.openDialog(name, ["Come back with a pact, green lantern."]);
+				this.openDialog(name, ["Come back with a pact, green lantern."], undefined, portrait);
 				return;
 			}
 			const strongest = this.party.reduce((max, beast) => Math.max(max, beast.level), 0);
@@ -1145,22 +1150,22 @@ export class ReliquaryGame {
 				pages.push("Show me the compact is not a hobby. Three of mine against yours — Iron. Chapel. Drake. Bind or break.");
 			}
 			pages.push("(A begin · B later)");
-			this.openDialog(name, pages, () => this.startWarden());
+			this.openDialog(name, pages, () => this.startWarden(), portrait);
 			return;
 		}
-		if (id === "keep_guard") this.openDialog(name, ["Hall's through the east cottage. Cael doesn't like small talk."]);
-		if (id === "goblin_trader") this.openDialog(name, ["Scrap for sale, stories for free. The camp keeps to itself — unless you pick a fight."]);
+		if (id === "keep_guard") this.openDialog(name, ["Hall's through the east cottage. Cael doesn't like small talk."], undefined, portrait);
+		if (id === "goblin_trader") this.openDialog(name, ["Scrap for sale, stories for free. The camp keeps to itself — unless you pick a fight."], undefined, portrait);
 	}
 	private offerInn(): void {
 		if (this.gold < 15) {
-			this.openDialog("Innmother Cald", ["Crowns first, kindness second. Come back when the purse is less embarrassed."]);
+			this.openDialog("Innmother Cald", ["Crowns first, kindness second. Come back when the purse is less embarrassed."], undefined, "innkeep");
 			return;
 		}
 		this.gold -= 15;
 		this.party.forEach(healFull);
 		this.persist();
 		sfxPlay.heal();
-		this.openDialog("Innmother Cald", ["Sleep. The road will still be there. Unfortunately."]);
+		this.openDialog("Innmother Cald", ["Sleep. The road will still be there. Unfortunately."], undefined, "innkeep");
 	}
 	private chooseStarter(id: string): void {
 		if (this.flags.starter && this.party.length > 0) {
@@ -1178,18 +1183,19 @@ export class ReliquaryGame {
 			this.give("common_sigil", 3);
 			this.gold += 40;
 			sfxPlay.catch();
-			this.openDialog("Elder Maren", [`So it is ${sp.name}. Keep the name.`, "I have left sigils in your pack. The Briar Road will teach the rest."]);
+			this.openDialog("Elder Maren", [`So it is ${sp.name}. Keep the name.`, "I have left sigils in your pack. The Briar Road will teach the rest."], undefined, "elder_maren");
 			this.persist();
 		});
 	}
 	private give(id: string, n: number): void {
 		this.inventory[id] = (this.inventory[id] ?? 0) + n;
 	}
-	openDialog(speaker: string, pages: string[], onDone?: () => void): void {
+	openDialog(speaker: string, pages: string[], onDone?: () => void, portrait: string | null = null): void {
 		this.dialog = {
 			speaker,
 			pages,
 			index: 0,
+			portrait,
 			onDone
 		};
 		this.emit();
@@ -1791,7 +1797,7 @@ export class ReliquaryGame {
 			], () => {
 				this.mode = "victory";
 				this.emit();
-			});
+			}, "warden_cael");
 			return "world";
 		}
 		return "world";

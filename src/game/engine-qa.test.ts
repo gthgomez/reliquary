@@ -796,3 +796,74 @@ test("Cael telegraphs the trial, advises a weak party, and only begins on confir
     assert.match(game.getSnapshot().dialog!.text, /Iron\. Chapel\. Drake/);
   });
 });
+
+test("confirming against Elder Maren opens her close-up with her portrait key", async () => {
+  await withGame((game) => {
+    game.mode = "world";
+    game.mapId = "elderhall";
+    game.tx = 7;
+    game.ty = 10;
+    game.dir = 3;
+    game.confirm();
+    const dialog = game.getSnapshot().dialog!;
+    assert.equal(dialog.speaker, "Elder Maren");
+    assert.equal(dialog.portrait, "elder_maren");
+    // Both of her dialogue resolutions share the named portrait.
+    (game as unknown as { talk(id: string, name: string): void }).talk("maren_guild", "Elder Maren");
+    assert.equal(game.getSnapshot().dialog!.portrait, "elder_maren");
+    game.confirm();
+    game.confirm();
+    assert.equal(game.getSnapshot().dialog, null);
+    assert.equal(game.mode, "world");
+  });
+});
+
+test("confirming against Warden Cael carries his portrait and cancel never starts the trial", async () => {
+  await withGame((game) => {
+    game.mode = "world";
+    game.mapId = "thornkeep";
+    game.tx = 11;
+    game.ty = 7;
+    game.dir = 3;
+    game.flags.starter = true;
+    game.party = [makeBeast("emberkit", 5)];
+    game.confirm();
+    const dialog = game.getSnapshot().dialog!;
+    assert.equal(dialog.speaker, "Warden Cael");
+    assert.equal(dialog.portrait, "warden_cael");
+    game.cancel();
+    assert.equal(game.getSnapshot().dialog, null);
+    assert.equal(game.battle, null);
+    assert.equal(game.mode, "world");
+  });
+});
+
+test("the turnaway warning shows the Gateward's guard portrait", async () => {
+  await withGame((game) => {
+    game.mode = "world";
+    game.mapId = "elderhall";
+    game.flags.starter = false;
+    game.tx = 11;
+    game.ty = 1;
+    game.px = game.tx * TILE;
+    game.py = game.ty * TILE;
+    game.dir = 3;
+    game.keys.add("KeyW");
+    (game as unknown as { tickMove(dt: number): void }).tickMove(0.016);
+    game.keys.delete("KeyW");
+    const dialog = game.getSnapshot().dialog!;
+    assert.equal(dialog.speaker, "Gateward");
+    assert.equal(dialog.portrait, "guard");
+  });
+});
+
+test("narration, signs, and system speakers never borrow an NPC portrait", async () => {
+  await withGame((game) => {
+    game.openDialog("", ["You rest. The lantern ticks. Dawn, again."]);
+    assert.equal(game.getSnapshot().dialog!.portrait, null);
+    game.openDialog("Sign", ["BRIAR ROAD — north to Wildwood, east to Mirefen."]);
+    assert.equal(game.getSnapshot().dialog!.portrait, null);
+    game.openDialog("Shrine", ["The old compact holds."]);
+    assert.equal(game.getSnapshot().dialog!.portrait, null);
+  });
+});

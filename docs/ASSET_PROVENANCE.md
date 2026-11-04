@@ -5,6 +5,21 @@ source-license file was present in the initial repository, and the repository
 has one initial commit. Unresolved entries are retained and flagged rather than
 deleted.
 
+## Dialogue portraits (2026-11-04, benchmark run B)
+
+`public/game/portraits/*.svg` — six files (`elder-maren.svg`, `warden-cael.svg`,
+`guard.svg`, `traveler.svg`, `innkeep.svg`, `shopkeep.svg`):
+
+| Property | Record |
+|---|---|
+| What | Head-and-shoulders NPC dialogue close-up artwork, hand-authored as original SVG vector markup (gradients, paths, strokes only) |
+| Created | 2026-11-04, by the implementing coding agent of benchmark run B, specifically for this feature |
+| How | Written directly as SVG source in the repository; no image-generation service, no rasterization pipeline, no third-party or franchise art, no downloads |
+| Source | Wholly original; character likeness directions come from the game's own dialogue text (Elder Maren's chapter robes and silver hair, Warden Cael's Thornkeep armor and trial role) |
+| Palette | Derived from the game's existing CSS custom properties (`--color-ink`, `--color-parchment`, `--color-copper`, `--color-forest`, `--color-cream`) plus intermediate skin/cloth tones introduced by the same hand-authored files |
+| Rights/limitations | Work product of this repository's code under the repository license; each file is self-contained (no external references, fonts, or scripts) |
+| Runtime role | Referenced only by `src/game/ui/Overlays.tsx` via `src/game/dialog-portraits.ts`; not part of the canvas preload set, so they do not affect the 78-path engine preload inventory |
+
 | Path/category | Likely source | Transformation | Status/confidence | Action |
 |---|---|---|---|---|
 | `assets/sprites/**/raw-sheet*.png` (smaller intermediates still in tree: 5 `raw-sheet-clean.png` under 1 MB plus `assets/sprites/panel/raw-sheet.png`; the 23 full-resolution sheets over 1 MB were removed, see below) | Original-looking source sheets; AI/Grok involvement cannot be established | Source inputs for sprite processing scripts | Unclear / low | Record generator/source and retain proof of rights |

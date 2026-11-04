@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="96" height="112" viewBox="0 0 96 112" role="img" aria-label="An innkeeper of Hollowmere">
+  <defs>
+    <radialGradient id="innkeep-bg" cx="50%" cy="36%" r="78%">
+      <stop offset="0%" stop-color="#3d2b1d"/>
+      <stop offset="62%" stop-color="#241a13"/>
+      <stop offset="100%" stop-color="#16110d"/>
+    </radialGradient>
+    <radialGradient id="innkeep-vig" cx="50%" cy="46%" r="80%">
+      <stop offset="62%" stop-color="#000000" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#14110e" stop-opacity="0.55"/>
+    </radialGradient>
+  </defs>
+  <rect width="96" height="112" fill="url(#innkeep-bg)"/>
+  <!-- bodice and apron -->
+  <path d="M8 112 C11 93 27 83 43 80 L53 80 C69 83 85 93 88 112 Z" fill="#5c4632"/>
+  <path d="M36 84 L60 84 C62 96 62 104 60 112 L36 112 C34 104 34 96 36 84 Z" fill="#cbbfa3"/>
+  <path d="M36 84 L48 84 L48 112 L36 112 C34 104 34 96 36 84 Z" fill="#b9ad91"/>
+  <path d="M40 84 L43 74 L53 74 L56 84 C52 86 44 86 40 84 Z" fill="#d8b088"/>
+  <!-- headscarf knotted at the side -->
+  <path d="M48 17 C35 17 27 27 28 40 C29 32 34 28 40 27 C46 26 56 26 61 29 C66 31 68 35 67 40 C68 26 61 17 48 17 Z" fill="#7a4a35"/>
+  <path d="M28 40 C29 32 34 28 40 27 C46 26 56 26 61 29 C66 31 68 35 67 40 C64 38 58 36 48 36 C38 36 31 38 28 40 Z" fill="#93583f"/>
+  <path d="M66 30 L74 26 L72 34 Z" fill="#7a4a35"/>
+  <circle cx="70" cy="30" r="1.4" fill="#a36a45"/>
+  <!-- warm round face -->
+  <path d="M48 26 C59 26 65 34 65 45 C65 50 63 55 60 58 C57.5 61 57 64 57 67 C57 72 53 76 48 76 C43 76 39 72 39 67 C39 64 38.5 61 36 58 C33 55 31 50 31 45 C31 34 37 26 48 26 Z" fill="#d9a97e"/>
+  <path d="M48 26 C59 26 65 34 65 45 C65 50 63 55 60 58 C57.5 61 57 64 57 67 C57 72 53 76 48 76 C55 73 58 68 57.5 63 C57 57 61 52 61 45 C61 35 56 28 48 26 Z" fill="#c08f60"/>
+  <circle cx="39.5" cy="58" r="2.6" fill="#c07b58" opacity="0.55"/>
+  <circle cx="56.5" cy="58" r="2.6" fill="#c07b58" opacity="0.55"/>
+  <!-- brows, warm eyes -->
+  <path d="M36 44 C39 42 44 42 47 44" stroke="#5c3a26" stroke-width="1.8" fill="none" stroke-linecap="round"/>
+  <path d="M49 44 C52 42 57 42 60 44" stroke="#5c3a26" stroke-width="1.8" fill="none" stroke-linecap="round"/>
+  <path d="M38 49 C39 47.4 42 47.4 43 49 C42 50.8 39 50.8 38 49 Z" fill="#2b2019"/>
+  <path d="M53 49 C54 47.4 57 47.4 58 49 C57 50.8 54 50.8 53 49 Z" fill="#2b2019"/>
+  <circle cx="41.4" cy="48.4" r="0.7" fill="#f3ead8" opacity="0.85"/>
+  <circle cx="56.4" cy="48.4" r="0.7" fill="#f3ead8" opacity="0.85"/>
+  <path d="M47 51 C46.4 54 45.6 56 44.6 57.4 C45.6 58.6 47.2 59 48 59" stroke="#b07a4e" stroke-width="1.4" fill="none" stroke-linecap="round"/>
+  <path d="M43.5 65 C46 67 50 67 52.5 65" stroke="#8a5638" stroke-width="1.6" fill="none" stroke-linecap="round"/>
+  <!-- hearth rim light -->
+  <path d="M31 45 C31 34 37 26 48 26 C40 28 35 35 35 45 C35 50 36 54 38 57.5 C36 56.5 33 57 34 59 C31 55 31 50 31 45 Z" fill="#f3ead8" opacity="0.12"/>
+  <path d="M15 102 C21 91 32 84 45 82 C32 85 22 92 18 104 Z" fill="#f3ead8" opacity="0.1"/>
+  <rect width="96" height="112" fill="url(#innkeep-vig)"/>
+</svg>
