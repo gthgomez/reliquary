@@ -1,3 +1,4 @@
+import { MAX_LEVEL, PRACTICE_COST, PRACTICE_LORE } from "../content.ts";
 import type { Beast } from "../types";
 
 export function leadActionHint(index: number, beast: Beast): string | null {
@@ -8,11 +9,11 @@ export function leadActionHint(index: number, beast: Beast): string | null {
 
 export function practiceActionHint(beast: Beast, gold: number): string | null {
   if (beast.hp <= 0) return "Practice needs a companion on their feet.";
-  if (beast.level >= 40) return "Already at the level cap.";
-  if (gold < 45) return `Need 45 cr to practice (you have ${gold}).`;
+  if (beast.level >= MAX_LEVEL) return "Already at the level cap.";
+  if (gold < PRACTICE_COST) return `Need ${PRACTICE_COST} cr to practice (you have ${gold}).`;
   return null;
 }
 
 export function practiceEnabledHint(): string {
-  return "Practice: pay 45 cr · gain 80 lore (XP) · does not restore HP or MP.";
+  return `Practice: pay ${PRACTICE_COST} cr · gain ${PRACTICE_LORE} lore (XP) · does not restore HP or MP.`;
 }

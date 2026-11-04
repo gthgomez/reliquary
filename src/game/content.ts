@@ -9,6 +9,11 @@ import type {
 } from "./types.ts";
 import { mathRandom, type RandomSource } from "./rng.ts";
 
+/** Progression/economy tunables — single source for engine, UI copy, validation, and save schema. */
+export const MAX_LEVEL = 40;
+export const PRACTICE_COST = 45;
+export const PRACTICE_LORE = 80;
+
 export const ELEMENTS: Record<
   ElementId,
   { name: string; color: string; strong: ElementId[]; weak: ElementId[] }

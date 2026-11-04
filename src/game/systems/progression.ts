@@ -1,4 +1,4 @@
-import { currentStats, expToNext, SKILLS, SPECIES } from "../content.ts";
+import { currentStats, expToNext, MAX_LEVEL, SKILLS, SPECIES } from "../content.ts";
 import type { Beast } from "../types.ts";
 
 export type ProgressionResult = {
@@ -23,7 +23,7 @@ export function awardExperience(beast: Beast, xp: number): ProgressionResult {
     evolvedStages: [],
   };
   beast.exp += xp;
-  while (beast.exp >= expToNext(beast.level) && beast.level < 40) {
+  while (beast.exp >= expToNext(beast.level) && beast.level < MAX_LEVEL) {
     beast.exp -= expToNext(beast.level);
     const before = currentStats(beast);
     beast.level += 1;
