@@ -5,6 +5,9 @@ import {
   expToNext,
   ELEMENTS,
   ITEMS,
+  MAX_LEVEL,
+  PRACTICE_COST,
+  PRACTICE_LORE,
   SKILLS,
   SPECIES,
   TEMPERAMENTS,
@@ -160,11 +163,11 @@ export function DialogBox({ snap, onAdvance }: { snap: Snapshot; onAdvance: () =
   );
 }
 
-export function MenuPanel({ game, snap }: { game: ReliquaryGame; snap: Snapshot }) {
+export function MenuPanel({ game, snap, onImportActivate }: { game: ReliquaryGame; snap: Snapshot; onImportActivate?: () => void }) {
   if (!snap.menu) return null;
   const actionLabels: Record<string, (nickname: string) => string> = {
     lead: (n) => `Make ${n} lead`,
-    practice: () => "Practice · 45 cr",
+    practice: () => `Practice · ${PRACTICE_COST} cr`,
     learn: () => "Learn a new skill",
     rename: () => "Rename",
     store: (n) => `Store ${n}`,
@@ -210,6 +213,9 @@ export function MenuPanel({ game, snap }: { game: ReliquaryGame; snap: Snapshot 
                 className={i === snap.menuIndex ? "active" : ""}
                 onClick={() => {
                   game.menuIndex = i;
+                  // Open the picker inside this gesture (Safari-safe); the
+                  // engine ticket effect stays as the fallback path.
+                  if (it === "Import") onImportActivate?.();
                   game.menuConfirm();
                 }}
               >
@@ -275,7 +281,7 @@ export function MenuPanel({ game, snap }: { game: ReliquaryGame; snap: Snapshot 
       <OverlayPanel
         wide
         title="Party"
-        subtitle="Lead walks first in battle. Practice costs 45 cr and grants 80 lore (XP)."
+        subtitle={`Lead walks first in battle. Practice costs ${PRACTICE_COST} cr and grants ${PRACTICE_LORE} lore (XP).`}
         onClose={() => game.cancel()}
       >
         <div className="party-grid">
@@ -315,12 +321,12 @@ export function MenuPanel({ game, snap }: { game: ReliquaryGame; snap: Snapshot 
                 <button
                   type="button"
                   className="btn-ghost"
-                  disabled={b.hp <= 0 || b.level >= 40 || snap.gold < 45}
+                  disabled={b.hp <= 0 || b.level >= MAX_LEVEL || snap.gold < PRACTICE_COST}
                   onClick={() => game.trainCreature(b.uid)}
-                  aria-label={`Practice with ${b.nickname} for 45 crowns`}
+                  aria-label={`Practice with ${b.nickname} for ${PRACTICE_COST} crowns`}
                   aria-describedby={`practice-hint-${b.uid}`}
                 >
-                  Practice · 45 cr
+                  Practice · {PRACTICE_COST} cr
                 </button>
                 <p id={`practice-hint-${b.uid}`} className="action-hint" role="note">
                   {practiceActionHint(b, snap.gold) ?? practiceEnabledHint()}
@@ -569,7 +575,7 @@ function BeastCard({ beast, children, selected }: { beast: Beast; children?: Rea
         </p>
         <Meter label="HP" value={beast.hp} max={st.hp} kind="hp" />
         <Meter label="MP" value={beast.mp} max={st.mp} kind="mp" />
-        {beast.level < 40 ? (
+        {beast.level < MAX_LEVEL ? (
           <Meter label="Lore" value={beast.exp} max={expToNext(beast.level)} kind="mp" />
         ) : (
           <p className="skills">Level cap reached</p>

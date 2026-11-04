@@ -446,7 +446,17 @@
   margin-left: auto;
 }
 .save-file-input {
-  display: none;
+  /* Visually hidden, not display:none: iOS Safari refuses to open a file
+     picker backed by a display:none input even inside a user gesture. */
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 .sheet-wide {
   width: min(560px, calc(100% - 1rem));

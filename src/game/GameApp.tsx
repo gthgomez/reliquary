@@ -33,6 +33,13 @@ export function GameApp() {
       fileRef.current?.click();
     }
   }, [snap.importTicket]);
+  // Called synchronously from the Import menu item's own click handler: a
+  // programmatic click must run inside the user gesture or Safari drops it.
+  const openImportPicker = () => {
+    // Consume the upcoming ticket so the effect above does not click again.
+    askedImport.current = snap.importTicket + 1;
+    fileRef.current?.click();
+  };
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -62,7 +69,14 @@ export function GameApp() {
     };
     void g.boot(canvas);
     let saveSession: { release: () => void } | null = null;
+    let disposed = false;
     void acquireSaveSession().then(({ result, session }) => {
+      if (disposed) {
+        // Unmounted before the lock resolved: release it immediately so a
+        // later tab is not locked out by a document that is already gone.
+        session?.release();
+        return;
+      }
       saveSession = session;
       if (result === "denied") {
         g.setSaveWriteAllowed(false, "Another Reliquary window holds the save lock. This tab is read-only.");
@@ -102,6 +116,7 @@ export function GameApp() {
     const ro = new ResizeObserver(apply);
     if (stage) ro.observe(stage);
     return () => {
+      disposed = true;
       ro.disconnect();
       saveSession?.release();
       setUpdateGuard(null);
@@ -184,7 +199,7 @@ export function GameApp() {
           </div>
           {snap.mode === "battle" ? <BattleHud game={g} snap={snap} /> : null}
           {snap.dialog ? <DialogBox snap={snap} onAdvance={() => g.confirm()} /> : null}
-          {snap.menu ? <MenuPanel game={g} snap={snap} /> : null}
+          {snap.menu ? <MenuPanel game={g} snap={snap} onImportActivate={openImportPicker} /> : null}
           {snap.mode === "shop" ? <ShopPanel game={g} snap={snap} /> : null}
           {uiModal && snap.toast ? <Toast text={snap.toast} className="toast-modal" /> : null}
         </div>

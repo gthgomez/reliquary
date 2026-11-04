@@ -90,9 +90,12 @@ test("a bound beast acts last even against the slowest possible foe", () => {
   assert.equal(playerActsFirst(fast, slow, rolls()), true);
   applyStatus(fast, "bind");
   assert.equal(playerActsFirst(fast, slow, rolls()), false);
-  // Both bound: the speed tiebreak comes back into play.
+  // Both bound: speeds zero out and the roll decides, so an unlucky roll
+  // loses initiative. Asymmetric rolls pin that the old player-first
+  // short-circuit is really gone.
   applyStatus(slow, "bind");
-  assert.equal(playerActsFirst(fast, slow, rolls()), true);
+  assert.equal(playerActsFirst(fast, slow, sequenceRandom([.1, .9])), false);
+  assert.equal(playerActsFirst(fast, slow, sequenceRandom([.9, .1])), true);
 });
 
 test("world data is rectangular and every warp lands on a walkable tile", () => {
