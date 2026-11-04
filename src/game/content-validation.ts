@@ -2,6 +2,7 @@ import { ELEMENTS, ITEMS, MAX_LEVEL, SKILLS, SPECIES } from "./content.ts";
 import { FIXED_ENCOUNTERS } from "./encounters.ts";
 import { MAPS } from "./maps.ts";
 import { mapIsRectangular, canStandAt } from "./systems/world.ts";
+import { validateInteractions } from "./world/interactions.ts";
 
 const SKILL_KINDS = new Set(["strike", "spell", "heal", "ward", "hex"]);
 const ITEM_KINDS = new Set(["heal", "ether", "status", "revive", "field", "sigil", "key"]);
@@ -68,6 +69,7 @@ export function validateContent(tables: ContentTables = { ELEMENTS, SPECIES, SKI
     }
     if (def.onceFlag && typeof def.onceFlag !== "string") errors.push(`encounter ${encId}: invalid once flag`);
   }
+  errors.push(...validateInteractions(mapsTable));
   return errors;
 }
 
