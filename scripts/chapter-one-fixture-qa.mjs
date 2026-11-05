@@ -279,7 +279,7 @@ try {
               { timeout: 8000 },
             );
             const active = await page.locator(".battle-ui .battler.me strong").innerText();
-            assert.equal(active, chosen, "the chosen enabled row must become the active battler");
+            assertEq(active, chosen, "the chosen enabled row must become the active battler");
             await page.waitForTimeout(250);
             continue;
           }
