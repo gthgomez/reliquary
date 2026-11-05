@@ -291,10 +291,10 @@ test("S16: the Sound menu row toggles mute and persists the preference", async (
       game.menuIndex = 7; // Party Storage Reliquary Pack Save Export Import Sound Close
       game.menuConfirm();
       assert.equal(game.menu, "root", "the Sound toggle stays in the menu");
+      assert.equal(game.menuIndex, 7, "the Sound row stays selected for repeated toggles");
       assert.equal(game.getSnapshot().soundOff, true);
       assert.equal(store.data.get("reliquary-muted"), "1");
-      game.menuIndex = 7; // menuConfirm resets the shared index; the UI row re-selects.
-      game.menuConfirm();
+      game.menuConfirm(); // repeat toggle without re-navigation
       assert.equal(game.getSnapshot().soundOff, false);
       assert.equal(store.storage.getItem("reliquary-muted"), null);
       game.menuIndex = 0;

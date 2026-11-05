@@ -1966,7 +1966,9 @@ export class ReliquaryGame {
 				setMuted(next);
 				setSoundMutedStored(next);
 			} else this.menu = null;
-			this.menuIndex = 0;
+			// The Sound toggle stays highlighted on its own row so repeated
+			// toggles and keyboard focus do not jump back to the top.
+			this.menuIndex = c === "Sound" ? ROOT_MENU.indexOf("Sound") : 0;
 			this.emit();
 			return;
 		}
