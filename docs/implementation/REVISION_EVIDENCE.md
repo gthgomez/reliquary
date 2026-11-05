@@ -142,11 +142,32 @@ stage4-measurements (also mirrored in the run log).
    `npm run build:web` artifact at the merge-commit SHA.
 2. **Unguided first-session study** — no participant recruitment/consent
    authority. The synthesis's seven-task protocol and question set are ready.
-3. **Exact-head CI artifact inspection (S05/O1)** — the repo-side fix is done
-   and locally proven; inspecting the uploaded artifacts requires the next CI
-   run on the merged head.
-4. **Hosted playable build** — none exists in the repo; establishing one is an
-   owner distribution decision (also gated on asset-provenance clearance).
+3. **~~Exact-head CI artifact inspection (S05/O1)~~ — DONE.** The exact-head CI run on PR #38
+   (`d31b999`, run 42126685923, all green) uploaded `journey-evidence-ubuntu-latest` and
+   `journey-evidence-windows-latest`, both inspected: per-journey JSON + PNGs + `manifest.json`
+   (gitSha/gitRef/runId/node/platform/channel/journeys). The upload fails on missing evidence.
+4. **Hosted playable build** — none exists in the repo; establishing one is an owner distribution
+   decision (also gated on asset-provenance clearance).
+
+## Exact-head CI verification (final)
+
+- PR: https://github.com/gthgomez/reliquary/pull/38 (draft, branch `codex/reliquary-s-revision`).
+- Final head: `d31b999ba7ff0dfbeb970fc57239108a38944c91`. CI run 42126685923: **all checks pass**
+  (Verify ubuntu 4m47s, Verify windows 9m40s, Deep chapter journeys ubuntu 2m20s / windows 2m16s,
+  Vercel preview pass).
+- Ubuntu verify totals: platform suite 459 tests / 453 pass / 0 fail / 6 skipped (developer-local
+  skips); browser-test-flag regression 6/6; browser-free deploy build regression 2/2; browser journeys
+  all PASS on both OSes. Windows platform suite: 459/453/0/6.
+- CI failures encountered and resolved during this revision (all root-caused, none masked):
+  1. `battle-reach.mjs` — a Strike can fell a weak wild foe and a flee can succeed; the scenario now
+     settles command-or-win and banks the win before the remaining checks (`880cec7`).
+  2. `chapter-one-fixture-qa.mjs` forced-switch assertion called node-style `assert.equal`; the file
+     defines its own boolean `assert` + `assertEq` helpers. Fixed to the file's convention, and the
+     full journeys suite was run locally before push (`210053c`).
+  3. Intermittent ubuntu pngjs "read requests waitng on finished stream" in the manifest-icons test:
+     node --test runs test files concurrently and the regenerated PNGs were read mid-truncate. The
+     generators now stage outside `public/` and `rename(2)` into place (`d31b999`). Journey runs
+     around the fix: fail (assert bug) → pass → fail (race) → pass/pass after the atomic writes.
 
 ## Honesty notes
 
