@@ -136,18 +136,10 @@ try {
           const ok = await assertReachable(`.battle-controls button:text-is("${cmd}")`, `command ${cmd}`, true);
           assert.ok(ok, `${vp.name}: command ${cmd} not reachable — ${rows.failures.join("; ")}`);
           await page.waitForTimeout(150);
-          if (cmd === "Strike") {
-            // Strike resolves the turn; wait back to command phase.
-            await page.waitForFunction(
-              () => document.querySelector(".battle-controls")?.getAttribute("data-battle-phase") === "command",
-              null,
-              { timeout: 15_000 },
-            );
-            continue;
-          }
-          if (cmd === "Flee") {
-            // Flee may succeed (win) or fail (back to command); either way the
-            // command list must come back or the battle ends.
+          if (cmd === "Strike" || cmd === "Flee") {
+            // Both resolve the turn and can end the battle (a weak wild foe may
+            // fall to one Strike; a flee may succeed). Wait back to command, or
+            // take the win, bank it, and restart the battle for remaining checks.
             await page.waitForFunction(
               () => {
                 const phase = document.querySelector(".battle-controls")?.getAttribute("data-battle-phase");
@@ -159,7 +151,6 @@ try {
             if ((await page.locator(".battle-continue").count()) > 0) {
               await page.locator(".battle-continue").click();
               await page.waitForSelector(".hud-menu", { timeout: 15_000 });
-              // Restart the battle for the remaining checks.
               await page.evaluate(() => window.__controlsTest?.startWild?.());
               await page.waitForSelector(".battle-ui", { timeout: 20_000 });
             }
