@@ -239,7 +239,7 @@ export const ITEMS: Record<string, ItemDef> = {
   panacea: { id: "panacea", name: "Panacea", desc: "Fully restores HP.", price: 180, kind: "heal", power: 999 },
   etherdrop: { id: "etherdrop", name: "Etherdrop", desc: "Restores 30 MP.", price: 50, kind: "ether", power: 30 },
   salve: { id: "salve", name: "Salve", desc: "Cures burn, soak, bind, and daze.", price: 25, kind: "status" },
-  phoenix_ash: { id: "phoenix_ash", name: "Phoenix Ash", desc: "Revives a fallen pact-beast with half HP.", price: 220, kind: "revive", power: 50 },
+  phoenix_ash: { id: "phoenix_ash", name: "Phoenix Ash", desc: "Revives a fallen pact-beast with half HP. Use from the pack on the road — not during a battle.", price: 220, kind: "revive", power: 50 },
   common_sigil: { id: "common_sigil", name: "Common Sigil", desc: "A plain binding stone. Cast it to pact a weakened wild beast.", price: 30, kind: "sigil", stone: 1 },
   thorn_sigil: { id: "thorn_sigil", name: "Thorn Sigil", desc: "A briar-cut stone. Binds more surely.", price: 90, kind: "sigil", stone: 1.7 },
   relic_sigil: { id: "relic_sigil", name: "Relic Sigil", desc: "An old compact, recut. Few beasts refuse it.", price: 280, kind: "sigil", stone: 2.6 },

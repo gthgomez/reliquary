@@ -205,6 +205,12 @@ export interface BattleState {
   foeIndex: number;
   trainerName?: string;
   log: string[];
+  /**
+   * Bounded, ordered recap of the current turn (and the ending summary):
+   * later log lines replace the display log, so this keeps both actions,
+   * statuses, failed binds and rewards inspectable (S06). Capped by engine.
+   */
+  recap: string[];
   phase:
     | "intro"
     | "command"
@@ -254,6 +260,16 @@ export interface DialogView {
   npcId: string | null;
   /** Resolved portrait key (named art or a generic role); null means text-only. */
   portraitKey: PortraitKey | null;
+  /**
+   * Label for the final page's action when it commits a choice (S13);
+   * null keeps the generic "Close".
+   */
+  doneLabel: string | null;
+  /**
+   * True when the final action commits a choice (starter pact, inn stay,
+   * trial offer…). Used to defer forced reloads while the offer is open.
+   */
+  commits: boolean;
 }
 
 export interface LearnMenuView {
@@ -311,6 +327,8 @@ export interface Snapshot {
   shopStock: string[];
   hasSave: boolean;
   importTicket: number;
+  /** True when the in-game sound control has muted output (S16). */
+  soundOff: boolean;
   items: Record<string, ItemDef>;
 }
 

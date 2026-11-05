@@ -15,8 +15,9 @@ import {
 import { AppStatus } from "./ui/AppStatus";
 import { battleSubmenuRootClass } from "./ui/battle-chrome.ts";
 import { formatUiSafeTopPx } from "./ui/ui-geometry.ts";
-import { isClassicTouchEnabled, isUiModalOpen, shouldShowDialogTouch, shouldShowExplorationTouch } from "./ui/ui-chrome.ts";
+import { isClassicTouchEnabled, isSoundMutedStored, isUiModalOpen, shouldShowDialogTouch, shouldShowExplorationTouch } from "./ui/ui-chrome.ts";
 import { registerReliquaryServiceWorker, setUpdateGuard } from "../pwa/register.ts";
+import { setMuted } from "./audio.ts";
 import { acquireSaveSession } from "./save-session.ts";
 import { attachEconomyProbes } from "reliquary-economy-probes";
 import { attachBattleUiBrowserHooks } from "reliquary-battle-browser-probes";
@@ -74,8 +75,16 @@ export function GameApp() {
       }
     };
     void g.boot(canvas);
+    // Restore the persisted sound preference before any gesture can unlock
+    // audio, so a muted session stays muted from the first sound (S16).
+    setMuted(isSoundMutedStored());
     let saveSession: { release: () => void } | null = null;
     let disposed = false;
+    // Web-Locks browsers start write-blocked: an acquisition that is still
+    // pending must never authorize durable writes. The documented fallback for
+    // browsers without Web Locks keeps writes allowed (no cross-tab safety is
+    // claimed for that path).
+    g.setSaveWriteAllowed(false);
     void acquireSaveSession().then(({ result, session }) => {
       if (disposed) {
         // Unmounted before the lock resolved: release it immediately so a
@@ -86,19 +95,33 @@ export function GameApp() {
       saveSession = session;
       if (result === "denied") {
         g.setSaveWriteAllowed(false, "Another Reliquary window holds the save lock. This tab is read-only.");
+      } else {
+        g.setSaveWriteAllowed(true);
       }
     });
     // A new build applies itself by reloading, but only at a calm moment and
-    // after flushing the save, so an update never interrupts a battle or dialog.
+    // only after a successful flush: a failed or throwing required save vetoes
+    // the reload (see register.ts) so unflushed live changes are never lost.
     setUpdateGuard({
       canReloadNow: () => {
         const s = g.getSnapshot();
         return (s.mode === "title" || s.mode === "world" || s.mode === "victory") && !s.dialog && !s.menu && !isUiModalOpen(s);
       },
-      canForceReload: () => g.getSnapshot().mode !== "battle",
+      canForceReload: () => {
+        const s = g.getSnapshot();
+        // Consequential context (a dialog whose final action commits a choice)
+        // outlives the overdue/hidden path: a reload here would drop the offer
+        // without its outcome. Pure-text pages may still force.
+        if (s.mode === "battle" || s.dialog?.commits) return false;
+        return true;
+      },
       beforeReload: () => {
         const mode = g.getSnapshot().mode;
-        if (mode !== "title" && mode !== "boot" && mode !== "battle" && g.canWriteSave) g.persist();
+        if (mode === "title" || mode === "boot" || mode === "battle") return "clean";
+        // A denied writer cannot make the required save durable: report the
+        // failure (no toast — the blocked status is the persistent surface).
+        if (!g.canWriteSave) return "failed";
+        return g.persist() ? "flushed" : "failed";
       },
     });
     void registerReliquaryServiceWorker();
@@ -154,6 +177,16 @@ export function GameApp() {
     if (uiModal) {
       wasUiModal.current = true;
       requestAnimationFrame(() => {
+        // S09: actual focus starts on the engine's visible selection, so
+        // Enter/Space act on the highlighted row. Listless panels fall back
+        // to the close button.
+        const activeRow = document.querySelector<HTMLButtonElement>(
+          ".overlay-panel .menu-list button.active, .overlay-panel .shop-list button.active",
+        );
+        if (activeRow && !activeRow.disabled) {
+          activeRow.focus({ preventScroll: true });
+          return;
+        }
         document.querySelector<HTMLElement>(".overlay-panel-close")?.focus({ preventScroll: true });
       });
       return;

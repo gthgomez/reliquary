@@ -166,7 +166,8 @@ try {
         if (i < 2) await page.locator("button.dialog").click({ delay: 30 });
       }
       const all = lines.join(" | ");
-      assert(/a dozen and this goes lighter/.test(all), `advisory missing: ${all}`);
+      assert(/Below a dozen, my three run lighter/.test(all), `advisory missing: ${all}`);
+      assert(/at a dozen they meet you at full strength/.test(all), `threshold rule missing: ${all}`);
       assert(/Iron\. Chapel\. Drake/.test(all), all);
       assert(/\(A begin · B later\)/.test(all), all);
       await page.screenshot({ path: join(output, "cael-advisory.png") });

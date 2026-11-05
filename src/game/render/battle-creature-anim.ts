@@ -8,9 +8,17 @@ export type BattleAnimCue = {
 };
 
 export type BattleSpriteMotion = {
+  /**
+   * Signed attacker offset, already side-correct: the player lunges toward the
+   * foe (+x), the foe lunges toward the player (−x). Apply to the ATTACKER's
+   * sprite only.
+   */
   dx: number;
   dy: number;
-  foeShakeX: number;
+  /**
+   * Defender reaction (impact shake), to apply to the DEFENDER's sprite only.
+   */
+  defenderShakeX: number;
   projectile?: { x: number; y: number; r: number; alpha: number };
 };
 
@@ -56,7 +64,7 @@ export function sampleBattleIdle(options: BattleAnimSampleOptions = {}): BattleS
     (options.idlePhase ?? 0) > 0
       ? Math.sin((options.idlePhase ?? 0) * 2.1) * (reduced ? IDLE_REDUCED_AMP : IDLE_AMP)
       : 0;
-  return { dx: 0, dy: idle, foeShakeX: 0 };
+  return { dx: 0, dy: idle, defenderShakeX: 0 };
 }
 
 export function sampleBattleAnim(
@@ -69,26 +77,28 @@ export function sampleBattleAnim(
   const reduced = options.reducedMotion === true;
   const dur = battleAnimDurationMs(cue, reduced);
   const t = clamp(elapsedMs / dur, 0, 1);
-  const sign = cue.attacker === "player" ? 1 : -1;
-  const towardFoe = cue.attacker === "player" ? 1 : -1;
+  // The attacker moves TOWARD its opponent: the player stands left (+x), the
+  // foe stands right (−x). One sign, chosen by side — never a product that
+  // cancels itself for the foe.
+  const attackDir = cue.attacker === "player" ? 1 : -1;
   const idle =
     (options.idlePhase ?? 0) > 0
       ? Math.sin((options.idlePhase ?? 0) * 2.1) * (reduced ? IDLE_REDUCED_AMP : IDLE_AMP)
       : 0;
 
-  const base: BattleSpriteMotion = { dx: 0, dy: idle, foeShakeX: 0 };
+  const base: BattleSpriteMotion = { dx: 0, dy: idle, defenderShakeX: 0 };
 
   if (cue.skillId === "nip") {
     const lunge = reduced ? corridor.w * 0.08 : corridor.w * 0.22;
     if (t < 0.18) {
-      base.dx = -sign * towardFoe * easeIn(t / 0.18) * (reduced ? 3 : 6);
+      base.dx = -attackDir * easeIn(t / 0.18) * (reduced ? 3 : 6);
     } else if (t < 0.42) {
       const p = (t - 0.18) / 0.24;
-      base.dx = sign * towardFoe * easeOut(p) * lunge;
+      base.dx = attackDir * easeOut(p) * lunge;
     } else if (t < 0.72) {
       const p = (t - 0.42) / 0.3;
-      base.dx = sign * towardFoe * lunge * (1 - easeOut(p));
-      if (cue.hit && p > 0.35) base.foeShakeX = Math.sin(p * 18) * (reduced ? 2 : 5);
+      base.dx = attackDir * lunge * (1 - easeOut(p));
+      if (cue.hit && p > 0.35) base.defenderShakeX = Math.sin(p * 18) * (reduced ? 2 : 5);
     }
     return base;
   }
@@ -109,13 +119,16 @@ export function sampleBattleAnim(
         r: reduced ? 5 : 7 + p * 2,
         alpha: 0.35 + p * 0.45,
       };
-      if (cue.hit && p > 0.85) base.foeShakeX = (reduced ? 2 : 4) * towardFoe;
+      if (cue.hit && p > 0.85) {
+        // Impact pushes the defender away from the attacker.
+        base.defenderShakeX = (reduced ? 2 : 4) * attackDir;
+      }
     }
     return base;
   }
 
-  if (t < 0.5) base.dx = sign * towardFoe * easeOut(t / 0.5) * (reduced ? 4 : 8);
-  else base.dx = sign * towardFoe * (1 - easeOut((t - 0.5) / 0.5)) * (reduced ? 4 : 8);
+  if (t < 0.5) base.dx = attackDir * easeOut(t / 0.5) * (reduced ? 4 : 8);
+  else base.dx = attackDir * (1 - easeOut((t - 0.5) / 0.5)) * (reduced ? 4 : 8);
   return base;
 }
 

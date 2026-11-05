@@ -1,5 +1,5 @@
 import type { PointerEvent, ReactNode, RefObject } from "react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   currentStats,
   expToNext,
@@ -25,8 +25,14 @@ import {
 } from "./party-actions.ts";
 import { battlePanelHeading, isBattleSubmenuPhase } from "./battle-chrome.ts";
 import { shopBuyAffordability, skillMpAffordability, skillMpHint } from "./ui-chrome.ts";
+import { STATUS_ADJECTIVES } from "../systems/status.ts";
 
 export function TitleScreen({ game, snap }: { game: ReliquaryGame; snap: Snapshot }) {
+  const [confirmingReplace, setConfirmingReplace] = useState(false);
+  const newGameRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (!confirmingReplace) newGameRef.current?.focus({ preventScroll: true });
+  }, [confirmingReplace]);
   return (
     <div className="title-screen">
       <img src="/game/bg/title.jpg" alt="" className="title-bg" />
@@ -36,16 +42,71 @@ export function TitleScreen({ game, snap }: { game: ReliquaryGame; snap: Snapsho
           <p className="title-kicker">A beastbinding chronicle</p>
           <h1 className="title-word">Reliquary</h1>
           <p className="title-tag">Bind the wild. Keep the old roads.</p>
-          <div className="title-actions">
-            <button type="button" className="btn-primary" onClick={() => game.startNew()}>
-              Start
-            </button>
-            {snap.hasSave ? (
-              <button type="button" className="btn-ghost" onClick={() => game.continueGame()}>
-                Continue
-              </button>
-            ) : null}
-          </div>
+          {snap.hasSave && confirmingReplace ? (
+            <div
+              className="title-confirm"
+              role="alertdialog"
+              aria-modal="true"
+              aria-labelledby="new-game-confirm-title"
+              aria-describedby="new-game-confirm-detail"
+              onKeyDown={(event) => {
+                if (event.key === "Escape" || event.key === "Backspace") {
+                  event.stopPropagation();
+                  setConfirmingReplace(false);
+                }
+              }}
+            >
+              <p className="title-tag" id="new-game-confirm-title">
+                Replace the saved journey?
+              </p>
+              <p className="title-hint" id="new-game-confirm-detail">
+                A new game takes the one save slot. The old lantern is kept until the new journey
+                first writes over it — after that it is gone.
+              </p>
+              <div className="title-actions">
+                <button
+                  type="button"
+                  className="btn-ghost"
+                  autoFocus
+                  onClick={() => setConfirmingReplace(false)}
+                >
+                  Keep current save
+                </button>
+                <button
+                  type="button"
+                  className="btn-primary"
+                  onClick={() => {
+                    setConfirmingReplace(false);
+                    game.startNew();
+                  }}
+                >
+                  Begin new game
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="title-actions">
+              {snap.hasSave ? (
+                <button
+                  type="button"
+                  className="btn-primary"
+                  ref={newGameRef}
+                  onClick={() => setConfirmingReplace(true)}
+                >
+                  New Game
+                </button>
+              ) : (
+                <button type="button" className="btn-primary" onClick={() => game.startNew()}>
+                  Start
+                </button>
+              )}
+              {snap.hasSave ? (
+                <button type="button" className="btn-ghost" onClick={() => game.continueGame()}>
+                  Continue
+                </button>
+              ) : null}
+            </div>
+          )}
           <p className="title-hint">
             Arrows or WASD to walk · Z / Enter to speak · X / Esc back · M menu
           </p>
@@ -214,7 +275,7 @@ export function MenuPanel({ game, snap, onImportActivate }: { game: ReliquaryGam
                   game.chooseMenu(i);
                 }}
               >
-                {it}
+                {it === "Sound" ? (snap.soundOff ? "Sound: off" : "Sound: on") : it}
               </button>
             </li>
           ))}
@@ -388,28 +449,23 @@ export function MenuPanel({ game, snap, onImportActivate }: { game: ReliquaryGam
         subtitle={`Bound ${Object.keys(snap.caught).length} · Seen ${Object.keys(snap.seen).length} of ${ids.length} · ? unheard · —— spotted only`}
         onClose={() => game.cancel()}
       >
-        <div className="reliq-grid">
+        <div className="reliq-grid" role="list">
           {ids.map((id) => {
             const sp = SPECIES[id]!;
             const caught = Boolean(snap.caught[id]);
             const seen = Boolean(snap.seen[id]);
             const known = seen || caught;
+            const stateLabel = caught
+              ? `${sp.name} — bound to your compact`
+              : seen
+                ? `${sp.name} — seen in the wild, not yet bound`
+                : "Unheard of — bind one to learn its name";
             return (
-              <div
-                key={id}
-                className={`reliq-cell ${caught ? "have" : ""}${seen && !caught ? " seen" : ""}`}
-                title={
-                  caught
-                    ? `${sp.name} — bound to your compact`
-                    : seen
-                      ? `${sp.name} — seen in the wild, not yet bound`
-                      : "Unheard of — bind one to learn its name"
-                }
-              >
+              <div key={id} role="listitem" aria-label={stateLabel} className={`reliq-cell ${caught ? "have" : ""}${seen && !caught ? " seen" : ""}`} title={stateLabel}>
                 {known ? (
-                  <img src={`/game/sprites/${id}.png`} alt={caught || seen ? sp.name : "Unknown creature"} />
+                  <img src={`/game/sprites/${id}.png`} alt="" />
                 ) : (
-                  <span className="unknown" aria-label="Unheard of">
+                  <span className="unknown" aria-hidden="true">
                     ?
                   </span>
                 )}
@@ -557,7 +613,13 @@ function BeastCard({ beast, children, selected }: { beast: Beast; children?: Rea
         <Meter label="HP" value={beast.hp} max={st.hp} kind="hp" />
         <Meter label="MP" value={beast.mp} max={st.mp} kind="mp" />
         {beast.level < MAX_LEVEL ? (
-          <Meter label="Lore" value={beast.exp} max={expToNext(beast.level)} kind="mp" />
+          <Meter
+            label="Lore"
+            value={beast.exp}
+            max={expToNext(beast.level)}
+            kind="mp"
+            longLabel="Lore (experience to next level)"
+          />
         ) : (
           <p className="skills">Level cap reached</p>
         )}
@@ -581,20 +643,24 @@ export function Meter({
   value,
   max,
   kind,
+  longLabel,
 }: {
   label: string;
   value: number;
   max: number;
   kind: "hp" | "mp";
+  /** Accessible/visible full label; defaults from the visual kind (S31: never
+   * infer a resource's meaning from styling alone). */
+  longLabel?: string;
 }) {
   const pct = max <= 0 ? 0 : Math.max(0, Math.min(100, (value / max) * 100));
-  const longLabel = kind === "hp" ? "Health" : "Skill points";
+  const resolvedLabel = longLabel ?? (kind === "hp" ? "Health" : "Skill points");
   return (
-    <div className="meter" role="group" aria-label={`${longLabel} ${value} of ${max}`}>
+    <div className="meter" role="group" aria-label={`${resolvedLabel} ${value} of ${max}`}>
       <div className="meter-head">
-        <span className="meter-kicker">{longLabel}</span>
+        <span className="meter-kicker">{resolvedLabel}</span>
         <span className="meter-frac">
-          <abbr title={longLabel} className="meter-abbr">
+          <abbr title={resolvedLabel} className="meter-abbr">
             {label}
           </abbr>{" "}
           {value}/{max}
@@ -719,6 +785,9 @@ export function BattleHud({ game, snap }: { game: ReliquaryGame; snap: Snapshot 
           <div className="battler foe">
             <strong>{SPECIES[foe.speciesId]?.name}</strong>
             <span>Lv {foe.level}</span>
+            {foe.status ? (
+              <span className="battler-status">{STATUS_ADJECTIVES[foe.status]}</span>
+            ) : null}
             <Meter label="HP" value={foe.hp} max={foS.hp} kind="hp" />
           </div>
         ) : null}
@@ -728,6 +797,9 @@ export function BattleHud({ game, snap }: { game: ReliquaryGame; snap: Snapshot 
           <div className="battler me">
             <strong>{me.nickname}</strong>
             <span>Lv {me.level}</span>
+            {me.status ? (
+              <span className="battler-status">{STATUS_ADJECTIVES[me.status]}</span>
+            ) : null}
             <div className="meter-row">
               <Meter label="HP" value={me.hp} max={meS.hp} kind="hp" />
               <Meter label="MP" value={me.mp} max={meS.mp} kind="mp" />
@@ -739,6 +811,22 @@ export function BattleHud({ game, snap }: { game: ReliquaryGame; snap: Snapshot 
         </div>
         <div className={`battle-controls-body${scrollBody ? "" : " is-empty"}`}>
           {panelHeading ? <p className="battle-panel-title">{panelHeading}</p> : null}
+          {/* Bounded turn/win recap (S06): the one-line log replaces each
+              event, so the ordered recap keeps the turn inspectable. Rendered
+              only where it cannot push commands out of reach. */}
+          {(b.phase === "command" || b.phase === "win" || b.phase === "lose") && b.recap.length ? (
+            <div className="battle-recap-wrap">
+              {b.phase !== "command" ? <p className="battle-panel-title">How it ended</p> : null}
+              <ol
+                className="battle-recap"
+                aria-label={b.phase === "command" ? "This turn so far" : "How the battle ended"}
+              >
+                {b.recap.map((line, i) => (
+                  <li key={`${i}-${line}`}>{line}</li>
+                ))}
+              </ol>
+            </div>
+          ) : null}
           {scrollBody}
         </div>
         <div className="battle-controls-actions">
@@ -817,6 +905,7 @@ export function ShopPanel({ game, snap }: { game: ReliquaryGame; snap: Snapshot 
               <button
                 type="button"
                 className={`shop-row${i === snap.shopIndex ? " active" : ""}${unaffordable ? " unaffordable" : ""}${affordable ? " affordable" : ""}`}
+                aria-pressed={i === snap.shopIndex}
                 onClick={() => game.previewShopRow(i)}
               >
                 <span className="shop-row-main">
@@ -845,6 +934,15 @@ export function ShopPanel({ game, snap }: { game: ReliquaryGame; snap: Snapshot 
           {canAffordBuy
             ? `Buy for ${selected.price} cr`
             : `Need ${selected.price} cr (${snap.gold} in purse)`}
+        </button>
+      ) : null}
+      {selected && snap.shopMode === "sell" ? (
+        <button
+          type="button"
+          className="btn-primary shop-buy-btn"
+          onClick={() => game.shopConfirm()}
+        >
+          {`Sell for ${Math.floor(selected.price / 2)} cr`}
         </button>
       ) : null}
       {selected ? (

@@ -172,6 +172,16 @@
   flex-wrap: wrap;
   margin-bottom: 0.85rem;
 }
+.title-confirm {
+  border: 1px solid color-mix(in oklab, var(--color-ink) 35%, transparent);
+  border-radius: 0.6rem;
+  padding: 0.85rem 1rem;
+  margin-bottom: 0.85rem;
+  background: color-mix(in oklab, var(--color-cream) 92%, transparent);
+}
+.title-confirm .title-actions {
+  margin-bottom: 0;
+}
 .title-plaque .btn-ghost {
   background: var(--color-cream);
   color: var(--color-ink);
@@ -793,6 +803,36 @@
   line-height: 1.35;
   text-wrap: pretty;
   overflow-wrap: anywhere;
+}
+.battle-recap-wrap {
+  width: 100%;
+  min-width: 0;
+}
+.battle-recap {
+  list-style: decimal;
+  margin: 0.2rem 0 0;
+  padding: 0.25rem 0.25rem 0.25rem 1.4rem;
+  font-size: 0.76rem;
+  color: color-mix(in oklab, var(--color-ink) 78%, transparent);
+  max-height: 5.2rem;
+  overflow-y: auto;
+  display: grid;
+  gap: 0.1rem;
+  width: 100%;
+  box-sizing: border-box;
+}
+.battle-recap li {
+  overflow-wrap: anywhere;
+}
+.battler-status {
+  font-size: 0.72rem;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: color-mix(in oklab, var(--color-ink) 72%, transparent);
+  border: 1px solid color-mix(in oklab, var(--color-ink) 30%, transparent);
+  border-radius: 999px;
+  padding: 0.05rem 0.45rem;
+  width: fit-content;
 }
 .battle-panel-title {
   margin: 0 0 0.35rem;
