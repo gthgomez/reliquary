@@ -1116,6 +1116,22 @@ button.cmd-party-row {
   display: grid;
   place-items: center;
 }
+/* Adjacent directional targets overlap 8×8px in this cross layout (measured,
+ * R08-05/S supplemental). Chamfer each button's two inner diagonal corners so
+ * the shared corner belongs to no direction: a small dead pivot instead of an
+ * ambiguous hit that can trigger the wrong direction under a thumb. */
+.dpad .up {
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 8px 100%, 0 calc(100% - 8px));
+}
+.dpad .down {
+  clip-path: polygon(8px 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 0 100%, 0 8px);
+}
+.dpad .left {
+  clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%);
+}
+.dpad .right {
+  clip-path: polygon(8px 0, 100% 0, 100% 100%, 8px 100%, 0 calc(100% - 8px), 0 8px);
+}
 .dpad .up {
   top: 0;
   left: 36px;

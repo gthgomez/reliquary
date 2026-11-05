@@ -10,24 +10,52 @@ const artifactDir = process.env.RELIQUARY_BROWSER_ARTIFACTS
 async function measureSelectors(page, pairs) {
   return page.evaluate((selectors) => {
     // S28: parse the actual computed color instead of assuming a hex
-    // serialization — Chromium returns rgb()/rgba() from getComputedStyle and
-    // color(srgb …) for color-mix() results.
+    // serialization — Chromium returns rgb()/rgba(), color(srgb …) for
+    // color-mix() in srgb, and oklab(…) for color-mix(in oklab, …).
+    const oklabToRgb = (L, a, b) => {
+      const l_ = L + 0.3963377774 * a + 0.2158037573 * b;
+      const m_ = L - 0.1055613458 * a - 0.0638541728 * b;
+      const s_ = L - 0.0894841775 * a - 1.291485548 * b;
+      const l = l_ ** 3;
+      const m = m_ ** 3;
+      const s = s_ ** 3;
+      const r = 4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s;
+      const g = -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s;
+      const bl = -0.0041960863 * l - 0.7034186147 * m + 1.707614701 * s;
+      const encode = (v) => {
+        const c = Math.min(1, Math.max(0, v));
+        return c <= 0.0031308 ? 12.92 * c : 1.055 * c ** (1 / 2.4) - 0.055;
+      };
+      return [encode(r), encode(g), encode(bl)];
+    };
+    /** Returns [r, g, b, alpha] with 0–255 channels and 0–1 alpha. */
     const parseColor = (css) => {
       const s = String(css).trim().toLowerCase();
       let m = s.match(/^#([0-9a-f]{6})$/);
-      if (m) return [0, 2, 4].map((i) => Number.parseInt(m[1].slice(i, i + 2), 16));
+      if (m) return [...[0, 2, 4].map((i) => Number.parseInt(m[1].slice(i, i + 2), 16)), 1];
       m = s.match(/^#([0-9a-f]{3})$/);
-      if (m) return [...m[1]].map((c) => Number.parseInt(c + c, 16));
+      if (m) return [...[...m[1]].map((c) => Number.parseInt(c + c, 16)), 1];
       m = s.match(/^rgba?\(([^)]+)\)$/);
       if (m) {
         const parts = m[1].split(/[\s,/]+/).filter(Boolean);
         const conv = (token) =>
-          token.endsWith("%") ? Math.round((Number.parseFloat(token) / 100) * 255) : Math.round(Number.parseFloat(token));
+          token.endsWith("%") ? (Number.parseFloat(token) / 100) * 255 : Number.parseFloat(token);
         if (parts.length < 3) return null;
-        return [conv(parts[0]), conv(parts[1]), conv(parts[2])];
+        const a = parts[3] != null ? (parts[3].endsWith("%") ? Number.parseFloat(parts[3]) / 100 : Number.parseFloat(parts[3])) : 1;
+        return [Math.round(conv(parts[0])), Math.round(conv(parts[1])), Math.round(conv(parts[2])), a];
       }
-      m = s.match(/^color\(\s*srgb\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)/);
-      if (m) return [1, 2, 3].map((i) => Math.round(Number(m[i]) * 255));
+      m = s.match(/^color\(\s*srgb\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)(?:\s*\/\s*([\d.%]+))?/);
+      if (m) {
+        const a = m[4] != null ? (m[4].endsWith("%") ? Number.parseFloat(m[4]) / 100 : Number(m[4])) : 1;
+        return [1, 2, 3].map((i) => Math.round(Number(m[i]) * 255)).concat([a]);
+      }
+      m = s.match(/^oklab\(\s*([\d.]+)%?\s+(-?[\d.]+)\s+(-?[\d.]+)(?:\s*\/\s*([\d.%]+))?\s*\)$/);
+      if (m) {
+        const L = m[1].endsWith("%") ? Number(m[1].slice(0, -1)) / 100 : Number(m[1]);
+        const a = m[4] != null ? (m[4].endsWith("%") ? Number.parseFloat(m[4]) / 100 : Number(m[4])) : 1;
+        if (a <= 0) return null; // fully transparent: nothing to measure
+        return [...oklabToRgb(L, Number(m[2]), Number(m[3])).map((v) => Math.round(v * 255)), a];
+      }
       return null;
     };
     const lum = ([r, g, b]) => {
@@ -37,12 +65,22 @@ async function measureSelectors(page, pairs) {
       };
       return 0.2126 * ch(r) + 0.7152 * ch(g) + 0.0722 * ch(b);
     };
+    const composite = (fg, bg) => {
+      const [fr, fgc, fb, fa = 1] = fg;
+      if (fa >= 1) return [fr, fgc, fb];
+      const inv = 1 - fa;
+      return [
+        Math.round(fr * fa + bg[0] * inv),
+        Math.round(fgc * fa + bg[1] * inv),
+        Math.round(fb * fa + bg[2] * inv),
+      ];
+    };
     const ratio = (fgCss, bgCss) => {
       const fg = parseColor(fgCss);
       const bg = parseColor(bgCss);
       if (!fg || !bg) throw new Error(`unparsable computed color: ${!fg ? fgCss : bgCss}`);
-      const l1 = lum(fg);
-      const l2 = lum(bg);
+      const l1 = lum(composite(fg, bg));
+      const l2 = lum([bg[0], bg[1], bg[2]]);
       const hi = Math.max(l1, l2);
       const lo = Math.min(l1, l2);
       return (hi + 0.05) / (lo + 0.05);

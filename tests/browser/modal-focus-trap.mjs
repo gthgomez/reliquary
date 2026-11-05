@@ -19,6 +19,18 @@ function activeInPanel(page) {
   });
 }
 
+/** S09: initial focus is the visible selection (active row); listless panels
+ * keep the close button as the focus target. */
+function waitForSheetFocus(page) {
+  return page.waitForFunction(() => {
+    const el = document.activeElement;
+    if (!el) return false;
+    const activeRow = document.querySelector(".overlay-panel .menu-list button.active, .overlay-panel .shop-list button.active");
+    if (activeRow && el === activeRow) return true;
+    return el.classList.contains("overlay-panel-close");
+  });
+}
+
 const { server, baseUrl } = await startStaticServer(0);
 
 try {
@@ -30,9 +42,7 @@ try {
 
     await page.click(".hud-menu");
     await page.waitForSelector(".overlay-panel-close");
-    await page.waitForFunction(() =>
-      document.activeElement?.classList.contains("overlay-panel-close"),
-    );
+    await waitForSheetFocus(page);
 
     const seen = new Set();
     for (let i = 0; i < 24; i += 1) {
@@ -49,9 +59,7 @@ try {
 
     await page.locator(".overlay-panel .menu-list button").filter({ hasText: "Party" }).click();
     await page.waitForSelector(".overlay-panel");
-    await page.waitForFunction(() =>
-      document.activeElement?.classList.contains("overlay-panel-close"),
-    );
+    await waitForSheetFocus(page);
 
     const partySeen = new Set();
     for (let i = 0; i < 24; i += 1) {

@@ -958,9 +958,23 @@ export function ShopPanel({ game, snap }: { game: ReliquaryGame; snap: Snapshot 
 }
 
 export function TouchPad({ game, variant = "full" }: { game: ReliquaryGame; variant?: "full" | "dialog" }) {
+  const heldRef = useRef<Set<string>>(new Set());
   const hold = (code: string, on: boolean) => {
+    if (on) heldRef.current.add(code);
+    else heldRef.current.delete(code);
     game.holdKey(code, on);
   };
+  // S25: a held key must not outlive the control that owns it. The pad STAYS
+  // MOUNTED across the world↔dialog transition (only its variant changes), so
+  // release on both the variant change and the final unmount — a dialog or
+  // battle opening under the finger ends the hold here.
+  useEffect(() => {
+    const held = heldRef.current;
+    return () => {
+      for (const code of held) game.holdKey(code, false);
+      held.clear();
+    };
+  }, [game, variant]);
   const dir = (code: string) => ({
     onPointerDown: (e: PointerEvent<HTMLButtonElement>) => {
       e.preventDefault();

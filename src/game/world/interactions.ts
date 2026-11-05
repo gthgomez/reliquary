@@ -106,7 +106,7 @@ export const SPECIAL_INTERACTIONS: Record<string, SpecialInteraction> = {
 		lines: ["I can show you the Wildwood paths — or we can settle it with pacts."],
 		offerLine: "(A duel · B talk)",
 		commitLabel: "Duel",
-		gateLine: "Another time. The east exit is marked.",
+		gateLine: "Another time. The west gate is marked.",
 	},
 	goblin_king: {
 		kind: "encounter",
