@@ -82,6 +82,7 @@ if (serveOnly) {
       "touch-arbitration.mjs",
       "battle-hud-layout.mjs",
       "battle-item-scope.mjs",
+      "battle-reach.mjs",
       "save-permission.mjs",
       "title-consent.mjs",
       "pwa.mjs",
@@ -97,7 +98,7 @@ if (serveOnly) {
     journey: ["journey.mjs"],
     dialogue: ["cinematic-dialogue.mjs"],
     saves: ["save-permission.mjs", "title-consent.mjs"],
-    battle: ["battle-hud-layout.mjs", "battle-item-scope.mjs"],
+    battle: ["battle-hud-layout.mjs", "battle-item-scope.mjs", "battle-reach.mjs"],
   };
   const files = map[suite] ?? map.all;
 

@@ -281,6 +281,7 @@ export function GameApp() {
           type="file"
           accept="application/json,.json"
           aria-label="Import a Reliquary save file"
+          tabIndex={-1}
           onChange={(event) => {
             const file = event.target.files?.[0];
             event.target.value = "";

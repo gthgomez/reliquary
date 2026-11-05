@@ -1292,6 +1292,30 @@ button.cmd-party-row {
     height: auto;
     background: none;
   }
+  /* The pad is beside the stage here, so the dock's bottom touch reserve can
+     shrink: the generic 65%/5.75rem cap squeezed the submenu scroll body below
+     one row (40px at 844×390), leaving the first item row half-occluded by the
+     actions bar and the second outside the viewport (reproduced, S10). */
+  .battle-controls {
+    max-height: calc(100% - 3rem);
+  }
+  .battle-controls .battler.me {
+    padding: 0.3rem 0.6rem;
+  }
+  /* Keep HP and MP on one line so submenus keep at least one visible row. */
+  .battle-controls .battler.me .meter-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.2rem;
+  }
+  .battle-controls .battler.me .meter-head .meter-kicker,
+  .battle-controls .battler.me .meter-frac {
+    font-size: 0.62rem;
+  }
+  .battle-controls .battle-log {
+    min-height: 34px;
+    padding: 0.35rem 0.6rem;
+  }
   .battle-controls-actions .cmd {
     grid-template-columns: repeat(3, 1fr);
     width: min(360px, 100%);
