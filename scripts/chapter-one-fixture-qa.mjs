@@ -264,15 +264,22 @@ try {
           if (rounds % 50 === 0) await page.screenshot({ path: join(output, `warden-trial-stuck-${rounds}.png`) });
         }
         // Forced-switch phase: the engine marks it data-battle-phase="party"
-        // and disables fainted rows; send in a beast that can still fight.
+        // and DISABLES fainted rows (S22: enabled-row semantics, not an HP
+        // substring). Send in an enabled beast and assert the switch happened.
         const phase = await page.locator(".battle-controls").getAttribute("data-battle-phase").catch(() => null);
         if (phase === "party") {
-          const row = page
-            .locator(".battle-controls[data-battle-phase='party'] ul.cmd button")
-            .filter({ hasNotText: /0\/\d+ hp/ })
-            .first();
-          if ((await row.count()) > 0) {
-            await row.click({ timeout: 4000 }).catch(() => {});
+          const enabled = page
+            .locator(".battle-controls[data-battle-phase='party'] ul.cmd button:not([disabled])");
+          if ((await enabled.count()) > 0) {
+            const chosen = (await enabled.first().innerText()).split("\n")[0].trim();
+            await enabled.first().click({ timeout: 4000 });
+            await page.waitForFunction(
+              () => document.querySelector(".battle-controls")?.getAttribute("data-battle-phase") !== "party",
+              null,
+              { timeout: 8000 },
+            );
+            const active = await page.locator(".battle-ui .battler.me strong").innerText();
+            assert.equal(active, chosen, "the chosen enabled row must become the active battler");
             await page.waitForTimeout(250);
             continue;
           }

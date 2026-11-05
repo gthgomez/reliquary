@@ -31,7 +31,26 @@ export async function buildPwa(options = {}) {
   if (warnings.length) {
     console.warn("[pwa]", warnings.join("\n"));
   }
+  assertNoStaleClientChunks(outDir);
   return { count, size, outDir };
+}
+
+/**
+ * S20 invariant: every generated client chunk in the precache must be
+ * referenced by the built index.html. An unreferenced chunk means a stale
+ * build output (for example a browser-test bundle) survived into this deploy.
+ */
+export function assertNoStaleClientChunks(outDir) {
+  const swSource = readFileSync(join(outDir, "sw.js"), "utf8");
+  const html = readFileSync(join(outDir, "index.html"), "utf8");
+  const precached = [...swSource.matchAll(/url"?\s*:\s*"(\/assets\/[^"]+\.js)"/g)].map((m) => m[1]);
+  for (const url of precached) {
+    const file = url.slice(1);
+    if (!html.includes(file)) {
+      throw new Error(`[pwa] stale chunk in precache: ${url} is not referenced by index.html`);
+    }
+  }
+  return precached;
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {

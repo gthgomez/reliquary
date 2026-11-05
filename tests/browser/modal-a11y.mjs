@@ -1,5 +1,11 @@
 import assert from "node:assert/strict";
+import { mkdirSync } from "node:fs";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { startStaticServer, withBrowser, waitForGameBoot } from "./helpers.mjs";
+
+const artifactDir = process.env.RELIQUARY_BROWSER_ARTIFACTS
+  ?? fileURLToPath(new URL("../../artifacts/browser/", import.meta.url));
 
 async function bootWorld(page) {
   await page.click("text=Start");
@@ -9,6 +15,18 @@ async function bootWorld(page) {
     await page.waitForTimeout(120);
   }
   await page.waitForSelector(".hud-menu", { timeout: 15_000 });
+}
+
+/** S09: actual focus lands on the engine's visible selection (the active
+ * list row); panels without a list keep the close button as the target. */
+async function waitForSheetFocus(page) {
+  await page.waitForFunction(() => {
+    const el = document.activeElement;
+    if (!el) return false;
+    const activeRow = document.querySelector(".overlay-panel .menu-list button.active, .overlay-panel .shop-list button.active");
+    if (activeRow && el === activeRow && !(activeRow instanceof HTMLButtonElement && activeRow.disabled)) return true;
+    return el.classList.contains("overlay-panel-close");
+  });
 }
 
 const { server, baseUrl } = await startStaticServer(0);
@@ -27,9 +45,7 @@ try {
 
     await page.click(".hud-menu");
     await page.waitForSelector(".overlay-panel-close");
-    await page.waitForFunction(() =>
-      document.activeElement?.classList.contains("overlay-panel-close"),
-    );
+    await waitForSheetFocus(page);
     for (let i = 0; i < 3; i += 1) {
       await page.click(".overlay-panel-close");
       await page.waitForSelector(".hud-menu");
@@ -40,9 +56,7 @@ try {
       assert.equal(menuFocused, true, "modal close restores focus to menu trigger");
       await page.click(".hud-menu");
       await page.waitForSelector(".overlay-panel-close");
-      await page.waitForFunction(() =>
-        document.activeElement?.classList.contains("overlay-panel-close"),
-      );
+      await waitForSheetFocus(page);
     }
 
     await page.locator(".overlay-panel .menu-list button").filter({ hasText: "Party" }).click();
@@ -92,11 +106,40 @@ try {
       await bootWorld(page);
       await page.evaluate(() => window.__reliquary?.openMenu?.());
       await page.waitForSelector(".overlay-panel-close");
+      await waitForSheetFocus(page);
+      // Actual enlarged-text reflow (S22): the enlarged sheet must not
+      // introduce horizontal page overflow, and the focused control must
+      // remain visible in the viewport.
+      const reflow = await page.evaluate(() => {
+        const doc = document.documentElement;
+        const panel = document.querySelector(".overlay-panel");
+        const panelBox = panel?.getBoundingClientRect();
+        const focusBox = document.activeElement?.getBoundingClientRect();
+        return {
+          scrollWidth: doc.scrollWidth,
+          innerWidth: window.innerWidth,
+          panelWidth: panelBox?.width ?? null,
+          focusTop: focusBox?.top ?? null,
+          focusBottom: focusBox?.bottom ?? null,
+          innerHeight: window.innerHeight,
+        };
+      });
+      assert.ok(
+        reflow.scrollWidth <= reflow.innerWidth + 1,
+        `200% text must reflow without horizontal overflow (scrollWidth ${reflow.scrollWidth} > ${reflow.innerWidth})`,
+      );
+      assert.ok(reflow.panelWidth && reflow.panelWidth <= reflow.innerWidth + 1, "panel fits the viewport at 200% text");
+      assert.ok(
+        reflow.focusTop != null && reflow.focusTop >= 0 && reflow.focusBottom <= reflow.innerHeight,
+        "focused control stays visible at 200% text",
+      );
+      mkdirSync(artifactDir, { recursive: true });
+      await page.screenshot({ path: join(artifactDir, "modal-200pct.png"), fullPage: false });
     },
     { context: { fontSize: "200%" } },
   );
 
-  console.log("[modal-a11y] objective, focus cycle, hints, scrim, landscape, 200% font ok");
+  console.log("[modal-a11y] objective, focus cycle, hints, scrim, landscape, 200% reflow ok");
 } finally {
   server.close();
 }
