@@ -1,5 +1,5 @@
 import { PNG } from "pngjs";
-import { readFileSync, writeFileSync, existsSync } from "node:fs";
+import { mkdtempSync, readFileSync, renameSync, rmSync, writeFileSync, existsSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -28,14 +28,22 @@ function tintPixels(source, mult) {
   return out;
 }
 
-for (const [dest, src, mult] of RECIPES) {
-  const srcPath = join(spriteDir, src);
-  const destPath = join(spriteDir, dest);
-  if (!existsSync(srcPath)) {
-    console.error(`[sprites] missing source ${src}`);
-    process.exit(1);
+// Stage + rename(2): concurrent test files read these PNGs while they are
+// regenerated, and writeFileSync truncates in place (half-read risk).
+const stage = mkdtempSync(join(root, ".sprites-stage-"));
+try {
+  for (const [dest, src, mult] of RECIPES) {
+    const srcPath = join(spriteDir, src);
+    if (!existsSync(srcPath)) {
+      console.error(`[sprites] missing source ${src}`);
+      process.exit(1);
+    }
+    const png = PNG.sync.read(readFileSync(srcPath));
+    const stagedPath = join(stage, dest);
+    writeFileSync(stagedPath, PNG.sync.write(tintPixels(png, mult)));
+    renameSync(stagedPath, join(spriteDir, dest));
   }
-  const png = PNG.sync.read(readFileSync(srcPath));
-  writeFileSync(destPath, PNG.sync.write(tintPixels(png, mult)));
+} finally {
+  rmSync(stage, { recursive: true, force: true });
 }
 console.log(`[sprites] tinted ${RECIPES.length} new species PNGs`);

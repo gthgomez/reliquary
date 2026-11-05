@@ -1,5 +1,5 @@
 import { PNG } from "pngjs";
-import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
+import { mkdtempSync, readFileSync, renameSync, rmSync, writeFileSync, mkdirSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -52,7 +52,21 @@ function drawIcon(size, maskable) {
   return PNG.sync.write(png);
 }
 
-writeFileSync(join(outDir, "icon-192.png"), drawIcon(192, false));
-writeFileSync(join(outDir, "icon-512.png"), drawIcon(512, false));
-writeFileSync(join(outDir, "icon-maskable-512.png"), drawIcon(512, true));
+/**
+ * Concurrent readers (node --test runs test files in parallel) must never see
+ * a half-written PNG: writeFileSync truncates in place, so a reader can catch
+ * the file mid-write. Stage outside public/ on the same filesystem and
+ * rename(2) into place — a reader sees the old bytes or the new ones.
+ */
+const stage = mkdtempSync(join(root, ".icons-stage-"));
+try {
+  writeFileSync(join(stage, "icon-192.png"), drawIcon(192, false));
+  renameSync(join(stage, "icon-192.png"), join(outDir, "icon-192.png"));
+  writeFileSync(join(stage, "icon-512.png"), drawIcon(512, false));
+  renameSync(join(stage, "icon-512.png"), join(outDir, "icon-512.png"));
+  writeFileSync(join(stage, "icon-maskable-512.png"), drawIcon(512, true));
+  renameSync(join(stage, "icon-maskable-512.png"), join(outDir, "icon-maskable-512.png"));
+} finally {
+  rmSync(stage, { recursive: true, force: true });
+}
 console.log("[icons] wrote Reliquary 192/512/maskable PNGs");
