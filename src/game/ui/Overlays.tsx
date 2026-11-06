@@ -683,6 +683,7 @@ export function BattleHud({ game, snap }: { game: ReliquaryGame; snap: Snapshot 
   const cmds = battleCommands(b);
   const panelHeading = battlePanelHeading(b.phase);
   const showBack = isBattleSubmenuPhase(b.phase);
+  const showRecap = (b.phase === "command" || b.phase === "win" || b.phase === "lose") && b.recap.length > 0;
 
   const renderCmdList = (items: ReactNode, className = "cmd") => (
     <ul className={className}>{items}</ul>
@@ -809,12 +810,12 @@ export function BattleHud({ game, snap }: { game: ReliquaryGame; snap: Snapshot 
         <div className="battle-log" aria-live="polite">
           <span className="battle-log-text">{b.log[b.log.length - 1]}</span>
         </div>
-        <div className={`battle-controls-body${scrollBody ? "" : " is-empty"}`}>
+        <div className={`battle-controls-body${scrollBody || showRecap ? "" : " is-empty"}`}>
           {panelHeading ? <p className="battle-panel-title">{panelHeading}</p> : null}
           {/* Bounded turn/win recap (S06): the one-line log replaces each
               event, so the ordered recap keeps the turn inspectable. Rendered
               only where it cannot push commands out of reach. */}
-          {(b.phase === "command" || b.phase === "win" || b.phase === "lose") && b.recap.length ? (
+          {showRecap ? (
             <div className="battle-recap-wrap">
               {b.phase !== "command" ? <p className="battle-panel-title">How it ended</p> : null}
               <ol

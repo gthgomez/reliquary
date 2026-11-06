@@ -43,9 +43,13 @@ export async function buildPwa(options = {}) {
 export function assertNoStaleClientChunks(outDir) {
   const swSource = readFileSync(join(outDir, "sw.js"), "utf8");
   const html = readFileSync(join(outDir, "index.html"), "utf8");
-  const precached = [...swSource.matchAll(/url"?\s*:\s*"(\/assets\/[^"]+\.js)"/g)].map((m) => m[1]);
+  // Workbox emits relative URLs; older fixtures used root-relative URLs.
+  const precached = [...swSource.matchAll(/url"?\s*:\s*"(\/?assets\/[^"]+\.js)"/g)].map((m) => m[1]);
+  if (precached.length === 0) {
+    throw new Error("[pwa] no client chunks found in precache");
+  }
   for (const url of precached) {
-    const file = url.slice(1);
+    const file = url.replace(/^\//, "");
     if (!html.includes(file)) {
       throw new Error(`[pwa] stale chunk in precache: ${url} is not referenced by index.html`);
     }

@@ -7,7 +7,7 @@ import assert from "node:assert/strict";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { startStaticServer, waitForGameBoot } from "./helpers.mjs";
+import { measureTargetVisibility, startStaticServer, waitForGameBoot } from "./helpers.mjs";
 import { chromium } from "playwright";
 
 const artifactDir = process.env.RELIQUARY_BROWSER_ARTIFACTS
@@ -94,7 +94,14 @@ try {
           if (options.scroll) {
             // A thumb can scroll the submenu body; measure after bringing the
             // row into view, like a real reach would.
-            await el.scrollIntoViewIfNeeded().catch(() => {});
+            await el.evaluate((node) => {
+              const body = node.closest(".battle-controls-body");
+              if (!body) throw new Error("submenu row has no scroll body");
+              const row = node.getBoundingClientRect();
+              const bounds = body.getBoundingClientRect();
+              if (row.top < bounds.top) body.scrollTop += row.top - bounds.top;
+              else if (row.bottom > bounds.bottom) body.scrollTop += row.bottom - bounds.bottom;
+            });
             await page.waitForTimeout(120);
           }
           const box = await el.boundingBox();
@@ -102,31 +109,15 @@ try {
             rows.failures.push(`${label}: not found`);
             return false;
           }
-          const fullyVisible = box.x >= 0 && box.y >= 0 && box.x + box.width <= vp.width && box.y + box.height <= vp.height;
-          if (!fullyVisible && !options.scroll) {
-            rows.failures.push(`${label}: bounds outside viewport ${JSON.stringify(box)}`);
+          const { fullyVisible, hitOk, clip } = await measureTargetVisibility(el);
+          if (!fullyVisible) {
+            rows.failures.push(`${label}: target clipped (box ${JSON.stringify(box)}, visible bounds ${JSON.stringify(clip)})`);
           }
-          const hitInfo = await page.evaluate(
-            ([x, y]) => {
-              const el = document.elementFromPoint(x, y);
-              if (!el) return null;
-              const btn = el.closest("button");
-              return { label: btn?.getAttribute("aria-label") ?? btn?.textContent ?? null, cls: el.className?.toString?.().slice(0, 60) ?? null };
-            },
-            [box.x + box.width / 2, box.y + box.height / 2],
-          );
-          const hitOk = Boolean(
-            hitInfo && (await el.evaluate((node) => {
-              const r = node.getBoundingClientRect();
-              const el2 = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2);
-              return Boolean(el2 && (el2 === node || node.contains(el2) || el2.contains(node)));
-            })),
-          );
           if (!hitOk) {
-            rows.failures.push(`${label}: elementFromPoint missed the target (hit ${JSON.stringify(hitInfo)})`);
+            rows.failures.push(`${label}: elementFromPoint missed the target`);
           }
           if (activate) await el.click({ timeout: 4000 });
-          rows.controls.push({ label, box, fullyVisible, hitOk });
+          rows.controls.push({ label, box, clip, fullyVisible, hitOk });
           return fullyVisible && hitOk;
         };
 

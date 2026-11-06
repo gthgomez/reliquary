@@ -34,9 +34,18 @@ export function OverlayPanel({
     >
       <header className="overlay-panel-head">
         <h2 id="overlay-panel-title">{title}</h2>
-        {subtitle ? <p className="sheet-sub">{subtitle}</p> : null}
       </header>
-      <div className="overlay-panel-body">{children}</div>
+      <div
+        className="overlay-panel-body"
+        onFocus={(event) => {
+          // Reveal the entire target, including at enlarged text sizes and
+          // when the focus trap wraps from the fixed footer back to a row.
+          event.target.scrollIntoView({ block: "nearest", inline: "nearest" });
+        }}
+      >
+        {subtitle ? <p className="sheet-sub">{subtitle}</p> : null}
+        {children}
+      </div>
       <footer className="overlay-panel-foot">
         {footer}
         {onClose ? (

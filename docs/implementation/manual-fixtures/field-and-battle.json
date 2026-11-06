@@ -1,0 +1,85 @@
+{
+  "version": 3,
+  "worldRevision": 1,
+  "playerName": "Validation Rowan",
+  "mapId": "elderhall",
+  "x": 12,
+  "y": 14,
+  "dir": 0,
+  "gold": 500,
+  "playTime": 120,
+  "party": [
+    {
+      "uid": "validation-lead",
+      "speciesId": "emberkit",
+      "nickname": "Emberkit",
+      "level": 9,
+      "exp": 0,
+      "hp": 34,
+      "mp": 24,
+      "ivs": {
+        "hp": 8,
+        "mp": 8,
+        "atk": 8,
+        "def": 8,
+        "mag": 8,
+        "res": 8,
+        "spd": 8,
+        "lck": 8
+      },
+      "temperament": "stalwart",
+      "skills": [
+        "nip",
+        "cinder",
+        "scorch"
+      ],
+      "status": null,
+      "statusTurns": 0
+    },
+    {
+      "uid": "validation-reserve",
+      "speciesId": "dewslime",
+      "nickname": "Dewslime",
+      "level": 9,
+      "exp": 0,
+      "hp": 0,
+      "mp": 23,
+      "ivs": {
+        "hp": 8,
+        "mp": 8,
+        "atk": 8,
+        "def": 8,
+        "mag": 8,
+        "res": 8,
+        "spd": 8,
+        "lck": 8
+      },
+      "temperament": "stalwart",
+      "skills": [
+        "torrent",
+        "soak",
+        "rootgrasp"
+      ],
+      "status": null,
+      "statusTurns": 0
+    }
+  ],
+  "box": [],
+  "inventory": {
+    "tonic": 3,
+    "etherdrop": 2,
+    "phoenix_ash": 1,
+    "common_sigil": 3
+  },
+  "flags": {
+    "starter": true
+  },
+  "seen": {
+    "emberkit": true,
+    "dewslime": true
+  },
+  "caught": {
+    "emberkit": true,
+    "dewslime": true
+  }
+}

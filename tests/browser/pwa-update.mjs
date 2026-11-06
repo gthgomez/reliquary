@@ -109,7 +109,7 @@ try {
     );
     await page.keyboard.up("ArrowDown");
     const livePos = await page.evaluate(() => window.__controlsTest.getPos());
-    const durableBefore = await page.evaluate(() => JSON.parse(localStorage.getItem("reliquary.save.v3"))); 
+    const durableBefore = await page.evaluate(() => JSON.parse(localStorage.getItem("reliquary.save.v3")));
     assert.ok(livePos.y > durableBefore.y, `live state must be ahead of durable (live y ${livePos.y} > durable y ${durableBefore.y})`);
 
     // Activate build B: the required flush fails, so the reload must be vetoed.

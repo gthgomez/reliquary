@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
-import { cpSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
@@ -80,26 +80,59 @@ test("generateWebShell writes index.html referencing bundles", () => {
   }
 });
 
-test("precache invariant rejects unreferenced stale client chunks (S20)", async () => {
+for (const prefix of ["assets/", "/assets/"]) {
+  test(`precache invariant rejects stale chunks with ${prefix} URLs (S20)`, async () => {
+    const { assertNoStaleClientChunks } = await import("./build-pwa.mjs");
+    const scratch = mkdtempSync(join(tmpdir(), "pwa-stale-"));
+    try {
+      const current = `${prefix}index-current.js`;
+      const stale = `${prefix}index-STALE-test.js`;
+      writeFileSync(
+        join(scratch, "index.html"),
+        `<html><head></head><body><script src="${current}"></script></body></html>`,
+      );
+      writeFileSync(
+        join(scratch, "sw.js"),
+        `precacheAndRoute([{"url":"${current}","revision":"abc"},{"url":"${stale}","revision":"def"}]);`,
+      );
+      assert.throws(
+        () => assertNoStaleClientChunks(scratch),
+        /stale chunk in precache: \/?assets\/index-STALE-test\.js/,
+        "an unreferenced test bundle in the precache must fail the build",
+      );
+      writeFileSync(join(scratch, "sw.js"), `precacheAndRoute([{"url":"${current}","revision":"abc"}]);`);
+      assert.deepEqual(assertNoStaleClientChunks(scratch), [current]);
+    } finally {
+      rmSync(scratch, { recursive: true, force: true });
+    }
+  });
+}
+
+test("precache invariant cannot silently accept a manifest with no client chunks", async () => {
   const { assertNoStaleClientChunks } = await import("./build-pwa.mjs");
-  const scratch = mkdtempSync(join(tmpdir(), "pwa-stale-"));
+  const scratch = mkdtempSync(join(tmpdir(), "pwa-empty-"));
   try {
-    const current = "/assets/index-current.js";
-    writeFileSync(
-      join(scratch, "index.html"),
-      `<html><head></head><body><script src="${current}"></script></body></html>`,
-    );
-    writeFileSync(
-      join(scratch, "sw.js"),
-      `precacheAndRoute([{"url":"${current}","revision":"abc"},{"url":"/assets/index-STALE-test.js","revision":"def"}]);`,
-    );
-    assert.throws(
-      () => assertNoStaleClientChunks(scratch),
-      /stale chunk in precache: \/assets\/index-STALE-test\.js/,
-      "an unreferenced test bundle in the precache must fail the build",
-    );
-    writeFileSync(join(scratch, "sw.js"), `precacheAndRoute([{"url":"${current}","revision":"abc"}]);`);
-    assert.deepEqual(assertNoStaleClientChunks(scratch), [current]);
+    writeFileSync(join(scratch, "index.html"), '<script src="/assets/index-current.js"></script>');
+    writeFileSync(join(scratch, "sw.js"), "precacheAndRoute([]);");
+    assert.throws(() => assertNoStaleClientChunks(scratch), /no client chunks/);
+  } finally {
+    rmSync(scratch, { recursive: true, force: true });
+  }
+});
+
+test("real Workbox output rejects a stale bundle and accepts the cleaned build", async () => {
+  const { buildPwa, assertNoStaleClientChunks } = await import("./build-pwa.mjs");
+  const scratch = mkdtempSync(join(tmpdir(), "pwa-workbox-stale-"));
+  try {
+    mkdirSync(join(scratch, "assets"));
+    cpSync(manifestPath, join(scratch, "manifest.webmanifest"));
+    writeFileSync(join(scratch, "index.html"), '<script src="/assets/index-current.js"></script>');
+    writeFileSync(join(scratch, "assets/index-current.js"), 'console.log("current");');
+    writeFileSync(join(scratch, "assets/index-STALE-test.js"), 'console.log("stale test bundle");');
+    await assert.rejects(buildPwa({ staticDir: scratch }), /stale chunk in precache/);
+    rmSync(join(scratch, "assets/index-STALE-test.js"));
+    await buildPwa({ staticDir: scratch });
+    assert.deepEqual(assertNoStaleClientChunks(scratch), ["assets/index-current.js"]);
   } finally {
     rmSync(scratch, { recursive: true, force: true });
   }

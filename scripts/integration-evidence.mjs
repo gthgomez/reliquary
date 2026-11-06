@@ -348,7 +348,7 @@ try {
     });
     await page.waitForTimeout(200);
     log.safeTopTransitions.push({ tag: "inline-removed-missing-var", ...(await readSafeTopProbe(page)) });
-  }, { context: { fontSize: "200%" } });
+  }, { textScale: 2 });
 
   await withBrowser(async (page) => {
     await page.setViewportSize({ width: 390, height: 844 });
@@ -370,7 +370,7 @@ try {
       sample: reducedSample,
       screenshot: "anim-reduced-motion-nip-390x844.png",
     });
-  }, { context: { fontSize: "200%", reducedMotion: "reduce" } });
+  }, { textScale: 2, context: { reducedMotion: "reduce" } });
 
   await withBrowser(async (page) => {
     await page.setViewportSize({ width: 320, height: 568 });
@@ -383,7 +383,7 @@ try {
     }
     log.visibilityNorth320 = await measurePlayerHudVisibility(page);
     await page.screenshot({ path: join(outDir, "world-320x568-home-y1-objective-open.png") });
-  }, { context: { fontSize: "200%" } });
+  }, { textScale: 2 });
 
   writeFileSync(join(outDir, "production-runtime-probe.json"), JSON.stringify({ note: "Run scripts/assert-production-runtime.mjs on build:web output" }, null, 2));
   writeFileSync(join(outDir, "integration-world-battle-log.json"), JSON.stringify(log, null, 2));

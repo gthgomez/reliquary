@@ -184,6 +184,7 @@ export function GameApp() {
           ".overlay-panel .menu-list button.active, .overlay-panel .shop-list button.active",
         );
         if (activeRow && !activeRow.disabled) {
+          // The shared panel reveals focused rows within its scrolling body.
           activeRow.focus({ preventScroll: true });
           return;
         }

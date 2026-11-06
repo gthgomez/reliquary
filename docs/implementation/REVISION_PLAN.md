@@ -51,8 +51,10 @@ facts, not as results of this run.
 
 ## Boundaries honored
 
-- No merges, deployments, publishes, credential creation, or security changes.
-  Branch push + draft PR only, per the assignment's authorized workflow.
+- The original assignment authorized branch push + draft PR only. The owner's
+  November 6 follow-up authorizes fixes, push and merge of PR #38 after candidate
+  verification and independent review pass. No manual production deployment,
+  database mutation, credential creation or asset-rights clearance is included.
 - Real-player saves never touched; disposable fixtures only; a failing safety
   test is never "fixed" by clearing storage.
 - Preserved: save validation/migration/quarantine/rotation, no-effect item
@@ -69,3 +71,6 @@ facts, not as results of this run.
   not double-counted) plus supplemental checks; final dispositions only from
   evidence.
 - `REVISION_EVIDENCE.md` — actual commands, results, screenshots, manifests.
+- `REVISION_FOLLOWUP.md` — November 6 review repairs and their verification.
+- `REVISION_MANUAL_VALIDATION.md` — physical-device/TalkBack checks, novice study
+  protocol, fixtures, exact-build identity and result forms; execution remains open.

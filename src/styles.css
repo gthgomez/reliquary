@@ -465,7 +465,7 @@
   max-height: min(72dvh, 540px, calc(100% - 4rem));
 }
 .overlay-panel-head {
-  padding: 1rem 1rem 0.35rem;
+  padding: 16px 16px 8px;
 }
 .overlay-panel-body {
   overflow-y: auto;
@@ -475,7 +475,7 @@
   min-height: 0;
 }
 .overlay-panel-foot {
-  padding: 0.55rem 1rem 1rem;
+  padding: 8px 16px 16px;
   display: flex;
   gap: 0.5rem;
   flex-wrap: wrap;
@@ -504,6 +504,12 @@
   font-family: var(--font-display);
   margin: 0 0 0.6rem;
   font-size: 1.15rem;
+}
+.overlay-panel-head h2 {
+  margin-bottom: 8px;
+}
+.overlay-panel-body > .sheet-sub:first-child {
+  margin-top: 0;
 }
 .sheet-sub {
   margin: -0.3rem 0 0.8rem;
@@ -807,13 +813,18 @@
 .battle-recap-wrap {
   width: 100%;
   min-width: 0;
+  box-sizing: border-box;
+  padding: 0.25rem 0.5rem;
+  border-radius: var(--radius-md);
+  background: var(--color-parchment);
+  color: var(--color-ink);
 }
 .battle-recap {
   list-style: decimal;
   margin: 0.2rem 0 0;
   padding: 0.25rem 0.25rem 0.25rem 1.4rem;
   font-size: 0.76rem;
-  color: color-mix(in oklab, var(--color-ink) 78%, transparent);
+  color: var(--color-ink);
   max-height: 5.2rem;
   overflow-y: auto;
   display: grid;
@@ -1018,6 +1029,10 @@ button.cmd-party-row {
 }
 .game-root.is-ui-modal .overlay-panel {
   z-index: 6;
+  /* Modal chrome owns the viewport: descriptions belong to the scrolling
+     body, and enlarged text must not leave a reserve for inactive world UI. */
+  top: 0.5rem;
+  max-height: calc(100% - 1rem);
 }
 .hud-dormant {
   visibility: hidden;
@@ -1292,13 +1307,6 @@ button.cmd-party-row {
     height: auto;
     background: none;
   }
-  /* The pad is beside the stage here, so the dock's bottom touch reserve can
-     shrink: the generic 65%/5.75rem cap squeezed the submenu scroll body below
-     one row (40px at 844×390), leaving the first item row half-occluded by the
-     actions bar and the second outside the viewport (reproduced, S10). */
-  .battle-controls {
-    max-height: calc(100% - 3rem);
-  }
   .battle-controls .battler.me {
     padding: 0.3rem 0.6rem;
   }
@@ -1317,8 +1325,13 @@ button.cmd-party-row {
     padding: 0.35rem 0.6rem;
   }
   .battle-controls-actions .cmd {
-    grid-template-columns: repeat(3, 1fr);
-    width: min(360px, 100%);
+    grid-template-columns: repeat(auto-fit, minmax(44px, 1fr));
+    width: 100%;
+  }
+  .battle-controls-actions .cmd button {
+    padding-inline: 0.25rem;
+    font-size: 0.8rem;
+    letter-spacing: 0.02em;
   }
 }
 
@@ -1350,6 +1363,13 @@ button.cmd-party-row {
   max-height: min(65%, calc(100% - 5.75rem));
   overflow: hidden;
   pointer-events: auto;
+}
+/* Keep this override after the base dock rule: short landscape needs enough
+   height to expose full submenu rows while the action row stays pinned. */
+@media (orientation: landscape) and (max-height: 520px) {
+  .battle-controls {
+    max-height: calc(100% - 3rem);
+  }
 }
 .battle-controls-body {
   overflow-y: auto;

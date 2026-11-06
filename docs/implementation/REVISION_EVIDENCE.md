@@ -35,7 +35,7 @@ Historical synthesis numbers (282 core passes locally; 440+1+6 platform with a
 browser-launch blocker; CI 441/6/0) were treated as historical facts, not
 results of this run.
 
-## Gate results on the final revision tree (HEAD 8f7d262 + docs)
+## Historical local gates (HEAD 8f7d262 + docs, before review follow-up)
 
 | Command | Result |
 |---|---|
@@ -74,8 +74,11 @@ Reproduced at current head with measured geometry
 measured 40px client height vs 116px scroll height (row 0 center occluded by
 the actions bar; row 1 outside the viewport); at 568×320 the bind submenu body
 collapsed. After the dock repair, the matrix passes at 844×390, 667×375, and
-568×320: all six commands, every submenu Back, item rows, and forced-switch
-choices are fully in-viewport, elementFromPoint-hit, and actually actuate.
+568×320. That historical check measured page bounds and center hits; the review
+later showed it could miss clipping by the dock itself. The strengthened
+follow-up intersects clipping ancestors and scrolls only the submenu body.
+It actuates commands, Back and switch choices; item rows are exposed and
+hit-tested, without claiming their activation in this particular suite.
 Report: `artifacts/browser/battle-reach-report.json`; screenshots
 `battle-reach-*.png`. **PASSED.**
 
@@ -129,7 +132,7 @@ wrong direction. **PASSED.**
 
 ## Artifacts (this worktree, `artifacts/browser/`)
 
-battle-reach-report.json, battle-reach-*.png (pass + fail), 
+battle-reach-report.json, battle-reach-*.png (pass + fail),
 battle-item-scope-844x390.png, ui-contrast-report.json,
 modal-200pct.png, camera-menu-open-390x844.png, portrait-dialogue-390x844.png,
 stage4-measurements (also mirrored in the run log).
@@ -137,24 +140,28 @@ stage4-measurements (also mirrored in the run log).
 ## Blocked items (exact missing access)
 
 1. **Real Android PWA validation** — no physical Galaxy S25 Ultra (or any
-   Android device) is reachable from this environment. The full checklist from
-   the synthesis is ready to run; the exact build to install is this branch's
-   `npm run build:web` artifact at the merge-commit SHA.
+   Android device) was reachable during the revision. The follow-up `adb devices`
+   check also listed no attached device. The self-contained install/offline/update
+   packet and exact-build identification are in [REVISION_MANUAL_VALIDATION.md](REVISION_MANUAL_VALIDATION.md).
 2. **Unguided first-session study** — no participant recruitment/consent
-   authority. The synthesis's seven-task protocol and question set are ready.
-3. **~~Exact-head CI artifact inspection (S05/O1)~~ — DONE.** The exact-head CI run on PR #38
-   (`d31b999`, run 42126685923, all green) uploaded `journey-evidence-ubuntu-latest` and
+   authority. A self-contained seven-task protocol, consent procedure, debrief and
+   result form are now in [REVISION_MANUAL_VALIDATION.md](REVISION_MANUAL_VALIDATION.md).
+3. **CI artifact inspection (S05/O1) — DONE.** The reviewed head `517cb03` has a successful
+   CI run 42128122546. Its tested merge SHA is `fac112751bd0adbef3a1b6ef2c4b32c5eb2b04cc`.
+   It uploaded `journey-evidence-ubuntu-latest` and
    `journey-evidence-windows-latest`, both inspected: per-journey JSON + PNGs + `manifest.json`
    (gitSha/gitRef/runId/node/platform/channel/journeys). The upload fails on missing evidence.
-4. **Hosted playable build** — none exists in the repo; establishing one is an owner distribution
-   decision (also gated on asset-provenance clearance).
+4. **Hosted access** — GitHub reports a Ready Vercel preview for PR #38. Whether a
+   tester can access the exact build remains to be recorded; owner asset clearance
+   is still open. No production-readiness or asset-rights conclusion follows from that status.
 
-## Exact-head CI verification (final)
+## Previously verified PR candidate (517cb03)
 
 - PR: https://github.com/gthgomez/reliquary/pull/38 (draft, branch `codex/reliquary-s-revision`).
-- Final head: `d31b999ba7ff0dfbeb970fc57239108a38944c91`. CI run 42126685923: **all checks pass**
-  (Verify ubuntu 4m47s, Verify windows 9m40s, Deep chapter journeys ubuntu 2m20s / windows 2m16s,
-  Vercel preview pass).
+- Reviewed head: `517cb0359b1a79497e84fa170c263fabecd71ca3`. CI run
+  [42128122546](https://github.com/gthgomez/reliquary/actions/runs/42128122546): all four
+  jobs pass across Ubuntu and Windows; Vercel reports a Ready preview. The earlier
+  run 42126685923 belongs to `d31b999`, not the final documentation commit.
 - Ubuntu verify totals: platform suite 459 tests / 453 pass / 0 fail / 6 skipped (developer-local
   skips); browser-test-flag regression 6/6; browser-free deploy build regression 2/2; browser journeys
   all PASS on both OSes. Windows platform suite: 459/453/0/6.
@@ -168,6 +175,15 @@ stage4-measurements (also mirrored in the run log).
      node --test runs test files concurrently and the regenerated PNGs were read mid-truncate. The
      generators now stage outside `public/` and `rename(2)` into place (`d31b999`). Journey runs
      around the fix: fail (assert bug) → pass → fail (race) → pass/pass after the atomic writes.
+
+## November 6 review follow-up
+
+The prior delivery comprised 10 commits (not 11) from `af378c8` through `517cb03`,
+with 41 files changed (+2640/-169). The subsequent owner request authorizes repairing
+the review findings, pushing and merging PR #38 after the checks and review gates.
+Follow-up code and local verification are recorded in [REVISION_FOLLOWUP.md](REVISION_FOLLOWUP.md).
+The current PR head/checks bind later CI results; the historical runs above must not
+be used as evidence for a different candidate.
 
 ## Honesty notes
 
