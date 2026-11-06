@@ -264,7 +264,20 @@ try {
 
     const battleReport = await measureBattleComposited(page, ["#ffffff", "#000000"]);
 
-    const report = [...hudReport, ...panelReport, ...battleReport];
+    await page.getByRole("button", { name: "Strike", exact: true }).click();
+    await page.waitForFunction(() => ["command", "win", "lose"].includes(
+      document.querySelector(".battle-controls")?.getAttribute("data-battle-phase"),
+    ));
+    // A real turn supplies the recap; the display fixture exposes its end title.
+    await page.evaluate(() => window.__reliquary.setBattlePhase("win"));
+    await page.locator(".battle-recap-wrap .battle-panel-title").waitFor();
+    const recapReport = await measureSelectors(page, [
+      ["recap-heading", ".battle-recap-wrap .battle-panel-title"],
+      ["recap-events", ".battle-recap"],
+    ]);
+    assert.ok(recapReport.every((row) => row.ratio !== null), "both recap text surfaces must be measured");
+
+    const report = [...hudReport, ...panelReport, ...battleReport, ...recapReport];
     mkdirSync(artifactDir, { recursive: true });
     writeFileSync(join(artifactDir, "ui-contrast-report.json"), JSON.stringify(report, null, 2));
 

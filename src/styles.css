@@ -853,6 +853,9 @@
   text-transform: uppercase;
   color: var(--color-parchment-dim);
 }
+.battle-recap-wrap .battle-panel-title {
+  color: inherit;
+}
 .cmd {
   list-style: none;
   margin: 0;
@@ -1364,10 +1367,17 @@ button.cmd-party-row {
   overflow: hidden;
   pointer-events: auto;
 }
+/* A wrapped name or outcome must not consume the recap's reading area.
+   Reserve at least two lines and let this dock use more of a portrait stage. */
+.battle-controls:has(.battle-recap) {
+  grid-template-rows: auto auto minmax(3rem, 1fr) auto;
+  max-height: min(80%, calc(100% - 5.75rem));
+}
 /* Keep this override after the base dock rule: short landscape needs enough
    height to expose full submenu rows while the action row stays pinned. */
 @media (orientation: landscape) and (max-height: 520px) {
-  .battle-controls {
+  .battle-controls,
+  .battle-controls:has(.battle-recap) {
     max-height: calc(100% - 3rem);
   }
 }
