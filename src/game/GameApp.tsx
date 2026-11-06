@@ -1,4 +1,4 @@
-import { useEffect, useRef, useSyncExternalStore } from "react";
+import { lazy, Suspense, useEffect, useRef, useSyncExternalStore } from "react";
 import { ReliquaryGame, TILE } from "./engine";
 import {
   BattleHud,
@@ -22,6 +22,11 @@ import { attachEconomyProbes } from "reliquary-economy-probes";
 import { attachBattleUiBrowserHooks } from "reliquary-battle-browser-probes";
 
 declare const __RELIQUARY_BROWSER_TEST__: boolean;
+declare const __RELIQUARY_AGES_PREVIEW__: boolean;
+
+const AgesPreviewPanel = __RELIQUARY_AGES_PREVIEW__
+  ? lazy(() => import("./preview/AgesPreviewPanel.tsx"))
+  : null;
 
 export function GameApp() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -30,7 +35,17 @@ export function GameApp() {
   const fileRef = useRef<HTMLInputElement>(null);
   const askedImport = useRef(0);
   const gameRef = useRef<ReliquaryGame | null>(null);
-  const g = gameRef.current ?? (gameRef.current = new ReliquaryGame());
+  const agesPreviewEnabled =
+    AgesPreviewPanel !== null &&
+    typeof window !== "undefined" &&
+    new URLSearchParams(window.location.search).get("ages-preview") === "1";
+  const g =
+    gameRef.current ??
+    (gameRef.current = new ReliquaryGame(
+      agesPreviewEnabled
+        ? { readOnlySaveSource: { getItem: (key) => localStorage.getItem(`ages-preview:${key}`) } }
+        : undefined,
+    ));
   const snap = useSyncExternalStore(g.subscribe, g.getSnapshot, g.getSnapshot);
 
   useEffect(() => {
@@ -76,18 +91,20 @@ export function GameApp() {
     void g.boot(canvas);
     let saveSession: { release: () => void } | null = null;
     let disposed = false;
-    void acquireSaveSession().then(({ result, session }) => {
-      if (disposed) {
-        // Unmounted before the lock resolved: release it immediately so a
-        // later tab is not locked out by a document that is already gone.
-        session?.release();
-        return;
-      }
-      saveSession = session;
-      if (result === "denied") {
-        g.setSaveWriteAllowed(false, "Another Reliquary window holds the save lock. This tab is read-only.");
-      }
-    });
+    if (!agesPreviewEnabled) {
+      void acquireSaveSession().then(({ result, session }) => {
+        if (disposed) {
+          // Unmounted before the lock resolved: release it immediately so a
+          // later tab is not locked out by a document that is already gone.
+          session?.release();
+          return;
+        }
+        saveSession = session;
+        if (result === "denied") {
+          g.setSaveWriteAllowed(false, "Another Reliquary window holds the save lock. This tab is read-only.");
+        }
+      });
+    }
     // A new build applies itself by reloading, but only at a calm moment and
     // after flushing the save, so an update never interrupts a battle or dialog.
     setUpdateGuard({
@@ -101,7 +118,7 @@ export function GameApp() {
         if (mode !== "title" && mode !== "boot" && mode !== "battle" && g.canWriteSave) g.persist();
       },
     });
-    void registerReliquaryServiceWorker();
+    if (!agesPreviewEnabled) void registerReliquaryServiceWorker();
     const reliquaryHandle = {
       confirm: g.confirm,
       cancel: g.cancel,
@@ -269,6 +286,11 @@ export function GameApp() {
           }}
         />
       </div>
+      {agesPreviewEnabled && AgesPreviewPanel ? (
+        <Suspense fallback={null}>
+          <AgesPreviewPanel game={g} inBattle={snap.mode === "battle"} />
+        </Suspense>
+      ) : null}
       {showTouch ? <TouchPad game={g} variant={showDialogTouch && !showExplorationTouch ? "dialog" : "full"} /> : null}
     </div>
   );
