@@ -1,0 +1,4 @@
+# AGES runtime packages are hashed byte-for-byte. Never let Git rewrite line
+# endings in these committed fixtures; a CRLF checkout on Windows would change
+# the JSON bytes and invalidate the package digest.
+tests/fixtures/ages-animations/** -text
