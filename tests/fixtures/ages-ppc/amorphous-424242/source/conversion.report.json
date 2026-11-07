@@ -1,14 +1,37 @@
 {
   "schema_version": 1,
-  "conversion_version": 1,
+  "conversion_version": 2,
   "backend": "procedural_pixel_creatures",
+  "profile": "ages",
+  "limits": {
+    "max_frames": 256,
+    "max_cell": 512,
+    "max_page": 4096,
+    "max_pixels": 8388608
+  },
+  "ages_compatible": true,
   "upstream_commit": "a2207c4bd6f1be51d426684cf58f11668def7579",
   "framework": "Procedural Pixel Creatures 1.0.0",
   "generator_version": 2,
+  "exporter_fingerprint": "e16c4fdf3c263f9c9fa6982a26c5ace7715620825fc8b70df2dc330229799c3e",
   "creature": {
     "name": "Grovek",
     "family": "amorphous",
     "contentId": "0244d2df6da7136f"
+  },
+  "genome": {
+    "family": "amorphous",
+    "name": "Grovek",
+    "content_id": "0244d2df6da7136f",
+    "sha256": "ca09c7226c75fe1d496b00b95b3034a7dacf435cddae97067bbac4056b429446",
+    "seed": 424242,
+    "source": "seed",
+    "lineage": {
+      "origin": "sampled",
+      "generation": 0,
+      "parents": [],
+      "mutationStrength": 0
+    }
   },
   "frame": {
     "width": 25,
@@ -23,6 +46,9 @@
     "columns": 24,
     "rows": 4
   },
+  "direction": "east",
+  "requested_direction": "E",
+  "actual_direction": "east",
   "state_mapping": {
     "idle": "idle",
     "walk": "walk",
@@ -34,6 +60,7 @@
       "source_state": "idle",
       "ages_state": "idle",
       "direction": 0,
+      "direction_name": "east",
       "loop": true,
       "frames": 24,
       "duration_ms": 1992,
@@ -47,6 +74,7 @@
       "source_state": "walk",
       "ages_state": "walk",
       "direction": 0,
+      "direction_name": "east",
       "loop": true,
       "frames": 10,
       "duration_ms": 830,
@@ -60,6 +88,7 @@
       "source_state": "action",
       "ages_state": "attack_melee",
       "direction": 0,
+      "direction_name": "east",
       "loop": false,
       "frames": 13,
       "duration_ms": 1079,
@@ -73,6 +102,7 @@
       "source_state": "hit",
       "ages_state": "hit",
       "direction": 0,
+      "direction_name": "east",
       "loop": false,
       "frames": 7,
       "duration_ms": 581,
@@ -85,6 +115,15 @@
   ],
   "total_frames": 54,
   "root_motion_consumed_by_runtime": false,
+  "generator_license": "MIT",
+  "artwork_rights": {
+    "generator_source_license": "MIT",
+    "generated_artwork": "UNKNOWN",
+    "genome_source": "GENERATED_LOCALLY",
+    "basis": "The generator's MIT license covers its source code, not an automatic grant for every generated derivative or externally supplied genome. Artwork rights remain UNKNOWN until reviewed."
+  },
+  "review_status": "UNREVIEWED",
+  "runtime_status": "PREVIEW_ONLY",
   "warnings": [
     "walk: upstream root-motion speed 41.2221 is preserved in the source metadata but is not consumed by the AGES v1.7 runtime",
     "action is a generic upstream action mapped to attack_melee; it is not a skill-specific melee or elemental animation",

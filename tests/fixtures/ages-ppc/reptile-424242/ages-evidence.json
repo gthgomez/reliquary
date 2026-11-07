@@ -1,0 +1,47 @@
+{
+  "backend": "procedural_pixel_creatures",
+  "upstreamCommit": "a2207c4bd6f1be51d426684cf58f11668def7579",
+  "generatorVersion": 2,
+  "experimental": true,
+  "note": "Preview-only experimental fixture. Not canonical artwork and not a reidentification of the aliased species.",
+  "package": {
+    "subjectId": "ppc_reptile_424242",
+    "assetId": "ppc_reptile_424242",
+    "packageDigest": "e5b2ee48380cce8fe855c8950e9794772d86e7d952ef8f3bc9579f79e029df9b",
+    "atlasSha256": "979b04744c014163161c73198ff92a9896bd18cc9d26641b4ae9a05d20d45bfe"
+  },
+  "genome": {
+    "family": "reptile",
+    "contentId": "e0a142e3787bbe00",
+    "name": "Grovek",
+    "seed": 424242,
+    "sha256": "49bae8a0d901148c242a1ded8688fd20414db61e55d27f55444c55f1e621bf72",
+    "source": "seed"
+  },
+  "direction": "east",
+  "bakeHitFlash": false,
+  "clips": {
+    "attack_melee": {
+      "frames": 16,
+      "duration_ms": 1328.0,
+      "loop": false
+    },
+    "hit": {
+      "frames": 16,
+      "duration_ms": 1328.0,
+      "loop": false
+    },
+    "idle": {
+      "frames": 24,
+      "duration_ms": 1992.0,
+      "loop": true
+    },
+    "walk": {
+      "frames": 5,
+      "duration_ms": 415.0,
+      "loop": true
+    }
+  },
+  "alias": "mirewhelp",
+  "humanReview": "PENDING"
+}

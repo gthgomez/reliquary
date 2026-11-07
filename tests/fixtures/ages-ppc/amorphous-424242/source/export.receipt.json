@@ -4,6 +4,8 @@
   "frameworkVersion": "1.0.0",
   "generatorVersion": 2,
   "upstreamCommit": "a2207c4bd6f1be51d426684cf58f11668def7579",
+  "exporterFingerprint": "e16c4fdf3c263f9c9fa6982a26c5ace7715620825fc8b70df2dc330229799c3e",
+  "profile": "ages",
   "genome": {
     "format": "ppc.creature",
     "formatVersion": 1,
@@ -12,7 +14,14 @@
     "contentId": "0244d2df6da7136f",
     "contentHash": "0244d2df6da7136f",
     "seed": 424242,
-    "sha256": "ca09c7226c75fe1d496b00b95b3034a7dacf435cddae97067bbac4056b429446"
+    "source": "seed",
+    "sha256": "ca09c7226c75fe1d496b00b95b3034a7dacf435cddae97067bbac4056b429446",
+    "lineage": {
+      "origin": "sampled",
+      "generation": 0,
+      "parents": [],
+      "mutationStrength": 0
+    }
   },
   "direction": {
     "index": 0,
@@ -21,6 +30,7 @@
   "fps": 12,
   "quality": 2,
   "shadow": true,
+  "bakeHitFlash": false,
   "frame": {
     "width": 25,
     "height": 49,
@@ -88,16 +98,33 @@
       "file": "page_000.png",
       "width": 600,
       "height": 196,
-      "bytes": 9861,
-      "sha256": "1402283987e07b169e745d332367447575a8ef2f8da5b47614e371497b034881"
+      "bytes": 9579,
+      "sha256": "fe77e3ca4133db3a370c3407938fd6c2e61a92fb80d73b89bb0af30cb86df154"
     }
   ],
+  "preflight": {
+    "frameUpperBound": [
+      100,
+      132
+    ],
+    "framesUpperBound": 122,
+    "pageWidthUpperBound": 5000,
+    "atlasPixelsUpperBound": 2640000,
+    "cellBudget": 512,
+    "frameBudget": 256,
+    "pageBudget": 4096,
+    "pixelBudget": 8388608,
+    "note": "Frame inventory and cell bounds are hard preflight checks; page/pixel bounds are conservative and rechecked exactly after rendering."
+  },
   "outputs": {
     "metadata": "ppc.spritesheet.json",
     "genome": "genome.json",
-    "metadataSha256": "7e4068eee34dca75944bdbda3b68720a273255901bd6d47978d473ee03010f0c"
+    "metadataSha256": "0022d3fb7daed446905edf3169928a83e88ca9581318a68aeca59ca596705f2a"
   },
-  "warnings": [],
-  "elapsedMs": 185,
-  "managedMemoryBytes": 3790392
+  "warnings": [
+    "preflight page-width upper bound 5000 exceeds 4096; exact page size will be checked after rendering",
+    "baked hit flash disabled; the hit clip keeps its recoil pose without a full-white frame"
+  ],
+  "elapsedMs": 172,
+  "managedMemoryBytes": 4003552
 }

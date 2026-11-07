@@ -1,0 +1,602 @@
+{
+  "format": "ppc.spritesheet",
+  "formatVersion": 1,
+  "generatorVersion": 2,
+  "framework": "Procedural Pixel Creatures 1.0.0",
+  "creature": {
+    "name": "Kromoubel",
+    "family": "quadruped",
+    "contentId": "a5f5e26966e0282b"
+  },
+  "frameWidth": 124,
+  "frameHeight": 52,
+  "originX": 56,
+  "originY": 42,
+  "originNote": "Pixel inside each frame that sits on the creature\u0027s ground point; place it at the entity position.",
+  "cameraElevationDeg": 30,
+  "pages": [
+    {
+      "file": "page_000.png",
+      "width": 2976,
+      "height": 208
+    }
+  ],
+  "palette": [
+    "#050100",
+    "#250b00",
+    "#4d2300",
+    "#73461b",
+    "#8e693f",
+    "#a38c6e",
+    "#6d592f",
+    "#877953",
+    "#988e70",
+    "#1f0200",
+    "#400f00",
+    "#572002",
+    "#281c18",
+    "#3a2d28",
+    "#574640",
+    "#796c65",
+    "#715d31",
+    "#928281",
+    "#c2b4af",
+    "#e5dcd5",
+    "#f8f2ec",
+    "#320c00",
+    "#5c2501",
+    "#7b4e2e",
+    "#98704f",
+    "#0a0d13",
+    "#282e37",
+    "#48515b",
+    "#78828b",
+    "#a9b3b9",
+    "#eae8e1",
+    "#52151c",
+    "#8f2f36",
+    "#bbafa0",
+    "#ece8db",
+    "#006643",
+    "#439b5a",
+    "#88bb7b",
+    "#f9f7ee",
+    "#007e9b",
+    "#00b6df",
+    "#86e2f1"
+  ],
+  "clips": [
+    {
+      "name": "idle_E",
+      "state": "idle",
+      "direction": 0,
+      "directionName": "E",
+      "loop": true,
+      "fps": 12,
+      "frameCount": 24,
+      "rootMotion": {
+        "groundSpeed": 0,
+        "screenVelocityX": 0,
+        "screenVelocityY": -0
+      },
+      "frames": [
+        {
+          "x": 0,
+          "y": 0,
+          "page": 0,
+          "durationMs": 83
+        },
+        {
+          "x": 124,
+          "y": 0,
+          "page": 0,
+          "durationMs": 83
+        },
+        {
+          "x": 248,
+          "y": 0,
+          "page": 0,
+          "durationMs": 83
+        },
+        {
+          "x": 372,
+          "y": 0,
+          "page": 0,
+          "durationMs": 83
+        },
+        {
+          "x": 496,
+          "y": 0,
+          "page": 0,
+          "durationMs": 83
+        },
+        {
+          "x": 620,
+          "y": 0,
+          "page": 0,
+          "durationMs": 83
+        },
+        {
+          "x": 744,
+          "y": 0,
+          "page": 0,
+          "durationMs": 83
+        },
+        {
+          "x": 868,
+          "y": 0,
+          "page": 0,
+          "durationMs": 83
+        },
+        {
+          "x": 992,
+          "y": 0,
+          "page": 0,
+          "durationMs": 83
+        },
+        {
+          "x": 1116,
+          "y": 0,
+          "page": 0,
+          "durationMs": 83
+        },
+        {
+          "x": 1240,
+          "y": 0,
+          "page": 0,
+          "durationMs": 83
+        },
+        {
+          "x": 1364,
+          "y": 0,
+          "page": 0,
+          "durationMs": 83
+        },
+        {
+          "x": 1488,
+          "y": 0,
+          "page": 0,
+          "durationMs": 83
+        },
+        {
+          "x": 1612,
+          "y": 0,
+          "page": 0,
+          "durationMs": 83
+        },
+        {
+          "x": 1736,
+          "y": 0,
+          "page": 0,
+          "durationMs": 83
+        },
+        {
+          "x": 1860,
+          "y": 0,
+          "page": 0,
+          "durationMs": 83
+        },
+        {
+          "x": 1984,
+          "y": 0,
+          "page": 0,
+          "durationMs": 83
+        },
+        {
+          "x": 2108,
+          "y": 0,
+          "page": 0,
+          "durationMs": 83
+        },
+        {
+          "x": 2232,
+          "y": 0,
+          "page": 0,
+          "durationMs": 83
+        },
+        {
+          "x": 2356,
+          "y": 0,
+          "page": 0,
+          "durationMs": 83
+        },
+        {
+          "x": 2480,
+          "y": 0,
+          "page": 0,
+          "durationMs": 83
+        },
+        {
+          "x": 2604,
+          "y": 0,
+          "page": 0,
+          "durationMs": 83
+        },
+        {
+          "x": 2728,
+          "y": 0,
+          "page": 0,
+          "durationMs": 83
+        },
+        {
+          "x": 2852,
+          "y": 0,
+          "page": 0,
+          "durationMs": 83
+        }
+      ]
+    },
+    {
+      "name": "walk_E",
+      "state": "walk",
+      "direction": 0,
+      "directionName": "E",
+      "loop": true,
+      "fps": 12,
+      "frameCount": 5,
+      "rootMotion": {
+        "groundSpeed": 46.3057,
+        "screenVelocityX": 46.3057,
+        "screenVelocityY": -0
+      },
+      "frames": [
+        {
+          "x": 0,
+          "y": 52,
+          "page": 0,
+          "durationMs": 83
+        },
+        {
+          "x": 124,
+          "y": 52,
+          "page": 0,
+          "durationMs": 83
+        },
+        {
+          "x": 248,
+          "y": 52,
+          "page": 0,
+          "durationMs": 83
+        },
+        {
+          "x": 372,
+          "y": 52,
+          "page": 0,
+          "durationMs": 83
+        },
+        {
+          "x": 496,
+          "y": 52,
+          "page": 0,
+          "durationMs": 83
+        }
+      ]
+    },
+    {
+      "name": "action_E",
+      "state": "action",
+      "direction": 0,
+      "directionName": "E",
+      "loop": false,
+      "fps": 12,
+      "frameCount": 23,
+      "rootMotion": {
+        "groundSpeed": 0,
+        "screenVelocityX": 0,
+        "screenVelocityY": -0
+      },
+      "frames": [
+        {
+          "x": 0,
+          "y": 104,
+          "page": 0,
+          "durationMs": 83
+        },
+        {
+          "x": 124,
+          "y": 104,
+          "page": 0,
+          "durationMs": 83
+        },
+        {
+          "x": 248,
+          "y": 104,
+          "page": 0,
+          "durationMs": 83
+        },
+        {
+          "x": 372,
+          "y": 104,
+          "page": 0,
+          "durationMs": 83
+        },
+        {
+          "x": 496,
+          "y": 104,
+          "page": 0,
+          "durationMs": 83
+        },
+        {
+          "x": 620,
+          "y": 104,
+          "page": 0,
+          "durationMs": 83
+        },
+        {
+          "x": 744,
+          "y": 104,
+          "page": 0,
+          "durationMs": 83
+        },
+        {
+          "x": 868,
+          "y": 104,
+          "page": 0,
+          "durationMs": 83
+        },
+        {
+          "x": 992,
+          "y": 104,
+          "page": 0,
+          "durationMs": 83
+        },
+        {
+          "x": 1116,
+          "y": 104,
+          "page": 0,
+          "durationMs": 83
+        },
+        {
+          "x": 1240,
+          "y": 104,
+          "page": 0,
+          "durationMs": 83
+        },
+        {
+          "x": 1364,
+          "y": 104,
+          "page": 0,
+          "durationMs": 83
+        },
+        {
+          "x": 1488,
+          "y": 104,
+          "page": 0,
+          "durationMs": 83
+        },
+        {
+          "x": 1612,
+          "y": 104,
+          "page": 0,
+          "durationMs": 83
+        },
+        {
+          "x": 1736,
+          "y": 104,
+          "page": 0,
+          "durationMs": 83
+        },
+        {
+          "x": 1860,
+          "y": 104,
+          "page": 0,
+          "durationMs": 83
+        },
+        {
+          "x": 1984,
+          "y": 104,
+          "page": 0,
+          "durationMs": 83
+        },
+        {
+          "x": 2108,
+          "y": 104,
+          "page": 0,
+          "durationMs": 83
+        },
+        {
+          "x": 2232,
+          "y": 104,
+          "page": 0,
+          "durationMs": 83
+        },
+        {
+          "x": 2356,
+          "y": 104,
+          "page": 0,
+          "durationMs": 83
+        },
+        {
+          "x": 2480,
+          "y": 104,
+          "page": 0,
+          "durationMs": 83
+        },
+        {
+          "x": 2604,
+          "y": 104,
+          "page": 0,
+          "durationMs": 83
+        },
+        {
+          "x": 2728,
+          "y": 104,
+          "page": 0,
+          "durationMs": 83
+        }
+      ]
+    },
+    {
+      "name": "hit_E",
+      "state": "hit",
+      "direction": 0,
+      "directionName": "E",
+      "loop": false,
+      "fps": 12,
+      "frameCount": 18,
+      "rootMotion": {
+        "groundSpeed": 0,
+        "screenVelocityX": 0,
+        "screenVelocityY": -0
+      },
+      "frames": [
+        {
+          "x": 0,
+          "y": 156,
+          "page": 0,
+          "durationMs": 83
+        },
+        {
+          "x": 124,
+          "y": 156,
+          "page": 0,
+          "durationMs": 83
+        },
+        {
+          "x": 248,
+          "y": 156,
+          "page": 0,
+          "durationMs": 83
+        },
+        {
+          "x": 372,
+          "y": 156,
+          "page": 0,
+          "durationMs": 83
+        },
+        {
+          "x": 496,
+          "y": 156,
+          "page": 0,
+          "durationMs": 83
+        },
+        {
+          "x": 620,
+          "y": 156,
+          "page": 0,
+          "durationMs": 83
+        },
+        {
+          "x": 744,
+          "y": 156,
+          "page": 0,
+          "durationMs": 83
+        },
+        {
+          "x": 868,
+          "y": 156,
+          "page": 0,
+          "durationMs": 83
+        },
+        {
+          "x": 992,
+          "y": 156,
+          "page": 0,
+          "durationMs": 83
+        },
+        {
+          "x": 1116,
+          "y": 156,
+          "page": 0,
+          "durationMs": 83
+        },
+        {
+          "x": 1240,
+          "y": 156,
+          "page": 0,
+          "durationMs": 83
+        },
+        {
+          "x": 1364,
+          "y": 156,
+          "page": 0,
+          "durationMs": 83
+        },
+        {
+          "x": 1488,
+          "y": 156,
+          "page": 0,
+          "durationMs": 83
+        },
+        {
+          "x": 1612,
+          "y": 156,
+          "page": 0,
+          "durationMs": 83
+        },
+        {
+          "x": 1736,
+          "y": 156,
+          "page": 0,
+          "durationMs": 83
+        },
+        {
+          "x": 1860,
+          "y": 156,
+          "page": 0,
+          "durationMs": 83
+        },
+        {
+          "x": 1984,
+          "y": 156,
+          "page": 0,
+          "durationMs": 83
+        },
+        {
+          "x": 2108,
+          "y": 156,
+          "page": 0,
+          "durationMs": 83
+        }
+      ]
+    }
+  ],
+  "ages": {
+    "backend": "procedural_pixel_creatures",
+    "upstreamCommit": "a2207c4bd6f1be51d426684cf58f11668def7579",
+    "exporterFingerprint": "e16c4fdf3c263f9c9fa6982a26c5ace7715620825fc8b70df2dc330229799c3e",
+    "conversionVersion": 2,
+    "profile": "ages",
+    "requestedDirection": "E",
+    "requestedDirectionIndex": 0,
+    "fps": 12,
+    "quality": 2,
+    "shadow": true,
+    "bakeHitFlash": false,
+    "clips": [
+      "idle",
+      "walk",
+      "action",
+      "hit"
+    ],
+    "genome": {
+      "sha256": "5763f321284d6e89b6ec394768687f806d1ac03c448a202756c0798b0580f406",
+      "seed": 7,
+      "source": "seed",
+      "contentId": "a5f5e26966e0282b",
+      "family": "quadruped",
+      "name": "Kromoubel",
+      "generatorVersion": 2,
+      "lineage": {
+        "origin": "sampled",
+        "generation": 0,
+        "parents": [],
+        "mutationStrength": 0
+      }
+    },
+    "preflight": {
+      "frameUpperBound": [
+        204,
+        190
+      ],
+      "framesUpperBound": 122,
+      "pageWidthUpperBound": 10200,
+      "atlasPixelsUpperBound": 7752000,
+      "cellBudget": 512,
+      "frameBudget": 256,
+      "pageBudget": 4096,
+      "pixelBudget": 8388608,
+      "note": "Frame inventory and cell bounds are hard preflight checks; page/pixel bounds are conservative and rechecked exactly after rendering."
+    }
+  }
+}

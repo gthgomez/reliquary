@@ -2,10 +2,12 @@
   "schema_version": 1,
   "asset_id": "ppc_amorphous_424242",
   "asset_type": "sprite",
+  "direction": "east",
   "program": {
-    "id": "generic",
-    "version": "ppc-Procedural Pixel Creatures 1.0.0"
+    "id": "procedural_pixel_creatures",
+    "version": "ppc-Procedural Pixel Creatures 1.0.0+a2207c4bd6f1"
   },
+  "backend_commit": "a2207c4bd6f1be51d426684cf58f11668def7579",
   "sources": [
     "genome.json",
     "ppc.spritesheet.json"
@@ -289,9 +291,84 @@
       "events": []
     }
   },
+  "generator": {
+    "backend": "procedural_pixel_creatures",
+    "repository": "https://github.com/idlerunner00/procedural-pixel-creatures",
+    "framework": "Procedural Pixel Creatures 1.0.0",
+    "generator_version": 2,
+    "upstream_commit": "a2207c4bd6f1be51d426684cf58f11668def7579",
+    "exporter_fingerprint": "e16c4fdf3c263f9c9fa6982a26c5ace7715620825fc8b70df2dc330229799c3e",
+    "genome": {
+      "family": "amorphous",
+      "name": "Grovek",
+      "content_id": "0244d2df6da7136f",
+      "sha256": "ca09c7226c75fe1d496b00b95b3034a7dacf435cddae97067bbac4056b429446",
+      "seed": 424242,
+      "source": "seed",
+      "lineage": {
+        "origin": "sampled",
+        "generation": 0,
+        "parents": [],
+        "mutationStrength": 0
+      }
+    },
+    "conversion_version": 2,
+    "profile": "ages",
+    "requested_direction": "E",
+    "actual_direction": "east",
+    "clips": [
+      {
+        "source_state": "idle",
+        "ages_state": "idle",
+        "frames": 24,
+        "loop": true,
+        "duration_ms": 1992
+      },
+      {
+        "source_state": "walk",
+        "ages_state": "walk",
+        "frames": 10,
+        "loop": true,
+        "duration_ms": 830
+      },
+      {
+        "source_state": "action",
+        "ages_state": "attack_melee",
+        "frames": 13,
+        "loop": false,
+        "duration_ms": 1079
+      },
+      {
+        "source_state": "hit",
+        "ages_state": "hit",
+        "frames": 7,
+        "loop": false,
+        "duration_ms": 581
+      }
+    ],
+    "render": {
+      "fps": 12,
+      "quality": 2,
+      "shadow": true,
+      "bake_hit_flash": false
+    },
+    "warnings": [
+      "walk: upstream root-motion speed 41.2221 is preserved in the source metadata but is not consumed by the AGES v1.7 runtime",
+      "action is a generic upstream action mapped to attack_melee; it is not a skill-specific melee or elemental animation",
+      "PPC metadata carries no impact event timing; AGES impact effects are therefore not scheduled from this package"
+    ],
+    "review_status": "UNREVIEWED",
+    "runtime_status": "PREVIEW_ONLY"
+  },
+  "rights": {
+    "generator_source_license": "MIT",
+    "generated_artwork": "UNKNOWN",
+    "genome_source": "GENERATED_LOCALLY",
+    "basis": "The generator's MIT license covers its source code, not an automatic grant for every generated derivative or externally supplied genome. Artwork rights remain UNKNOWN until reviewed."
+  },
   "license": {
     "identifier": "MIT",
     "author": "idlerunner00 (Procedural Pixel Creatures)",
-    "evidence": "Upstream repository LICENSE at the pinned commit; see integrations/procedural_pixel_creatures/upstream.lock.json and THIRD_PARTY_NOTICES.md"
+    "evidence": "Generator source license only at the pinned commit; generated artwork rights are UNKNOWN. See integrations/procedural_pixel_creatures/upstream.lock.json and THIRD_PARTY_NOTICES.md."
   }
 }

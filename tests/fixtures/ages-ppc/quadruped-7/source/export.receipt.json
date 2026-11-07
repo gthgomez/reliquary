@@ -1,0 +1,130 @@
+{
+  "status": "PASS",
+  "backend": "procedural_pixel_creatures",
+  "frameworkVersion": "1.0.0",
+  "generatorVersion": 2,
+  "upstreamCommit": "a2207c4bd6f1be51d426684cf58f11668def7579",
+  "exporterFingerprint": "e16c4fdf3c263f9c9fa6982a26c5ace7715620825fc8b70df2dc330229799c3e",
+  "profile": "ages",
+  "genome": {
+    "format": "ppc.creature",
+    "formatVersion": 1,
+    "family": "quadruped",
+    "name": "Kromoubel",
+    "contentId": "a5f5e26966e0282b",
+    "contentHash": "a5f5e26966e0282b",
+    "seed": 7,
+    "source": "seed",
+    "sha256": "5763f321284d6e89b6ec394768687f806d1ac03c448a202756c0798b0580f406",
+    "lineage": {
+      "origin": "sampled",
+      "generation": 0,
+      "parents": [],
+      "mutationStrength": 0
+    }
+  },
+  "direction": {
+    "index": 0,
+    "name": "E"
+  },
+  "fps": 12,
+  "quality": 2,
+  "shadow": true,
+  "bakeHitFlash": false,
+  "frame": {
+    "width": 124,
+    "height": 52,
+    "originX": 56,
+    "originY": 42
+  },
+  "clips": [
+    {
+      "name": "idle_E",
+      "state": "idle",
+      "direction": 0,
+      "directionName": "E",
+      "loop": true,
+      "fps": 12,
+      "frames": 24,
+      "durationMs": 1992,
+      "rootMotion": {
+        "groundSpeed": 0
+      }
+    },
+    {
+      "name": "walk_E",
+      "state": "walk",
+      "direction": 0,
+      "directionName": "E",
+      "loop": true,
+      "fps": 12,
+      "frames": 5,
+      "durationMs": 415,
+      "rootMotion": {
+        "groundSpeed": 46.3057
+      }
+    },
+    {
+      "name": "action_E",
+      "state": "action",
+      "direction": 0,
+      "directionName": "E",
+      "loop": false,
+      "fps": 12,
+      "frames": 23,
+      "durationMs": 1909,
+      "rootMotion": {
+        "groundSpeed": 0
+      }
+    },
+    {
+      "name": "hit_E",
+      "state": "hit",
+      "direction": 0,
+      "directionName": "E",
+      "loop": false,
+      "fps": 12,
+      "frames": 18,
+      "durationMs": 1494,
+      "rootMotion": {
+        "groundSpeed": 0
+      }
+    }
+  ],
+  "totalFrames": 70,
+  "atlasPixels": 619008,
+  "pages": [
+    {
+      "file": "page_000.png",
+      "width": 2976,
+      "height": 208,
+      "bytes": 36206,
+      "sha256": "30f885a5da9a0bed8f926bb4a8c063ffd2dce69b3776a20868d7b6b0c1b91b52"
+    }
+  ],
+  "preflight": {
+    "frameUpperBound": [
+      204,
+      190
+    ],
+    "framesUpperBound": 122,
+    "pageWidthUpperBound": 10200,
+    "atlasPixelsUpperBound": 7752000,
+    "cellBudget": 512,
+    "frameBudget": 256,
+    "pageBudget": 4096,
+    "pixelBudget": 8388608,
+    "note": "Frame inventory and cell bounds are hard preflight checks; page/pixel bounds are conservative and rechecked exactly after rendering."
+  },
+  "outputs": {
+    "metadata": "ppc.spritesheet.json",
+    "genome": "genome.json",
+    "metadataSha256": "952cbf1cb2ef8ff690f75ffab6a2e75931a482c70bdae89f9748bd74af83711f"
+  },
+  "warnings": [
+    "preflight page-width upper bound 10200 exceeds 4096; exact page size will be checked after rendering",
+    "baked hit flash disabled; the hit clip keeps its recoil pose without a full-white frame"
+  ],
+  "elapsedMs": 358,
+  "managedMemoryBytes": 11420280
+}

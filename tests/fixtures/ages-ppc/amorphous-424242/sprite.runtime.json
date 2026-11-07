@@ -617,14 +617,14 @@
   "atlas": {
     "file": "atlas.png",
     "height": 196,
-    "sha256": "1402283987e07b169e745d332367447575a8ef2f8da5b47614e371497b034881",
+    "sha256": "fe77e3ca4133db3a370c3407938fd6c2e61a92fb80d73b89bb0af30cb86df154",
     "width": 600
   },
   "cell_dimensions": [
     25,
     49
   ],
-  "direction": "southwest",
+  "direction": "east",
   "runtime_status": "PREVIEW_ONLY",
   "schema_version": "1.7.0",
   "subject_id": "ppc_amorphous_424242"

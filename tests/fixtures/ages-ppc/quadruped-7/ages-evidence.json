@@ -1,0 +1,47 @@
+{
+  "backend": "procedural_pixel_creatures",
+  "upstreamCommit": "a2207c4bd6f1be51d426684cf58f11668def7579",
+  "generatorVersion": 2,
+  "experimental": true,
+  "note": "Preview-only experimental fixture. Not canonical artwork and not a reidentification of the aliased species.",
+  "package": {
+    "subjectId": "ppc_quadruped_7",
+    "assetId": "ppc_quadruped_7",
+    "packageDigest": "afb4f74e263ba0f353237a4cc1cc0d8a40a5a7815337c925d4801016b00d1c3c",
+    "atlasSha256": "30f885a5da9a0bed8f926bb4a8c063ffd2dce69b3776a20868d7b6b0c1b91b52"
+  },
+  "genome": {
+    "family": "quadruped",
+    "contentId": "a5f5e26966e0282b",
+    "name": "Kromoubel",
+    "seed": 7,
+    "sha256": "5763f321284d6e89b6ec394768687f806d1ac03c448a202756c0798b0580f406",
+    "source": "seed"
+  },
+  "direction": "east",
+  "bakeHitFlash": false,
+  "clips": {
+    "attack_melee": {
+      "frames": 23,
+      "duration_ms": 1909.0,
+      "loop": false
+    },
+    "hit": {
+      "frames": 18,
+      "duration_ms": 1494.0,
+      "loop": false
+    },
+    "idle": {
+      "frames": 24,
+      "duration_ms": 1992.0,
+      "loop": true
+    },
+    "walk": {
+      "frames": 5,
+      "duration_ms": 415.0,
+      "loop": true
+    }
+  },
+  "alias": "gutterrat",
+  "humanReview": "PENDING"
+}

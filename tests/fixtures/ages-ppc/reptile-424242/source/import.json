@@ -1,0 +1,402 @@
+{
+  "schema_version": 1,
+  "asset_id": "ppc_reptile_424242",
+  "asset_type": "sprite",
+  "direction": "east",
+  "program": {
+    "id": "procedural_pixel_creatures",
+    "version": "ppc-Procedural Pixel Creatures 1.0.0+a2207c4bd6f1"
+  },
+  "backend_commit": "a2207c4bd6f1be51d426684cf58f11668def7579",
+  "sources": [
+    "genome.json",
+    "ppc.spritesheet.json"
+  ],
+  "cell": [
+    132,
+    38
+  ],
+  "sheet": "page_000.png",
+  "animations": {
+    "idle": {
+      "loop": true,
+      "pivot": [
+        76,
+        23
+      ],
+      "gameplay_root": [
+        76,
+        23
+      ],
+      "frames": [
+        {
+          "cell": 0,
+          "duration_ms": 83
+        },
+        {
+          "cell": 1,
+          "duration_ms": 83
+        },
+        {
+          "cell": 2,
+          "duration_ms": 83
+        },
+        {
+          "cell": 3,
+          "duration_ms": 83
+        },
+        {
+          "cell": 4,
+          "duration_ms": 83
+        },
+        {
+          "cell": 5,
+          "duration_ms": 83
+        },
+        {
+          "cell": 6,
+          "duration_ms": 83
+        },
+        {
+          "cell": 7,
+          "duration_ms": 83
+        },
+        {
+          "cell": 8,
+          "duration_ms": 83
+        },
+        {
+          "cell": 9,
+          "duration_ms": 83
+        },
+        {
+          "cell": 10,
+          "duration_ms": 83
+        },
+        {
+          "cell": 11,
+          "duration_ms": 83
+        },
+        {
+          "cell": 12,
+          "duration_ms": 83
+        },
+        {
+          "cell": 13,
+          "duration_ms": 83
+        },
+        {
+          "cell": 14,
+          "duration_ms": 83
+        },
+        {
+          "cell": 15,
+          "duration_ms": 83
+        },
+        {
+          "cell": 16,
+          "duration_ms": 83
+        },
+        {
+          "cell": 17,
+          "duration_ms": 83
+        },
+        {
+          "cell": 18,
+          "duration_ms": 83
+        },
+        {
+          "cell": 19,
+          "duration_ms": 83
+        },
+        {
+          "cell": 20,
+          "duration_ms": 83
+        },
+        {
+          "cell": 21,
+          "duration_ms": 83
+        },
+        {
+          "cell": 22,
+          "duration_ms": 83
+        },
+        {
+          "cell": 23,
+          "duration_ms": 83
+        }
+      ],
+      "events": []
+    },
+    "walk": {
+      "loop": true,
+      "pivot": [
+        76,
+        23
+      ],
+      "gameplay_root": [
+        76,
+        23
+      ],
+      "frames": [
+        {
+          "cell": 24,
+          "duration_ms": 83
+        },
+        {
+          "cell": 25,
+          "duration_ms": 83
+        },
+        {
+          "cell": 26,
+          "duration_ms": 83
+        },
+        {
+          "cell": 27,
+          "duration_ms": 83
+        },
+        {
+          "cell": 28,
+          "duration_ms": 83
+        }
+      ],
+      "events": []
+    },
+    "attack_melee": {
+      "loop": false,
+      "pivot": [
+        76,
+        23
+      ],
+      "gameplay_root": [
+        76,
+        23
+      ],
+      "frames": [
+        {
+          "cell": 48,
+          "duration_ms": 83
+        },
+        {
+          "cell": 49,
+          "duration_ms": 83
+        },
+        {
+          "cell": 50,
+          "duration_ms": 83
+        },
+        {
+          "cell": 51,
+          "duration_ms": 83
+        },
+        {
+          "cell": 52,
+          "duration_ms": 83
+        },
+        {
+          "cell": 53,
+          "duration_ms": 83
+        },
+        {
+          "cell": 54,
+          "duration_ms": 83
+        },
+        {
+          "cell": 55,
+          "duration_ms": 83
+        },
+        {
+          "cell": 56,
+          "duration_ms": 83
+        },
+        {
+          "cell": 57,
+          "duration_ms": 83
+        },
+        {
+          "cell": 58,
+          "duration_ms": 83
+        },
+        {
+          "cell": 59,
+          "duration_ms": 83
+        },
+        {
+          "cell": 60,
+          "duration_ms": 83
+        },
+        {
+          "cell": 61,
+          "duration_ms": 83
+        },
+        {
+          "cell": 62,
+          "duration_ms": 83
+        },
+        {
+          "cell": 63,
+          "duration_ms": 83
+        }
+      ],
+      "events": []
+    },
+    "hit": {
+      "loop": false,
+      "pivot": [
+        76,
+        23
+      ],
+      "gameplay_root": [
+        76,
+        23
+      ],
+      "frames": [
+        {
+          "cell": 72,
+          "duration_ms": 83
+        },
+        {
+          "cell": 73,
+          "duration_ms": 83
+        },
+        {
+          "cell": 74,
+          "duration_ms": 83
+        },
+        {
+          "cell": 75,
+          "duration_ms": 83
+        },
+        {
+          "cell": 76,
+          "duration_ms": 83
+        },
+        {
+          "cell": 77,
+          "duration_ms": 83
+        },
+        {
+          "cell": 78,
+          "duration_ms": 83
+        },
+        {
+          "cell": 79,
+          "duration_ms": 83
+        },
+        {
+          "cell": 80,
+          "duration_ms": 83
+        },
+        {
+          "cell": 81,
+          "duration_ms": 83
+        },
+        {
+          "cell": 82,
+          "duration_ms": 83
+        },
+        {
+          "cell": 83,
+          "duration_ms": 83
+        },
+        {
+          "cell": 84,
+          "duration_ms": 83
+        },
+        {
+          "cell": 85,
+          "duration_ms": 83
+        },
+        {
+          "cell": 86,
+          "duration_ms": 83
+        },
+        {
+          "cell": 87,
+          "duration_ms": 83
+        }
+      ],
+      "events": []
+    }
+  },
+  "generator": {
+    "backend": "procedural_pixel_creatures",
+    "repository": "https://github.com/idlerunner00/procedural-pixel-creatures",
+    "framework": "Procedural Pixel Creatures 1.0.0",
+    "generator_version": 2,
+    "upstream_commit": "a2207c4bd6f1be51d426684cf58f11668def7579",
+    "exporter_fingerprint": "e16c4fdf3c263f9c9fa6982a26c5ace7715620825fc8b70df2dc330229799c3e",
+    "genome": {
+      "family": "reptile",
+      "name": "Grovek",
+      "content_id": "e0a142e3787bbe00",
+      "sha256": "49bae8a0d901148c242a1ded8688fd20414db61e55d27f55444c55f1e621bf72",
+      "seed": 424242,
+      "source": "seed",
+      "lineage": {
+        "origin": "sampled",
+        "generation": 0,
+        "parents": [],
+        "mutationStrength": 0
+      }
+    },
+    "conversion_version": 2,
+    "profile": "ages",
+    "requested_direction": "E",
+    "actual_direction": "east",
+    "clips": [
+      {
+        "source_state": "idle",
+        "ages_state": "idle",
+        "frames": 24,
+        "loop": true,
+        "duration_ms": 1992
+      },
+      {
+        "source_state": "walk",
+        "ages_state": "walk",
+        "frames": 5,
+        "loop": true,
+        "duration_ms": 415
+      },
+      {
+        "source_state": "action",
+        "ages_state": "attack_melee",
+        "frames": 16,
+        "loop": false,
+        "duration_ms": 1328
+      },
+      {
+        "source_state": "hit",
+        "ages_state": "hit",
+        "frames": 16,
+        "loop": false,
+        "duration_ms": 1328
+      }
+    ],
+    "render": {
+      "fps": 12,
+      "quality": 2,
+      "shadow": true,
+      "bake_hit_flash": false
+    },
+    "warnings": [
+      "walk: upstream root-motion speed 30.3152 is preserved in the source metadata but is not consumed by the AGES v1.7 runtime",
+      "action is a generic upstream action mapped to attack_melee; it is not a skill-specific melee or elemental animation",
+      "PPC metadata carries no impact event timing; AGES impact effects are therefore not scheduled from this package"
+    ],
+    "review_status": "UNREVIEWED",
+    "runtime_status": "PREVIEW_ONLY"
+  },
+  "rights": {
+    "generator_source_license": "MIT",
+    "generated_artwork": "UNKNOWN",
+    "genome_source": "GENERATED_LOCALLY",
+    "basis": "The generator's MIT license covers its source code, not an automatic grant for every generated derivative or externally supplied genome. Artwork rights remain UNKNOWN until reviewed."
+  },
+  "license": {
+    "identifier": "MIT",
+    "author": "idlerunner00 (Procedural Pixel Creatures)",
+    "evidence": "Generator source license only at the pinned commit; generated artwork rights are UNKNOWN. See integrations/procedural_pixel_creatures/upstream.lock.json and THIRD_PARTY_NOTICES.md."
+  }
+}
