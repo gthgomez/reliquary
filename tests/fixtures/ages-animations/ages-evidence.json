@@ -1,0 +1,32 @@
+{
+  "emberkit": {
+    "export": {
+      "package_digest": "475500e2062f31b230832deb91b1108540b19a81acd620c54708d61f872264bd",
+      "atlas_sha256": "27337d783f7926f81cea56991e59e33cd3406ec866bb2958de5b7b7c3583b4c4"
+    }
+  },
+  "mirewhelp": {
+    "export": {
+      "package_digest": "9d75d7b913cd767c9288a855d5cc14010e750147f9180ef26c716b904f4d788a",
+      "atlas_sha256": "8a07a5d004b3d7a8a265925664e7ac1c14e5d86644d204069cd4e0fdf3dc97fc"
+    }
+  },
+  "briarling": {
+    "export": {
+      "package_digest": "fd176fcd3d903c74ca24fcfce348a3f43b0d9764b914d7e08abcc08f97e082ee",
+      "atlas_sha256": "a163ec44c364f17b7b60f7f9add53218b36aeac88f092ad1c900958bc8abe035"
+    }
+  },
+  "reliquary-effects": {
+    "export": {
+      "package_digest": "e0b7898bdfe95abe7ff5f613455779222282679d02cc8320f46c86c1da192f7c",
+      "atlas_sha256": "7f043a8570441581f79c3065473fb42c6cba4010909d18df3ff9063e47129968"
+    }
+  },
+  "provenance": {
+    "tool": "tools/ages-animations/generate.py",
+    "authoring": "Original procedural geometry; no third-party or commercial sprites.",
+    "license": "Original-Procedural-Art",
+    "ages_commit": "6a4183f2e33438465219674e19fe2dc6a90bb2f3"
+  }
+}

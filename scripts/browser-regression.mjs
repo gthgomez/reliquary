@@ -43,7 +43,7 @@ if (serveOnly) {
     const result = spawnSync(cmd, cmdArgs, {
       cwd: root,
       stdio: "inherit",
-      timeout: 180_000,
+      timeout: 300_000,
       killSignal: "SIGKILL",
       env: env ? { ...process.env, ...env } : process.env,
     });
@@ -56,6 +56,8 @@ if (serveOnly) {
 
   console.log("[browser] building client with browser-test probes");
   run(process.execPath, [join(root, "scripts/build-web-test.mjs")]);
+  console.log("[browser] building dedicated AGES preview bundle");
+  run(process.execPath, [join(root, "scripts/build-ages-preview.mjs")]);
 
   const gameShell = join(staticDir, "public-game.html");
   const indexShell = join(staticDir, "index.html");
@@ -90,7 +92,9 @@ if (serveOnly) {
       "pwa-update.mjs",
       "journey.mjs",
       "cinematic-dialogue.mjs",
+      "ages-animations.mjs",
     ],
+    animations: ["ages-animations.mjs"],
     layout: ["layout.mjs"],
     contrast: ["contrast.mjs"],
     a11y: ["modal-a11y.mjs", "modal-focus-trap.mjs"],

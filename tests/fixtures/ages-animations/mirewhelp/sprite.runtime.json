@@ -1,0 +1,339 @@
+{
+  "animations": {
+    "attack_elemental": {
+      "duration_ms": 720.0,
+      "events": [
+        {
+          "frame": 3,
+          "name": "impact"
+        }
+      ],
+      "fps": 8.33,
+      "frames": [
+        {
+          "duration_ms": 140.0,
+          "h": 64,
+          "index": 0,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 64,
+          "x": 64,
+          "y": 64
+        },
+        {
+          "duration_ms": 110.0,
+          "h": 64,
+          "index": 1,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 64,
+          "x": 128,
+          "y": 64
+        },
+        {
+          "duration_ms": 90.0,
+          "h": 64,
+          "index": 2,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 64,
+          "x": 192,
+          "y": 64
+        },
+        {
+          "duration_ms": 100.0,
+          "h": 64,
+          "index": 3,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 64,
+          "x": 256,
+          "y": 64
+        },
+        {
+          "duration_ms": 130.0,
+          "h": 64,
+          "index": 4,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 64,
+          "x": 320,
+          "y": 64
+        },
+        {
+          "duration_ms": 150.0,
+          "h": 64,
+          "index": 5,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 64,
+          "x": 384,
+          "y": 64
+        }
+      ],
+      "gameplay_root": [
+        32.0,
+        60.0
+      ],
+      "logical_pivot": [
+        32.0,
+        60.0
+      ],
+      "loop": false,
+      "review_disposition": "UNREVIEWED",
+      "state": "attack_elemental"
+    },
+    "attack_melee": {
+      "duration_ms": 560.0,
+      "events": [
+        {
+          "frame": 2,
+          "name": "impact"
+        }
+      ],
+      "fps": 8.93,
+      "frames": [
+        {
+          "duration_ms": 110.0,
+          "h": 64,
+          "index": 0,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 64,
+          "x": 256,
+          "y": 0
+        },
+        {
+          "duration_ms": 90.0,
+          "h": 64,
+          "index": 1,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 64,
+          "x": 320,
+          "y": 0
+        },
+        {
+          "duration_ms": 80.0,
+          "h": 64,
+          "index": 2,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 64,
+          "x": 384,
+          "y": 0
+        },
+        {
+          "duration_ms": 120.0,
+          "h": 64,
+          "index": 3,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 64,
+          "x": 448,
+          "y": 0
+        },
+        {
+          "duration_ms": 160.0,
+          "h": 64,
+          "index": 4,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 64,
+          "x": 0,
+          "y": 64
+        }
+      ],
+      "gameplay_root": [
+        32.0,
+        60.0
+      ],
+      "logical_pivot": [
+        32.0,
+        60.0
+      ],
+      "loop": false,
+      "review_disposition": "UNREVIEWED",
+      "state": "attack_melee"
+    },
+    "faint": {
+      "duration_ms": 820.0,
+      "events": [],
+      "fps": 4.88,
+      "frames": [
+        {
+          "duration_ms": 140.0,
+          "h": 64,
+          "index": 0,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 64,
+          "x": 128,
+          "y": 128
+        },
+        {
+          "duration_ms": 160.0,
+          "h": 64,
+          "index": 1,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 64,
+          "x": 192,
+          "y": 128
+        },
+        {
+          "duration_ms": 220.0,
+          "h": 64,
+          "index": 2,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 64,
+          "x": 256,
+          "y": 128
+        },
+        {
+          "duration_ms": 300.0,
+          "h": 64,
+          "index": 3,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 64,
+          "x": 320,
+          "y": 128
+        }
+      ],
+      "gameplay_root": [
+        32.0,
+        60.0
+      ],
+      "logical_pivot": [
+        32.0,
+        60.0
+      ],
+      "loop": false,
+      "review_disposition": "UNREVIEWED",
+      "state": "faint"
+    },
+    "hit": {
+      "duration_ms": 290.0,
+      "events": [],
+      "fps": 10.34,
+      "frames": [
+        {
+          "duration_ms": 80.0,
+          "h": 64,
+          "index": 0,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 64,
+          "x": 448,
+          "y": 64
+        },
+        {
+          "duration_ms": 90.0,
+          "h": 64,
+          "index": 1,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 64,
+          "x": 0,
+          "y": 128
+        },
+        {
+          "duration_ms": 120.0,
+          "h": 64,
+          "index": 2,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 64,
+          "x": 64,
+          "y": 128
+        }
+      ],
+      "gameplay_root": [
+        32.0,
+        60.0
+      ],
+      "logical_pivot": [
+        32.0,
+        60.0
+      ],
+      "loop": false,
+      "review_disposition": "UNREVIEWED",
+      "state": "hit"
+    },
+    "idle": {
+      "duration_ms": 560.0,
+      "events": [],
+      "fps": 7.14,
+      "frames": [
+        {
+          "duration_ms": 140.0,
+          "h": 64,
+          "index": 0,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 64,
+          "x": 0,
+          "y": 0
+        },
+        {
+          "duration_ms": 140.0,
+          "h": 64,
+          "index": 1,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 64,
+          "x": 64,
+          "y": 0
+        },
+        {
+          "duration_ms": 140.0,
+          "h": 64,
+          "index": 2,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 64,
+          "x": 128,
+          "y": 0
+        },
+        {
+          "duration_ms": 140.0,
+          "h": 64,
+          "index": 3,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 64,
+          "x": 192,
+          "y": 0
+        }
+      ],
+      "gameplay_root": [
+        32.0,
+        60.0
+      ],
+      "logical_pivot": [
+        32.0,
+        60.0
+      ],
+      "loop": true,
+      "review_disposition": "UNREVIEWED",
+      "state": "idle"
+    }
+  },
+  "asset_id": "mirewhelp",
+  "atlas": {
+    "file": "atlas.png",
+    "height": 192,
+    "sha256": "8a07a5d004b3d7a8a265925664e7ac1c14e5d86644d204069cd4e0fdf3dc97fc",
+    "width": 512
+  },
+  "cell_dimensions": [
+    64,
+    64
+  ],
+  "direction": "southwest",
+  "runtime_status": "PREVIEW_ONLY",
+  "schema_version": "1.7.0",
+  "subject_id": "mirewhelp"
+}

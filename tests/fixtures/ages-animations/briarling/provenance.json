@@ -1,0 +1,33 @@
+{
+  "asset_id": "briarling",
+  "backend": "generic",
+  "backend_commit": "",
+  "backend_version": "ages-procedural-authoring/1.0",
+  "candidate_pack_id": "cand_20261107_065138_2be78162",
+  "dispositions": {
+    "attack_elemental": "UNREVIEWED",
+    "attack_melee": "UNREVIEWED",
+    "faint": "UNREVIEWED",
+    "hit": "UNREVIEWED",
+    "idle": "UNREVIEWED"
+  },
+  "export_target": "web",
+  "external_import": {
+    "asset_type": "sprite",
+    "license_status": "DECLARED_UNVERIFIED",
+    "source_provenance_sha256": "dd8b4eb4c0c1d6dcbb04cdee3cdde46704fde20afa49c86200f0bf8e053dbc83"
+  },
+  "frame_counts": {
+    "attack_elemental": 6,
+    "attack_melee": 5,
+    "faint": 4,
+    "hit": 3,
+    "idle": 4
+  },
+  "locomotion_anchor_sha256": "",
+  "runtime_status": "PREVIEW_ONLY",
+  "schema_version": "1.7.0",
+  "source_master_sha256": "dd8b4eb4c0c1d6dcbb04cdee3cdde46704fde20afa49c86200f0bf8e053dbc83",
+  "source_request_hash": "380bb63da7e1cf16511c442590280f3a059745330e0b246208b33a6e6bb196ec",
+  "v1_6_manifest_sha256": ""
+}

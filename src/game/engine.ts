@@ -51,6 +51,7 @@ import {
   sampleBattleIdle,
   shouldPlayBattleAnim,
   type BattleAnimCue,
+  type BattleAnimSide,
 } from "./render/battle-creature-anim.ts";
 import {
   computeBattleStageGeometry,
@@ -1614,11 +1615,17 @@ export class ReliquaryGame {
 		const sfxCue = events[events.length - 1]!.sfx;
 		if (log !== null) this.logBattle(log);
 		const event = events[0]!;
+		const targetSide: BattleAnimSide = foeSide ? "player" : "foe";
 		if (this.battlePreview && logIt && skill.kind !== "heal" && skill.power > 0 &&
 			(event.kind === "damage" || event.kind === "miss")) {
 			this.battlePreview.attack(b, {
-				skillId: skill.id, side: animSide, speciesId: atk.speciesId, hit: event.kind === "damage",
+				skillId: skill.id, side: animSide, speciesId: atk.speciesId,
+				targetSide, targetSpeciesId: def.speciesId,
+				kind: skill.kind, element: skill.element, hit: event.kind === "damage",
 			});
+			if (event.kind === "damage" && def.hp <= 0) {
+				this.battlePreview.faint(targetSide, def.speciesId);
+			}
 		}
 		if (event.kind === "miss") sfxPlay.fail();
 		else if (event.sfx === "heal") sfxPlay.heal();
@@ -2307,7 +2314,8 @@ export class ReliquaryGame {
 		const preview = this.battlePreview;
 		preview?.beginFrame(b, this.reducedMotion);
 		const foe = b.foes[b.foeIndex]!;
-		if (foe && foe.hp > 0) {
+		const foeFainting = !!foe && foe.hp <= 0 && preview?.faintVisible("foe", foe.speciesId);
+		if (foe && (foe.hp > 0 || foeFainting)) {
 			const img = this.images[`sprite_${foe.speciesId}`];
 			const catchShake = b.phase === "catch" ? Math.sin(b.shake * 8) * 6 : 0;
 			const paint = preview?.sprite("foe", foe.speciesId);

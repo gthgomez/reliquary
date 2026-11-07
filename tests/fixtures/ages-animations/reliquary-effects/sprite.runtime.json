@@ -1,0 +1,339 @@
+{
+  "animations": {
+    "impact": {
+      "duration_ms": 240.0,
+      "events": [],
+      "fps": 16.67,
+      "frames": [
+        {
+          "duration_ms": 60.0,
+          "h": 64,
+          "index": 0,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 64,
+          "x": 0,
+          "y": 0
+        },
+        {
+          "duration_ms": 60.0,
+          "h": 64,
+          "index": 1,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 64,
+          "x": 64,
+          "y": 0
+        },
+        {
+          "duration_ms": 60.0,
+          "h": 64,
+          "index": 2,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 64,
+          "x": 128,
+          "y": 0
+        },
+        {
+          "duration_ms": 60.0,
+          "h": 64,
+          "index": 3,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 64,
+          "x": 192,
+          "y": 0
+        }
+      ],
+      "gameplay_root": [
+        32.0,
+        50.0
+      ],
+      "logical_pivot": [
+        32.0,
+        50.0
+      ],
+      "loop": false,
+      "review_disposition": "UNREVIEWED",
+      "state": "impact"
+    },
+    "impact_ember": {
+      "duration_ms": 350.0,
+      "events": [],
+      "fps": 14.29,
+      "frames": [
+        {
+          "duration_ms": 60.0,
+          "h": 64,
+          "index": 0,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 64,
+          "x": 0,
+          "y": 64
+        },
+        {
+          "duration_ms": 65.0,
+          "h": 64,
+          "index": 1,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 64,
+          "x": 64,
+          "y": 64
+        },
+        {
+          "duration_ms": 70.0,
+          "h": 64,
+          "index": 2,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 64,
+          "x": 128,
+          "y": 64
+        },
+        {
+          "duration_ms": 75.0,
+          "h": 64,
+          "index": 3,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 64,
+          "x": 192,
+          "y": 64
+        },
+        {
+          "duration_ms": 80.0,
+          "h": 64,
+          "index": 4,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 64,
+          "x": 256,
+          "y": 64
+        }
+      ],
+      "gameplay_root": [
+        32.0,
+        50.0
+      ],
+      "logical_pivot": [
+        32.0,
+        50.0
+      ],
+      "loop": false,
+      "review_disposition": "UNREVIEWED",
+      "state": "impact_ember"
+    },
+    "impact_melee": {
+      "duration_ms": 220.0,
+      "events": [],
+      "fps": 18.18,
+      "frames": [
+        {
+          "duration_ms": 55.0,
+          "h": 64,
+          "index": 0,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 64,
+          "x": 256,
+          "y": 0
+        },
+        {
+          "duration_ms": 55.0,
+          "h": 64,
+          "index": 1,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 64,
+          "x": 320,
+          "y": 0
+        },
+        {
+          "duration_ms": 55.0,
+          "h": 64,
+          "index": 2,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 64,
+          "x": 384,
+          "y": 0
+        },
+        {
+          "duration_ms": 55.0,
+          "h": 64,
+          "index": 3,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 64,
+          "x": 448,
+          "y": 0
+        }
+      ],
+      "gameplay_root": [
+        32.0,
+        50.0
+      ],
+      "logical_pivot": [
+        32.0,
+        50.0
+      ],
+      "loop": false,
+      "review_disposition": "UNREVIEWED",
+      "state": "impact_melee"
+    },
+    "impact_tide": {
+      "duration_ms": 350.0,
+      "events": [],
+      "fps": 14.29,
+      "frames": [
+        {
+          "duration_ms": 60.0,
+          "h": 64,
+          "index": 0,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 64,
+          "x": 320,
+          "y": 64
+        },
+        {
+          "duration_ms": 65.0,
+          "h": 64,
+          "index": 1,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 64,
+          "x": 384,
+          "y": 64
+        },
+        {
+          "duration_ms": 70.0,
+          "h": 64,
+          "index": 2,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 64,
+          "x": 448,
+          "y": 64
+        },
+        {
+          "duration_ms": 75.0,
+          "h": 64,
+          "index": 3,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 64,
+          "x": 0,
+          "y": 128
+        },
+        {
+          "duration_ms": 80.0,
+          "h": 64,
+          "index": 4,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 64,
+          "x": 64,
+          "y": 128
+        }
+      ],
+      "gameplay_root": [
+        32.0,
+        50.0
+      ],
+      "logical_pivot": [
+        32.0,
+        50.0
+      ],
+      "loop": false,
+      "review_disposition": "UNREVIEWED",
+      "state": "impact_tide"
+    },
+    "impact_verdant": {
+      "duration_ms": 350.0,
+      "events": [],
+      "fps": 14.29,
+      "frames": [
+        {
+          "duration_ms": 60.0,
+          "h": 64,
+          "index": 0,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 64,
+          "x": 128,
+          "y": 128
+        },
+        {
+          "duration_ms": 65.0,
+          "h": 64,
+          "index": 1,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 64,
+          "x": 192,
+          "y": 128
+        },
+        {
+          "duration_ms": 70.0,
+          "h": 64,
+          "index": 2,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 64,
+          "x": 256,
+          "y": 128
+        },
+        {
+          "duration_ms": 75.0,
+          "h": 64,
+          "index": 3,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 64,
+          "x": 320,
+          "y": 128
+        },
+        {
+          "duration_ms": 80.0,
+          "h": 64,
+          "index": 4,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 64,
+          "x": 384,
+          "y": 128
+        }
+      ],
+      "gameplay_root": [
+        32.0,
+        50.0
+      ],
+      "logical_pivot": [
+        32.0,
+        50.0
+      ],
+      "loop": false,
+      "review_disposition": "UNREVIEWED",
+      "state": "impact_verdant"
+    }
+  },
+  "asset_id": "reliquary-effects",
+  "atlas": {
+    "file": "atlas.png",
+    "height": 192,
+    "sha256": "7f043a8570441581f79c3065473fb42c6cba4010909d18df3ff9063e47129968",
+    "width": 512
+  },
+  "cell_dimensions": [
+    64,
+    64
+  ],
+  "direction": "southwest",
+  "runtime_status": "PREVIEW_ONLY",
+  "schema_version": "1.7.0",
+  "subject_id": "reliquary-effects"
+}

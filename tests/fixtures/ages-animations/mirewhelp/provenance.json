@@ -1,0 +1,33 @@
+{
+  "asset_id": "mirewhelp",
+  "backend": "generic",
+  "backend_commit": "",
+  "backend_version": "ages-procedural-authoring/1.0",
+  "candidate_pack_id": "cand_20261107_065138_d37fb651",
+  "dispositions": {
+    "attack_elemental": "UNREVIEWED",
+    "attack_melee": "UNREVIEWED",
+    "faint": "UNREVIEWED",
+    "hit": "UNREVIEWED",
+    "idle": "UNREVIEWED"
+  },
+  "export_target": "web",
+  "external_import": {
+    "asset_type": "sprite",
+    "license_status": "DECLARED_UNVERIFIED",
+    "source_provenance_sha256": "ce6f09badc8a95a9f221168c1ccf9f1bdf785207a70dfca9ccfaf7ccbd2de917"
+  },
+  "frame_counts": {
+    "attack_elemental": 6,
+    "attack_melee": 5,
+    "faint": 4,
+    "hit": 3,
+    "idle": 4
+  },
+  "locomotion_anchor_sha256": "",
+  "runtime_status": "PREVIEW_ONLY",
+  "schema_version": "1.7.0",
+  "source_master_sha256": "ce6f09badc8a95a9f221168c1ccf9f1bdf785207a70dfca9ccfaf7ccbd2de917",
+  "source_request_hash": "73f02f48fe2cfc58b49bdc9890663b040f41a0b0d65a9b05d0ee07e8bcc6eca3",
+  "v1_6_manifest_sha256": ""
+}

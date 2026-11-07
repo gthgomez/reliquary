@@ -1,0 +1,33 @@
+{
+  "asset_id": "reliquary-effects",
+  "backend": "generic",
+  "backend_commit": "",
+  "backend_version": "ages-procedural-authoring/1.0",
+  "candidate_pack_id": "cand_20261107_065139_06109b4e",
+  "dispositions": {
+    "impact": "UNREVIEWED",
+    "impact_ember": "UNREVIEWED",
+    "impact_melee": "UNREVIEWED",
+    "impact_tide": "UNREVIEWED",
+    "impact_verdant": "UNREVIEWED"
+  },
+  "export_target": "web",
+  "external_import": {
+    "asset_type": "effect",
+    "license_status": "DECLARED_UNVERIFIED",
+    "source_provenance_sha256": "8212d4b62452f307f8ee5b5b5a9adc52f13bcd0fe0643b5c5273c3d27058ef26"
+  },
+  "frame_counts": {
+    "impact": 4,
+    "impact_ember": 5,
+    "impact_melee": 4,
+    "impact_tide": 5,
+    "impact_verdant": 5
+  },
+  "locomotion_anchor_sha256": "",
+  "runtime_status": "PREVIEW_ONLY",
+  "schema_version": "1.7.0",
+  "source_master_sha256": "8212d4b62452f307f8ee5b5b5a9adc52f13bcd0fe0643b5c5273c3d27058ef26",
+  "source_request_hash": "8946f19bfa77e9804ffe4fb8eb936b8452b3e7d9635f90420ab629bd4be84168",
+  "v1_6_manifest_sha256": ""
+}
