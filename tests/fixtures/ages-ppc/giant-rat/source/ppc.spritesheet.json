@@ -6,39 +6,39 @@
   "creature": {
     "name": "Grovek",
     "family": "quadruped",
-    "contentId": "a74e077e34cc0c57"
+    "contentId": "6c4c0fe9390f6d7e"
   },
-  "frameWidth": 119,
-  "frameHeight": 61,
-  "originX": 64,
-  "originY": 55,
+  "frameWidth": 120,
+  "frameHeight": 72,
+  "originX": 70,
+  "originY": 66,
   "originNote": "Pixel inside each frame that sits on the creature\u0027s ground point; place it at the entity position.",
   "cameraElevationDeg": 30,
   "pages": [
     {
       "file": "page_000.png",
-      "width": 2856,
-      "height": 244
+      "width": 3240,
+      "height": 288
     }
   ],
   "palette": [
     "#060001",
-    "#210a0f",
-    "#402728",
-    "#5f4c4a",
-    "#7d6b67",
-    "#988c88",
-    "#675648",
-    "#827569",
-    "#948b80",
-    "#1e0806",
-    "#361e18",
-    "#473129",
+    "#2b000b",
+    "#501a20",
+    "#72423e",
+    "#90635a",
+    "#a6877d",
+    "#715339",
+    "#8b735a",
+    "#9b8974",
+    "#270000",
+    "#451105",
+    "#562816",
     "#281c18",
     "#3a2d28",
     "#574640",
     "#796c65",
-    "#695c54",
+    "#785643",
     "#928281",
     "#c2b4b0",
     "#e5dcd5",
@@ -62,9 +62,9 @@
     "#a28300",
     "#c2a959",
     "#f9f7ee",
-    "#008478",
-    "#00beae",
-    "#91e5ca"
+    "#008479",
+    "#00beaf",
+    "#90e5cb"
   ],
   "clips": [
     {
@@ -88,139 +88,139 @@
           "durationMs": 83
         },
         {
-          "x": 119,
+          "x": 120,
           "y": 0,
           "page": 0,
           "durationMs": 83
         },
         {
-          "x": 238,
+          "x": 240,
           "y": 0,
           "page": 0,
           "durationMs": 83
         },
         {
-          "x": 357,
+          "x": 360,
           "y": 0,
           "page": 0,
           "durationMs": 83
         },
         {
-          "x": 476,
+          "x": 480,
           "y": 0,
           "page": 0,
           "durationMs": 83
         },
         {
-          "x": 595,
+          "x": 600,
           "y": 0,
           "page": 0,
           "durationMs": 83
         },
         {
-          "x": 714,
+          "x": 720,
           "y": 0,
           "page": 0,
           "durationMs": 83
         },
         {
-          "x": 833,
+          "x": 840,
           "y": 0,
           "page": 0,
           "durationMs": 83
         },
         {
-          "x": 952,
+          "x": 960,
           "y": 0,
           "page": 0,
           "durationMs": 83
         },
         {
-          "x": 1071,
+          "x": 1080,
           "y": 0,
           "page": 0,
           "durationMs": 83
         },
         {
-          "x": 1190,
+          "x": 1200,
           "y": 0,
           "page": 0,
           "durationMs": 83
         },
         {
-          "x": 1309,
+          "x": 1320,
           "y": 0,
           "page": 0,
           "durationMs": 83
         },
         {
-          "x": 1428,
+          "x": 1440,
           "y": 0,
           "page": 0,
           "durationMs": 83
         },
         {
-          "x": 1547,
+          "x": 1560,
           "y": 0,
           "page": 0,
           "durationMs": 83
         },
         {
-          "x": 1666,
+          "x": 1680,
           "y": 0,
           "page": 0,
           "durationMs": 83
         },
         {
-          "x": 1785,
+          "x": 1800,
           "y": 0,
           "page": 0,
           "durationMs": 83
         },
         {
-          "x": 1904,
+          "x": 1920,
           "y": 0,
           "page": 0,
           "durationMs": 83
         },
         {
-          "x": 2023,
+          "x": 2040,
           "y": 0,
           "page": 0,
           "durationMs": 83
         },
         {
-          "x": 2142,
+          "x": 2160,
           "y": 0,
           "page": 0,
           "durationMs": 83
         },
         {
-          "x": 2261,
+          "x": 2280,
           "y": 0,
           "page": 0,
           "durationMs": 83
         },
         {
-          "x": 2380,
+          "x": 2400,
           "y": 0,
           "page": 0,
           "durationMs": 83
         },
         {
-          "x": 2499,
+          "x": 2520,
           "y": 0,
           "page": 0,
           "durationMs": 83
         },
         {
-          "x": 2618,
+          "x": 2640,
           "y": 0,
           "page": 0,
           "durationMs": 83
         },
         {
-          "x": 2737,
+          "x": 2760,
           "y": 0,
           "page": 0,
           "durationMs": 83
@@ -236,56 +236,56 @@
       "fps": 12,
       "frameCount": 8,
       "rootMotion": {
-        "groundSpeed": 55.8013,
-        "screenVelocityX": 55.8013,
+        "groundSpeed": 54.2734,
+        "screenVelocityX": 54.2734,
         "screenVelocityY": -0
       },
       "frames": [
         {
           "x": 0,
-          "y": 61,
+          "y": 72,
           "page": 0,
           "durationMs": 83
         },
         {
-          "x": 119,
-          "y": 61,
+          "x": 120,
+          "y": 72,
           "page": 0,
           "durationMs": 83
         },
         {
-          "x": 238,
-          "y": 61,
+          "x": 240,
+          "y": 72,
           "page": 0,
           "durationMs": 83
         },
         {
-          "x": 357,
-          "y": 61,
+          "x": 360,
+          "y": 72,
           "page": 0,
           "durationMs": 83
         },
         {
-          "x": 476,
-          "y": 61,
+          "x": 480,
+          "y": 72,
           "page": 0,
           "durationMs": 83
         },
         {
-          "x": 595,
-          "y": 61,
+          "x": 600,
+          "y": 72,
           "page": 0,
           "durationMs": 83
         },
         {
-          "x": 714,
-          "y": 61,
+          "x": 720,
+          "y": 72,
           "page": 0,
           "durationMs": 83
         },
         {
-          "x": 833,
-          "y": 61,
+          "x": 840,
+          "y": 72,
           "page": 0,
           "durationMs": 83
         }
@@ -298,7 +298,7 @@
       "directionName": "E",
       "loop": false,
       "fps": 12,
-      "frameCount": 16,
+      "frameCount": 27,
       "rootMotion": {
         "groundSpeed": 0,
         "screenVelocityX": 0,
@@ -307,97 +307,163 @@
       "frames": [
         {
           "x": 0,
-          "y": 122,
+          "y": 144,
           "page": 0,
           "durationMs": 83
         },
         {
-          "x": 119,
-          "y": 122,
+          "x": 120,
+          "y": 144,
           "page": 0,
           "durationMs": 83
         },
         {
-          "x": 238,
-          "y": 122,
+          "x": 240,
+          "y": 144,
           "page": 0,
           "durationMs": 83
         },
         {
-          "x": 357,
-          "y": 122,
+          "x": 360,
+          "y": 144,
           "page": 0,
           "durationMs": 83
         },
         {
-          "x": 476,
-          "y": 122,
+          "x": 480,
+          "y": 144,
           "page": 0,
           "durationMs": 83
         },
         {
-          "x": 595,
-          "y": 122,
+          "x": 600,
+          "y": 144,
           "page": 0,
           "durationMs": 83
         },
         {
-          "x": 714,
-          "y": 122,
+          "x": 720,
+          "y": 144,
           "page": 0,
           "durationMs": 83
         },
         {
-          "x": 833,
-          "y": 122,
+          "x": 840,
+          "y": 144,
           "page": 0,
           "durationMs": 83
         },
         {
-          "x": 952,
-          "y": 122,
+          "x": 960,
+          "y": 144,
           "page": 0,
           "durationMs": 83
         },
         {
-          "x": 1071,
-          "y": 122,
+          "x": 1080,
+          "y": 144,
           "page": 0,
           "durationMs": 83
         },
         {
-          "x": 1190,
-          "y": 122,
+          "x": 1200,
+          "y": 144,
           "page": 0,
           "durationMs": 83
         },
         {
-          "x": 1309,
-          "y": 122,
+          "x": 1320,
+          "y": 144,
           "page": 0,
           "durationMs": 83
         },
         {
-          "x": 1428,
-          "y": 122,
+          "x": 1440,
+          "y": 144,
           "page": 0,
           "durationMs": 83
         },
         {
-          "x": 1547,
-          "y": 122,
+          "x": 1560,
+          "y": 144,
           "page": 0,
           "durationMs": 83
         },
         {
-          "x": 1666,
-          "y": 122,
+          "x": 1680,
+          "y": 144,
           "page": 0,
           "durationMs": 83
         },
         {
-          "x": 1785,
-          "y": 122,
+          "x": 1800,
+          "y": 144,
+          "page": 0,
+          "durationMs": 83
+        },
+        {
+          "x": 1920,
+          "y": 144,
+          "page": 0,
+          "durationMs": 83
+        },
+        {
+          "x": 2040,
+          "y": 144,
+          "page": 0,
+          "durationMs": 83
+        },
+        {
+          "x": 2160,
+          "y": 144,
+          "page": 0,
+          "durationMs": 83
+        },
+        {
+          "x": 2280,
+          "y": 144,
+          "page": 0,
+          "durationMs": 83
+        },
+        {
+          "x": 2400,
+          "y": 144,
+          "page": 0,
+          "durationMs": 83
+        },
+        {
+          "x": 2520,
+          "y": 144,
+          "page": 0,
+          "durationMs": 83
+        },
+        {
+          "x": 2640,
+          "y": 144,
+          "page": 0,
+          "durationMs": 83
+        },
+        {
+          "x": 2760,
+          "y": 144,
+          "page": 0,
+          "durationMs": 83
+        },
+        {
+          "x": 2880,
+          "y": 144,
+          "page": 0,
+          "durationMs": 83
+        },
+        {
+          "x": 3000,
+          "y": 144,
+          "page": 0,
+          "durationMs": 83
+        },
+        {
+          "x": 3120,
+          "y": 144,
           "page": 0,
           "durationMs": 83
         }
@@ -410,7 +476,7 @@
       "directionName": "E",
       "loop": false,
       "fps": 12,
-      "frameCount": 15,
+      "frameCount": 14,
       "rootMotion": {
         "groundSpeed": 0,
         "screenVelocityX": 0,
@@ -419,91 +485,85 @@
       "frames": [
         {
           "x": 0,
-          "y": 183,
+          "y": 216,
           "page": 0,
           "durationMs": 83
         },
         {
-          "x": 119,
-          "y": 183,
+          "x": 120,
+          "y": 216,
           "page": 0,
           "durationMs": 83
         },
         {
-          "x": 238,
-          "y": 183,
+          "x": 240,
+          "y": 216,
           "page": 0,
           "durationMs": 83
         },
         {
-          "x": 357,
-          "y": 183,
+          "x": 360,
+          "y": 216,
           "page": 0,
           "durationMs": 83
         },
         {
-          "x": 476,
-          "y": 183,
+          "x": 480,
+          "y": 216,
           "page": 0,
           "durationMs": 83
         },
         {
-          "x": 595,
-          "y": 183,
+          "x": 600,
+          "y": 216,
           "page": 0,
           "durationMs": 83
         },
         {
-          "x": 714,
-          "y": 183,
+          "x": 720,
+          "y": 216,
           "page": 0,
           "durationMs": 83
         },
         {
-          "x": 833,
-          "y": 183,
+          "x": 840,
+          "y": 216,
           "page": 0,
           "durationMs": 83
         },
         {
-          "x": 952,
-          "y": 183,
+          "x": 960,
+          "y": 216,
           "page": 0,
           "durationMs": 83
         },
         {
-          "x": 1071,
-          "y": 183,
+          "x": 1080,
+          "y": 216,
           "page": 0,
           "durationMs": 83
         },
         {
-          "x": 1190,
-          "y": 183,
+          "x": 1200,
+          "y": 216,
           "page": 0,
           "durationMs": 83
         },
         {
-          "x": 1309,
-          "y": 183,
+          "x": 1320,
+          "y": 216,
           "page": 0,
           "durationMs": 83
         },
         {
-          "x": 1428,
-          "y": 183,
+          "x": 1440,
+          "y": 216,
           "page": 0,
           "durationMs": 83
         },
         {
-          "x": 1547,
-          "y": 183,
-          "page": 0,
-          "durationMs": 83
-        },
-        {
-          "x": 1666,
-          "y": 183,
+          "x": 1560,
+          "y": 216,
           "page": 0,
           "durationMs": 83
         }
@@ -529,10 +589,10 @@
       "hit"
     ],
     "genome": {
-      "sha256": "da6248ad21abdbf7ec93b68ee2654d33ee3aea135ff5d94978b4aebd3806478c",
+      "sha256": "14509e05fb2e048cd7a5d7da0b3aa8769341c0196daef2dc94bc8738b994078c",
       "seed": null,
       "source": "genome_file",
-      "contentId": "a74e077e34cc0c57",
+      "contentId": "6c4c0fe9390f6d7e",
       "family": "quadruped",
       "name": "Grovek",
       "generatorVersion": 2,
@@ -545,12 +605,12 @@
     },
     "preflight": {
       "frameUpperBound": [
-        176,
-        184
+        184,
+        190
       ],
       "framesUpperBound": 122,
-      "pageWidthUpperBound": 8800,
-      "atlasPixelsUpperBound": 6476800,
+      "pageWidthUpperBound": 9200,
+      "atlasPixelsUpperBound": 6992000,
       "cellBudget": 512,
       "frameBudget": 256,
       "pageBudget": 4096,

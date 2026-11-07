@@ -1,0 +1,556 @@
+{
+  "animations": {
+    "attack_melee": {
+      "duration_ms": 913.0,
+      "events": [
+        {
+          "frame": 4,
+          "name": "impact"
+        }
+      ],
+      "fps": 12.05,
+      "frames": [
+        {
+          "duration_ms": 83.0,
+          "h": 35,
+          "index": 0,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 31,
+          "x": 0,
+          "y": 70
+        },
+        {
+          "duration_ms": 83.0,
+          "h": 35,
+          "index": 1,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 31,
+          "x": 31,
+          "y": 70
+        },
+        {
+          "duration_ms": 83.0,
+          "h": 35,
+          "index": 2,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 31,
+          "x": 62,
+          "y": 70
+        },
+        {
+          "duration_ms": 83.0,
+          "h": 35,
+          "index": 3,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 31,
+          "x": 93,
+          "y": 70
+        },
+        {
+          "duration_ms": 83.0,
+          "h": 35,
+          "index": 4,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 31,
+          "x": 124,
+          "y": 70
+        },
+        {
+          "duration_ms": 83.0,
+          "h": 35,
+          "index": 5,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 31,
+          "x": 155,
+          "y": 70
+        },
+        {
+          "duration_ms": 83.0,
+          "h": 35,
+          "index": 6,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 31,
+          "x": 186,
+          "y": 70
+        },
+        {
+          "duration_ms": 83.0,
+          "h": 35,
+          "index": 7,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 31,
+          "x": 217,
+          "y": 70
+        },
+        {
+          "duration_ms": 83.0,
+          "h": 35,
+          "index": 8,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 31,
+          "x": 248,
+          "y": 70
+        },
+        {
+          "duration_ms": 83.0,
+          "h": 35,
+          "index": 9,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 31,
+          "x": 279,
+          "y": 70
+        },
+        {
+          "duration_ms": 83.0,
+          "h": 35,
+          "index": 10,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 31,
+          "x": 310,
+          "y": 70
+        }
+      ],
+      "gameplay_root": [
+        17.0,
+        28.0
+      ],
+      "logical_pivot": [
+        17.0,
+        28.0
+      ],
+      "loop": false,
+      "review_disposition": "UNREVIEWED",
+      "state": "attack_melee"
+    },
+    "hit": {
+      "duration_ms": 498.0,
+      "events": [],
+      "fps": 12.05,
+      "frames": [
+        {
+          "duration_ms": 83.0,
+          "h": 35,
+          "index": 0,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 31,
+          "x": 0,
+          "y": 105
+        },
+        {
+          "duration_ms": 83.0,
+          "h": 35,
+          "index": 1,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 31,
+          "x": 31,
+          "y": 105
+        },
+        {
+          "duration_ms": 83.0,
+          "h": 35,
+          "index": 2,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 31,
+          "x": 62,
+          "y": 105
+        },
+        {
+          "duration_ms": 83.0,
+          "h": 35,
+          "index": 3,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 31,
+          "x": 93,
+          "y": 105
+        },
+        {
+          "duration_ms": 83.0,
+          "h": 35,
+          "index": 4,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 31,
+          "x": 124,
+          "y": 105
+        },
+        {
+          "duration_ms": 83.0,
+          "h": 35,
+          "index": 5,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 31,
+          "x": 155,
+          "y": 105
+        }
+      ],
+      "gameplay_root": [
+        17.0,
+        28.0
+      ],
+      "logical_pivot": [
+        17.0,
+        28.0
+      ],
+      "loop": false,
+      "review_disposition": "UNREVIEWED",
+      "state": "hit"
+    },
+    "idle": {
+      "duration_ms": 1992.0,
+      "events": [],
+      "fps": 12.05,
+      "frames": [
+        {
+          "duration_ms": 83.0,
+          "h": 35,
+          "index": 0,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 31,
+          "x": 0,
+          "y": 0
+        },
+        {
+          "duration_ms": 83.0,
+          "h": 35,
+          "index": 1,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 31,
+          "x": 31,
+          "y": 0
+        },
+        {
+          "duration_ms": 83.0,
+          "h": 35,
+          "index": 2,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 31,
+          "x": 62,
+          "y": 0
+        },
+        {
+          "duration_ms": 83.0,
+          "h": 35,
+          "index": 3,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 31,
+          "x": 93,
+          "y": 0
+        },
+        {
+          "duration_ms": 83.0,
+          "h": 35,
+          "index": 4,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 31,
+          "x": 124,
+          "y": 0
+        },
+        {
+          "duration_ms": 83.0,
+          "h": 35,
+          "index": 5,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 31,
+          "x": 155,
+          "y": 0
+        },
+        {
+          "duration_ms": 83.0,
+          "h": 35,
+          "index": 6,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 31,
+          "x": 186,
+          "y": 0
+        },
+        {
+          "duration_ms": 83.0,
+          "h": 35,
+          "index": 7,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 31,
+          "x": 217,
+          "y": 0
+        },
+        {
+          "duration_ms": 83.0,
+          "h": 35,
+          "index": 8,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 31,
+          "x": 248,
+          "y": 0
+        },
+        {
+          "duration_ms": 83.0,
+          "h": 35,
+          "index": 9,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 31,
+          "x": 279,
+          "y": 0
+        },
+        {
+          "duration_ms": 83.0,
+          "h": 35,
+          "index": 10,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 31,
+          "x": 310,
+          "y": 0
+        },
+        {
+          "duration_ms": 83.0,
+          "h": 35,
+          "index": 11,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 31,
+          "x": 341,
+          "y": 0
+        },
+        {
+          "duration_ms": 83.0,
+          "h": 35,
+          "index": 12,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 31,
+          "x": 372,
+          "y": 0
+        },
+        {
+          "duration_ms": 83.0,
+          "h": 35,
+          "index": 13,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 31,
+          "x": 403,
+          "y": 0
+        },
+        {
+          "duration_ms": 83.0,
+          "h": 35,
+          "index": 14,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 31,
+          "x": 434,
+          "y": 0
+        },
+        {
+          "duration_ms": 83.0,
+          "h": 35,
+          "index": 15,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 31,
+          "x": 465,
+          "y": 0
+        },
+        {
+          "duration_ms": 83.0,
+          "h": 35,
+          "index": 16,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 31,
+          "x": 496,
+          "y": 0
+        },
+        {
+          "duration_ms": 83.0,
+          "h": 35,
+          "index": 17,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 31,
+          "x": 527,
+          "y": 0
+        },
+        {
+          "duration_ms": 83.0,
+          "h": 35,
+          "index": 18,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 31,
+          "x": 558,
+          "y": 0
+        },
+        {
+          "duration_ms": 83.0,
+          "h": 35,
+          "index": 19,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 31,
+          "x": 589,
+          "y": 0
+        },
+        {
+          "duration_ms": 83.0,
+          "h": 35,
+          "index": 20,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 31,
+          "x": 620,
+          "y": 0
+        },
+        {
+          "duration_ms": 83.0,
+          "h": 35,
+          "index": 21,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 31,
+          "x": 651,
+          "y": 0
+        },
+        {
+          "duration_ms": 83.0,
+          "h": 35,
+          "index": 22,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 31,
+          "x": 682,
+          "y": 0
+        },
+        {
+          "duration_ms": 83.0,
+          "h": 35,
+          "index": 23,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 31,
+          "x": 713,
+          "y": 0
+        }
+      ],
+      "gameplay_root": [
+        17.0,
+        28.0
+      ],
+      "logical_pivot": [
+        17.0,
+        28.0
+      ],
+      "loop": true,
+      "review_disposition": "UNREVIEWED",
+      "state": "idle"
+    },
+    "walk": {
+      "duration_ms": 415.0,
+      "events": [],
+      "fps": 12.05,
+      "frames": [
+        {
+          "duration_ms": 83.0,
+          "h": 35,
+          "index": 0,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 31,
+          "x": 0,
+          "y": 35
+        },
+        {
+          "duration_ms": 83.0,
+          "h": 35,
+          "index": 1,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 31,
+          "x": 31,
+          "y": 35
+        },
+        {
+          "duration_ms": 83.0,
+          "h": 35,
+          "index": 2,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 31,
+          "x": 62,
+          "y": 35
+        },
+        {
+          "duration_ms": 83.0,
+          "h": 35,
+          "index": 3,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 31,
+          "x": 93,
+          "y": 35
+        },
+        {
+          "duration_ms": 83.0,
+          "h": 35,
+          "index": 4,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 31,
+          "x": 124,
+          "y": 35
+        }
+      ],
+      "gameplay_root": [
+        17.0,
+        28.0
+      ],
+      "logical_pivot": [
+        17.0,
+        28.0
+      ],
+      "loop": true,
+      "review_disposition": "UNREVIEWED",
+      "state": "walk"
+    }
+  },
+  "asset_id": "ppc_amorphous_ffd43e3b8b2bf0fe",
+  "atlas": {
+    "file": "atlas.png",
+    "height": 140,
+    "sha256": "d91a2eea353c84aa522d2764d7c540a37c4e9e3afa3e719fb8fae5822e020321",
+    "width": 744
+  },
+  "cell_dimensions": [
+    31,
+    35
+  ],
+  "direction": "east",
+  "runtime_status": "PREVIEW_ONLY",
+  "schema_version": "1.7.0",
+  "subject_id": "ppc_amorphous_ffd43e3b8b2bf0fe"
+}

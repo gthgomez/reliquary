@@ -24,8 +24,8 @@
     "genome": {
       "family": "quadruped",
       "name": "Grovek",
-      "content_id": "a74e077e34cc0c57",
-      "sha256": "da6248ad21abdbf7ec93b68ee2654d33ee3aea135ff5d94978b4aebd3806478c",
+      "content_id": "6c4c0fe9390f6d7e",
+      "sha256": "14509e05fb2e048cd7a5d7da0b3aa8769341c0196daef2dc94bc8738b994078c",
       "seed": null,
       "source": "genome_file",
       "lineage": {
@@ -57,16 +57,16 @@
       {
         "source_state": "action",
         "ages_state": "attack_melee",
-        "frames": 16,
+        "frames": 27,
         "loop": false,
-        "duration_ms": 1328
+        "duration_ms": 2241
       },
       {
         "source_state": "hit",
         "ages_state": "hit",
-        "frames": 15,
+        "frames": 14,
         "loop": false,
-        "duration_ms": 1245
+        "duration_ms": 1162
       }
     ],
     "render": {
@@ -76,7 +76,7 @@
       "bake_hit_flash": false
     },
     "warnings": [
-      "walk: upstream root-motion speed 55.8013 is preserved in the source metadata but is not consumed by the AGES v1.7 runtime",
+      "walk: upstream root-motion speed 54.2734 is preserved in the source metadata but is not consumed by the AGES v1.7 runtime",
       "action is a generic upstream action mapped to attack_melee; it is not a skill-specific melee or elemental animation",
       "action impact timing comes from an AGES authoring profile (reviewed per family), not from upstream PPC metadata; it is presentation-only"
     ],
@@ -86,13 +86,13 @@
   "creature": {
     "name": "Grovek",
     "family": "quadruped",
-    "contentId": "a74e077e34cc0c57"
+    "contentId": "6c4c0fe9390f6d7e"
   },
   "genome": {
     "family": "quadruped",
     "name": "Grovek",
-    "content_id": "a74e077e34cc0c57",
-    "sha256": "da6248ad21abdbf7ec93b68ee2654d33ee3aea135ff5d94978b4aebd3806478c",
+    "content_id": "6c4c0fe9390f6d7e",
+    "sha256": "14509e05fb2e048cd7a5d7da0b3aa8769341c0196daef2dc94bc8738b994078c",
     "seed": null,
     "source": "genome_file",
     "lineage": {
@@ -103,16 +103,16 @@
     }
   },
   "frame": {
-    "width": 119,
-    "height": 61,
-    "origin_x": 64,
-    "origin_y": 55
+    "width": 120,
+    "height": 72,
+    "origin_x": 70,
+    "origin_y": 66
   },
   "atlas": {
     "file": "page_000.png",
-    "width": 2856,
-    "height": 244,
-    "columns": 24,
+    "width": 3240,
+    "height": 288,
+    "columns": 27,
     "rows": 4
   },
   "direction": "east",
@@ -149,8 +149,8 @@
       "frames": 8,
       "duration_ms": 664,
       "root_motion": {
-        "groundSpeed": 55.8013,
-        "screenVelocityX": 55.8013,
+        "groundSpeed": 54.2734,
+        "screenVelocityX": 54.2734,
         "screenVelocityY": 0
       },
       "impact_frame": null
@@ -161,14 +161,14 @@
       "direction": 0,
       "direction_name": "east",
       "loop": false,
-      "frames": 16,
-      "duration_ms": 1328,
+      "frames": 27,
+      "duration_ms": 2241,
       "root_motion": {
         "groundSpeed": 0,
         "screenVelocityX": 0,
         "screenVelocityY": 0
       },
-      "impact_frame": 10
+      "impact_frame": 17
     },
     {
       "source_state": "hit",
@@ -176,8 +176,8 @@
       "direction": 0,
       "direction_name": "east",
       "loop": false,
-      "frames": 15,
-      "duration_ms": 1245,
+      "frames": 14,
+      "duration_ms": 1162,
       "root_motion": {
         "groundSpeed": 0,
         "screenVelocityX": 0,
@@ -186,7 +186,7 @@
       "impact_frame": null
     }
   ],
-  "total_frames": 63,
+  "total_frames": 73,
   "root_motion_consumed_by_runtime": false,
   "generator_license": "MIT",
   "artwork_rights": {
@@ -198,7 +198,7 @@
   "review_status": "UNREVIEWED",
   "runtime_status": "PREVIEW_ONLY",
   "warnings": [
-    "walk: upstream root-motion speed 55.8013 is preserved in the source metadata but is not consumed by the AGES v1.7 runtime",
+    "walk: upstream root-motion speed 54.2734 is preserved in the source metadata but is not consumed by the AGES v1.7 runtime",
     "action is a generic upstream action mapped to attack_melee; it is not a skill-specific melee or elemental animation",
     "action impact timing comes from an AGES authoring profile (reviewed per family), not from upstream PPC metadata; it is presentation-only"
   ]

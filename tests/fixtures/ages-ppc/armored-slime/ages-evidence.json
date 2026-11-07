@@ -6,18 +6,18 @@
   "designProfile": "armored_slime",
   "note": "Preview-only experimental fixture from a curated design profile. Not canonical artwork and not a reidentification of the aliased species.",
   "package": {
-    "subjectId": "ppc_amorphous_c47b31c2fcd2bcf5",
-    "assetId": "ppc_amorphous_c47b31c2fcd2bcf5",
-    "packageDigest": "b1ea2572363d01a4df4ec48e66c7909dcf6ea0a86be250325756a295a5a5c789",
-    "atlasSha256": "f3714ea3ed5ec591bf23ecccf19a871a729b4314bbd0dba9994f9ea966b483f2"
+    "subjectId": "ppc_amorphous_c8109bef68c9d746",
+    "assetId": "ppc_amorphous_c8109bef68c9d746",
+    "packageDigest": "4b9c96d9f7bd5644b97d774080c735fe210e00495a87bee6e408e54f0f4abeac",
+    "atlasSha256": "e9e76735176383bab073ff1f0d04d6fdadab020dcb04ce328e5f95fbff0a31fe"
   },
   "genome": {
     "family": "amorphous",
-    "contentId": "c47b31c2fcd2bcf5",
+    "contentId": "c8109bef68c9d746",
     "name": "Kromoubel",
     "seed": 7,
     "designProfile": "armored_slime",
-    "sha256": "f411ae419fbb79d1e27abb18106e00da622a7de749d35b9c952a9e0bb01b8040",
+    "sha256": "1375414f83f3b6a8bf3f985e0dfb214b832b5c5493eefd29c5ed3f79e2d3e91f",
     "source": "design_profile"
   },
   "direction": "east",

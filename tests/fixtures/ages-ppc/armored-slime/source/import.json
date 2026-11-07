@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "asset_id": "ppc_amorphous_c47b31c2fcd2bcf5",
+  "asset_id": "ppc_amorphous_c8109bef68c9d746",
   "asset_type": "sprite",
   "direction": "east",
   "program": {
@@ -13,8 +13,8 @@
     "ppc.spritesheet.json"
   ],
   "cell": [
-    41,
-    52
+    40,
+    49
   ],
   "sheet": "page_000.png",
   "animations": {
@@ -22,11 +22,11 @@
       "loop": true,
       "pivot": [
         20,
-        43
+        39
       ],
       "gameplay_root": [
         20,
-        43
+        39
       ],
       "frames": [
         {
@@ -132,11 +132,11 @@
       "loop": true,
       "pivot": [
         20,
-        43
+        39
       ],
       "gameplay_root": [
         20,
-        43
+        39
       ],
       "frames": [
         {
@@ -170,11 +170,11 @@
       "loop": false,
       "pivot": [
         20,
-        43
+        39
       ],
       "gameplay_root": [
         20,
-        43
+        39
       ],
       "frames": [
         {
@@ -233,11 +233,11 @@
       "loop": false,
       "pivot": [
         20,
-        43
+        39
       ],
       "gameplay_root": [
         20,
-        43
+        39
       ],
       "frames": [
         {
@@ -286,8 +286,8 @@
     "genome": {
       "family": "amorphous",
       "name": "Kromoubel",
-      "content_id": "c47b31c2fcd2bcf5",
-      "sha256": "f411ae419fbb79d1e27abb18106e00da622a7de749d35b9c952a9e0bb01b8040",
+      "content_id": "c8109bef68c9d746",
+      "sha256": "1375414f83f3b6a8bf3f985e0dfb214b832b5c5493eefd29c5ed3f79e2d3e91f",
       "seed": null,
       "source": "genome_file",
       "lineage": {
@@ -338,7 +338,7 @@
       "bake_hit_flash": false
     },
     "warnings": [
-      "walk: upstream root-motion speed 47.6674 is preserved in the source metadata but is not consumed by the AGES v1.7 runtime",
+      "walk: upstream root-motion speed 48.4839 is preserved in the source metadata but is not consumed by the AGES v1.7 runtime",
       "action is a generic upstream action mapped to attack_melee; it is not a skill-specific melee or elemental animation",
       "action impact timing comes from an AGES authoring profile (reviewed per family), not from upstream PPC metadata; it is presentation-only"
     ],

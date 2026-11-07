@@ -1,0 +1,459 @@
+{
+  "format": "ppc.spritesheet",
+  "formatVersion": 1,
+  "generatorVersion": 2,
+  "framework": "Procedural Pixel Creatures 1.0.0",
+  "creature": {
+    "name": "Grovek",
+    "family": "amorphous",
+    "contentId": "ffd43e3b8b2bf0fe"
+  },
+  "frameWidth": 31,
+  "frameHeight": 35,
+  "originX": 17,
+  "originY": 28,
+  "originNote": "Pixel inside each frame that sits on the creature\u0027s ground point; place it at the entity position.",
+  "cameraElevationDeg": 30,
+  "pages": [
+    {
+      "file": "page_000.png",
+      "width": 744,
+      "height": 140
+    }
+  ],
+  "palette": [
+    "#050f00",
+    "#1d3800",
+    "#405900",
+    "#6f7c30",
+    "#979a55",
+    "#bbb88b",
+    "#9a754a",
+    "#b5986e",
+    "#c3b08d",
+    "#382a00",
+    "#524400",
+    "#6b5500",
+    "#48408b",
+    "#585db7",
+    "#6586e7",
+    "#7ab4fc",
+    "#938147",
+    "#7e8a80",
+    "#b2baaf",
+    "#dedfd5",
+    "#f5f4ec",
+    "#050100",
+    "#330b00",
+    "#5c2502",
+    "#7b4e2e",
+    "#97714e",
+    "#0a0d13",
+    "#282e37",
+    "#48515b",
+    "#78828b",
+    "#a9b3b9",
+    "#eae8e1",
+    "#52151c",
+    "#8f2f36",
+    "#bbafa0",
+    "#ece8db",
+    "#9a6d00",
+    "#cca500",
+    "#edcd69",
+    "#f9f7ee",
+    "#a78700",
+    "#e2b814",
+    "#fce5a1"
+  ],
+  "clips": [
+    {
+      "name": "idle_E",
+      "state": "idle",
+      "direction": 0,
+      "directionName": "E",
+      "loop": true,
+      "fps": 12,
+      "frameCount": 24,
+      "rootMotion": {
+        "groundSpeed": 0,
+        "screenVelocityX": 0,
+        "screenVelocityY": -0
+      },
+      "frames": [
+        {
+          "x": 0,
+          "y": 0,
+          "page": 0,
+          "durationMs": 83
+        },
+        {
+          "x": 31,
+          "y": 0,
+          "page": 0,
+          "durationMs": 83
+        },
+        {
+          "x": 62,
+          "y": 0,
+          "page": 0,
+          "durationMs": 83
+        },
+        {
+          "x": 93,
+          "y": 0,
+          "page": 0,
+          "durationMs": 83
+        },
+        {
+          "x": 124,
+          "y": 0,
+          "page": 0,
+          "durationMs": 83
+        },
+        {
+          "x": 155,
+          "y": 0,
+          "page": 0,
+          "durationMs": 83
+        },
+        {
+          "x": 186,
+          "y": 0,
+          "page": 0,
+          "durationMs": 83
+        },
+        {
+          "x": 217,
+          "y": 0,
+          "page": 0,
+          "durationMs": 83
+        },
+        {
+          "x": 248,
+          "y": 0,
+          "page": 0,
+          "durationMs": 83
+        },
+        {
+          "x": 279,
+          "y": 0,
+          "page": 0,
+          "durationMs": 83
+        },
+        {
+          "x": 310,
+          "y": 0,
+          "page": 0,
+          "durationMs": 83
+        },
+        {
+          "x": 341,
+          "y": 0,
+          "page": 0,
+          "durationMs": 83
+        },
+        {
+          "x": 372,
+          "y": 0,
+          "page": 0,
+          "durationMs": 83
+        },
+        {
+          "x": 403,
+          "y": 0,
+          "page": 0,
+          "durationMs": 83
+        },
+        {
+          "x": 434,
+          "y": 0,
+          "page": 0,
+          "durationMs": 83
+        },
+        {
+          "x": 465,
+          "y": 0,
+          "page": 0,
+          "durationMs": 83
+        },
+        {
+          "x": 496,
+          "y": 0,
+          "page": 0,
+          "durationMs": 83
+        },
+        {
+          "x": 527,
+          "y": 0,
+          "page": 0,
+          "durationMs": 83
+        },
+        {
+          "x": 558,
+          "y": 0,
+          "page": 0,
+          "durationMs": 83
+        },
+        {
+          "x": 589,
+          "y": 0,
+          "page": 0,
+          "durationMs": 83
+        },
+        {
+          "x": 620,
+          "y": 0,
+          "page": 0,
+          "durationMs": 83
+        },
+        {
+          "x": 651,
+          "y": 0,
+          "page": 0,
+          "durationMs": 83
+        },
+        {
+          "x": 682,
+          "y": 0,
+          "page": 0,
+          "durationMs": 83
+        },
+        {
+          "x": 713,
+          "y": 0,
+          "page": 0,
+          "durationMs": 83
+        }
+      ]
+    },
+    {
+      "name": "walk_E",
+      "state": "walk",
+      "direction": 0,
+      "directionName": "E",
+      "loop": true,
+      "fps": 12,
+      "frameCount": 5,
+      "rootMotion": {
+        "groundSpeed": 39.6379,
+        "screenVelocityX": 39.6379,
+        "screenVelocityY": -0
+      },
+      "frames": [
+        {
+          "x": 0,
+          "y": 35,
+          "page": 0,
+          "durationMs": 83
+        },
+        {
+          "x": 31,
+          "y": 35,
+          "page": 0,
+          "durationMs": 83
+        },
+        {
+          "x": 62,
+          "y": 35,
+          "page": 0,
+          "durationMs": 83
+        },
+        {
+          "x": 93,
+          "y": 35,
+          "page": 0,
+          "durationMs": 83
+        },
+        {
+          "x": 124,
+          "y": 35,
+          "page": 0,
+          "durationMs": 83
+        }
+      ]
+    },
+    {
+      "name": "action_E",
+      "state": "action",
+      "direction": 0,
+      "directionName": "E",
+      "loop": false,
+      "fps": 12,
+      "frameCount": 11,
+      "rootMotion": {
+        "groundSpeed": 0,
+        "screenVelocityX": 0,
+        "screenVelocityY": -0
+      },
+      "frames": [
+        {
+          "x": 0,
+          "y": 70,
+          "page": 0,
+          "durationMs": 83
+        },
+        {
+          "x": 31,
+          "y": 70,
+          "page": 0,
+          "durationMs": 83
+        },
+        {
+          "x": 62,
+          "y": 70,
+          "page": 0,
+          "durationMs": 83
+        },
+        {
+          "x": 93,
+          "y": 70,
+          "page": 0,
+          "durationMs": 83
+        },
+        {
+          "x": 124,
+          "y": 70,
+          "page": 0,
+          "durationMs": 83
+        },
+        {
+          "x": 155,
+          "y": 70,
+          "page": 0,
+          "durationMs": 83
+        },
+        {
+          "x": 186,
+          "y": 70,
+          "page": 0,
+          "durationMs": 83
+        },
+        {
+          "x": 217,
+          "y": 70,
+          "page": 0,
+          "durationMs": 83
+        },
+        {
+          "x": 248,
+          "y": 70,
+          "page": 0,
+          "durationMs": 83
+        },
+        {
+          "x": 279,
+          "y": 70,
+          "page": 0,
+          "durationMs": 83
+        },
+        {
+          "x": 310,
+          "y": 70,
+          "page": 0,
+          "durationMs": 83
+        }
+      ]
+    },
+    {
+      "name": "hit_E",
+      "state": "hit",
+      "direction": 0,
+      "directionName": "E",
+      "loop": false,
+      "fps": 12,
+      "frameCount": 6,
+      "rootMotion": {
+        "groundSpeed": 0,
+        "screenVelocityX": 0,
+        "screenVelocityY": -0
+      },
+      "frames": [
+        {
+          "x": 0,
+          "y": 105,
+          "page": 0,
+          "durationMs": 83
+        },
+        {
+          "x": 31,
+          "y": 105,
+          "page": 0,
+          "durationMs": 83
+        },
+        {
+          "x": 62,
+          "y": 105,
+          "page": 0,
+          "durationMs": 83
+        },
+        {
+          "x": 93,
+          "y": 105,
+          "page": 0,
+          "durationMs": 83
+        },
+        {
+          "x": 124,
+          "y": 105,
+          "page": 0,
+          "durationMs": 83
+        },
+        {
+          "x": 155,
+          "y": 105,
+          "page": 0,
+          "durationMs": 83
+        }
+      ]
+    }
+  ],
+  "ages": {
+    "backend": "procedural_pixel_creatures",
+    "upstreamCommit": "a2207c4bd6f1be51d426684cf58f11668def7579",
+    "exporterFingerprint": "e16c4fdf3c263f9c9fa6982a26c5ace7715620825fc8b70df2dc330229799c3e",
+    "conversionVersion": 2,
+    "profile": "ages",
+    "requestedDirection": "E",
+    "requestedDirectionIndex": 0,
+    "fps": 12,
+    "quality": 2,
+    "shadow": true,
+    "bakeHitFlash": false,
+    "clips": [
+      "idle",
+      "walk",
+      "action",
+      "hit"
+    ],
+    "genome": {
+      "sha256": "b568843c20de70c1e63d94b66da0432acb482ee9137b0288dbb98e2691f7125d",
+      "seed": null,
+      "source": "genome_file",
+      "contentId": "ffd43e3b8b2bf0fe",
+      "family": "amorphous",
+      "name": "Grovek",
+      "generatorVersion": 2,
+      "lineage": {
+        "origin": "sampled",
+        "generation": 0,
+        "parents": [],
+        "mutationStrength": 0
+      }
+    },
+    "preflight": {
+      "frameUpperBound": [
+        122,
+        144
+      ],
+      "framesUpperBound": 122,
+      "pageWidthUpperBound": 6100,
+      "atlasPixelsUpperBound": 3513600,
+      "cellBudget": 512,
+      "frameBudget": 256,
+      "pageBudget": 4096,
+      "pixelBudget": 8388608,
+      "note": "Frame inventory and cell bounds are hard preflight checks; page/pixel bounds are conservative and rechecked exactly after rendering."
+    }
+  }
+}

@@ -6,32 +6,32 @@
   "designProfile": "giant_rat",
   "note": "Preview-only experimental fixture from a curated design profile. Not canonical artwork and not a reidentification of the aliased species.",
   "package": {
-    "subjectId": "ppc_quadruped_a74e077e34cc0c57",
-    "assetId": "ppc_quadruped_a74e077e34cc0c57",
-    "packageDigest": "39f168b2bb45910e8d25bf5886dda6b8a7cb94671708d8441a7e3786ad8bdb9d",
-    "atlasSha256": "529703f76eca22b256633c52e7e4ec618e8fa5874bd83e922aff142886bb1119"
+    "subjectId": "ppc_quadruped_6c4c0fe9390f6d7e",
+    "assetId": "ppc_quadruped_6c4c0fe9390f6d7e",
+    "packageDigest": "61e948a6c0c8383b57abf0cdf4485f168a7c1646693aae5b08837c4369224b0c",
+    "atlasSha256": "74835f8b094b65207ad9ca3af38d4a508f819edb1b2b88dea7a9fbac7fec5654"
   },
   "genome": {
     "family": "quadruped",
-    "contentId": "a74e077e34cc0c57",
+    "contentId": "6c4c0fe9390f6d7e",
     "name": "Grovek",
     "seed": 424242,
     "designProfile": "giant_rat",
-    "sha256": "da6248ad21abdbf7ec93b68ee2654d33ee3aea135ff5d94978b4aebd3806478c",
+    "sha256": "14509e05fb2e048cd7a5d7da0b3aa8769341c0196daef2dc94bc8738b994078c",
     "source": "design_profile"
   },
   "direction": "east",
   "bakeHitFlash": false,
   "clips": {
     "attack_melee": {
-      "frames": 16,
+      "frames": 27,
       "loop": false,
-      "duration_ms": 1328.0
+      "duration_ms": 2241.0
     },
     "hit": {
-      "frames": 15,
+      "frames": 14,
       "loop": false,
-      "duration_ms": 1245.0
+      "duration_ms": 1162.0
     },
     "idle": {
       "frames": 24,
