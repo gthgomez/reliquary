@@ -172,6 +172,16 @@
   flex-wrap: wrap;
   margin-bottom: 0.85rem;
 }
+.title-confirm {
+  border: 1px solid color-mix(in oklab, var(--color-ink) 35%, transparent);
+  border-radius: 0.6rem;
+  padding: 0.85rem 1rem;
+  margin-bottom: 0.85rem;
+  background: color-mix(in oklab, var(--color-cream) 92%, transparent);
+}
+.title-confirm .title-actions {
+  margin-bottom: 0;
+}
 .title-plaque .btn-ghost {
   background: var(--color-cream);
   color: var(--color-ink);
@@ -455,7 +465,7 @@
   max-height: min(72dvh, 540px, calc(100% - 4rem));
 }
 .overlay-panel-head {
-  padding: 1rem 1rem 0.35rem;
+  padding: 16px 16px 8px;
 }
 .overlay-panel-body {
   overflow-y: auto;
@@ -465,7 +475,7 @@
   min-height: 0;
 }
 .overlay-panel-foot {
-  padding: 0.55rem 1rem 1rem;
+  padding: 8px 16px 16px;
   display: flex;
   gap: 0.5rem;
   flex-wrap: wrap;
@@ -494,6 +504,12 @@
   font-family: var(--font-display);
   margin: 0 0 0.6rem;
   font-size: 1.15rem;
+}
+.overlay-panel-head h2 {
+  margin-bottom: 8px;
+}
+.overlay-panel-body > .sheet-sub:first-child {
+  margin-top: 0;
 }
 .sheet-sub {
   margin: -0.3rem 0 0.8rem;
@@ -794,6 +810,41 @@
   text-wrap: pretty;
   overflow-wrap: anywhere;
 }
+.battle-recap-wrap {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  padding: 0.25rem 0.5rem;
+  border-radius: var(--radius-md);
+  background: var(--color-parchment);
+  color: var(--color-ink);
+}
+.battle-recap {
+  list-style: decimal;
+  margin: 0.2rem 0 0;
+  padding: 0.25rem 0.25rem 0.25rem 1.4rem;
+  font-size: 0.76rem;
+  color: var(--color-ink);
+  max-height: 5.2rem;
+  overflow-y: auto;
+  display: grid;
+  gap: 0.1rem;
+  width: 100%;
+  box-sizing: border-box;
+}
+.battle-recap li {
+  overflow-wrap: anywhere;
+}
+.battler-status {
+  font-size: 0.72rem;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: color-mix(in oklab, var(--color-ink) 72%, transparent);
+  border: 1px solid color-mix(in oklab, var(--color-ink) 30%, transparent);
+  border-radius: 999px;
+  padding: 0.05rem 0.45rem;
+  width: fit-content;
+}
 .battle-panel-title {
   margin: 0 0 0.35rem;
   font-family: var(--font-display);
@@ -801,6 +852,9 @@
   letter-spacing: 0.05em;
   text-transform: uppercase;
   color: var(--color-parchment-dim);
+}
+.battle-recap-wrap .battle-panel-title {
+  color: inherit;
 }
 .cmd {
   list-style: none;
@@ -978,6 +1032,10 @@ button.cmd-party-row {
 }
 .game-root.is-ui-modal .overlay-panel {
   z-index: 6;
+  /* Modal chrome owns the viewport: descriptions belong to the scrolling
+     body, and enlarged text must not leave a reserve for inactive world UI. */
+  top: 0.5rem;
+  max-height: calc(100% - 1rem);
 }
 .hud-dormant {
   visibility: hidden;
@@ -1075,6 +1133,22 @@ button.cmd-party-row {
   border-radius: var(--radius-sm);
   display: grid;
   place-items: center;
+}
+/* Adjacent directional targets overlap 8×8px in this cross layout (measured,
+ * R08-05/S supplemental). Chamfer each button's two inner diagonal corners so
+ * the shared corner belongs to no direction: a small dead pivot instead of an
+ * ambiguous hit that can trigger the wrong direction under a thumb. */
+.dpad .up {
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 8px 100%, 0 calc(100% - 8px));
+}
+.dpad .down {
+  clip-path: polygon(8px 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 0 100%, 0 8px);
+}
+.dpad .left {
+  clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%);
+}
+.dpad .right {
+  clip-path: polygon(8px 0, 100% 0, 100% 100%, 8px 100%, 0 calc(100% - 8px), 0 8px);
 }
 .dpad .up {
   top: 0;
@@ -1236,9 +1310,31 @@ button.cmd-party-row {
     height: auto;
     background: none;
   }
+  .battle-controls .battler.me {
+    padding: 0.3rem 0.6rem;
+  }
+  /* Keep HP and MP on one line so submenus keep at least one visible row. */
+  .battle-controls .battler.me .meter-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.2rem;
+  }
+  .battle-controls .battler.me .meter-head .meter-kicker,
+  .battle-controls .battler.me .meter-frac {
+    font-size: 0.62rem;
+  }
+  .battle-controls .battle-log {
+    min-height: 34px;
+    padding: 0.35rem 0.6rem;
+  }
   .battle-controls-actions .cmd {
-    grid-template-columns: repeat(3, 1fr);
-    width: min(360px, 100%);
+    grid-template-columns: repeat(auto-fit, minmax(44px, 1fr));
+    width: 100%;
+  }
+  .battle-controls-actions .cmd button {
+    padding-inline: 0.25rem;
+    font-size: 0.8rem;
+    letter-spacing: 0.02em;
   }
 }
 
@@ -1270,6 +1366,20 @@ button.cmd-party-row {
   max-height: min(65%, calc(100% - 5.75rem));
   overflow: hidden;
   pointer-events: auto;
+}
+/* A wrapped name or outcome must not consume the recap's reading area.
+   Reserve at least two lines and let this dock use more of a portrait stage. */
+.battle-controls:has(.battle-recap) {
+  grid-template-rows: auto auto minmax(3rem, 1fr) auto;
+  max-height: min(80%, calc(100% - 5.75rem));
+}
+/* Keep this override after the base dock rule: short landscape needs enough
+   height to expose full submenu rows while the action row stays pinned. */
+@media (orientation: landscape) and (max-height: 520px) {
+  .battle-controls,
+  .battle-controls:has(.battle-recap) {
+    max-height: calc(100% - 3rem);
+  }
 }
 .battle-controls-body {
   overflow-y: auto;

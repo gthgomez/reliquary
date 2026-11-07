@@ -10,13 +10,16 @@
  */
 import { spawn, spawnSync } from "node:child_process";
 import { createServer } from "node:http";
-import { existsSync, mkdirSync, readFileSync } from "node:fs";
-import { dirname, join, extname } from "node:path";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { dirname, join, relative, extname } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const staticDir = join(root, ".vercel/output/static");
-const evidenceRoot = process.env.RELIQUARY_QA_EVIDENCE ?? join(root, ".qa-evidence");
+// Visible directory (S05): dot-directories are dropped by actions/upload-artifact
+// unless include-hidden-files is set, which is exactly how earlier green runs
+// lost every artifact while the upload step stayed green.
+const evidenceRoot = process.env.RELIQUARY_QA_EVIDENCE ?? join(root, "qa-evidence");
 // ubuntu runners ship Chrome (not Edge); Edge is the default for Windows/dev.
 const channel = process.env.RELIQUARY_QA_CHANNEL ?? "msedge";
 
@@ -122,6 +125,26 @@ async function main() {
     }
   }
   server.close();
+  // Provenance manifest (S05/O1): the artifacts must be attributable to an
+  // exact build and environment without opening each PNG.
+  writeFileSync(
+    join(evidenceRoot, "manifest.json"),
+    JSON.stringify(
+      {
+        generatedAt: new Date().toISOString(),
+        gitSha: process.env.GITHUB_SHA ?? null,
+        gitRef: process.env.GITHUB_REF ?? null,
+        runId: process.env.GITHUB_RUN_ID ?? null,
+        node: process.version,
+        platform: `${process.platform}/${process.arch}`,
+        browserChannel: channel,
+        staticDir: relative(root, staticDir) || ".",
+        journeys: journeys.map(([file]) => file),
+      },
+      null,
+      2,
+    ),
+  );
   if (failed) {
     console.error(`[journeys] ${failed}/${journeys.length} journeys failed`);
     process.exit(1);

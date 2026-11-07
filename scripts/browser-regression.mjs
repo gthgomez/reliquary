@@ -81,6 +81,11 @@ if (serveOnly) {
       "shop-flow.mjs",
       "touch-arbitration.mjs",
       "battle-hud-layout.mjs",
+      "battle-item-scope.mjs",
+      "battle-recap.mjs",
+      "battle-reach.mjs",
+      "save-permission.mjs",
+      "title-consent.mjs",
       "pwa.mjs",
       "pwa-update.mjs",
       "journey.mjs",
@@ -93,6 +98,8 @@ if (serveOnly) {
     pwa: ["pwa.mjs", "pwa-update.mjs"],
     journey: ["journey.mjs"],
     dialogue: ["cinematic-dialogue.mjs"],
+    saves: ["save-permission.mjs", "title-consent.mjs"],
+    battle: ["battle-hud-layout.mjs", "battle-item-scope.mjs", "battle-recap.mjs", "battle-reach.mjs"],
   };
   const files = map[suite] ?? map.all;
 

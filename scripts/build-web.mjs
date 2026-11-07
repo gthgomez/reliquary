@@ -1,4 +1,4 @@
-import { copyFileSync, mkdirSync, existsSync } from "node:fs";
+import { copyFileSync, mkdirSync, existsSync, readdirSync, rmSync, statSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
@@ -19,6 +19,22 @@ run(process.execPath, [join(root, "scripts/tint-new-sprites.mjs")]);
 
 const staticDir = join(root, ".vercel/output/static");
 mkdirSync(staticDir, { recursive: true });
+
+/**
+ * Scoped cleanup of GENERATED client outputs (S20). The vite outDir sits
+ * outside the project root, so vite never empties it: without this, chunks
+ * from an earlier browser-test build survive into the production precache.
+ * Only known generated names are removed; unrelated static files are kept.
+ */
+for (const generated of ["assets", "index.html", "public-game.html", "sw.js"]) {
+  rmSync(join(staticDir, generated), { recursive: true, force: true });
+}
+for (const entry of readdirSync(staticDir)) {
+  if (/^workbox-.*\.js$/.test(entry) && statSync(join(staticDir, entry)).isFile()) {
+    rmSync(join(staticDir, entry), { force: true });
+  }
+}
+
 copyFileSync(join(root, "public/manifest.webmanifest"), join(staticDir, "manifest.webmanifest"));
 
 const viteCli = join(root, "node_modules", "vite", "bin", "vite.js");

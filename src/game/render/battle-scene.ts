@@ -216,11 +216,21 @@ export function drawBattleFoeSprite(
   const { x, y, w, h } = layout.foe;
   const dx = offset.dx ?? 0;
   const dy = offset.dy ?? 0;
-  const cx = x + w / 2 + shakeX + dx;
-  const baseY = y + h - 4 + dy;
+  // Creature art is (near-)square while short/landscape destinations are not:
+  // fit the source aspect inside the rect and center it instead of stretching.
+  const src = img as { naturalWidth?: number; naturalHeight?: number };
+  const srcW = src.naturalWidth && src.naturalHeight ? src.naturalWidth : 1;
+  const srcH = src.naturalWidth && src.naturalHeight ? src.naturalHeight : 1;
+  const fit = Math.min(w / srcW, h / srcH);
+  const dw = srcW * fit;
+  const dh = srcH * fit;
+  const drawX = x + (w - dw) / 2 + shakeX + dx;
+  const drawY = y + (h - dh) / 2 + dy;
+  const cx = drawX + dw / 2;
+  const baseY = drawY + dh;
   paintFoeContrastStage(ctx, x + shakeX + dx, y + dy, w, h);
   paintBattleGroundShadow(ctx, cx, baseY, w, 0.42);
-  ctx.drawImage(img, x + shakeX + dx, y + dy, w, h);
+  ctx.drawImage(img, drawX, drawY, dw, dh);
 }
 
 export function drawBattlePlayerSprite(

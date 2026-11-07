@@ -88,6 +88,10 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: journey-evidence-${{ matrix.os }}
-          path: .qa-evidence
+          # Visible path (S05/O1): dot-directories are silently dropped by the
+          # uploader, which is how green runs produced zero artifacts.
+          path: qa-evidence
           retention-days: 7
-          if-no-files-found: ignore
+          # The journeys always create their evidence directories; an empty
+          # upload is an unexpected failure, not something to ignore.
+          if-no-files-found: error

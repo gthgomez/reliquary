@@ -166,7 +166,8 @@ try {
         if (i < 2) await page.locator("button.dialog").click({ delay: 30 });
       }
       const all = lines.join(" | ");
-      assert(/a dozen and this goes lighter/.test(all), `advisory missing: ${all}`);
+      assert(/Below a dozen, my three run lighter/.test(all), `advisory missing: ${all}`);
+      assert(/at a dozen they meet you at full strength/.test(all), `threshold rule missing: ${all}`);
       assert(/Iron\. Chapel\. Drake/.test(all), all);
       assert(/\(A begin · B later\)/.test(all), all);
       await page.screenshot({ path: join(output, "cael-advisory.png") });
@@ -263,15 +264,22 @@ try {
           if (rounds % 50 === 0) await page.screenshot({ path: join(output, `warden-trial-stuck-${rounds}.png`) });
         }
         // Forced-switch phase: the engine marks it data-battle-phase="party"
-        // and disables fainted rows; send in a beast that can still fight.
+        // and DISABLES fainted rows (S22: enabled-row semantics, not an HP
+        // substring). Send in an enabled beast and assert the switch happened.
         const phase = await page.locator(".battle-controls").getAttribute("data-battle-phase").catch(() => null);
         if (phase === "party") {
-          const row = page
-            .locator(".battle-controls[data-battle-phase='party'] ul.cmd button")
-            .filter({ hasNotText: /0\/\d+ hp/ })
-            .first();
-          if ((await row.count()) > 0) {
-            await row.click({ timeout: 4000 }).catch(() => {});
+          const enabled = page
+            .locator(".battle-controls[data-battle-phase='party'] ul.cmd button:not([disabled])");
+          if ((await enabled.count()) > 0) {
+            const chosen = (await enabled.first().innerText()).split("\n")[0].trim();
+            await enabled.first().click({ timeout: 4000 });
+            await page.waitForFunction(
+              () => document.querySelector(".battle-controls")?.getAttribute("data-battle-phase") !== "party",
+              null,
+              { timeout: 8000 },
+            );
+            const active = await page.locator(".battle-ui .battler.me strong").innerText();
+            assertEq(active, chosen, "the chosen enabled row must become the active battler");
             await page.waitForTimeout(250);
             continue;
           }

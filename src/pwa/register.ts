@@ -3,6 +3,7 @@ export type PwaStatus =
   | "downloading"
   | "ready"
   | "updating"
+  | "blocked"
   | "failed";
 
 let status: PwaStatus = "unsupported";
@@ -32,8 +33,13 @@ export interface UpdateGuard {
   canReloadNow(): boolean;
   /** Acceptable when the update is overdue or the app is hidden (e.g. anything but a battle). */
   canForceReload(): boolean;
-  /** Flush the save before the page goes away. */
-  beforeReload(): void;
+  /**
+   * Flush the save before the page goes away. The result is the reload veto
+   * contract: "clean" — no save required; "flushed" — durable before reload;
+   * "failed" (or a throw) — the update must NOT reload, and the live session
+   * stays open until a later attempt flushes successfully.
+   */
+  beforeReload(): "clean" | "flushed" | "failed";
 }
 
 let guard: UpdateGuard | null = null;
@@ -80,10 +86,19 @@ function tryApplyUpdate(): boolean {
   // always safer than reloading without one.
   const safe = guard ? (guard.canReloadNow() || ((hidden || overdue) && guard.canForceReload())) : false;
   if (!safe || recentlyReloaded()) return false;
+  let flush: "clean" | "flushed" | "failed";
   try {
-    guard?.beforeReload();
+    flush = guard?.beforeReload() ?? "clean";
   } catch {
-    /* never block an update on a failed flush; the game also saves on every action */
+    // A throwing required flush is a failed flush: the session must survive.
+    flush = "failed";
+  }
+  if (flush === "failed") {
+    // Veto: keep the live session and this tab on the old build. The poll
+    // keeps retrying; the persistent status tells the player why the update
+    // is paused and that their progress is safe.
+    setStatus("blocked");
+    return false;
   }
   markReload();
   if (pollTimer) clearInterval(pollTimer);

@@ -70,6 +70,8 @@ export type SpecialInteraction =
 			lines: string[];
 			/** Offer line, last page before the choice. */
 			offerLine: string;
+			/** Honest label for the final page's action (it commits the duel). */
+			commitLabel: string;
 			/** Requires flags.starter before dueling. */
 			needsStarter?: boolean;
 			/** Requires a specific flag (e.g. "trial") before dueling. */
@@ -92,6 +94,7 @@ export const SPECIAL_INTERACTIONS: Record<string, SpecialInteraction> = {
 		doneLines: ["The basin is quiet now. Relic-light ripples without threat."],
 		lines: [],
 		offerLine: "Challenge the Slime King? (A yes · B no)",
+		commitLabel: "Challenge",
 		needsStarter: true,
 		gateLine: "Something vast shifts in the water — not yet your fight.",
 	},
@@ -102,7 +105,8 @@ export const SPECIAL_INTERACTIONS: Record<string, SpecialInteraction> = {
 		doneLines: ["You already proved your road-manners. The camp remembers."],
 		lines: ["I can show you the Wildwood paths — or we can settle it with pacts."],
 		offerLine: "(A duel · B talk)",
-		gateLine: "Another time. The east exit is marked.",
+		commitLabel: "Duel",
+		gateLine: "Another time. The west gate is marked.",
 	},
 	goblin_king: {
 		kind: "encounter",
@@ -111,6 +115,7 @@ export const SPECIAL_INTERACTIONS: Record<string, SpecialInteraction> = {
 		doneLines: ["The compact holds. My beasts sleep."],
 		lines: ["A diplomatic compact, beast against beast."],
 		offerLine: "(A accept · B decline)",
+		commitLabel: "Accept the duel",
 		needsFlag: "trial",
 		gateLine: "Bring a Thorn Mark if you want a king's duel. Until then — trade, or leave.",
 	},
@@ -223,7 +228,7 @@ export function wardenPages(ctx: DialogContext): string[] {
 	const pages = ["Warden Cael. I keep Thornkeep's road."];
 	if (ctx.strongestLevel < 12) {
 		pages.push(
-			`Your beast has weathered ${ctx.strongestLevel} season${ctx.strongestLevel === 1 ? "" : "s"}. Come back after a dozen and this goes lighter. As you like — three of mine against yours: Iron. Chapel. Drake.`,
+			`Your beast has weathered ${ctx.strongestLevel} season${ctx.strongestLevel === 1 ? "" : "s"}. Below a dozen, my three run lighter; at a dozen they meet you at full strength. As you like — three of mine against yours: Iron. Chapel. Drake.`,
 		);
 	} else {
 		pages.push("Show me the compact is not a hobby. Three of mine against yours — Iron. Chapel. Drake. Bind or break.");

@@ -59,6 +59,15 @@ export async function withBrowser(fn, options = {}) {
   const browser = await chromium.launch({ headless: true });
   try {
     const context = await browser.newContext({ serviceWorkers: "block", ...(options.context ?? {}) });
+    if (options.textScale !== undefined) {
+      // A browser-context fontSize option is ignored by Playwright. Apply the
+      // requested root text setting on each document, including reloads.
+      await context.addInitScript((scale) => {
+        const apply = () => document.documentElement.style.setProperty("font-size", `${scale * 100}%`, "important");
+        if (document.documentElement) apply();
+        else document.addEventListener("DOMContentLoaded", apply, { once: true });
+      }, options.textScale);
+    }
     const page = await context.newPage();
     return await fn(page, context);
   } finally {
@@ -69,6 +78,35 @@ export async function withBrowser(fn, options = {}) {
 export async function waitForGameBoot(page) {
   await page.waitForSelector(".game-root", { state: "attached", timeout: 30_000 });
   await page.waitForSelector(".title-word, .hud-menu, .load-bar", { timeout: 30_000 });
+}
+
+/** Measure the whole target against the viewport and every clipping ancestor. */
+export function measureTargetVisibility(locator) {
+  return locator.evaluate((node) => {
+    const rect = node.getBoundingClientRect();
+    const clip = { left: 0, top: 0, right: innerWidth, bottom: innerHeight };
+    for (let parent = node.parentElement; parent; parent = parent.parentElement) {
+      const style = getComputedStyle(parent);
+      const bounds = parent.getBoundingClientRect();
+      if (/^(auto|scroll|hidden|clip)$/.test(style.overflowX)) {
+        clip.left = Math.max(clip.left, bounds.left + parent.clientLeft);
+        clip.right = Math.min(clip.right, bounds.left + parent.clientLeft + parent.clientWidth);
+      }
+      if (/^(auto|scroll|hidden|clip)$/.test(style.overflowY)) {
+        clip.top = Math.max(clip.top, bounds.top + parent.clientTop);
+        clip.bottom = Math.min(clip.bottom, bounds.top + parent.clientTop + parent.clientHeight);
+      }
+    }
+    const hit = document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2);
+    return {
+      box: { x: rect.x, y: rect.y, width: rect.width, height: rect.height },
+      clip,
+      fullyVisible: rect.width > 0 && rect.height > 0
+        && rect.left >= clip.left - 1 && rect.top >= clip.top - 1
+        && rect.right <= clip.right + 1 && rect.bottom <= clip.bottom + 1,
+      hitOk: Boolean(hit && (hit === node || node.contains(hit))),
+    };
+  });
 }
 
 export function spawnPreview(port) {

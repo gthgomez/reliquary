@@ -15,13 +15,15 @@ import {
 import { MAPS } from "./maps.ts";
 import { resolveNpcPortrait, type PortraitKey } from "./portraits.ts";
 import { FIXED_ENCOUNTERS } from "./encounters.ts";
-import { sfxPlay, startMusic, stopMusic, unlockAudio } from "./audio.ts";
+import { sfxPlay, startMusic, stopMusic, unlockAudio, isMuted, setMuted } from "./audio.ts";
+import { setSoundMutedStored } from "./ui/ui-chrome.ts";
 import { hasSave, cloneSave, loadSave, parseSave, SAVE_VERSION, serializeSave, WORLD_REVISION, writeSave } from "./save.ts";
 import { collectGameAssets } from "./assets.ts";
 import { mathRandom, type RandomSource } from "./rng.ts";
 import { battleCommands, encounterAt, rollEncounter } from "./world/encounters.ts";
 import { isOccupied } from "./world/movement.ts";
 import { pickInteractObject } from "./world/interaction.ts";
+import { visibleObjects } from "./world/object-state.ts";
 import {
 	CHEST_LOOT,
 	NPC_DIALOGS,
@@ -88,13 +90,15 @@ export const VIEW_W = 12;
 export const VIEW_H = 9;
 export const VIEW_W_PORT = 10;
 export const VIEW_H_PORT = 16;
-export const ROOT_MENU = ["Party", "Storage", "Reliquary", "Pack", "Save", "Export", "Import", "Close"] as const;
+export const ROOT_MENU = ["Party", "Storage", "Reliquary", "Pack", "Save", "Export", "Import", "Sound", "Close"] as const;
 
 type Dialog = {
 	speaker: string;
 	pages: string[];
 	index: number;
 	onDone?: () => void;
+	/** Label for the final page's action when it commits a choice (S13). */
+	doneLabel?: string;
 	npcId: string | null;
 	portraitKey: PortraitKey | null;
 };
@@ -256,7 +260,9 @@ export class ReliquaryGame {
 				text: this.dialog.pages[this.dialog.index] ?? "",
 				last: this.dialog.index >= this.dialog.pages.length - 1,
 				npcId: this.dialog.npcId,
-				portraitKey: this.dialog.portraitKey
+				portraitKey: this.dialog.portraitKey,
+				doneLabel: this.dialog.doneLabel ?? null,
+				commits: Boolean(this.dialog.onDone),
 			} : null,
 			learnMenu:
 				this.menu === "learn" && this.learnMenu
@@ -308,6 +314,7 @@ export class ReliquaryGame {
 			shopStock: SHOP_STOCK,
 			hasSave: this.hasSave,
 			importTicket: this.importTicket,
+			soundOff: isMuted(),
 			items: ITEMS
 		};
 	}
@@ -445,6 +452,9 @@ export class ReliquaryGame {
 	private onKeyDown = (e: KeyboardEvent): void => {
 		const target = e.target;
 		if (target instanceof HTMLElement && target.closest("input, textarea, select, [contenteditable='true']")) return;
+		// Shift+Tab must remain native inside dialogs. Treating its modifier as
+		// the legacy cancel shortcut closes the panel before Tab can wrap focus.
+		if (e.code === "ShiftLeft" && target instanceof HTMLElement && target.closest("[role='dialog']")) return;
 		if (target instanceof HTMLElement && target.closest("button") && (e.code === "Enter" || e.code === "Space")) {
 			if (e.repeat) e.preventDefault();
 			return;
@@ -573,6 +583,7 @@ export class ReliquaryGame {
 		this.applySave(s);
 		this.mode = "world";
 		this.toastMsg("The lantern remembers.");
+		this.replayEndingIfOwed();
 		this.emit();
 	}
 	private applySave(s: GameSave): void {
@@ -643,6 +654,14 @@ export class ReliquaryGame {
 			this.emit();
 			return false;
 		}
+		// Engine-boundary authorization: a tab that lost (or has not yet been
+		// granted) the save-writer session must not replace durable slots or
+		// apply imported live state, even if a caller skips the UI guard.
+		if (!this.saveWriteAllowed) {
+			this.toastMsg("Another window holds your save. This tab is read-only.");
+			this.emit();
+			return false;
+		}
 		const save = parseSave(text);
 		if (!save) {
 			this.openDialog("The lantern", [
@@ -663,6 +682,7 @@ export class ReliquaryGame {
 		this.menuIndex = 0;
 		this.hasSave = true;
 		this.toastMsg(`The lantern takes up ${save.playerName} — ${MAPS[save.mapId]?.name ?? save.mapId}.`);
+		this.replayEndingIfOwed();
 		this.emit();
 		return true;
 	}
@@ -1077,7 +1097,7 @@ export class ReliquaryGame {
 			this.talk(npc.talk, npc.name, { npcId: npc.id, sprite: npc.sprite });
 			return;
 		}
-		const obj = pickInteractObject(m.objects, fx, fy);
+		const obj = pickInteractObject(visibleObjects(m.objects, this.flags), fx, fy);
 		if (obj?.interact) {
 			this.handleInteract(obj.interact);
 			return;
@@ -1153,14 +1173,14 @@ export class ReliquaryGame {
 		const lines = special.lines.length ? special.lines : [];
 		this.openDialog(special.speaker, lines.length ? [...lines, special.offerLine] : [special.offerLine], () => {
 			if (!this.startEncounter(special.encounterId)) this.openDialog(special.speaker, [special.gateLine]);
-		});
+		}, null, special.commitLabel);
 	}
 	private talk(id: string, name: string, npc?: DialogSpeaker): void {
 		const dialog = NPC_DIALOGS[id];
 		if (!dialog) return;
 		if (dialog.kind === "action") {
 			if (dialog.action === "inn") {
-				this.openDialog(name, ["Fifteen crowns for a clean bed and a whole lantern. (A rest · B not now)"], () => this.offerInn(name, npc), npc);
+				this.openDialog(name, ["Fifteen crowns for a clean bed and a whole lantern. (A rest · B not now)"], () => this.offerInn(name, npc), npc, "Rest for 15 crowns");
 			} else if (dialog.action === "shop") {
 				this.mode = "shop";
 				this.shopMode = "buy";
@@ -1177,7 +1197,7 @@ export class ReliquaryGame {
 					return;
 				}
 				const strongest = this.party.reduce((max, beast) => Math.max(max, beast.level), 0);
-				this.openDialog(name, wardenPages({ flags: this.flags, strongestLevel: strongest }), () => this.startWarden(), npc);
+				this.openDialog(name, wardenPages({ flags: this.flags, strongestLevel: strongest }), () => this.startWarden(), npc, "Begin the trial");
 			}
 			return;
 		}
@@ -1213,17 +1233,18 @@ export class ReliquaryGame {
 			sfxPlay.catch();
 			this.openDialog("Elder Maren", [`So it is ${sp.name}. Keep the name.`, "I have left sigils in your pack. The Briar Road will teach the rest."], undefined, { npcId: "maren", sprite: "elder" });
 			this.persist();
-		});
+		}, undefined, "Speak the pact");
 	}
 	private give(id: string, n: number): void {
 		this.inventory[id] = (this.inventory[id] ?? 0) + n;
 	}
-	openDialog(speaker: string, pages: string[], onDone?: () => void, npc?: DialogSpeaker | null): void {
+	openDialog(speaker: string, pages: string[], onDone?: () => void, npc?: DialogSpeaker | null, doneLabel?: string): void {
 		this.dialog = {
 			speaker,
 			pages,
 			index: 0,
 			onDone,
+			doneLabel,
 			npcId: npc?.npcId ?? null,
 			portraitKey: npc ? resolveNpcPortrait(npc.npcId, npc.sprite) : null
 		};
@@ -1248,6 +1269,7 @@ export class ReliquaryGame {
 			foes: [foe],
 			foeIndex: 0,
 			log: [`A wild ${SPECIES[speciesId].name} steps from the ${this.map().battleBg}.`],
+			recap: [],
 			phase: "command",
 			menuIndex: 0,
 			shake: 0,
@@ -1301,6 +1323,7 @@ export class ReliquaryGame {
 			foeIndex: 0,
 			trainerName: trainer,
 			log: [...def.intro, `${SPECIES[foes[0]!.speciesId].name} is sent out.`],
+			recap: [],
 			phase: "command",
 			menuIndex: 0,
 			shake: 0,
@@ -1334,6 +1357,7 @@ export class ReliquaryGame {
 			foeIndex: 0,
 			trainerName: "Warden Cael",
 			log: ["Warden Cael sends out Ironnewt."],
+			recap: [],
 			phase: "command",
 			menuIndex: 0,
 			shake: 0,
@@ -1351,6 +1375,20 @@ export class ReliquaryGame {
 		const i = this.party.findIndex((b) => b.hp > 0);
 		return i < 0 ? 0 : i;
 	}
+	private static readonly BATTLE_RECAP_CAP = 8;
+	/**
+	 * Display the latest battle event AND retain a bounded, ordered recap of
+	 * the current turn (S06): the one-line log alone replaces each earlier
+	 * event, leaving both actions and outcomes uninspectable.
+	 */
+	private logBattle(...lines: string[]): void {
+		const b = this.battle;
+		if (!b) return;
+		b.log = lines;
+		for (const line of lines) {
+			if (line) b.recap = [...b.recap, line].slice(-ReliquaryGame.BATTLE_RECAP_CAP);
+		}
+	}
 	private battleConfirm(): void {
 		const b = this.battle!;
 		if (!b) return;
@@ -1366,6 +1404,9 @@ export class ReliquaryGame {
 		if (b.phase === "command") {
 			const cmds = battleCommands(b);
 			const c = cmds[b.menuIndex % cmds.length];
+			// A new command opens a new turn: the recap shown at the next
+			// decision describes exactly the turn about to resolve.
+			b.recap = [];
 			if (c === "Strike") this.playerAction({ type: "strike" });
 			else if (c === "Skill") {
 				b.phase = "skills";
@@ -1394,7 +1435,7 @@ export class ReliquaryGame {
 			if (!sid) return;
 			const sk = SKILLS[sid];
 			if (sk && me.mp < sk.mp) {
-				b.log = [`${me.nickname} hasn't the breath.`];
+				this.logBattle(`${me.nickname} hasn't the breath.`);
 				sfxPlay.fail();
 				this.emit();
 				return;
@@ -1409,7 +1450,7 @@ export class ReliquaryGame {
 			const it = this.usableItems()[b.menuIndex];
 			if (!it) return;
 			if (!this.itemHasEffect(it, this.party[b.playerIndex]!, true)) {
-				b.log = ["That item would have no effect."];
+				this.logBattle("That item would have no effect.");
 				this.emit();
 				return;
 			}
@@ -1439,7 +1480,7 @@ export class ReliquaryGame {
 				b.playerIndex = idx;
 				b.phase = "command";
 				b.menuIndex = this.menuIndex = 0;
-				b.log = [`${this.party[idx]!.nickname} steps forward.`];
+				this.logBattle(`${this.party[idx]!.nickname} steps forward.`);
 				this.emit();
 				return;
 			}
@@ -1450,16 +1491,22 @@ export class ReliquaryGame {
 		}
 	}
 	usableItems(): string[] {
-		return Object.keys(this.inventory).filter((id) => (this.inventory[id] ?? 0) > 0 && ITEMS[id] && ITEMS[id].kind !== "sigil" && ITEMS[id].kind !== "key" && (!this.battle || ITEMS[id].kind !== "field"));
+		// In battle the item route always targets the living active beast, so
+		// field-only and revive-kind items (which act on a chosen fainted
+		// creature outside battle) would be offered as unusable actions.
+		const battleExcluded = (kind: string | undefined): boolean => kind === "sigil" || kind === "key" || (!!this.battle && (kind === "field" || kind === "revive"));
+		return Object.keys(this.inventory).filter((id) => (this.inventory[id] ?? 0) > 0 && ITEMS[id] && !battleExcluded(ITEMS[id].kind));
 	}
 	private tryFlee(): void {
 		const b = this.battle!;
 		const me = currentStats(this.party[b.playerIndex]!);
 		const foe = currentStats(b.foes[b.foeIndex]!);
 		if (this.party[b.playerIndex]!.status === "bind") {
-			const roots = "Roots hold fast — no escape.";
+			this.logBattle("Roots hold fast — no escape.");
 			this.afterPlayer();
-			if (this.battle) this.battle.log = [roots, ...(this.battle.log ?? [])];
+			if (this.battle && this.battle.log[0] !== "Roots hold fast — no escape.") {
+				this.battle.log = ["Roots hold fast — no escape.", ...this.battle.log];
+			}
 			this.emit();
 			return;
 		}
@@ -1467,12 +1514,12 @@ export class ReliquaryGame {
 		// certain or impossible.
 		const chance = Math.min(.95, Math.max(.05, .4 + (me.spd - foe.spd) / 200));
 		if (this.random() < chance) {
-			b.log = ["You break from the grass."];
+			this.logBattle("You break from the grass.");
 			b.escaped = true;
 			b.phase = "win";
 			sfxPlay.confirm();
 		} else {
-			b.log = ["The beast cuts off the path."];
+			this.logBattle("The beast cuts off the path.");
 			this.afterPlayer();
 		}
 		this.emit();
@@ -1490,7 +1537,7 @@ export class ReliquaryGame {
 				const name = act.type === "skill" ? SKILLS[act.skill!]?.name ?? act.skill : "Strike";
 				if (dazeFumbles(me, this.random)) {
 					fumbleNotice = `${me.nickname}'s ${name} falters — it cannot find its bearings.`;
-					b.log = [fumbleNotice];
+					this.logBattle(fumbleNotice);
 					return;
 				}
 			}
@@ -1501,7 +1548,7 @@ export class ReliquaryGame {
 				const sk = SKILLS[act.skill!];
 				if (!sk) return;
 				if (!spendSkillMp(me, sk)) {
-					b.log = [`${me.nickname} hasn't the breath.`];
+					this.logBattle(`${me.nickname} hasn't the breath.`);
 					return;
 				}
 				const cue = this.useSkill(me, foe, false, sk, true);
@@ -1511,7 +1558,7 @@ export class ReliquaryGame {
 			else if (act.type === "switch") {
 				b.playerIndex = act.index!;
 				me = this.party[b.playerIndex]!;
-				b.log = [`${this.party[b.playerIndex]!.nickname} steps forward.`];
+				this.logBattle(`${this.party[b.playerIndex]!.nickname} steps forward.`);
 				b.animCue = null;
 				b.animElapsedMs = 0;
 			}
@@ -1560,7 +1607,7 @@ export class ReliquaryGame {
 		const events = resolveSkillUse(atk, def, skill, this.random);
 		const log = applySkillEvents(atk, def, skill, events);
 		const sfxCue = events[events.length - 1]!.sfx;
-		if (log !== null) b.log = [log];
+		if (log !== null) this.logBattle(log);
 		const event = events[0]!;
 		if (event.kind === "miss") sfxPlay.fail();
 		else if (event.sfx === "heal") sfxPlay.heal();
@@ -1575,7 +1622,7 @@ export class ReliquaryGame {
 		const skills = foe.skills.map((id) => SKILLS[id]).filter(Boolean);
 		const foS = currentStats(foe);
 		if (dazeFumbles(foe, this.random)) {
-			this.battle!.log = [`${foe.nickname}'s grip fumbles — it cannot find its line.`];
+			this.logBattle(`${foe.nickname}'s grip fumbles — it cannot find its line.`);
 			return null;
 		}
 		if (foe.hp < foS.hp * .35) {
@@ -1610,13 +1657,13 @@ export class ReliquaryGame {
 		sfxPlay.faint();
 		const me = this.party[b.playerIndex]!;
 		const xp = Math.floor(sp.expYield * foe.level / 5);
-		b.log = [`${sp.name} falls. ${me.nickname} gains ${xp} lore.`];
+		this.logBattle(`${sp.name} falls. ${me.nickname} gains ${xp} lore.`);
 		this.grantXp(me, xp);
 		const next = b.foes.findIndex((f, i) => i > b.foeIndex && f.hp > 0);
 		if (next >= 0) {
 			b.foeIndex = next;
 			const nsp = SPECIES[b.foes[next].speciesId];
-			b.log = [`${sp.name} falls.`, `${b.trainerName ?? "The foe"} sends ${nsp.name}.`];
+			this.logBattle(`${sp.name} falls.`, `${b.trainerName ?? "The foe"} sends ${nsp.name}.`);
 			b.animCue = null;
 			b.animElapsedMs = 0;
 			b.phase = "command";
@@ -1627,7 +1674,7 @@ export class ReliquaryGame {
 			? FIXED_ENCOUNTERS[b.encounterId]?.rewards.gold ?? 0
 			: 8 + foe.level * 3 + (b.kind === "trial" ? 80 : 0);
 		this.gold += gold;
-		b.log = [`${sp.name} falls. The road yields ${gold} crowns.`];
+		this.logBattle(`${sp.name} falls. The road yields ${gold} crowns.`);
 		b.phase = "win";
 		if (b.kind === "trial") {
 			this.flags.trial = true;
@@ -1647,13 +1694,13 @@ export class ReliquaryGame {
 		sfxPlay.faint();
 		const next = this.party.findIndex((p) => p.hp > 0);
 		if (next >= 0) {
-			b.log = [`${this.party[b.playerIndex]!.nickname} cannot stand.`, "Choose another."];
+			this.logBattle(`${this.party[b.playerIndex]!.nickname} cannot stand.`, "Choose another.");
 			b.phase = "party";
 			b.menuIndex = this.menuIndex = next;
 			this.emit();
 			return;
 		}
-		b.log = ["The lantern goes out."];
+		this.logBattle("The lantern goes out.");
 		b.phase = "lose";
 		this.emit();
 	}
@@ -1674,7 +1721,7 @@ export class ReliquaryGame {
 	private tryCatch(stone: string): void {
 		const b = this.battle!;
 		if (!b.canBind || b.kind !== "wild") {
-			b.log = ["You cannot bind this foe."];
+			this.logBattle("You cannot bind this foe.");
 			b.phase = "command";
 			this.emit();
 			return;
@@ -1704,13 +1751,13 @@ export class ReliquaryGame {
 				this.party = stored.party;
 				this.box = stored.box;
 				healFull(foe);
-				this.battle.log = [`${sp.name} accepts the compact.`];
+				this.logBattle(`${sp.name} accepts the compact.`);
 				this.battle.phase = "win";
 				sfxPlay.catch();
 				this.emit();
 			} else {
 				const failedBind = `${sp.name} breaks the sigil.`;
-				if (this.battle) this.battle.log = [failedBind];
+				this.logBattle(failedBind);
 				this.battle.phase = "command";
 				sfxPlay.fail();
 				this.afterPlayer();
@@ -1745,7 +1792,7 @@ export class ReliquaryGame {
 	private useItem(id: string, target: Beast, inBattle: boolean): void {
 		const def = ITEMS[id];
 		if (!def || !this.itemHasEffect(id, target, inBattle)) {
-			if (inBattle && this.battle) this.battle.log = ["That item would have no effect."];
+			if (inBattle && this.battle) this.logBattle("That item would have no effect.");
 			else this.toastMsg("That item would have no effect.");
 			return;
 		}
@@ -1767,7 +1814,7 @@ export class ReliquaryGame {
 		else if (def.kind === "revive") {
 			if (target.hp <= 0) target.hp = Math.floor(st.hp * ((def.power ?? 50) / 100));
 		}
-		if (this.battle) this.battle.log = [`${def.name} on ${target.nickname}.`];
+		if (this.battle) this.logBattle(`${def.name} on ${target.nickname}.`);
 	}
 	private endBattle(victory: boolean): void {
 		const wasTrial = this.battle?.kind === "trial";
@@ -1780,17 +1827,31 @@ export class ReliquaryGame {
 		this.persist();
 		this.emit();
 	}
+	/**
+	 * The victory epilogue is delivery, not rewards: foeDown granted the Thorn
+	 * Mark and crowns exactly once before the flag, so re-presenting this
+	 * dialog after a cancel/reload never pays out twice.
+	 */
+	private presentEnding(): void {
+		this.openDialog("Warden Cael", [
+			"Enough. You keep the compact.",
+			"Take the Thorn Mark. The Hollow Crown still sits in rumor, west of the ash. That road is longer than this lantern-light.",
+			"Come back when you have more names in the Reliquary. I'll still be here. Unfortunately."
+		], () => {
+			this.flags.ending_seen = true;
+			this.mode = "victory";
+			this.persist();
+			this.emit();
+		}, { npcId: "cael", sprite: "warden" });
+	}
+	/** A skipped epilogue (cancel/reload mid-dialog) is owed on the next load. */
+	private replayEndingIfOwed(): void {
+		if (this.flags.ending && !this.flags.ending_seen && !this.battle && !this.dialog) this.presentEnding();
+	}
 	private maybeVictory(): Mode {
 		if (this.flags.trial && !this.flags.ending) {
 			this.flags.ending = true;
-			this.openDialog("Warden Cael", [
-				"Enough. You keep the compact.",
-				"Take the Thorn Mark. The Hollow Crown still sits in rumor, west of the ash. That road is longer than this lantern-light.",
-				"Come back when you have more names in the Reliquary. I'll still be here. Unfortunately."
-			], () => {
-				this.mode = "victory";
-				this.emit();
-			}, { npcId: "cael", sprite: "warden" });
+			this.presentEnding();
 			return "world";
 		}
 		return "world";
@@ -1824,7 +1885,12 @@ export class ReliquaryGame {
 				this.gold = result.gold;
 				this.inventory = result.inventory;
 				sfxPlay.confirm();
-				this.toastMsg(`Bought ${it.name}.`);
+				// Checkpoint policy: a completed purchase is an important
+				// transaction. Persist it now, through the writer authorization,
+				// instead of waiting for the step-cadence checkpoint.
+				const saved = this.persist();
+				if (saved) this.toastMsg(`Bought ${it.name}. The lantern is written.`);
+				else this.toastMsg(`Bought ${it.name}, but the lantern could not be written. Keep this window open and retry Save.`);
 			}
 		} else {
 			const id = Object.keys(this.inventory).filter((id) => (this.inventory[id] ?? 0) > 0 && ITEMS[id])[this.shopIndex];
@@ -1834,8 +1900,15 @@ export class ReliquaryGame {
 			if (!result.ok) return;
 			this.gold = result.gold;
 			this.inventory = result.inventory;
+			// Keep the selection on a real row after the list shrinks; selling
+			// the last owned item lands the selection back on the first row.
+			const remaining = Object.keys(this.inventory).filter((k) => (this.inventory[k] ?? 0) > 0 && ITEMS[k]).length;
+			this.shopIndex = remaining === 0 ? 0 : Math.min(this.shopIndex, remaining - 1);
 			sfxPlay.confirm();
-			this.toastMsg(`Sold ${it.name}.`);
+			// Same checkpoint policy as buying: the sale is durable immediately.
+			const saved = this.persist();
+			if (saved) this.toastMsg(`Sold ${it.name}. The lantern is written.`);
+			else this.toastMsg(`Sold ${it.name}, but the lantern could not be written. Keep this window open and retry Save.`);
 		}
 		this.emit();
 	}
@@ -1889,8 +1962,16 @@ export class ReliquaryGame {
 			} else if (c === "Import") {
 				this.menu = null;
 				this.requestImport();
+			} else if (c === "Sound") {
+				// Reachable, named in-game silence control (S16); the preference
+				// persists through the shell's settings storage.
+				const next = !isMuted();
+				setMuted(next);
+				setSoundMutedStored(next);
 			} else this.menu = null;
-			this.menuIndex = 0;
+			// The Sound toggle stays highlighted on its own row so repeated
+			// toggles and keyboard focus do not jump back to the top.
+			this.menuIndex = c === "Sound" ? ROOT_MENU.indexOf("Sound") : 0;
 			this.emit();
 			return;
 		}
@@ -2110,7 +2191,9 @@ export class ReliquaryGame {
 		}
 		ctx.drawImage(this.terrain.canvas, Math.ceil(camX), Math.ceil(camY), this.cw(), this.ch(), 0, 0, this.cw(), this.ch());
 		const list: { y: number; draw: () => void }[] = [];
-		for (const o of m.objects) {
+		// Completed props (opened chests, defeated bosses) share one predicate
+		// with collision and interaction: they must not keep looking actionable.
+		for (const o of visibleObjects(m.objects, this.flags)) {
 			if (this.flags.starter && o.id.startsWith("st_")) continue;
 			if (o.x * TILE >= camX + this.cw() || (o.x + o.w) * TILE <= camX || o.y * TILE >= camY + this.ch() || (o.y + o.h) * TILE <= camY) continue;
 			list.push({
@@ -2197,9 +2280,15 @@ export class ReliquaryGame {
 					idlePhase: this.battleIdlePhase,
 				})
 			: sampleBattleIdle({ reducedMotion: this.reducedMotion, idlePhase: this.battleIdlePhase });
-		const playerCosmetic = { dx: motion.dx, dy: motion.dy };
+		// Side-correct cosmetics: the attacker gets the lunge offset, the
+		// defender gets the impact reaction — never both mirrored.
+		const attacker = b.animCue?.attacker;
+		const playerCosmetic = {
+			dx: attacker === "player" ? motion.dx : attacker === "foe" ? motion.defenderShakeX : 0,
+			dy: motion.dy,
+		};
 		const foeCosmetic = {
-			dx: b.animCue?.attacker === "foe" ? motion.dx : 0,
+			dx: attacker === "foe" ? motion.dx : attacker === "player" ? motion.defenderShakeX : 0,
 			dy: motion.dy * 0.35,
 		};
 		const geometry = { ...geometryBase, cosmeticOffset: { player: playerCosmetic, foe: foeCosmetic } };
@@ -2208,9 +2297,8 @@ export class ReliquaryGame {
 		if (foe && foe.hp > 0) {
 			const img = this.images[`sprite_${foe.speciesId}`];
 			const catchShake = b.phase === "catch" ? Math.sin(b.shake * 8) * 6 : 0;
-			const shake = catchShake + motion.foeShakeX;
 			if (img) {
-				drawBattleFoeSprite(ctx, img, layout, shake, foeCosmetic);
+				drawBattleFoeSprite(ctx, img, layout, catchShake, foeCosmetic);
 			}
 		}
 		const me = this.party[b.playerIndex]!;

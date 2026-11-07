@@ -35,7 +35,7 @@ export function DialogScene({ dialog, onAdvance }: { dialog: DialogView; onAdvan
         <span className="dialog-text" aria-live="polite" aria-atomic="true">
           {dialog.text}
         </span>
-        <span className="dialog-next">{dialog.last ? "Close" : "Next"}</span>
+        <span className="dialog-next">{dialog.last ? (dialog.doneLabel ?? "Close") : "Next"}</span>
       </button>
     </div>
   );

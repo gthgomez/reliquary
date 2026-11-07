@@ -8,6 +8,8 @@ export function AppStatus() {
     status === "ready" ? "Available offline"
     : status === "downloading" ? "Caching for offline…"
     : status === "updating" ? "Updating…"
+    : status === "blocked"
+      ? "Update paused — the save could not be written. This session is kept; make storage available and it will retry."
     : status === "failed" ? "Offline cache incomplete"
     : "";
   if (!label) return null;

@@ -3,6 +3,27 @@ export function isUiModalOpen(state: { menu: string | null; mode: string }): boo
   return Boolean(state.menu || state.mode === "shop");
 }
 
+/** Settings storage key for the in-game sound preference (S16). */
+export const SOUND_MUTED_KEY = "reliquary-muted";
+
+export function isSoundMutedStored(): boolean {
+  if (typeof localStorage === "undefined") return false;
+  try {
+    return localStorage.getItem(SOUND_MUTED_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+export function setSoundMutedStored(muted: boolean): void {
+  try {
+    if (muted) localStorage.setItem(SOUND_MUTED_KEY, "1");
+    else localStorage.removeItem(SOUND_MUTED_KEY);
+  } catch {
+    /* storage unavailable: the toggle still works, it just is not persisted */
+  }
+}
+
 export type TouchChromeState = {
   menu: string | null;
   mode: string;

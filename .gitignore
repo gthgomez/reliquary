@@ -43,3 +43,4 @@ routeTree.gen.ts.bak
 
 # Deep journey evidence output (scripts/journeys-ci.mjs)
 .qa-evidence/
+qa-evidence/
