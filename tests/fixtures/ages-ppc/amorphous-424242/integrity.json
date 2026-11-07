@@ -1,10 +1,10 @@
 {
   "files": {
-    "atlas.png": "1402283987e07b169e745d332367447575a8ef2f8da5b47614e371497b034881",
-    "provenance.json": "bdcd6aad0b7d9ec3d8357750d1eabad2ca1f831efc08538f3acff112ca6ac5f8",
-    "sprite.runtime.json": "c9794a09fd80cd7490e0b70bc5c7b411cd06ff5486434c6015ac05ae6d2d7d63"
+    "atlas.png": "fe77e3ca4133db3a370c3407938fd6c2e61a92fb80d73b89bb0af30cb86df154",
+    "provenance.json": "6c7a29a34bf23e5afa3e6e2b79c5d8aacc8de82808fb7fd8c5559e7f327b246f",
+    "sprite.runtime.json": "60a7c109b3c25f851cb03c66d9c7e6aba814794ed40e52f1050036029cc26da8"
   },
-  "package_digest": "87f6204ab787c48814d42d4289d39156a027f76d1b3655f03ddb84e6a2ae24f5",
+  "package_digest": "ec617137bae9dee0d6afabf46cb230f0239fe752963bdce62aaff72c00cfafad",
   "schema_version": "1.7.0",
   "total_files": 3
 }

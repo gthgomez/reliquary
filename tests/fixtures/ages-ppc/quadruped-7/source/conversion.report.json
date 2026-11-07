@@ -1,0 +1,132 @@
+{
+  "schema_version": 1,
+  "conversion_version": 2,
+  "backend": "procedural_pixel_creatures",
+  "profile": "ages",
+  "limits": {
+    "max_frames": 256,
+    "max_cell": 512,
+    "max_page": 4096,
+    "max_pixels": 8388608
+  },
+  "ages_compatible": true,
+  "upstream_commit": "a2207c4bd6f1be51d426684cf58f11668def7579",
+  "framework": "Procedural Pixel Creatures 1.0.0",
+  "generator_version": 2,
+  "exporter_fingerprint": "e16c4fdf3c263f9c9fa6982a26c5ace7715620825fc8b70df2dc330229799c3e",
+  "creature": {
+    "name": "Kromoubel",
+    "family": "quadruped",
+    "contentId": "a5f5e26966e0282b"
+  },
+  "genome": {
+    "family": "quadruped",
+    "name": "Kromoubel",
+    "content_id": "a5f5e26966e0282b",
+    "sha256": "5763f321284d6e89b6ec394768687f806d1ac03c448a202756c0798b0580f406",
+    "seed": 7,
+    "source": "seed",
+    "lineage": {
+      "origin": "sampled",
+      "generation": 0,
+      "parents": [],
+      "mutationStrength": 0
+    }
+  },
+  "frame": {
+    "width": 124,
+    "height": 52,
+    "origin_x": 56,
+    "origin_y": 42
+  },
+  "atlas": {
+    "file": "page_000.png",
+    "width": 2976,
+    "height": 208,
+    "columns": 24,
+    "rows": 4
+  },
+  "direction": "east",
+  "requested_direction": "E",
+  "actual_direction": "east",
+  "state_mapping": {
+    "idle": "idle",
+    "walk": "walk",
+    "action": "attack_melee",
+    "hit": "hit"
+  },
+  "clips": [
+    {
+      "source_state": "idle",
+      "ages_state": "idle",
+      "direction": 0,
+      "direction_name": "east",
+      "loop": true,
+      "frames": 24,
+      "duration_ms": 1992,
+      "root_motion": {
+        "groundSpeed": 0,
+        "screenVelocityX": 0,
+        "screenVelocityY": 0
+      }
+    },
+    {
+      "source_state": "walk",
+      "ages_state": "walk",
+      "direction": 0,
+      "direction_name": "east",
+      "loop": true,
+      "frames": 5,
+      "duration_ms": 415,
+      "root_motion": {
+        "groundSpeed": 46.3057,
+        "screenVelocityX": 46.3057,
+        "screenVelocityY": 0
+      }
+    },
+    {
+      "source_state": "action",
+      "ages_state": "attack_melee",
+      "direction": 0,
+      "direction_name": "east",
+      "loop": false,
+      "frames": 23,
+      "duration_ms": 1909,
+      "root_motion": {
+        "groundSpeed": 0,
+        "screenVelocityX": 0,
+        "screenVelocityY": 0
+      }
+    },
+    {
+      "source_state": "hit",
+      "ages_state": "hit",
+      "direction": 0,
+      "direction_name": "east",
+      "loop": false,
+      "frames": 18,
+      "duration_ms": 1494,
+      "root_motion": {
+        "groundSpeed": 0,
+        "screenVelocityX": 0,
+        "screenVelocityY": 0
+      }
+    }
+  ],
+  "total_frames": 70,
+  "root_motion_consumed_by_runtime": false,
+  "generator_license": "MIT",
+  "artwork_rights": {
+    "generator_source_license": "MIT",
+    "generated_artwork": "UNKNOWN",
+    "genome_source": "GENERATED_LOCALLY",
+    "basis": "The generator's MIT license covers its source code, not an automatic grant for every generated derivative or externally supplied genome. Artwork rights remain UNKNOWN until reviewed."
+  },
+  "review_status": "UNREVIEWED",
+  "runtime_status": "PREVIEW_ONLY",
+  "warnings": [
+    "walk: upstream root-motion speed 46.3057 is preserved in the source metadata but is not consumed by the AGES v1.7 runtime",
+    "action is a generic upstream action mapped to attack_melee; it is not a skill-specific melee or elemental animation",
+    "PPC metadata carries no impact event timing; AGES impact effects are therefore not scheduled from this package"
+  ]
+}

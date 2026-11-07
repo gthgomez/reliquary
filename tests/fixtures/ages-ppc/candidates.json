@@ -1,0 +1,125 @@
+{
+  "experimental": true,
+  "candidates": [
+    {
+      "name": "slime",
+      "dir": "amorphous-424242",
+      "alias": "dewslime",
+      "species": "dewslime",
+      "subjectId": "ppc_amorphous_424242",
+      "packageDigest": "ec617137bae9dee0d6afabf46cb230f0239fe752963bdce62aaff72c00cfafad",
+      "atlasSha256": "fe77e3ca4133db3a370c3407938fd6c2e61a92fb80d73b89bb0af30cb86df154",
+      "genome": {
+        "family": "amorphous",
+        "contentId": "0244d2df6da7136f",
+        "name": "Grovek",
+        "seed": 424242,
+        "sha256": "ca09c7226c75fe1d496b00b95b3034a7dacf435cddae97067bbac4056b429446",
+        "source": "seed"
+      },
+      "direction": "east",
+      "clips": {
+        "attack_melee": {
+          "frames": 13,
+          "duration_ms": 1079.0,
+          "loop": false
+        },
+        "hit": {
+          "frames": 7,
+          "duration_ms": 581.0,
+          "loop": false
+        },
+        "idle": {
+          "frames": 24,
+          "duration_ms": 1992.0,
+          "loop": true
+        },
+        "walk": {
+          "frames": 10,
+          "duration_ms": 830.0,
+          "loop": true
+        }
+      }
+    },
+    {
+      "name": "quadruped",
+      "dir": "quadruped-7",
+      "alias": "gutterrat",
+      "species": "gutterrat",
+      "subjectId": "ppc_quadruped_7",
+      "packageDigest": "afb4f74e263ba0f353237a4cc1cc0d8a40a5a7815337c925d4801016b00d1c3c",
+      "atlasSha256": "30f885a5da9a0bed8f926bb4a8c063ffd2dce69b3776a20868d7b6b0c1b91b52",
+      "genome": {
+        "family": "quadruped",
+        "contentId": "a5f5e26966e0282b",
+        "name": "Kromoubel",
+        "seed": 7,
+        "sha256": "5763f321284d6e89b6ec394768687f806d1ac03c448a202756c0798b0580f406",
+        "source": "seed"
+      },
+      "direction": "east",
+      "clips": {
+        "attack_melee": {
+          "frames": 23,
+          "duration_ms": 1909.0,
+          "loop": false
+        },
+        "hit": {
+          "frames": 18,
+          "duration_ms": 1494.0,
+          "loop": false
+        },
+        "idle": {
+          "frames": 24,
+          "duration_ms": 1992.0,
+          "loop": true
+        },
+        "walk": {
+          "frames": 5,
+          "duration_ms": 415.0,
+          "loop": true
+        }
+      }
+    },
+    {
+      "name": "reptile",
+      "dir": "reptile-424242",
+      "alias": "mirewhelp",
+      "species": "mirewhelp",
+      "subjectId": "ppc_reptile_424242",
+      "packageDigest": "e5b2ee48380cce8fe855c8950e9794772d86e7d952ef8f3bc9579f79e029df9b",
+      "atlasSha256": "979b04744c014163161c73198ff92a9896bd18cc9d26641b4ae9a05d20d45bfe",
+      "genome": {
+        "family": "reptile",
+        "contentId": "e0a142e3787bbe00",
+        "name": "Grovek",
+        "seed": 424242,
+        "sha256": "49bae8a0d901148c242a1ded8688fd20414db61e55d27f55444c55f1e621bf72",
+        "source": "seed"
+      },
+      "direction": "east",
+      "clips": {
+        "attack_melee": {
+          "frames": 16,
+          "duration_ms": 1328.0,
+          "loop": false
+        },
+        "hit": {
+          "frames": 16,
+          "duration_ms": 1328.0,
+          "loop": false
+        },
+        "idle": {
+          "frames": 24,
+          "duration_ms": 1992.0,
+          "loop": true
+        },
+        "walk": {
+          "frames": 5,
+          "duration_ms": 415.0,
+          "loop": true
+        }
+      }
+    }
+  ]
+}

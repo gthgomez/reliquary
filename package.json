@@ -24,7 +24,7 @@
     "verify:pwa": "node scripts/verify-pwa.mjs",
     "test:browser": "node scripts/browser-regression.mjs",
     "test:animations": "node scripts/build-ages-preview.mjs && node tests/browser/ages-animations.mjs",
-    "test:ppc": "node scripts/build-ages-preview.mjs && node tests/browser/ages-ppc.mjs",
+    "test:ppc": "node scripts/build-ages-preview.mjs && node tests/browser/ages-ppc.mjs && node tests/browser/ages-ppc-creatures.mjs",
     "build:web": "node scripts/build-web.mjs && node scripts/assert-production-web-shell.mjs",
     "verify:web:runtime": "node scripts/assert-production-runtime.mjs",
     "build:ages-preview": "node scripts/build-ages-preview.mjs",
@@ -32,7 +32,8 @@
     "test:platform": "node scripts/run-tests.mjs --all",
     "validate:content": "node --experimental-strip-types scripts/validate-content.mjs",
     "lint": "eslint .",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "test:ppc-creatures": "node scripts/build-ages-preview.mjs && node tests/browser/ages-ppc-creatures.mjs"
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.5.4",
