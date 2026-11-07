@@ -1,0 +1,49 @@
+{
+  "backend": "procedural_pixel_creatures",
+  "upstreamCommit": "a2207c4bd6f1be51d426684cf58f11668def7579",
+  "generatorVersion": 2,
+  "experimental": true,
+  "designProfile": "forest_serpent",
+  "note": "Preview-only experimental fixture from a curated design profile. Not canonical artwork and not a reidentification of the aliased species.",
+  "package": {
+    "subjectId": "ppc_serpent_8839c061184f3050",
+    "assetId": "ppc_serpent_8839c061184f3050",
+    "packageDigest": "53f22f27a44cb0a1bfc4ab7b6484a0aa335a65fde4d249b2bd1b8eac255cc5db",
+    "atlasSha256": "809d9d5c298f912459fbfd373c4aed2a9734ba224143467f17e2d820e04054a1"
+  },
+  "genome": {
+    "family": "serpent",
+    "contentId": "8839c061184f3050",
+    "name": "Grovek",
+    "seed": 424242,
+    "designProfile": "forest_serpent",
+    "sha256": "3eb40c2183f425c28d4c7103008dd315f20e4b4f69be47eb7e47b39ee6756fe9",
+    "source": "design_profile"
+  },
+  "direction": "east",
+  "bakeHitFlash": false,
+  "clips": {
+    "attack_melee": {
+      "frames": 10,
+      "loop": false,
+      "duration_ms": 830.0
+    },
+    "hit": {
+      "frames": 9,
+      "loop": false,
+      "duration_ms": 747.0
+    },
+    "idle": {
+      "frames": 24,
+      "loop": true,
+      "duration_ms": 1992.0
+    },
+    "walk": {
+      "frames": 10,
+      "loop": true,
+      "duration_ms": 830.0
+    }
+  },
+  "alias": "mirewhelp",
+  "humanReview": "PENDING"
+}

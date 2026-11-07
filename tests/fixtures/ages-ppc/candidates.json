@@ -1,123 +1,44 @@
 {
-  "experimental": true,
+  "schema": "ages.reliquary.ppc_candidates.v1",
   "candidates": [
     {
-      "name": "slime",
-      "dir": "amorphous-424242",
+      "name": "marsh-slime",
+      "dir": "marsh-slime",
       "alias": "dewslime",
       "species": "dewslime",
-      "subjectId": "ppc_amorphous_424242",
-      "packageDigest": "ec617137bae9dee0d6afabf46cb230f0239fe752963bdce62aaff72c00cfafad",
-      "atlasSha256": "fe77e3ca4133db3a370c3407938fd6c2e61a92fb80d73b89bb0af30cb86df154",
+      "subjectId": "ppc_amorphous_ffd43e3b8b2bf0fe",
+      "packageDigest": "fdf1863d101b1388bf452a25e73d224525dd6c93a223860d5560db3cd0547437",
+      "atlasSha256": "d91a2eea353c84aa522d2764d7c540a37c4e9e3afa3e719fb8fae5822e020321",
       "genome": {
         "family": "amorphous",
-        "contentId": "0244d2df6da7136f",
+        "contentId": "ffd43e3b8b2bf0fe",
         "name": "Grovek",
         "seed": 424242,
-        "sha256": "ca09c7226c75fe1d496b00b95b3034a7dacf435cddae97067bbac4056b429446",
-        "source": "seed"
+        "designProfile": "marsh_slime",
+        "sha256": "b568843c20de70c1e63d94b66da0432acb482ee9137b0288dbb98e2691f7125d",
+        "source": "design_profile"
       },
       "direction": "east",
       "clips": {
         "attack_melee": {
-          "frames": 13,
-          "duration_ms": 1079.0,
-          "loop": false
+          "frames": 11,
+          "loop": false,
+          "duration_ms": 913.0
         },
         "hit": {
-          "frames": 7,
-          "duration_ms": 581.0,
-          "loop": false
+          "frames": 6,
+          "loop": false,
+          "duration_ms": 498.0
         },
         "idle": {
           "frames": 24,
-          "duration_ms": 1992.0,
-          "loop": true
-        },
-        "walk": {
-          "frames": 10,
-          "duration_ms": 830.0,
-          "loop": true
-        }
-      }
-    },
-    {
-      "name": "quadruped",
-      "dir": "quadruped-7",
-      "alias": "gutterrat",
-      "species": "gutterrat",
-      "subjectId": "ppc_quadruped_7",
-      "packageDigest": "afb4f74e263ba0f353237a4cc1cc0d8a40a5a7815337c925d4801016b00d1c3c",
-      "atlasSha256": "30f885a5da9a0bed8f926bb4a8c063ffd2dce69b3776a20868d7b6b0c1b91b52",
-      "genome": {
-        "family": "quadruped",
-        "contentId": "a5f5e26966e0282b",
-        "name": "Kromoubel",
-        "seed": 7,
-        "sha256": "5763f321284d6e89b6ec394768687f806d1ac03c448a202756c0798b0580f406",
-        "source": "seed"
-      },
-      "direction": "east",
-      "clips": {
-        "attack_melee": {
-          "frames": 23,
-          "duration_ms": 1909.0,
-          "loop": false
-        },
-        "hit": {
-          "frames": 18,
-          "duration_ms": 1494.0,
-          "loop": false
-        },
-        "idle": {
-          "frames": 24,
-          "duration_ms": 1992.0,
-          "loop": true
+          "loop": true,
+          "duration_ms": 1992.0
         },
         "walk": {
           "frames": 5,
-          "duration_ms": 415.0,
-          "loop": true
-        }
-      }
-    },
-    {
-      "name": "reptile",
-      "dir": "reptile-424242",
-      "alias": "mirewhelp",
-      "species": "mirewhelp",
-      "subjectId": "ppc_reptile_424242",
-      "packageDigest": "e5b2ee48380cce8fe855c8950e9794772d86e7d952ef8f3bc9579f79e029df9b",
-      "atlasSha256": "979b04744c014163161c73198ff92a9896bd18cc9d26641b4ae9a05d20d45bfe",
-      "genome": {
-        "family": "reptile",
-        "contentId": "e0a142e3787bbe00",
-        "name": "Grovek",
-        "seed": 424242,
-        "sha256": "49bae8a0d901148c242a1ded8688fd20414db61e55d27f55444c55f1e621bf72",
-        "source": "seed"
-      },
-      "direction": "east",
-      "clips": {
-        "attack_melee": {
-          "frames": 16,
-          "duration_ms": 1328.0,
-          "loop": false
-        },
-        "hit": {
-          "frames": 16,
-          "duration_ms": 1328.0,
-          "loop": false
-        },
-        "idle": {
-          "frames": 24,
-          "duration_ms": 1992.0,
-          "loop": true
-        },
-        "walk": {
-          "frames": 5,
-          "duration_ms": 415.0,
-          "loop": true
+          "loop": true,
+          "duration_ms": 415.0
         }
       }
     },
@@ -126,16 +47,16 @@
       "dir": "armored-slime",
       "alias": "dewslime",
       "species": "dewslime",
-      "subjectId": "ppc_amorphous_c47b31c2fcd2bcf5",
-      "packageDigest": "b1ea2572363d01a4df4ec48e66c7909dcf6ea0a86be250325756a295a5a5c789",
-      "atlasSha256": "f3714ea3ed5ec591bf23ecccf19a871a729b4314bbd0dba9994f9ea966b483f2",
+      "subjectId": "ppc_amorphous_c8109bef68c9d746",
+      "packageDigest": "4b9c96d9f7bd5644b97d774080c735fe210e00495a87bee6e408e54f0f4abeac",
+      "atlasSha256": "e9e76735176383bab073ff1f0d04d6fdadab020dcb04ce328e5f95fbff0a31fe",
       "genome": {
         "family": "amorphous",
-        "contentId": "c47b31c2fcd2bcf5",
+        "contentId": "c8109bef68c9d746",
         "name": "Kromoubel",
         "seed": 7,
         "designProfile": "armored_slime",
-        "sha256": "f411ae419fbb79d1e27abb18106e00da622a7de749d35b9c952a9e0bb01b8040",
+        "sha256": "1375414f83f3b6a8bf3f985e0dfb214b832b5c5493eefd29c5ed3f79e2d3e91f",
         "source": "design_profile"
       },
       "direction": "east",
@@ -167,24 +88,65 @@
       "dir": "giant-rat",
       "alias": "gutterrat",
       "species": "gutterrat",
-      "subjectId": "ppc_quadruped_a74e077e34cc0c57",
-      "packageDigest": "39f168b2bb45910e8d25bf5886dda6b8a7cb94671708d8441a7e3786ad8bdb9d",
-      "atlasSha256": "529703f76eca22b256633c52e7e4ec618e8fa5874bd83e922aff142886bb1119",
+      "subjectId": "ppc_quadruped_6c4c0fe9390f6d7e",
+      "packageDigest": "61e948a6c0c8383b57abf0cdf4485f168a7c1646693aae5b08837c4369224b0c",
+      "atlasSha256": "74835f8b094b65207ad9ca3af38d4a508f819edb1b2b88dea7a9fbac7fec5654",
       "genome": {
         "family": "quadruped",
-        "contentId": "a74e077e34cc0c57",
+        "contentId": "6c4c0fe9390f6d7e",
         "name": "Grovek",
         "seed": 424242,
         "designProfile": "giant_rat",
-        "sha256": "da6248ad21abdbf7ec93b68ee2654d33ee3aea135ff5d94978b4aebd3806478c",
+        "sha256": "14509e05fb2e048cd7a5d7da0b3aa8769341c0196daef2dc94bc8738b994078c",
         "source": "design_profile"
       },
       "direction": "east",
       "clips": {
         "attack_melee": {
-          "frames": 16,
+          "frames": 27,
           "loop": false,
-          "duration_ms": 1328.0
+          "duration_ms": 2241.0
+        },
+        "hit": {
+          "frames": 14,
+          "loop": false,
+          "duration_ms": 1162.0
+        },
+        "idle": {
+          "frames": 24,
+          "loop": true,
+          "duration_ms": 1992.0
+        },
+        "walk": {
+          "frames": 8,
+          "loop": true,
+          "duration_ms": 664.0
+        }
+      }
+    },
+    {
+      "name": "mutated-rat",
+      "dir": "mutated-rat",
+      "alias": "gutterrat",
+      "species": "gutterrat",
+      "subjectId": "ppc_quadruped_9d8e1ad07ce31b0c",
+      "packageDigest": "755ab90ee536a45338ae38bf9a0195c4cf5acdc371c1d9500301928b0c9c5557",
+      "atlasSha256": "6940bbc345dc87b565bf2913a0c94cdfbd6babe8c9b3f5f7439fc7997603532f",
+      "genome": {
+        "family": "quadruped",
+        "contentId": "9d8e1ad07ce31b0c",
+        "name": "Grovek",
+        "seed": 424242,
+        "designProfile": "mutated_rat",
+        "sha256": "64b251ff5186b33c84a07ef028c331807d28a0ac828ca8ff0b088cb2826d3583",
+        "source": "design_profile"
+      },
+      "direction": "east",
+      "clips": {
+        "attack_melee": {
+          "frames": 20,
+          "loop": false,
+          "duration_ms": 1660.0
         },
         "hit": {
           "frames": 15,
@@ -209,7 +171,7 @@
       "alias": "mirewhelp",
       "species": "mirewhelp",
       "subjectId": "ppc_reptile_34054f35c6af4de3",
-      "packageDigest": "5841aefdfbbb3a762f1408aacd378a40c962d7b7d1ae7d6be358728a7ddd0dd1",
+      "packageDigest": "17d882dc9f765643f15cf68ad848185aa764ac011f55518654432512363e472f",
       "atlasSha256": "d7d94da29be10c32bb61ae7d0dd7f2192a9b199d2101c85b6da7f29107a80313",
       "genome": {
         "family": "reptile",
@@ -241,6 +203,47 @@
           "frames": 5,
           "loop": true,
           "duration_ms": 415.0
+        }
+      }
+    },
+    {
+      "name": "forest-serpent",
+      "dir": "forest-serpent",
+      "alias": "mirewhelp",
+      "species": "mirewhelp",
+      "subjectId": "ppc_serpent_8839c061184f3050",
+      "packageDigest": "53f22f27a44cb0a1bfc4ab7b6484a0aa335a65fde4d249b2bd1b8eac255cc5db",
+      "atlasSha256": "809d9d5c298f912459fbfd373c4aed2a9734ba224143467f17e2d820e04054a1",
+      "genome": {
+        "family": "serpent",
+        "contentId": "8839c061184f3050",
+        "name": "Grovek",
+        "seed": 424242,
+        "designProfile": "forest_serpent",
+        "sha256": "3eb40c2183f425c28d4c7103008dd315f20e4b4f69be47eb7e47b39ee6756fe9",
+        "source": "design_profile"
+      },
+      "direction": "east",
+      "clips": {
+        "attack_melee": {
+          "frames": 10,
+          "loop": false,
+          "duration_ms": 830.0
+        },
+        "hit": {
+          "frames": 9,
+          "loop": false,
+          "duration_ms": 747.0
+        },
+        "idle": {
+          "frames": 24,
+          "loop": true,
+          "duration_ms": 1992.0
+        },
+        "walk": {
+          "frames": 10,
+          "loop": true,
+          "duration_ms": 830.0
         }
       }
     }

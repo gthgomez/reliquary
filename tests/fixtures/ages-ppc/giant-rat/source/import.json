@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "asset_id": "ppc_quadruped_a74e077e34cc0c57",
+  "asset_id": "ppc_quadruped_6c4c0fe9390f6d7e",
   "asset_type": "sprite",
   "direction": "east",
   "program": {
@@ -13,20 +13,20 @@
     "ppc.spritesheet.json"
   ],
   "cell": [
-    119,
-    61
+    120,
+    72
   ],
   "sheet": "page_000.png",
   "animations": {
     "idle": {
       "loop": true,
       "pivot": [
-        64,
-        55
+        70,
+        66
       ],
       "gameplay_root": [
-        64,
-        55
+        70,
+        66
       ],
       "frames": [
         {
@@ -131,26 +131,14 @@
     "walk": {
       "loop": true,
       "pivot": [
-        64,
-        55
+        70,
+        66
       ],
       "gameplay_root": [
-        64,
-        55
+        70,
+        66
       ],
       "frames": [
-        {
-          "cell": 24,
-          "duration_ms": 83
-        },
-        {
-          "cell": 25,
-          "duration_ms": 83
-        },
-        {
-          "cell": 26,
-          "duration_ms": 83
-        },
         {
           "cell": 27,
           "duration_ms": 83
@@ -170,6 +158,18 @@
         {
           "cell": 31,
           "duration_ms": 83
+        },
+        {
+          "cell": 32,
+          "duration_ms": 83
+        },
+        {
+          "cell": 33,
+          "duration_ms": 83
+        },
+        {
+          "cell": 34,
+          "duration_ms": 83
         }
       ],
       "events": []
@@ -177,38 +177,14 @@
     "attack_melee": {
       "loop": false,
       "pivot": [
-        64,
-        55
+        70,
+        66
       ],
       "gameplay_root": [
-        64,
-        55
+        70,
+        66
       ],
       "frames": [
-        {
-          "cell": 48,
-          "duration_ms": 83
-        },
-        {
-          "cell": 49,
-          "duration_ms": 83
-        },
-        {
-          "cell": 50,
-          "duration_ms": 83
-        },
-        {
-          "cell": 51,
-          "duration_ms": 83
-        },
-        {
-          "cell": 52,
-          "duration_ms": 83
-        },
-        {
-          "cell": 53,
-          "duration_ms": 83
-        },
         {
           "cell": 54,
           "duration_ms": 83
@@ -248,26 +224,39 @@
         {
           "cell": 63,
           "duration_ms": 83
-        }
-      ],
-      "events": [
+        },
         {
-          "frame": 10,
-          "name": "impact"
-        }
-      ]
-    },
-    "hit": {
-      "loop": false,
-      "pivot": [
-        64,
-        55
-      ],
-      "gameplay_root": [
-        64,
-        55
-      ],
-      "frames": [
+          "cell": 64,
+          "duration_ms": 83
+        },
+        {
+          "cell": 65,
+          "duration_ms": 83
+        },
+        {
+          "cell": 66,
+          "duration_ms": 83
+        },
+        {
+          "cell": 67,
+          "duration_ms": 83
+        },
+        {
+          "cell": 68,
+          "duration_ms": 83
+        },
+        {
+          "cell": 69,
+          "duration_ms": 83
+        },
+        {
+          "cell": 70,
+          "duration_ms": 83
+        },
+        {
+          "cell": 71,
+          "duration_ms": 83
+        },
         {
           "cell": 72,
           "duration_ms": 83
@@ -303,7 +292,26 @@
         {
           "cell": 80,
           "duration_ms": 83
-        },
+        }
+      ],
+      "events": [
+        {
+          "frame": 17,
+          "name": "impact"
+        }
+      ]
+    },
+    "hit": {
+      "loop": false,
+      "pivot": [
+        70,
+        66
+      ],
+      "gameplay_root": [
+        70,
+        66
+      ],
+      "frames": [
         {
           "cell": 81,
           "duration_ms": 83
@@ -327,6 +335,38 @@
         {
           "cell": 86,
           "duration_ms": 83
+        },
+        {
+          "cell": 87,
+          "duration_ms": 83
+        },
+        {
+          "cell": 88,
+          "duration_ms": 83
+        },
+        {
+          "cell": 89,
+          "duration_ms": 83
+        },
+        {
+          "cell": 90,
+          "duration_ms": 83
+        },
+        {
+          "cell": 91,
+          "duration_ms": 83
+        },
+        {
+          "cell": 92,
+          "duration_ms": 83
+        },
+        {
+          "cell": 93,
+          "duration_ms": 83
+        },
+        {
+          "cell": 94,
+          "duration_ms": 83
         }
       ],
       "events": []
@@ -342,8 +382,8 @@
     "genome": {
       "family": "quadruped",
       "name": "Grovek",
-      "content_id": "a74e077e34cc0c57",
-      "sha256": "da6248ad21abdbf7ec93b68ee2654d33ee3aea135ff5d94978b4aebd3806478c",
+      "content_id": "6c4c0fe9390f6d7e",
+      "sha256": "14509e05fb2e048cd7a5d7da0b3aa8769341c0196daef2dc94bc8738b994078c",
       "seed": null,
       "source": "genome_file",
       "lineage": {
@@ -375,16 +415,16 @@
       {
         "source_state": "action",
         "ages_state": "attack_melee",
-        "frames": 16,
+        "frames": 27,
         "loop": false,
-        "duration_ms": 1328
+        "duration_ms": 2241
       },
       {
         "source_state": "hit",
         "ages_state": "hit",
-        "frames": 15,
+        "frames": 14,
         "loop": false,
-        "duration_ms": 1245
+        "duration_ms": 1162
       }
     ],
     "render": {
@@ -394,7 +434,7 @@
       "bake_hit_flash": false
     },
     "warnings": [
-      "walk: upstream root-motion speed 55.8013 is preserved in the source metadata but is not consumed by the AGES v1.7 runtime",
+      "walk: upstream root-motion speed 54.2734 is preserved in the source metadata but is not consumed by the AGES v1.7 runtime",
       "action is a generic upstream action mapped to attack_melee; it is not a skill-specific melee or elemental animation",
       "action impact timing comes from an AGES authoring profile (reviewed per family), not from upstream PPC metadata; it is presentation-only"
     ],

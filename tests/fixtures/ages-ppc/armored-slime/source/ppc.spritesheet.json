@@ -6,39 +6,39 @@
   "creature": {
     "name": "Kromoubel",
     "family": "amorphous",
-    "contentId": "c47b31c2fcd2bcf5"
+    "contentId": "c8109bef68c9d746"
   },
-  "frameWidth": 41,
-  "frameHeight": 52,
+  "frameWidth": 40,
+  "frameHeight": 49,
   "originX": 20,
-  "originY": 43,
+  "originY": 39,
   "originNote": "Pixel inside each frame that sits on the creature\u0027s ground point; place it at the entity position.",
   "cameraElevationDeg": 30,
   "pages": [
     {
       "file": "page_000.png",
-      "width": 984,
-      "height": 208
+      "width": 960,
+      "height": 196
     }
   ],
   "palette": [
     "#030009",
-    "#211130",
-    "#422d4f",
-    "#66516d",
-    "#887189",
-    "#a593a2",
+    "#221032",
+    "#432c51",
+    "#68506e",
+    "#89708a",
+    "#a692a3",
     "#7e5864",
     "#9b7880",
     "#ac8f93",
-    "#110c2e",
-    "#292246",
-    "#3d3456",
+    "#110b30",
+    "#2a2249",
+    "#3d3458",
     "#7a4b29",
     "#a36d34",
     "#cc9c42",
     "#e5d183",
-    "#7a5f6e",
+    "#7b5f6f",
     "#928281",
     "#c2b4b0",
     "#e5dcd5",
@@ -88,139 +88,139 @@
           "durationMs": 83
         },
         {
-          "x": 41,
+          "x": 40,
           "y": 0,
           "page": 0,
           "durationMs": 83
         },
         {
-          "x": 82,
+          "x": 80,
           "y": 0,
           "page": 0,
           "durationMs": 83
         },
         {
-          "x": 123,
+          "x": 120,
           "y": 0,
           "page": 0,
           "durationMs": 83
         },
         {
-          "x": 164,
+          "x": 160,
           "y": 0,
           "page": 0,
           "durationMs": 83
         },
         {
-          "x": 205,
+          "x": 200,
           "y": 0,
           "page": 0,
           "durationMs": 83
         },
         {
-          "x": 246,
+          "x": 240,
           "y": 0,
           "page": 0,
           "durationMs": 83
         },
         {
-          "x": 287,
+          "x": 280,
           "y": 0,
           "page": 0,
           "durationMs": 83
         },
         {
-          "x": 328,
+          "x": 320,
           "y": 0,
           "page": 0,
           "durationMs": 83
         },
         {
-          "x": 369,
+          "x": 360,
           "y": 0,
           "page": 0,
           "durationMs": 83
         },
         {
-          "x": 410,
+          "x": 400,
           "y": 0,
           "page": 0,
           "durationMs": 83
         },
         {
-          "x": 451,
+          "x": 440,
           "y": 0,
           "page": 0,
           "durationMs": 83
         },
         {
-          "x": 492,
+          "x": 480,
           "y": 0,
           "page": 0,
           "durationMs": 83
         },
         {
-          "x": 533,
+          "x": 520,
           "y": 0,
           "page": 0,
           "durationMs": 83
         },
         {
-          "x": 574,
+          "x": 560,
           "y": 0,
           "page": 0,
           "durationMs": 83
         },
         {
-          "x": 615,
+          "x": 600,
           "y": 0,
           "page": 0,
           "durationMs": 83
         },
         {
-          "x": 656,
+          "x": 640,
           "y": 0,
           "page": 0,
           "durationMs": 83
         },
         {
-          "x": 697,
+          "x": 680,
           "y": 0,
           "page": 0,
           "durationMs": 83
         },
         {
-          "x": 738,
+          "x": 720,
           "y": 0,
           "page": 0,
           "durationMs": 83
         },
         {
-          "x": 779,
+          "x": 760,
           "y": 0,
           "page": 0,
           "durationMs": 83
         },
         {
-          "x": 820,
+          "x": 800,
           "y": 0,
           "page": 0,
           "durationMs": 83
         },
         {
-          "x": 861,
+          "x": 840,
           "y": 0,
           "page": 0,
           "durationMs": 83
         },
         {
-          "x": 902,
+          "x": 880,
           "y": 0,
           "page": 0,
           "durationMs": 83
         },
         {
-          "x": 943,
+          "x": 920,
           "y": 0,
           "page": 0,
           "durationMs": 83
@@ -236,44 +236,44 @@
       "fps": 12,
       "frameCount": 6,
       "rootMotion": {
-        "groundSpeed": 47.6674,
-        "screenVelocityX": 47.6674,
+        "groundSpeed": 48.4839,
+        "screenVelocityX": 48.4839,
         "screenVelocityY": -0
       },
       "frames": [
         {
           "x": 0,
-          "y": 52,
+          "y": 49,
           "page": 0,
           "durationMs": 83
         },
         {
-          "x": 41,
-          "y": 52,
+          "x": 40,
+          "y": 49,
           "page": 0,
           "durationMs": 83
         },
         {
-          "x": 82,
-          "y": 52,
+          "x": 80,
+          "y": 49,
           "page": 0,
           "durationMs": 83
         },
         {
-          "x": 123,
-          "y": 52,
+          "x": 120,
+          "y": 49,
           "page": 0,
           "durationMs": 83
         },
         {
-          "x": 164,
-          "y": 52,
+          "x": 160,
+          "y": 49,
           "page": 0,
           "durationMs": 83
         },
         {
-          "x": 205,
-          "y": 52,
+          "x": 200,
+          "y": 49,
           "page": 0,
           "durationMs": 83
         }
@@ -295,67 +295,67 @@
       "frames": [
         {
           "x": 0,
-          "y": 104,
+          "y": 98,
           "page": 0,
           "durationMs": 83
         },
         {
-          "x": 41,
-          "y": 104,
+          "x": 40,
+          "y": 98,
           "page": 0,
           "durationMs": 83
         },
         {
-          "x": 82,
-          "y": 104,
+          "x": 80,
+          "y": 98,
           "page": 0,
           "durationMs": 83
         },
         {
-          "x": 123,
-          "y": 104,
+          "x": 120,
+          "y": 98,
           "page": 0,
           "durationMs": 83
         },
         {
-          "x": 164,
-          "y": 104,
+          "x": 160,
+          "y": 98,
           "page": 0,
           "durationMs": 83
         },
         {
-          "x": 205,
-          "y": 104,
+          "x": 200,
+          "y": 98,
           "page": 0,
           "durationMs": 83
         },
         {
-          "x": 246,
-          "y": 104,
+          "x": 240,
+          "y": 98,
           "page": 0,
           "durationMs": 83
         },
         {
-          "x": 287,
-          "y": 104,
+          "x": 280,
+          "y": 98,
           "page": 0,
           "durationMs": 83
         },
         {
-          "x": 328,
-          "y": 104,
+          "x": 320,
+          "y": 98,
           "page": 0,
           "durationMs": 83
         },
         {
-          "x": 369,
-          "y": 104,
+          "x": 360,
+          "y": 98,
           "page": 0,
           "durationMs": 83
         },
         {
-          "x": 410,
-          "y": 104,
+          "x": 400,
+          "y": 98,
           "page": 0,
           "durationMs": 83
         }
@@ -377,49 +377,49 @@
       "frames": [
         {
           "x": 0,
-          "y": 156,
+          "y": 147,
           "page": 0,
           "durationMs": 83
         },
         {
-          "x": 41,
-          "y": 156,
+          "x": 40,
+          "y": 147,
           "page": 0,
           "durationMs": 83
         },
         {
-          "x": 82,
-          "y": 156,
+          "x": 80,
+          "y": 147,
           "page": 0,
           "durationMs": 83
         },
         {
-          "x": 123,
-          "y": 156,
+          "x": 120,
+          "y": 147,
           "page": 0,
           "durationMs": 83
         },
         {
-          "x": 164,
-          "y": 156,
+          "x": 160,
+          "y": 147,
           "page": 0,
           "durationMs": 83
         },
         {
-          "x": 205,
-          "y": 156,
+          "x": 200,
+          "y": 147,
           "page": 0,
           "durationMs": 83
         },
         {
-          "x": 246,
-          "y": 156,
+          "x": 240,
+          "y": 147,
           "page": 0,
           "durationMs": 83
         },
         {
-          "x": 287,
-          "y": 156,
+          "x": 280,
+          "y": 147,
           "page": 0,
           "durationMs": 83
         }
@@ -445,10 +445,10 @@
       "hit"
     ],
     "genome": {
-      "sha256": "f411ae419fbb79d1e27abb18106e00da622a7de749d35b9c952a9e0bb01b8040",
+      "sha256": "1375414f83f3b6a8bf3f985e0dfb214b832b5c5493eefd29c5ed3f79e2d3e91f",
       "seed": null,
       "source": "genome_file",
-      "contentId": "c47b31c2fcd2bcf5",
+      "contentId": "c8109bef68c9d746",
       "family": "amorphous",
       "name": "Kromoubel",
       "generatorVersion": 2,
@@ -461,12 +461,12 @@
     },
     "preflight": {
       "frameUpperBound": [
-        112,
-        156
+        114,
+        150
       ],
       "framesUpperBound": 122,
-      "pageWidthUpperBound": 5600,
-      "atlasPixelsUpperBound": 3494400,
+      "pageWidthUpperBound": 5700,
+      "atlasPixelsUpperBound": 3420000,
       "cellBudget": 512,
       "frameBudget": 256,
       "pageBudget": 4096,

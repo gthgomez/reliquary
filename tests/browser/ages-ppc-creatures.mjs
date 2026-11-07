@@ -20,7 +20,14 @@ const candidates = manifest.candidates.map((candidate) => {
   assert.equal(atlasDigest, candidate.atlasSha256, `${candidate.name}: atlas differs from evidence`);
   const evidence = JSON.parse(readFileSync(join(fixtureDir, candidate.dir, "ages-evidence.json"), "utf8"));
   assert.equal(evidence.direction, "east", `${candidate.name}: stale direction`);
-  return { ...candidate, paths, atlasDigest, evidence };
+  // The authored impact marker must survive runtime export, or impact timing is
+  // not actually verified for this candidate.
+  const runtime = JSON.parse(readFileSync(paths[3], "utf8"));
+  const attack = runtime.animations?.attack_melee;
+  assert.ok(attack, `${candidate.name}: missing attack_melee`);
+  const impact = (attack.events ?? []).filter((event) => event.name === "impact");
+  assert.equal(impact.length, 1, `${candidate.name}: expected one authored impact event`);
+  return { ...candidate, paths, atlasDigest, evidence, runtime, impactFrame: impact[0].frame };
 });
 
 function saveFor(species, skills) {
@@ -115,56 +122,151 @@ function assertClip(state, clip, label) {
   assert.equal(state.agesPlaybackPlayerClip, clip, `${label}: ${JSON.stringify(state)}`);
 }
 
+// Step the deterministic clock and collect the per-frame playback evidence.
+async function watchAttack(page, candidate) {
+  const duration = Math.ceil(candidate.clips.attack_melee.duration_ms);
+  const step = Math.max(40, Math.floor(duration / Math.max(2, candidate.runtime.animations.attack_melee.frames.length)));
+  const seenFrames = new Set();
+  let maxImpacts = 0;
+  let sawEffect = false;
+  let sawFoeReaction = false;
+  const hashes = new Set();
+  for (let elapsed = 0; elapsed <= duration + 240; elapsed += step) {
+    const data = await getData(page);
+    if (data.agesPlaybackPlayerClip === "attack_melee") {
+      seenFrames.add(data.agesPlaybackPlayerFrame);
+      hashes.add(await canvasHash(page));
+    }
+    maxImpacts = Math.max(maxImpacts, Number(data.agesPlaybackImpacts ?? 0));
+    if (data.agesPlaybackEffectClip) sawEffect = true;
+    if (data.agesPlaybackFoeClip && data.agesPlaybackFoeClip !== "idle") sawFoeReaction = true;
+    await page.clock.runFor(step);
+  }
+  return { duration, seenFrames: [...seenFrames].sort((a, b) => a - b), hashes: [...hashes], maxImpacts, sawEffect, sawFoeReaction };
+}
+
+async function assertSaveIsolation(page, save) {
+  assert.equal(await page.evaluate((key) => localStorage.getItem(key), PREVIEW_SAVE_KEY), save);
+  assert.equal(await page.evaluate((key) => localStorage.getItem(key), SAVE_KEY), null);
+}
+
+async function runAttack(page, candidate, save, { screenshot, reduced = false, tag = "" } = {}) {
+  await enterTitle(page, baseUrl, save);
+  await loadPackage(page, candidate);
+  await beginBattle(page);
+  await page.clock.runFor(220);
+  const idle = await getData(page);
+  assertClip(idle, "idle", `${candidate.name}${tag} idle`);
+  if (reduced) assert.equal(idle.agesPlaybackReduced, "true", `${candidate.name}${tag}: reduced flag`);
+  const idleHash = await canvasHash(page);
+  await page.clock.runFor(180);
+  assert.notEqual(await canvasHash(page), idleHash, `${candidate.name}${tag}: idle pixels did not change`);
+
+  await performSkill(page, "Nip", 0.5);
+  const first = await getData(page);
+  assertClip(first, "attack_melee", `${candidate.name}${tag} attack`);
+  const watched = await watchAttack(page, candidate);
+  if (!reduced) {
+    // Reduced-motion presentation may hold a static pose; full motion must show
+    // multiple distinct attack frames.
+    assert.ok(watched.seenFrames.length >= 2, `${candidate.name}${tag}: attack showed ${watched.seenFrames.length} distinct frames`);
+    // The authored impact marker must actually fire, exactly once per attack.
+    assert.ok(watched.maxImpacts >= 1, `${candidate.name}${tag}: impact marker never fired`);
+    assert.ok(watched.maxImpacts <= 1, `${candidate.name}${tag}: impact fired ${watched.maxImpacts} times`);
+  } else {
+    // Reduced motion still plays the clip but suppresses impact effects.
+    assertClip(first, "attack_melee", `${candidate.name}${tag} attack`);
+    assert.equal(watched.maxImpacts, 0, `${candidate.name}${tag}: reduced motion fired an impact effect`);
+  }
+  if (screenshot) await page.screenshot({ path: join(artifactDir, `${candidate.name}${tag}-attack.png`) });
+  await page.clock.runFor(400);
+  assertClip(await getData(page), "idle", `${candidate.name}${tag} recovered to idle`);
+  await assertSaveIsolation(page, save);
+  return { idleHash, first, ...watched };
+}
+
+async function runReaction(page, candidate, save) {
+  await enterTitle(page, baseUrl, save);
+  await loadPackage(page, candidate);
+  await beginBattle(page);
+  await page.clock.runFor(220);
+  await performSkill(page, "Howl", 0.5);
+  const frames = new Set();
+  const duration = Math.ceil(candidate.clips.hit.duration_ms);
+  const step = Math.max(40, Math.floor(duration / 6));
+  for (let elapsed = 0; elapsed <= duration + 300; elapsed += step) {
+    const data = await getData(page);
+    if (data.agesPlaybackPlayerClip === "hit") frames.add(data.agesPlaybackPlayerFrame);
+    await page.clock.runFor(step);
+  }
+  assert.ok(frames.size >= 1, `${candidate.name}: hit reaction never played`);
+  await page.screenshot({ path: join(artifactDir, `${candidate.name}-hit.png`) });
+  await assertSaveIsolation(page, save);
+  return [...frames];
+}
+
+const VIEWPORTS = [
+  { name: "desktop", width: 1280, height: 800 },
+  { name: "mobile-portrait", width: 390, height: 844 },
+  { name: "short-landscape", width: 844, height: 390 },
+];
+
 mkdirSync(artifactDir, { recursive: true });
 const { server, baseUrl } = await startStaticServer(0, { getRoot: () => resolve("dist/ages-preview") });
 const evidence = { status: "PASS", candidates: [], runs: [] };
 try {
   for (const candidate of candidates) {
     const save = saveFor(candidate.species, ["nip", "howl"]);
-    for (const mode of ["attack", "reaction"]) {
+    // 1. Full attack on desktop, with screenshots and impact/multi-frame proof.
+    await withBrowser(
+      async (page) => {
+        await page.setViewportSize({ width: 1280, height: 800 });
+        const result = await runAttack(page, candidate, save, { screenshot: true });
+        evidence.runs.push({ candidate: candidate.name, mode: "attack", viewport: "desktop", ...result, first: undefined, idleHash: undefined });
+      },
+      { context: { reducedMotion: "no-preference" } },
+    );
+    console.log(`[ages-ppc-creatures] PASS ${candidate.name} attack desktop`);
+
+    // 2. Defender hit reaction.
+    await withBrowser(
+      async (page) => {
+        await page.setViewportSize({ width: 1280, height: 800 });
+        const frames = await runReaction(page, candidate, save);
+        evidence.runs.push({ candidate: candidate.name, mode: "reaction", viewport: "desktop", frames });
+      },
+      { context: { reducedMotion: "no-preference" } },
+    );
+    console.log(`[ages-ppc-creatures] PASS ${candidate.name} reaction`);
+
+    // 3. Reduced motion: the clip still plays, effects are suppressed, recovery works.
+    await withBrowser(
+      async (page) => {
+        await page.setViewportSize({ width: 1280, height: 800 });
+        const result = await runAttack(page, candidate, save, { reduced: true, tag: "-reduced", screenshot: true });
+        evidence.runs.push({ candidate: candidate.name, mode: "attack-reduced", viewport: "desktop", ...result, first: undefined, idleHash: undefined });
+      },
+      { context: { reducedMotion: "reduce" } },
+    );
+    console.log(`[ages-ppc-creatures] PASS ${candidate.name} reduced-motion`);
+
+    // 4. Viewports: mobile portrait and short landscape.
+    for (const viewport of VIEWPORTS.slice(1)) {
       await withBrowser(
         async (page) => {
-          await page.setViewportSize({ width: 1280, height: 800 });
-          await enterTitle(page, baseUrl, save);
-          await loadPackage(page, candidate);
-          await beginBattle(page);
-          await page.clock.runFor(220);
-          const idle = await getData(page);
-          assertClip(idle, "idle", `${candidate.name} idle`);
-          const idleHash = await canvasHash(page);
-          await page.clock.runFor(180);
-          assert.notEqual(await canvasHash(page), idleHash, `${candidate.name}: idle pixels did not change`);
-
-          if (mode === "attack") {
-            await performSkill(page, "Nip", 0.5);
-            const first = await getData(page);
-            assertClip(first, "attack_melee", `${candidate.name} attack`);
-            assert.equal(first.agesPlaybackPlayerFrame, "0");
-            await page.screenshot({ path: join(artifactDir, `${candidate.name}-attack.png`) });
-            await page.clock.runFor(Math.ceil(candidate.clips.attack_melee.duration_ms) + 400);
-            assertClip(await getData(page), "idle", `${candidate.name} returned to idle`);
-            evidence.runs.push({ candidate: candidate.name, mode, idleHash, first });
-          } else {
-            await performSkill(page, "Howl", 0.5);
-            await page.clock.runFor(360);
-            const hit = await getData(page);
-            assertClip(hit, "hit", `${candidate.name} hit reaction`);
-            await page.screenshot({ path: join(artifactDir, `${candidate.name}-hit.png`) });
-            await page.clock.runFor(Math.ceil(candidate.clips.hit.duration_ms) + 600);
-            assertClip(await getData(page), "idle", `${candidate.name} recovered to idle`);
-            evidence.runs.push({ candidate: candidate.name, mode, hit });
-          }
-          assert.equal(await page.evaluate((key) => localStorage.getItem(key), PREVIEW_SAVE_KEY), save);
-          assert.equal(await page.evaluate((key) => localStorage.getItem(key), SAVE_KEY), null);
+          await page.setViewportSize({ width: viewport.width, height: viewport.height });
+          const result = await runAttack(page, candidate, save, { tag: `-${viewport.name}`, screenshot: true });
+          evidence.runs.push({ candidate: candidate.name, mode: "attack", viewport: viewport.name, ...result, first: undefined, idleHash: undefined });
         },
         { context: { reducedMotion: "no-preference" } },
       );
-      console.log(`[ages-ppc-creatures] PASS ${candidate.name} ${mode}`);
+      console.log(`[ages-ppc-creatures] PASS ${candidate.name} ${viewport.name}`);
     }
+
     evidence.candidates.push({
       name: candidate.name, alias: candidate.alias, subjectId: candidate.subjectId,
       packageDigest: candidate.packageDigest, direction: candidate.evidence.direction,
-      bakeHitFlash: candidate.evidence.bakeHitFlash,
+      bakeHitFlash: candidate.evidence.bakeHitFlash, impactFrame: candidate.impactFrame,
     });
   }
 } finally {

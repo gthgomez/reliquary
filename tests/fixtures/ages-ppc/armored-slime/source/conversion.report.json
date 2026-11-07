@@ -24,8 +24,8 @@
     "genome": {
       "family": "amorphous",
       "name": "Kromoubel",
-      "content_id": "c47b31c2fcd2bcf5",
-      "sha256": "f411ae419fbb79d1e27abb18106e00da622a7de749d35b9c952a9e0bb01b8040",
+      "content_id": "c8109bef68c9d746",
+      "sha256": "1375414f83f3b6a8bf3f985e0dfb214b832b5c5493eefd29c5ed3f79e2d3e91f",
       "seed": null,
       "source": "genome_file",
       "lineage": {
@@ -76,7 +76,7 @@
       "bake_hit_flash": false
     },
     "warnings": [
-      "walk: upstream root-motion speed 47.6674 is preserved in the source metadata but is not consumed by the AGES v1.7 runtime",
+      "walk: upstream root-motion speed 48.4839 is preserved in the source metadata but is not consumed by the AGES v1.7 runtime",
       "action is a generic upstream action mapped to attack_melee; it is not a skill-specific melee or elemental animation",
       "action impact timing comes from an AGES authoring profile (reviewed per family), not from upstream PPC metadata; it is presentation-only"
     ],
@@ -86,13 +86,13 @@
   "creature": {
     "name": "Kromoubel",
     "family": "amorphous",
-    "contentId": "c47b31c2fcd2bcf5"
+    "contentId": "c8109bef68c9d746"
   },
   "genome": {
     "family": "amorphous",
     "name": "Kromoubel",
-    "content_id": "c47b31c2fcd2bcf5",
-    "sha256": "f411ae419fbb79d1e27abb18106e00da622a7de749d35b9c952a9e0bb01b8040",
+    "content_id": "c8109bef68c9d746",
+    "sha256": "1375414f83f3b6a8bf3f985e0dfb214b832b5c5493eefd29c5ed3f79e2d3e91f",
     "seed": null,
     "source": "genome_file",
     "lineage": {
@@ -103,15 +103,15 @@
     }
   },
   "frame": {
-    "width": 41,
-    "height": 52,
+    "width": 40,
+    "height": 49,
     "origin_x": 20,
-    "origin_y": 43
+    "origin_y": 39
   },
   "atlas": {
     "file": "page_000.png",
-    "width": 984,
-    "height": 208,
+    "width": 960,
+    "height": 196,
     "columns": 24,
     "rows": 4
   },
@@ -149,8 +149,8 @@
       "frames": 6,
       "duration_ms": 498,
       "root_motion": {
-        "groundSpeed": 47.6674,
-        "screenVelocityX": 47.6674,
+        "groundSpeed": 48.4839,
+        "screenVelocityX": 48.4839,
         "screenVelocityY": 0
       },
       "impact_frame": null
@@ -198,7 +198,7 @@
   "review_status": "UNREVIEWED",
   "runtime_status": "PREVIEW_ONLY",
   "warnings": [
-    "walk: upstream root-motion speed 47.6674 is preserved in the source metadata but is not consumed by the AGES v1.7 runtime",
+    "walk: upstream root-motion speed 48.4839 is preserved in the source metadata but is not consumed by the AGES v1.7 runtime",
     "action is a generic upstream action mapped to attack_melee; it is not a skill-specific melee or elemental animation",
     "action impact timing comes from an AGES authoring profile (reviewed per family), not from upstream PPC metadata; it is presentation-only"
   ]

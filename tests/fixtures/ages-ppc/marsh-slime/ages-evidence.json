@@ -1,0 +1,49 @@
+{
+  "backend": "procedural_pixel_creatures",
+  "upstreamCommit": "a2207c4bd6f1be51d426684cf58f11668def7579",
+  "generatorVersion": 2,
+  "experimental": true,
+  "designProfile": "marsh_slime",
+  "note": "Preview-only experimental fixture from a curated design profile. Not canonical artwork and not a reidentification of the aliased species.",
+  "package": {
+    "subjectId": "ppc_amorphous_ffd43e3b8b2bf0fe",
+    "assetId": "ppc_amorphous_ffd43e3b8b2bf0fe",
+    "packageDigest": "fdf1863d101b1388bf452a25e73d224525dd6c93a223860d5560db3cd0547437",
+    "atlasSha256": "d91a2eea353c84aa522d2764d7c540a37c4e9e3afa3e719fb8fae5822e020321"
+  },
+  "genome": {
+    "family": "amorphous",
+    "contentId": "ffd43e3b8b2bf0fe",
+    "name": "Grovek",
+    "seed": 424242,
+    "designProfile": "marsh_slime",
+    "sha256": "b568843c20de70c1e63d94b66da0432acb482ee9137b0288dbb98e2691f7125d",
+    "source": "design_profile"
+  },
+  "direction": "east",
+  "bakeHitFlash": false,
+  "clips": {
+    "attack_melee": {
+      "frames": 11,
+      "loop": false,
+      "duration_ms": 913.0
+    },
+    "hit": {
+      "frames": 6,
+      "loop": false,
+      "duration_ms": 498.0
+    },
+    "idle": {
+      "frames": 24,
+      "loop": true,
+      "duration_ms": 1992.0
+    },
+    "walk": {
+      "frames": 5,
+      "loop": true,
+      "duration_ms": 415.0
+    }
+  },
+  "alias": "dewslime",
+  "humanReview": "PENDING"
+}
