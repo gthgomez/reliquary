@@ -1,0 +1,49 @@
+{
+  "backend": "procedural_pixel_creatures",
+  "upstreamCommit": "a2207c4bd6f1be51d426684cf58f11668def7579",
+  "generatorVersion": 2,
+  "experimental": true,
+  "designProfile": "armored_reptile",
+  "note": "Preview-only experimental fixture from a curated design profile. Not canonical artwork and not a reidentification of the aliased species.",
+  "package": {
+    "subjectId": "ppc_reptile_34054f35c6af4de3",
+    "assetId": "ppc_reptile_34054f35c6af4de3",
+    "packageDigest": "5841aefdfbbb3a762f1408aacd378a40c962d7b7d1ae7d6be358728a7ddd0dd1",
+    "atlasSha256": "d7d94da29be10c32bb61ae7d0dd7f2192a9b199d2101c85b6da7f29107a80313"
+  },
+  "genome": {
+    "family": "reptile",
+    "contentId": "34054f35c6af4de3",
+    "name": "Grovek",
+    "seed": 424242,
+    "designProfile": "armored_reptile",
+    "sha256": "e9398bae3610451fc0ea3fd84bf38c9b9e689745b921af4e37a5130ec069b00f",
+    "source": "design_profile"
+  },
+  "direction": "east",
+  "bakeHitFlash": false,
+  "clips": {
+    "attack_melee": {
+      "frames": 30,
+      "loop": false,
+      "duration_ms": 2490.0
+    },
+    "hit": {
+      "frames": 16,
+      "loop": false,
+      "duration_ms": 1328.0
+    },
+    "idle": {
+      "frames": 24,
+      "loop": true,
+      "duration_ms": 1992.0
+    },
+    "walk": {
+      "frames": 5,
+      "loop": true,
+      "duration_ms": 415.0
+    }
+  },
+  "alias": "mirewhelp",
+  "humanReview": "PENDING"
+}

@@ -120,6 +120,129 @@
           "loop": true
         }
       }
+    },
+    {
+      "name": "armored-slime",
+      "dir": "armored-slime",
+      "alias": "dewslime",
+      "species": "dewslime",
+      "subjectId": "ppc_amorphous_c47b31c2fcd2bcf5",
+      "packageDigest": "b1ea2572363d01a4df4ec48e66c7909dcf6ea0a86be250325756a295a5a5c789",
+      "atlasSha256": "f3714ea3ed5ec591bf23ecccf19a871a729b4314bbd0dba9994f9ea966b483f2",
+      "genome": {
+        "family": "amorphous",
+        "contentId": "c47b31c2fcd2bcf5",
+        "name": "Kromoubel",
+        "seed": 7,
+        "designProfile": "armored_slime",
+        "sha256": "f411ae419fbb79d1e27abb18106e00da622a7de749d35b9c952a9e0bb01b8040",
+        "source": "design_profile"
+      },
+      "direction": "east",
+      "clips": {
+        "attack_melee": {
+          "frames": 11,
+          "loop": false,
+          "duration_ms": 913.0
+        },
+        "hit": {
+          "frames": 8,
+          "loop": false,
+          "duration_ms": 664.0
+        },
+        "idle": {
+          "frames": 24,
+          "loop": true,
+          "duration_ms": 1992.0
+        },
+        "walk": {
+          "frames": 6,
+          "loop": true,
+          "duration_ms": 498.0
+        }
+      }
+    },
+    {
+      "name": "giant-rat",
+      "dir": "giant-rat",
+      "alias": "gutterrat",
+      "species": "gutterrat",
+      "subjectId": "ppc_quadruped_a74e077e34cc0c57",
+      "packageDigest": "39f168b2bb45910e8d25bf5886dda6b8a7cb94671708d8441a7e3786ad8bdb9d",
+      "atlasSha256": "529703f76eca22b256633c52e7e4ec618e8fa5874bd83e922aff142886bb1119",
+      "genome": {
+        "family": "quadruped",
+        "contentId": "a74e077e34cc0c57",
+        "name": "Grovek",
+        "seed": 424242,
+        "designProfile": "giant_rat",
+        "sha256": "da6248ad21abdbf7ec93b68ee2654d33ee3aea135ff5d94978b4aebd3806478c",
+        "source": "design_profile"
+      },
+      "direction": "east",
+      "clips": {
+        "attack_melee": {
+          "frames": 16,
+          "loop": false,
+          "duration_ms": 1328.0
+        },
+        "hit": {
+          "frames": 15,
+          "loop": false,
+          "duration_ms": 1245.0
+        },
+        "idle": {
+          "frames": 24,
+          "loop": true,
+          "duration_ms": 1992.0
+        },
+        "walk": {
+          "frames": 8,
+          "loop": true,
+          "duration_ms": 664.0
+        }
+      }
+    },
+    {
+      "name": "armored-reptile",
+      "dir": "armored-reptile",
+      "alias": "mirewhelp",
+      "species": "mirewhelp",
+      "subjectId": "ppc_reptile_34054f35c6af4de3",
+      "packageDigest": "5841aefdfbbb3a762f1408aacd378a40c962d7b7d1ae7d6be358728a7ddd0dd1",
+      "atlasSha256": "d7d94da29be10c32bb61ae7d0dd7f2192a9b199d2101c85b6da7f29107a80313",
+      "genome": {
+        "family": "reptile",
+        "contentId": "34054f35c6af4de3",
+        "name": "Grovek",
+        "seed": 424242,
+        "designProfile": "armored_reptile",
+        "sha256": "e9398bae3610451fc0ea3fd84bf38c9b9e689745b921af4e37a5130ec069b00f",
+        "source": "design_profile"
+      },
+      "direction": "east",
+      "clips": {
+        "attack_melee": {
+          "frames": 30,
+          "loop": false,
+          "duration_ms": 2490.0
+        },
+        "hit": {
+          "frames": 16,
+          "loop": false,
+          "duration_ms": 1328.0
+        },
+        "idle": {
+          "frames": 24,
+          "loop": true,
+          "duration_ms": 1992.0
+        },
+        "walk": {
+          "frames": 5,
+          "loop": true,
+          "duration_ms": 415.0
+        }
+      }
     }
   ]
 }

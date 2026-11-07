@@ -1,0 +1,49 @@
+{
+  "backend": "procedural_pixel_creatures",
+  "upstreamCommit": "a2207c4bd6f1be51d426684cf58f11668def7579",
+  "generatorVersion": 2,
+  "experimental": true,
+  "designProfile": "giant_rat",
+  "note": "Preview-only experimental fixture from a curated design profile. Not canonical artwork and not a reidentification of the aliased species.",
+  "package": {
+    "subjectId": "ppc_quadruped_a74e077e34cc0c57",
+    "assetId": "ppc_quadruped_a74e077e34cc0c57",
+    "packageDigest": "39f168b2bb45910e8d25bf5886dda6b8a7cb94671708d8441a7e3786ad8bdb9d",
+    "atlasSha256": "529703f76eca22b256633c52e7e4ec618e8fa5874bd83e922aff142886bb1119"
+  },
+  "genome": {
+    "family": "quadruped",
+    "contentId": "a74e077e34cc0c57",
+    "name": "Grovek",
+    "seed": 424242,
+    "designProfile": "giant_rat",
+    "sha256": "da6248ad21abdbf7ec93b68ee2654d33ee3aea135ff5d94978b4aebd3806478c",
+    "source": "design_profile"
+  },
+  "direction": "east",
+  "bakeHitFlash": false,
+  "clips": {
+    "attack_melee": {
+      "frames": 16,
+      "loop": false,
+      "duration_ms": 1328.0
+    },
+    "hit": {
+      "frames": 15,
+      "loop": false,
+      "duration_ms": 1245.0
+    },
+    "idle": {
+      "frames": 24,
+      "loop": true,
+      "duration_ms": 1992.0
+    },
+    "walk": {
+      "frames": 8,
+      "loop": true,
+      "duration_ms": 664.0
+    }
+  },
+  "alias": "gutterrat",
+  "humanReview": "PENDING"
+}

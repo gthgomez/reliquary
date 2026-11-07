@@ -1,0 +1,846 @@
+{
+  "animations": {
+    "attack_melee": {
+      "duration_ms": 2490.0,
+      "events": [
+        {
+          "frame": 12,
+          "name": "impact"
+        }
+      ],
+      "fps": 12.05,
+      "frames": [
+        {
+          "duration_ms": 83.0,
+          "h": 51,
+          "index": 0,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 135,
+          "x": 0,
+          "y": 102
+        },
+        {
+          "duration_ms": 83.0,
+          "h": 51,
+          "index": 1,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 135,
+          "x": 135,
+          "y": 102
+        },
+        {
+          "duration_ms": 83.0,
+          "h": 51,
+          "index": 2,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 135,
+          "x": 270,
+          "y": 102
+        },
+        {
+          "duration_ms": 83.0,
+          "h": 51,
+          "index": 3,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 135,
+          "x": 405,
+          "y": 102
+        },
+        {
+          "duration_ms": 83.0,
+          "h": 51,
+          "index": 4,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 135,
+          "x": 540,
+          "y": 102
+        },
+        {
+          "duration_ms": 83.0,
+          "h": 51,
+          "index": 5,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 135,
+          "x": 675,
+          "y": 102
+        },
+        {
+          "duration_ms": 83.0,
+          "h": 51,
+          "index": 6,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 135,
+          "x": 810,
+          "y": 102
+        },
+        {
+          "duration_ms": 83.0,
+          "h": 51,
+          "index": 7,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 135,
+          "x": 945,
+          "y": 102
+        },
+        {
+          "duration_ms": 83.0,
+          "h": 51,
+          "index": 8,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 135,
+          "x": 1080,
+          "y": 102
+        },
+        {
+          "duration_ms": 83.0,
+          "h": 51,
+          "index": 9,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 135,
+          "x": 1215,
+          "y": 102
+        },
+        {
+          "duration_ms": 83.0,
+          "h": 51,
+          "index": 10,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 135,
+          "x": 1350,
+          "y": 102
+        },
+        {
+          "duration_ms": 83.0,
+          "h": 51,
+          "index": 11,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 135,
+          "x": 1485,
+          "y": 102
+        },
+        {
+          "duration_ms": 83.0,
+          "h": 51,
+          "index": 12,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 135,
+          "x": 1620,
+          "y": 102
+        },
+        {
+          "duration_ms": 83.0,
+          "h": 51,
+          "index": 13,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 135,
+          "x": 1755,
+          "y": 102
+        },
+        {
+          "duration_ms": 83.0,
+          "h": 51,
+          "index": 14,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 135,
+          "x": 1890,
+          "y": 102
+        },
+        {
+          "duration_ms": 83.0,
+          "h": 51,
+          "index": 15,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 135,
+          "x": 2025,
+          "y": 102
+        },
+        {
+          "duration_ms": 83.0,
+          "h": 51,
+          "index": 16,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 135,
+          "x": 2160,
+          "y": 102
+        },
+        {
+          "duration_ms": 83.0,
+          "h": 51,
+          "index": 17,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 135,
+          "x": 2295,
+          "y": 102
+        },
+        {
+          "duration_ms": 83.0,
+          "h": 51,
+          "index": 18,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 135,
+          "x": 2430,
+          "y": 102
+        },
+        {
+          "duration_ms": 83.0,
+          "h": 51,
+          "index": 19,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 135,
+          "x": 2565,
+          "y": 102
+        },
+        {
+          "duration_ms": 83.0,
+          "h": 51,
+          "index": 20,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 135,
+          "x": 2700,
+          "y": 102
+        },
+        {
+          "duration_ms": 83.0,
+          "h": 51,
+          "index": 21,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 135,
+          "x": 2835,
+          "y": 102
+        },
+        {
+          "duration_ms": 83.0,
+          "h": 51,
+          "index": 22,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 135,
+          "x": 2970,
+          "y": 102
+        },
+        {
+          "duration_ms": 83.0,
+          "h": 51,
+          "index": 23,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 135,
+          "x": 3105,
+          "y": 102
+        },
+        {
+          "duration_ms": 83.0,
+          "h": 51,
+          "index": 24,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 135,
+          "x": 3240,
+          "y": 102
+        },
+        {
+          "duration_ms": 83.0,
+          "h": 51,
+          "index": 25,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 135,
+          "x": 3375,
+          "y": 102
+        },
+        {
+          "duration_ms": 83.0,
+          "h": 51,
+          "index": 26,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 135,
+          "x": 3510,
+          "y": 102
+        },
+        {
+          "duration_ms": 83.0,
+          "h": 51,
+          "index": 27,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 135,
+          "x": 3645,
+          "y": 102
+        },
+        {
+          "duration_ms": 83.0,
+          "h": 51,
+          "index": 28,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 135,
+          "x": 3780,
+          "y": 102
+        },
+        {
+          "duration_ms": 83.0,
+          "h": 51,
+          "index": 29,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 135,
+          "x": 3915,
+          "y": 102
+        }
+      ],
+      "gameplay_root": [
+        78.0,
+        43.0
+      ],
+      "logical_pivot": [
+        78.0,
+        43.0
+      ],
+      "loop": false,
+      "review_disposition": "UNREVIEWED",
+      "state": "attack_melee"
+    },
+    "hit": {
+      "duration_ms": 1328.0,
+      "events": [],
+      "fps": 12.05,
+      "frames": [
+        {
+          "duration_ms": 83.0,
+          "h": 51,
+          "index": 0,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 135,
+          "x": 0,
+          "y": 153
+        },
+        {
+          "duration_ms": 83.0,
+          "h": 51,
+          "index": 1,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 135,
+          "x": 135,
+          "y": 153
+        },
+        {
+          "duration_ms": 83.0,
+          "h": 51,
+          "index": 2,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 135,
+          "x": 270,
+          "y": 153
+        },
+        {
+          "duration_ms": 83.0,
+          "h": 51,
+          "index": 3,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 135,
+          "x": 405,
+          "y": 153
+        },
+        {
+          "duration_ms": 83.0,
+          "h": 51,
+          "index": 4,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 135,
+          "x": 540,
+          "y": 153
+        },
+        {
+          "duration_ms": 83.0,
+          "h": 51,
+          "index": 5,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 135,
+          "x": 675,
+          "y": 153
+        },
+        {
+          "duration_ms": 83.0,
+          "h": 51,
+          "index": 6,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 135,
+          "x": 810,
+          "y": 153
+        },
+        {
+          "duration_ms": 83.0,
+          "h": 51,
+          "index": 7,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 135,
+          "x": 945,
+          "y": 153
+        },
+        {
+          "duration_ms": 83.0,
+          "h": 51,
+          "index": 8,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 135,
+          "x": 1080,
+          "y": 153
+        },
+        {
+          "duration_ms": 83.0,
+          "h": 51,
+          "index": 9,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 135,
+          "x": 1215,
+          "y": 153
+        },
+        {
+          "duration_ms": 83.0,
+          "h": 51,
+          "index": 10,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 135,
+          "x": 1350,
+          "y": 153
+        },
+        {
+          "duration_ms": 83.0,
+          "h": 51,
+          "index": 11,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 135,
+          "x": 1485,
+          "y": 153
+        },
+        {
+          "duration_ms": 83.0,
+          "h": 51,
+          "index": 12,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 135,
+          "x": 1620,
+          "y": 153
+        },
+        {
+          "duration_ms": 83.0,
+          "h": 51,
+          "index": 13,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 135,
+          "x": 1755,
+          "y": 153
+        },
+        {
+          "duration_ms": 83.0,
+          "h": 51,
+          "index": 14,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 135,
+          "x": 1890,
+          "y": 153
+        },
+        {
+          "duration_ms": 83.0,
+          "h": 51,
+          "index": 15,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 135,
+          "x": 2025,
+          "y": 153
+        }
+      ],
+      "gameplay_root": [
+        78.0,
+        43.0
+      ],
+      "logical_pivot": [
+        78.0,
+        43.0
+      ],
+      "loop": false,
+      "review_disposition": "UNREVIEWED",
+      "state": "hit"
+    },
+    "idle": {
+      "duration_ms": 1992.0,
+      "events": [],
+      "fps": 12.05,
+      "frames": [
+        {
+          "duration_ms": 83.0,
+          "h": 51,
+          "index": 0,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 135,
+          "x": 0,
+          "y": 0
+        },
+        {
+          "duration_ms": 83.0,
+          "h": 51,
+          "index": 1,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 135,
+          "x": 135,
+          "y": 0
+        },
+        {
+          "duration_ms": 83.0,
+          "h": 51,
+          "index": 2,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 135,
+          "x": 270,
+          "y": 0
+        },
+        {
+          "duration_ms": 83.0,
+          "h": 51,
+          "index": 3,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 135,
+          "x": 405,
+          "y": 0
+        },
+        {
+          "duration_ms": 83.0,
+          "h": 51,
+          "index": 4,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 135,
+          "x": 540,
+          "y": 0
+        },
+        {
+          "duration_ms": 83.0,
+          "h": 51,
+          "index": 5,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 135,
+          "x": 675,
+          "y": 0
+        },
+        {
+          "duration_ms": 83.0,
+          "h": 51,
+          "index": 6,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 135,
+          "x": 810,
+          "y": 0
+        },
+        {
+          "duration_ms": 83.0,
+          "h": 51,
+          "index": 7,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 135,
+          "x": 945,
+          "y": 0
+        },
+        {
+          "duration_ms": 83.0,
+          "h": 51,
+          "index": 8,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 135,
+          "x": 1080,
+          "y": 0
+        },
+        {
+          "duration_ms": 83.0,
+          "h": 51,
+          "index": 9,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 135,
+          "x": 1215,
+          "y": 0
+        },
+        {
+          "duration_ms": 83.0,
+          "h": 51,
+          "index": 10,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 135,
+          "x": 1350,
+          "y": 0
+        },
+        {
+          "duration_ms": 83.0,
+          "h": 51,
+          "index": 11,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 135,
+          "x": 1485,
+          "y": 0
+        },
+        {
+          "duration_ms": 83.0,
+          "h": 51,
+          "index": 12,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 135,
+          "x": 1620,
+          "y": 0
+        },
+        {
+          "duration_ms": 83.0,
+          "h": 51,
+          "index": 13,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 135,
+          "x": 1755,
+          "y": 0
+        },
+        {
+          "duration_ms": 83.0,
+          "h": 51,
+          "index": 14,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 135,
+          "x": 1890,
+          "y": 0
+        },
+        {
+          "duration_ms": 83.0,
+          "h": 51,
+          "index": 15,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 135,
+          "x": 2025,
+          "y": 0
+        },
+        {
+          "duration_ms": 83.0,
+          "h": 51,
+          "index": 16,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 135,
+          "x": 2160,
+          "y": 0
+        },
+        {
+          "duration_ms": 83.0,
+          "h": 51,
+          "index": 17,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 135,
+          "x": 2295,
+          "y": 0
+        },
+        {
+          "duration_ms": 83.0,
+          "h": 51,
+          "index": 18,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 135,
+          "x": 2430,
+          "y": 0
+        },
+        {
+          "duration_ms": 83.0,
+          "h": 51,
+          "index": 19,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 135,
+          "x": 2565,
+          "y": 0
+        },
+        {
+          "duration_ms": 83.0,
+          "h": 51,
+          "index": 20,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 135,
+          "x": 2700,
+          "y": 0
+        },
+        {
+          "duration_ms": 83.0,
+          "h": 51,
+          "index": 21,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 135,
+          "x": 2835,
+          "y": 0
+        },
+        {
+          "duration_ms": 83.0,
+          "h": 51,
+          "index": 22,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 135,
+          "x": 2970,
+          "y": 0
+        },
+        {
+          "duration_ms": 83.0,
+          "h": 51,
+          "index": 23,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 135,
+          "x": 3105,
+          "y": 0
+        }
+      ],
+      "gameplay_root": [
+        78.0,
+        43.0
+      ],
+      "logical_pivot": [
+        78.0,
+        43.0
+      ],
+      "loop": true,
+      "review_disposition": "UNREVIEWED",
+      "state": "idle"
+    },
+    "walk": {
+      "duration_ms": 415.0,
+      "events": [],
+      "fps": 12.05,
+      "frames": [
+        {
+          "duration_ms": 83.0,
+          "h": 51,
+          "index": 0,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 135,
+          "x": 0,
+          "y": 51
+        },
+        {
+          "duration_ms": 83.0,
+          "h": 51,
+          "index": 1,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 135,
+          "x": 135,
+          "y": 51
+        },
+        {
+          "duration_ms": 83.0,
+          "h": 51,
+          "index": 2,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 135,
+          "x": 270,
+          "y": 51
+        },
+        {
+          "duration_ms": 83.0,
+          "h": 51,
+          "index": 3,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 135,
+          "x": 405,
+          "y": 51
+        },
+        {
+          "duration_ms": 83.0,
+          "h": 51,
+          "index": 4,
+          "offset_x": 0.0,
+          "offset_y": 0.0,
+          "w": 135,
+          "x": 540,
+          "y": 51
+        }
+      ],
+      "gameplay_root": [
+        78.0,
+        43.0
+      ],
+      "logical_pivot": [
+        78.0,
+        43.0
+      ],
+      "loop": true,
+      "review_disposition": "UNREVIEWED",
+      "state": "walk"
+    }
+  },
+  "asset_id": "ppc_reptile_34054f35c6af4de3",
+  "atlas": {
+    "file": "atlas.png",
+    "height": 204,
+    "sha256": "d7d94da29be10c32bb61ae7d0dd7f2192a9b199d2101c85b6da7f29107a80313",
+    "width": 4050
+  },
+  "cell_dimensions": [
+    135,
+    51
+  ],
+  "direction": "east",
+  "runtime_status": "PREVIEW_ONLY",
+  "schema_version": "1.7.0",
+  "subject_id": "ppc_reptile_34054f35c6af4de3"
+}
