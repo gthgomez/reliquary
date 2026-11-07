@@ -1,0 +1,33 @@
+{
+  "asset_id": "emberkit",
+  "backend": "generic",
+  "backend_commit": "",
+  "backend_version": "ages-procedural-authoring/1.0",
+  "candidate_pack_id": "cand_20261107_065138_5d34a34f",
+  "dispositions": {
+    "attack_elemental": "UNREVIEWED",
+    "attack_melee": "UNREVIEWED",
+    "faint": "UNREVIEWED",
+    "hit": "UNREVIEWED",
+    "idle": "UNREVIEWED"
+  },
+  "export_target": "web",
+  "external_import": {
+    "asset_type": "sprite",
+    "license_status": "DECLARED_UNVERIFIED",
+    "source_provenance_sha256": "8ab7000a3f6ac263c02e01867ffe164ba86433b6b5208a0a0dfb628d6198f5ba"
+  },
+  "frame_counts": {
+    "attack_elemental": 6,
+    "attack_melee": 5,
+    "faint": 4,
+    "hit": 3,
+    "idle": 4
+  },
+  "locomotion_anchor_sha256": "",
+  "runtime_status": "PREVIEW_ONLY",
+  "schema_version": "1.7.0",
+  "source_master_sha256": "8ab7000a3f6ac263c02e01867ffe164ba86433b6b5208a0a0dfb628d6198f5ba",
+  "source_request_hash": "9294a6c6c74014a4b872ac4bb103c0f28beb91130607e0d0799c29e246fbe8b5",
+  "v1_6_manifest_sha256": ""
+}
