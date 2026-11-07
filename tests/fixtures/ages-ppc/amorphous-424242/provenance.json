@@ -1,0 +1,31 @@
+{
+  "asset_id": "ppc_amorphous_424242",
+  "backend": "generic",
+  "backend_commit": "",
+  "backend_version": "ppc-Procedural Pixel Creatures 1.0.0",
+  "candidate_pack_id": "cand_20261107_145336_6b1308c2",
+  "dispositions": {
+    "attack_melee": "UNREVIEWED",
+    "hit": "UNREVIEWED",
+    "idle": "UNREVIEWED",
+    "walk": "UNREVIEWED"
+  },
+  "export_target": "web",
+  "external_import": {
+    "asset_type": "sprite",
+    "license_status": "DECLARED_UNVERIFIED",
+    "source_provenance_sha256": "47a96314be12fe7d9af5974b6e4a5fd34f7e313f72b4aad4d436b14c4cc8bd34"
+  },
+  "frame_counts": {
+    "attack_melee": 13,
+    "hit": 7,
+    "idle": 24,
+    "walk": 10
+  },
+  "locomotion_anchor_sha256": "",
+  "runtime_status": "PREVIEW_ONLY",
+  "schema_version": "1.7.0",
+  "source_master_sha256": "47a96314be12fe7d9af5974b6e4a5fd34f7e313f72b4aad4d436b14c4cc8bd34",
+  "source_request_hash": "a54ae40cd24ff946a43e696815ef316803bbfb745c71cdc6eabf3b35817b6c1d",
+  "v1_6_manifest_sha256": ""
+}

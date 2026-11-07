@@ -24,6 +24,7 @@
     "verify:pwa": "node scripts/verify-pwa.mjs",
     "test:browser": "node scripts/browser-regression.mjs",
     "test:animations": "node scripts/build-ages-preview.mjs && node tests/browser/ages-animations.mjs",
+    "test:ppc": "node scripts/build-ages-preview.mjs && node tests/browser/ages-ppc.mjs",
     "build:web": "node scripts/build-web.mjs && node scripts/assert-production-web-shell.mjs",
     "verify:web:runtime": "node scripts/assert-production-runtime.mjs",
     "build:ages-preview": "node scripts/build-ages-preview.mjs",

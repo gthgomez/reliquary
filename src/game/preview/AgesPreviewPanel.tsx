@@ -15,6 +15,7 @@ export default function AgesPreviewPanel({
   const assets = useRef<Record<Slot, PreviewAsset | null>>({ creature: null, effect: null });
   const readout = useRef<HTMLDetailsElement>(null);
   const revision = useRef(0);
+  const aliasRef = useRef("");
   const [labels, setLabels] = useState<Record<Slot, string>>({ creature: "", effect: "" });
   const [status, setStatus] = useState({
     code: "EMPTY",
@@ -46,14 +47,19 @@ export default function AgesPreviewPanel({
     resetReadout();
     const { creature, effect } = assets.current;
     game.battlePreview = creature
-      ? createBattlePreview(creature, effect, (data) => {
-          const element = readout.current;
-          if (!element) return;
-          for (const [key, value] of Object.entries(data)) {
-            const name = "agesPlayback" + key[0]!.toUpperCase() + key.slice(1);
-            if (element.dataset[name] !== value) element.dataset[name] = value;
-          }
-        })
+      ? createBattlePreview(
+          creature,
+          effect,
+          (data) => {
+            const element = readout.current;
+            if (!element) return;
+            for (const [key, value] of Object.entries(data)) {
+              const name = "agesPlayback" + key[0]!.toUpperCase() + key.slice(1);
+              if (element.dataset[name] !== value) element.dataset[name] = value;
+            }
+          },
+          { subjectAlias: aliasRef.current },
+        )
       : null;
   };
 
@@ -161,6 +167,20 @@ export default function AgesPreviewPanel({
               required
               spellCheck={false}
               autoComplete="off"
+              style={{ width: "100%" }}
+            />
+          </label>
+          <label>
+            Preview as species (optional)
+            <input
+              name="species"
+              type="text"
+              spellCheck={false}
+              autoComplete="off"
+              placeholder="e.g. dewslime"
+              onChange={(event) => {
+                aliasRef.current = event.target.value.trim();
+              }}
               style={{ width: "100%" }}
             />
           </label>

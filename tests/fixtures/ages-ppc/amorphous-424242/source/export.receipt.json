@@ -1,0 +1,103 @@
+{
+  "status": "PASS",
+  "backend": "procedural_pixel_creatures",
+  "frameworkVersion": "1.0.0",
+  "generatorVersion": 2,
+  "upstreamCommit": "a2207c4bd6f1be51d426684cf58f11668def7579",
+  "genome": {
+    "format": "ppc.creature",
+    "formatVersion": 1,
+    "family": "amorphous",
+    "name": "Grovek",
+    "contentId": "0244d2df6da7136f",
+    "contentHash": "0244d2df6da7136f",
+    "seed": 424242,
+    "sha256": "ca09c7226c75fe1d496b00b95b3034a7dacf435cddae97067bbac4056b429446"
+  },
+  "direction": {
+    "index": 0,
+    "name": "E"
+  },
+  "fps": 12,
+  "quality": 2,
+  "shadow": true,
+  "frame": {
+    "width": 25,
+    "height": 49,
+    "originX": 13,
+    "originY": 43
+  },
+  "clips": [
+    {
+      "name": "idle_E",
+      "state": "idle",
+      "direction": 0,
+      "directionName": "E",
+      "loop": true,
+      "fps": 12,
+      "frames": 24,
+      "durationMs": 1992,
+      "rootMotion": {
+        "groundSpeed": 0
+      }
+    },
+    {
+      "name": "walk_E",
+      "state": "walk",
+      "direction": 0,
+      "directionName": "E",
+      "loop": true,
+      "fps": 12,
+      "frames": 10,
+      "durationMs": 830,
+      "rootMotion": {
+        "groundSpeed": 41.2221
+      }
+    },
+    {
+      "name": "action_E",
+      "state": "action",
+      "direction": 0,
+      "directionName": "E",
+      "loop": false,
+      "fps": 12,
+      "frames": 13,
+      "durationMs": 1079,
+      "rootMotion": {
+        "groundSpeed": 0
+      }
+    },
+    {
+      "name": "hit_E",
+      "state": "hit",
+      "direction": 0,
+      "directionName": "E",
+      "loop": false,
+      "fps": 12,
+      "frames": 7,
+      "durationMs": 581,
+      "rootMotion": {
+        "groundSpeed": 0
+      }
+    }
+  ],
+  "totalFrames": 54,
+  "atlasPixels": 117600,
+  "pages": [
+    {
+      "file": "page_000.png",
+      "width": 600,
+      "height": 196,
+      "bytes": 9861,
+      "sha256": "1402283987e07b169e745d332367447575a8ef2f8da5b47614e371497b034881"
+    }
+  ],
+  "outputs": {
+    "metadata": "ppc.spritesheet.json",
+    "genome": "genome.json",
+    "metadataSha256": "7e4068eee34dca75944bdbda3b68720a273255901bd6d47978d473ee03010f0c"
+  },
+  "warnings": [],
+  "elapsedMs": 185,
+  "managedMemoryBytes": 3790392
+}
