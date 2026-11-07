@@ -38,10 +38,21 @@ type PlayingAttack = {
   cue: PreviewAttackCue;
 };
 type Reaction = { clip: PreviewAnimation; startAt: number };
-type Faint = { clip: PreviewAnimation; startedAt: number };
+type Faint = { clip: PreviewAnimation; startAt: number };
 
 /** Delay before a defender's hit reaction, when the attacker clip is unknown. */
 export const REACTION_DELAY_MS = 240;
+/** Delay before a defeat pose, when the attacker clip is unknown. */
+export const FAINT_DELAY_MS = 240;
+
+export type PreviewOptions = {
+  /**
+   * Preview-only binding of a package to a game species. The package keeps its
+   * true subject id and provenance; this only lets an experimental pack stand in
+   * for a species during a preview session.
+   */
+  subjectAlias?: string;
+};
 
 export interface BattlePreview {
   attack(battle: BattleState, cue: PreviewAttackCue): void;
@@ -181,10 +192,12 @@ export function createBattlePreview(
   spriteAsset: PreviewAsset,
   effectAsset: PreviewAsset | null,
   report: (data: Record<string, string>) => void,
+  options: PreviewOptions = {},
 ): BattlePreview {
   const clips = spriteAsset.manifest.animations;
   const effectClips = effectAsset?.manifest.animations ?? {};
-  const subject = spriteAsset.manifest.subject_id;
+  const subject =
+    options.subjectAlias?.trim() || spriteAsset.manifest.subject_id;
   let idleStartedAt = performance.now();
   const attacks = new Map<BattleAnimSide, PlayingAttack>();
   const reactions = new Map<BattleAnimSide, Reaction>();
@@ -235,9 +248,18 @@ export function createBattlePreview(
         if (reactionClip) {
           const defender = targetSideFor(cue.side, cue);
           // Let an in-flight attack on the defender finish before the flinch.
-          const attack = attacks.get(defender);
-          const attackEnd = attack ? attack.startedAt + attack.clip.duration_ms : 0;
-          const startAt = Math.max(startedAt + REACTION_DELAY_MS, attackEnd);
+          const defenderAttack = attacks.get(defender);
+          const attackEnd = defenderAttack
+            ? defenderAttack.startedAt + defenderAttack.clip.duration_ms
+            : 0;
+          // Prefer the attacker's real impact marker. Only fall back to a bounded
+          // delay when this package does not carry the attacker's clip timing.
+          const attackerAttack = attacks.get(cue.side);
+          const impact =
+            attackerAttack && Number.isFinite(attackerAttack.impactAt)
+              ? attackerAttack.impactAt
+              : REACTION_DELAY_MS;
+          const startAt = Math.max(startedAt + impact, attackEnd);
           reactions.set(defender, { clip: reactionClip, startAt });
         }
       }
@@ -253,7 +275,17 @@ export function createBattlePreview(
       if (speciesId !== subject || faints.has(side)) return;
       const clip = resolveFaintClip(clips);
       if (!clip) return;
-      faints.set(side, { clip, startedAt: performance.now() });
+      // Combat resolves before the attack animation is shown. Delay the defeat
+      // pose until the attacker's impact marker so it does not begin before the
+      // hit visually connects.
+      const attackerSide: BattleAnimSide = side === "player" ? "foe" : "player";
+      const attack = attacks.get(attackerSide);
+      const delay =
+        attack && Number.isFinite(attack.impactAt) ? attack.impactAt : FAINT_DELAY_MS;
+      faints.set(side, {
+        clip,
+        startAt: performance.now() + Math.max(0, delay),
+      });
     },
     faintVisible(side, speciesId) {
       return speciesId === subject && faints.has(side);
@@ -274,10 +306,10 @@ export function createBattlePreview(
     sprite(side, speciesId) {
       if (speciesId !== subject) return undefined;
       const faint = faints.get(side);
-      if (faint) {
+      if (faint && now >= faint.startAt) {
         const frame = reduced
           ? lastFrame(faint.clip)
-          : frameAt(faint.clip, now - faint.startedAt, false) ?? lastFrame(faint.clip);
+          : frameAt(faint.clip, now - faint.startAt, false) ?? lastFrame(faint.clip);
         readout[`${side}Clip`] = faint.clip.state;
         readout[`${side}Frame`] = String(frame.index);
         return paintFrame(spriteAsset, faint.clip, frame);

@@ -6,6 +6,7 @@ import {
   firstImpactAt,
   frameAt,
   REACTION_DELAY_MS,
+  FAINT_DELAY_MS,
   resolveAttackClip,
   resolveEffectClip,
   resolveFaintClip,
@@ -73,6 +74,12 @@ function animation(state: string, frames = 2, loop = false): PreviewAnimation {
       offset_y: 0,
     })),
   };
+}
+
+function animationWithImpact(state: string, frames: number, impactFrame: number): PreviewAnimation {
+  const clip = animation(state, frames);
+  clip.events = [{ name: "impact", frame: impactFrame }];
+  return clip;
 }
 
 function previewAsset(
@@ -172,7 +179,7 @@ test("resolves reaction and faint clip aliases", () => {
   assert.equal(resolveFaintClip({}), undefined);
 });
 
-test("plays and holds a one-shot faint clip and ignores other subjects", () => {
+test("plays a one-shot faint clip after the impact delay and holds it", async () => {
   let report: Record<string, string> = {};
   const battle = {} as BattleState;
   const view = createBattlePreview(
@@ -192,6 +199,12 @@ test("plays and holds a one-shot faint clip and ignores other subjects", () => {
   assert.equal(view.faintVisible("foe", "gutterrat"), false);
   assert.equal(view.faintVisible("player", "emberkit"), false);
   const { ctx, draws } = recordingContext();
+  const early = view.sprite("foe", "emberkit");
+  assert.ok(early);
+  view.overlay(ctx, layoutFixture());
+  assert.notEqual(report.foeClip, "faint");
+  await new Promise((resolve) => setTimeout(resolve, FAINT_DELAY_MS + 40));
+  view.beginFrame(battle, false);
   const paint = view.sprite("foe", "emberkit");
   assert.ok(paint);
   paint(ctx, 0, 0, 32, 32);
@@ -231,6 +244,83 @@ test("a hit on the subject plays a reaction after the attacker clip", async () =
   view.sprite("player", "emberkit");
   view.overlay(recordingContext().ctx, layoutFixture());
   assert.equal(report.playerClip, "hit");
+});
+
+test("a defender reaction follows the real elemental impact marker", async () => {
+  let report: Record<string, string> = {};
+  const battle = {} as BattleState;
+  const view = createBattlePreview(
+    previewAsset({
+      idle: animation("idle", 2, true),
+      attack_elemental: animationWithImpact("attack_elemental", 6, 3),
+      hit: animation("hit", 3),
+    }),
+    null,
+    (data) => {
+      report = data;
+    },
+  );
+  view.beginFrame(battle, false);
+  view.attack(battle, {
+    skillId: "cinder",
+    side: "player",
+    speciesId: "emberkit",
+    hit: true,
+    targetSide: "foe",
+    targetSpeciesId: "emberkit",
+    kind: "spell",
+    element: "ember",
+  });
+  // Impact marker is on frame 3 => 300 ms; a fixed 240 ms reaction would be early.
+  await new Promise((resolve) => setTimeout(resolve, 240));
+  view.beginFrame(battle, false);
+  view.sprite("foe", "emberkit");
+  view.overlay(recordingContext().ctx, layoutFixture());
+  assert.notEqual(report.foeClip, "hit");
+  await new Promise((resolve) => setTimeout(resolve, 120));
+  view.beginFrame(battle, false);
+  view.sprite("foe", "emberkit");
+  view.overlay(recordingContext().ctx, layoutFixture());
+  assert.equal(report.foeClip, "hit");
+});
+
+test("a defeat pose waits for the attacker's impact marker", async () => {
+  let report: Record<string, string> = {};
+  const battle = {} as BattleState;
+  const view = createBattlePreview(
+    previewAsset({
+      idle: animation("idle", 2, true),
+      attack_elemental: animationWithImpact("attack_elemental", 6, 3),
+      faint: animation("faint", 3),
+    }),
+    null,
+    (data) => {
+      report = data;
+    },
+  );
+  view.beginFrame(battle, false);
+  view.attack(battle, {
+    skillId: "cinder",
+    side: "player",
+    speciesId: "emberkit",
+    hit: true,
+    targetSide: "foe",
+    targetSpeciesId: "emberkit",
+    kind: "spell",
+    element: "ember",
+  });
+  view.faint("foe", "emberkit");
+  assert.equal(view.faintVisible("foe", "emberkit"), true);
+  await new Promise((resolve) => setTimeout(resolve, 240));
+  view.beginFrame(battle, false);
+  view.sprite("foe", "emberkit");
+  view.overlay(recordingContext().ctx, layoutFixture());
+  assert.notEqual(report.foeClip, "faint");
+  await new Promise((resolve) => setTimeout(resolve, 120));
+  view.beginFrame(battle, false);
+  view.sprite("foe", "emberkit");
+  view.overlay(recordingContext().ctx, layoutFixture());
+  assert.equal(report.foeClip, "faint");
 });
 
 test("applies the element-matched effect when a hit lands", async () => {

@@ -226,7 +226,7 @@ try {
           observed = { state };
         } else if (run.kind === "faint") {
           await performSkill(page, "Howl", 0);
-          await page.clock.runFor(200);
+          await page.clock.runFor(320);
           const state = await getData(page);
           assertClip(state, "Player", "faint", `${run.name} faint`);
           await page.screenshot({ path: join(artifactDir, `${run.name}-faint.png`) });
