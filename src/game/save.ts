@@ -21,6 +21,8 @@ export interface SaveStorage {
   removeItem(key: string): void;
 }
 
+type ReadableSaveStorage = Pick<SaveStorage, "getItem"> & Partial<SaveStorage>;
+
 const statSchema = z.object({
   hp: z.number().finite().positive(), mp: z.number().finite().positive(),
   atk: z.number().finite().positive(), def: z.number().finite().positive(),
@@ -142,7 +144,7 @@ export function serializeSave(save: GameSave): string | null {
   return JSON.stringify(validated);
 }
 
-export function loadSave(source: SaveStorage | null = browserStorage()): GameSave | null {
+export function loadSave(source: ReadableSaveStorage | null = browserStorage()): GameSave | null {
   if (!source) return null;
   for (const key of [SAVE_KEY, SAVE_BACKUP, LEGACY_SAVE_KEY, LEGACY_SAVE_BACKUP, LEGACY_V1_KEY, LEGACY_V1_BACKUP]) {
     try {
@@ -227,7 +229,7 @@ export function writeSave(save: GameSave, target: SaveStorage | null = browserSt
   }
 }
 
-export function hasSave(source: SaveStorage | null = browserStorage()): boolean {
+export function hasSave(source: ReadableSaveStorage | null = browserStorage()): boolean {
   return loadSave(source) !== null;
 }
 

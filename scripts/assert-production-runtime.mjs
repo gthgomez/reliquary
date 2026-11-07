@@ -46,16 +46,16 @@ async function dismissIntro(page) {
 
 const { server, baseUrl } = await startStaticServer(0);
 try {
-  const runtime = await withBrowser(async (page) => {
+  const runtime = await withBrowser(async (page, context) => {
     await page.setViewportSize({ width: 390, height: 667 });
-    await page.goto(baseUrl, { waitUntil: "networkidle", timeout: 90_000 });
+    await page.goto(baseUrl + "?ages-preview=1", { waitUntil: "networkidle", timeout: 90_000 });
     await waitForGameBoot(page);
     await page.getByRole("button", { name: "Start", exact: true }).click();
     await dismissIntro(page);
     await page.waitForSelector(".hud-menu", { timeout: 20_000 });
     await page.waitForTimeout(400);
 
-    return page.evaluate(async () => {
+    const online = await page.evaluate(async () => {
       const rel = window.__reliquary;
       const probeAttempt = async () => {
         try {
@@ -86,10 +86,28 @@ try {
         normalUi: {
           hasBattleControls: document.querySelector(".battle-controls") != null,
           hudMenuVisible: document.querySelector(".hud-menu") != null,
+          agesPreviewVisible: document.querySelector("#ages-candidate-preview") != null,
         },
       };
     });
-  });
+    const previewRequest = await context.request.get(baseUrl + "sprite.runtime.json");
+    assert.equal(previewRequest.status(), 404, "production must not serve a preview manifest");
+
+    await page.waitForFunction(() => Boolean(navigator.serviceWorker.controller));
+    const precache = await page.evaluate(async () => {
+      const names = (await caches.keys()).filter((name) => name.startsWith("workbox-precache"));
+      const entries = await Promise.all(names.map(async (name) => (await caches.open(name)).keys()));
+      return entries.flat().map((entry) => new URL(entry.url).pathname);
+    });
+    assert.ok(precache.includes("/index.html"), "production must precache the game shell");
+    assert.equal(precache.some((path) => /sprite\.runtime\.json|agespreviewpanel-/i.test(path)), false);
+
+    await context.setOffline(true);
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await waitForGameBoot(page);
+    assert.equal(await page.locator("#ages-candidate-preview").count(), 0, "offline production must omit preview UI");
+    return { ...online, offlinePrecacheEntries: precache.length, previewManifestStatus: previewRequest.status() };
+  }, { context: { serviceWorkers: "allow" } });
 
   console.log("[assert:prod-runtime] dead bundle strings (informational):", deadStringPresent);
   console.log("[assert:prod-runtime] live window probe:", JSON.stringify(runtime, null, 2));
@@ -101,6 +119,7 @@ try {
   for (const [name, type] of Object.entries(runtime.mutators)) {
     assert.equal(type, "undefined", `production __reliquary must not expose ${name}`);
   }
+  assert.equal(runtime.normalUi.agesPreviewVisible, false, "production must ignore the AGES preview query");
   assert.equal(runtime.startWildViaControlsTest, false, "production must not enter battle via __controlsTest");
   assert.ok(
     runtime.windowKeys.reliquaryKeys.every((k) =>

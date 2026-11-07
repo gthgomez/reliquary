@@ -206,12 +206,17 @@ function paintPlayerSilhouettePlate(
   ctx.fill();
 }
 
+export type BattleSpritePaint = (
+  ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number,
+) => void;
+
 export function drawBattleFoeSprite(
   ctx: CanvasRenderingContext2D,
-  img: CanvasImageSource,
+  img: CanvasImageSource | undefined,
   layout: BattleLayout,
   shakeX: number,
   offset: { dx?: number; dy?: number } = {},
+  paint?: BattleSpritePaint,
 ): void {
   const { x, y, w, h } = layout.foe;
   const dx = offset.dx ?? 0;
@@ -230,14 +235,18 @@ export function drawBattleFoeSprite(
   const baseY = drawY + dh;
   paintFoeContrastStage(ctx, x + shakeX + dx, y + dy, w, h);
   paintBattleGroundShadow(ctx, cx, baseY, w, 0.42);
-  ctx.drawImage(img, drawX, drawY, dw, dh);
+  // Keep the aspect-fit rect for both the static image and any preview paint
+  // callback: a preview sprite must occupy the same fitted area as real art.
+  if (paint) paint(ctx, drawX, drawY, dw, dh);
+  else if (img) ctx.drawImage(img, drawX, drawY, dw, dh);
 }
 
 export function drawBattlePlayerSprite(
   ctx: CanvasRenderingContext2D,
-  img: CanvasImageSource,
+  img: CanvasImageSource | undefined,
   layout: BattleLayout,
   offset: { dx?: number; dy?: number } = {},
+  paint?: BattleSpritePaint,
 ): void {
   const { cx, cy, size, scale } = layout.player;
   const dx = offset.dx ?? 0;
@@ -248,6 +257,7 @@ export function drawBattlePlayerSprite(
   ctx.save();
   ctx.translate(cx + dx, cy + dy);
   ctx.scale(-scale, scale);
-  ctx.drawImage(img, -half, -half, size, size);
+  if (paint) paint(ctx, -half, -half, size, size);
+  else if (img) ctx.drawImage(img, -half, -half, size, size);
   ctx.restore();
 }

@@ -17,8 +17,9 @@ import { resolveNpcPortrait, type PortraitKey } from "./portraits.ts";
 import { FIXED_ENCOUNTERS } from "./encounters.ts";
 import { sfxPlay, startMusic, stopMusic, unlockAudio, isMuted, setMuted } from "./audio.ts";
 import { setSoundMutedStored } from "./ui/ui-chrome.ts";
-import { hasSave, cloneSave, loadSave, parseSave, SAVE_VERSION, serializeSave, WORLD_REVISION, writeSave } from "./save.ts";
+import { hasSave, cloneSave, loadSave, parseSave, SAVE_VERSION, serializeSave, WORLD_REVISION, writeSave, type SaveStorage } from "./save.ts";
 import { collectGameAssets } from "./assets.ts";
+import type { BattlePreview } from "./preview/battle-preview.ts";
 import { mathRandom, type RandomSource } from "./rng.ts";
 import { battleCommands, encounterAt, rollEncounter } from "./world/encounters.ts";
 import { isOccupied } from "./world/movement.ts";
@@ -205,6 +206,7 @@ export class ReliquaryGame {
 	private settledSteps = 0;
 	private safeCheckpoint: GameSave | null = null;
 	private saveWriteAllowed = true;
+	private readonly readOnlySaveSource?: Pick<SaveStorage, "getItem">;
 	lifecycle: "constructed" | "booted" | "stopped" = "constructed";
 	private readonly random: RandomSource;
 	private bootToken = 0;
@@ -221,12 +223,15 @@ export class ReliquaryGame {
 	private battleStableReserve: number | null = null;
 	private battleLayoutCanvasKey: string | null = null;
 	private battleIdlePhase = 0;
+	battlePreview: BattlePreview | null = null;
 	private reducedMotion = false;
 	private worldCamRelief: WorldCamReliefState = { relief: 0, contentPanY: 0 };
-	constructor(options: { random?: RandomSource } = {}) {
+	constructor(options: { random?: RandomSource; readOnlySaveSource?: Pick<SaveStorage, "getItem"> } = {}) {
 		this.random = options.random ?? mathRandom;
+		this.readOnlySaveSource = options.readOnlySaveSource;
+		this.saveWriteAllowed = !this.readOnlySaveSource;
 		this.snap = this.buildSnap();
-		this.hasSave = hasSave();
+		this.hasSave = hasSave(this.readOnlySaveSource);
 	}
 	subscribe = (fn: () => void): (() => void) => {
 		this.listeners.add(fn);
@@ -572,7 +577,7 @@ export class ReliquaryGame {
 	continueGame(): void {
 		unlockAudio();
 		startMusic();
-		const s = loadSave();
+		const s = loadSave(this.readOnlySaveSource);
 		if (!s) {
 			this.hasSave = false;
 			this.startNew(
@@ -649,6 +654,10 @@ export class ReliquaryGame {
 		this.emit();
 	}
 	importGame(text: string): boolean {
+		if (!this.saveWriteAllowed) {
+			this.toastMsg("This tab is read-only.");
+			return false;
+		}
 		if (this.battle) {
 			this.toastMsg("Not in the middle of a fight.");
 			this.emit();
@@ -687,7 +696,7 @@ export class ReliquaryGame {
 		return true;
 	}
 	setSaveWriteAllowed(allowed: boolean, message?: string): void {
-		this.saveWriteAllowed = allowed;
+		this.saveWriteAllowed = allowed && !this.readOnlySaveSource;
 		if (!allowed && message) this.toastMsg(message);
 		this.emit();
 	}
@@ -1609,6 +1618,12 @@ export class ReliquaryGame {
 		const sfxCue = events[events.length - 1]!.sfx;
 		if (log !== null) this.logBattle(log);
 		const event = events[0]!;
+		if (this.battlePreview && logIt && skill.kind !== "heal" && skill.power > 0 &&
+			(event.kind === "damage" || event.kind === "miss")) {
+			this.battlePreview.attack(b, {
+				skillId: skill.id, side: animSide, speciesId: atk.speciesId, hit: event.kind === "damage",
+			});
+		}
 		if (event.kind === "miss") sfxPlay.fail();
 		else if (event.sfx === "heal") sfxPlay.heal();
 		else if (event.sfx === "menu") sfxPlay.menu();
@@ -2293,20 +2308,25 @@ export class ReliquaryGame {
 		};
 		const geometry = { ...geometryBase, cosmeticOffset: { player: playerCosmetic, foe: foeCosmetic } };
 		reportBattleStageGeometry(cw, ch, geometry);
+		const preview = this.battlePreview;
+		preview?.beginFrame(b, this.reducedMotion);
 		const foe = b.foes[b.foeIndex]!;
 		if (foe && foe.hp > 0) {
 			const img = this.images[`sprite_${foe.speciesId}`];
 			const catchShake = b.phase === "catch" ? Math.sin(b.shake * 8) * 6 : 0;
-			if (img) {
-				drawBattleFoeSprite(ctx, img, layout, catchShake, foeCosmetic);
+			const paint = preview?.sprite("foe", foe.speciesId);
+			if (img || paint) {
+				drawBattleFoeSprite(ctx, img, layout, catchShake, foeCosmetic, paint);
 			}
 		}
 		const me = this.party[b.playerIndex]!;
 		if (me) {
 			const img = this.images[`sprite_${me.speciesId}`];
-			if (img) drawBattlePlayerSprite(ctx, img, layout, playerCosmetic);
+			const paint = preview?.sprite("player", me.speciesId);
+			if (img || paint) drawBattlePlayerSprite(ctx, img, layout, playerCosmetic, paint);
 		}
 		if (motion.projectile) paintGustProjectile(ctx, motion.projectile);
+		preview?.overlay(ctx, layout);
 	}
 };
 function basicStrike(b: Beast): Skill {

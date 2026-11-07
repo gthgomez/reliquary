@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join, dirname } from "node:path";
+import { basename, join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
 
@@ -45,11 +45,15 @@ test("deploy build still rejects a browser-test bundle", () => {
   assert.match(result.stderr, /production bundle must not contain getEconomy/);
 });
 
-function bundleText() {
+function bundlePath() {
   const html = readFileSync(join(root, ".vercel/output/static/index.html"), "utf8");
   const m = html.match(/\/assets\/(index-[^"']+\.js)/);
   assert.ok(m, "index.html missing bundle reference");
-  return readFileSync(join(root, ".vercel/output/static/assets", m[1]), "utf8");
+  return join(root, ".vercel/output/static/assets", m[1]);
+}
+
+function bundleText() {
+  return readFileSync(bundlePath(), "utf8");
 }
 
 const PROD_FORBIDDEN = [
@@ -87,7 +91,7 @@ test("production build:web excludes all browser-test probe identifiers", () => {
   }
 });
 
-test("browser-test build includes economy and battle UI probes for regression", () => {
+test("production rebuild discards the previous browser-test bundle and cache entry", () => {
   const build = spawnSync(process.execPath, [join(root, "scripts/build-web-test.mjs")], {
     cwd: root,
     stdio: "inherit",
@@ -99,4 +103,16 @@ test("browser-test build includes economy and battle UI probes for regression", 
   assert.equal(text.includes("setGold"), true);
   assert.equal(text.includes("seedForcedSwitch"), true);
   assert.equal(text.includes("primeSkillMenu"), true);
+  const browserTestBundle = bundlePath();
+
+  const production = spawnSync(process.execPath, [join(root, "scripts/build-web.mjs")], {
+    cwd: root,
+    stdio: "inherit",
+    timeout: 180_000,
+    env: { ...process.env, VITE_RELIQUARY_BROWSER_TEST: "" },
+  });
+  assert.equal(production.status, 0);
+  assert.equal(existsSync(browserTestBundle), false, "previous browser-test bundle remains public");
+  const serviceWorker = readFileSync(join(root, ".vercel/output/static/sw.js"), "utf8");
+  assert.equal(serviceWorker.includes(basename(browserTestBundle)), false, "previous browser-test bundle remains precached");
 });

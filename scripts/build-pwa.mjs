@@ -2,6 +2,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { generateSW } from "workbox-build";
+import { assertNoAgesPreviewAssets } from "./ages-production-assets.mjs";
 
 const root = join(fileURLToPath(new URL(".", import.meta.url)), "..");
 const staticDir = join(root, ".vercel/output/static");
@@ -11,6 +12,7 @@ export async function buildPwa(options = {}) {
   if (!existsSync(outDir)) {
     throw new Error(`Public build output missing at ${outDir}. Run npm run build:web first.`);
   }
+  assertNoAgesPreviewAssets(outDir);
   const manifest = JSON.parse(readFileSync(join(outDir, "manifest.webmanifest"), "utf8"));
   if (manifest.short_name !== "Reliquary") {
     throw new Error("manifest identity must be Reliquary for the public web build");
