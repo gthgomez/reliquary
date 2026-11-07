@@ -3,9 +3,12 @@ import { test } from "node:test";
 import { battleSpriteClientRects, measureBattleUiReserveCanvas, rectsOverlap } from "./battle-layout-dom.ts";
 import {
   computeBattleLayout,
+  drawBattleFoeSprite,
+  drawBattlePlayerSprite,
   spritesClearUiBand,
   spriteFeetY,
   stableBattleUiReserveTop,
+  type BattleLayout,
 } from "./battle-scene.ts";
 import { computeBattleStageGeometry } from "./battle-stage-geometry.ts";
 
@@ -81,4 +84,72 @@ test("battleSpriteClientRects detects overlap with controls band", () => {
   const controls = { left: 0, top: 350, right: 200, bottom: 500 };
   assert.equal(rectsOverlap(rects.foe, controls), false);
   assert.equal(rectsOverlap(rects.player, controls), false);
+});
+
+/**
+ * Recording Canvas stub: the draw helpers only read a handful of 2D methods,
+ * so a full browser context is unnecessary to pin the destination geometry.
+ */
+function recordingContext(): {
+  ctx: CanvasRenderingContext2D;
+  drawImage: unknown[][];
+} {
+  const drawImage: unknown[][] = [];
+  const gradient = { addColorStop() {} };
+  const ctx = {
+    fillStyle: "",
+    createRadialGradient: () => gradient,
+    beginPath() {},
+    ellipse() {},
+    arc() {},
+    fill() {},
+    save() {},
+    restore() {},
+    translate() {},
+    scale() {},
+    drawImage(...args: unknown[]) {
+      drawImage.push(args);
+    },
+  } as unknown as CanvasRenderingContext2D;
+  return { ctx, drawImage };
+}
+
+const SQUARE_LAYOUT: BattleLayout = {
+  uiReserveTop: 200,
+  uiReserveSource: "estimate",
+  foe: { x: 100, y: 20, w: 100, h: 40, cx: 150, cy: 40 },
+  player: { cx: 80, cy: 300, size: 120, scale: 0.7 },
+};
+const SQUARE_SOURCE = { naturalWidth: 64, naturalHeight: 64 } as unknown as CanvasImageSource;
+
+/**
+ * Regression: PR #38 fits a non-square foe rect to the source aspect ratio.
+ * The AGES preview paint callback must inherit that same fitted rect — drawing
+ * it into the raw `layout.foe` box would stretch imported sprites.
+ */
+test("preview paint for the foe uses the aspect-fit rect, not the raw box", () => {
+  const { ctx, drawImage } = recordingContext();
+  const paint: number[][] = [];
+  drawBattleFoeSprite(ctx, SQUARE_SOURCE, SQUARE_LAYOUT, 0, {}, (_ctx, x, y, w, h) => {
+    paint.push([x, y, w, h]);
+  });
+  // 64x64 source fits a 100x40 box at 0.625 -> 40x40, centered on x.
+  assert.deepEqual(paint, [[130, 20, 40, 40]]);
+  assert.equal(drawImage.length, 0, "paint replaces the static image");
+});
+
+test("static foe art is drawn into the same aspect-fit rect as preview paint", () => {
+  const { ctx, drawImage } = recordingContext();
+  drawBattleFoeSprite(ctx, SQUARE_SOURCE, SQUARE_LAYOUT, 0, {});
+  assert.deepEqual(drawImage, [[SQUARE_SOURCE, 130, 20, 40, 40]]);
+});
+
+test("preview paint for the player is placed in the mirrored local space", () => {
+  const { ctx } = recordingContext();
+  const paint: number[][] = [];
+  drawBattlePlayerSprite(ctx, undefined, SQUARE_LAYOUT, {}, (_ctx, x, y, w, h) => {
+    paint.push([x, y, w, h]);
+  });
+  const half = SQUARE_LAYOUT.player.size / 2;
+  assert.deepEqual(paint, [[-half, -half, SQUARE_LAYOUT.player.size, SQUARE_LAYOUT.player.size]]);
 });

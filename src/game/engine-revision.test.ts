@@ -46,7 +46,10 @@ function withLocalStorage<T>(store: BasicStorage, run: () => T): T {
   }
 }
 
-async function withGame(run: (game: ReliquaryGame, frame: (ts: number) => void) => Promise<void> | void): Promise<void> {
+async function withGame(
+  run: (game: ReliquaryGame, frame: (ts: number) => void) => Promise<void> | void,
+  options: { readOnlySaveSource?: { getItem(key: string): string | null } } = {},
+): Promise<void> {
   const globals = globalThis as Record<string, unknown>;
   const names = ["window", "document", "Image", "requestAnimationFrame", "cancelAnimationFrame", "HTMLElement"];
   const previous = names.map((name) => [name, globals[name]] as const);
@@ -65,7 +68,7 @@ async function withGame(run: (game: ReliquaryGame, frame: (ts: number) => void) 
     return 1;
   };
   globals.cancelAnimationFrame = () => {};
-  const game = new ReliquaryGame({ random: () => 0.5 });
+  const game = new ReliquaryGame({ random: () => 0.5, ...options });
   const frame = (ts: number): void => rafCallback(ts);
   try {
     await game.boot({ width: 0, height: 0, getContext: () => null } as unknown as HTMLCanvasElement);
@@ -116,6 +119,28 @@ test("S01: a denied writer's Import is refused before any slot changes and befor
       assert.equal(store.data.get(SAVE_BACKUP), oldRun, "grant restores rotation: old run to backup");
     });
   });
+});
+
+/**
+ * Regression: the AGES preview session reads from an isolated `ages-preview:`
+ * namespace and must never become a save writer. A read-only source keeps the
+ * PR #38 engine-boundary authorization intact even if a lock grant is requested.
+ */
+test("P01: a read-only preview source cannot be re-authorized to write or import", async () => {
+  const store = makeStore();
+  const previewSource = { getItem: (key: string) => store.storage.getItem(`ages-preview:${key}`) };
+  await withGame(
+    async (game) => {
+      assert.equal(game.canWriteSave, false, "preview constructs write-blocked");
+      game.setSaveWriteAllowed(true);
+      assert.equal(game.canWriteSave, false, "a stray grant cannot re-enable writes");
+      const before = store.snapshot();
+      assert.equal(game.importGame("{}"), false);
+      assert.equal(store.snapshot(), before, "preview import touches no durable slot");
+      assert.equal(game.getSnapshot().toast, "Another window holds your save. This tab is read-only.");
+    },
+    { readOnlySaveSource: previewSource },
+  );
 });
 
 test("S01: malformed and forward-format imports are refused without writing", async () => {

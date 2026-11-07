@@ -1,0 +1,23 @@
+schema_version: '2.0.0'
+project:
+  id: reliquary
+  name: Reliquary
+  type: game
+  engine:
+    id: vite
+    version: '8'
+verification:
+  T0_static:
+    - name: typecheck
+      command: [node, scripts/ages-verify.mjs, typecheck]
+      timeout_sec: 120
+    - name: validate_content
+      command: [node, scripts/ages-verify.mjs, 'validate:content']
+      timeout_sec: 60
+    - name: build_web
+      command: [node, scripts/ages-verify.mjs, 'build:web']
+      timeout_sec: 180
+  T1_logic:
+    - name: gameplay_and_save_regression
+      command: [node, scripts/ages-verify.mjs, test]
+      timeout_sec: 120

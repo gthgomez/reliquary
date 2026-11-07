@@ -1,4 +1,4 @@
-import { useEffect, useRef, useSyncExternalStore } from "react";
+import { lazy, Suspense, useEffect, useRef, useSyncExternalStore } from "react";
 import { ReliquaryGame, TILE } from "./engine";
 import {
   BattleHud,
@@ -23,6 +23,11 @@ import { attachEconomyProbes } from "reliquary-economy-probes";
 import { attachBattleUiBrowserHooks } from "reliquary-battle-browser-probes";
 
 declare const __RELIQUARY_BROWSER_TEST__: boolean;
+declare const __RELIQUARY_AGES_PREVIEW__: boolean;
+
+const AgesPreviewPanel = __RELIQUARY_AGES_PREVIEW__
+  ? lazy(() => import("./preview/AgesPreviewPanel.tsx"))
+  : null;
 
 export function GameApp() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -31,7 +36,17 @@ export function GameApp() {
   const fileRef = useRef<HTMLInputElement>(null);
   const askedImport = useRef(0);
   const gameRef = useRef<ReliquaryGame | null>(null);
-  const g = gameRef.current ?? (gameRef.current = new ReliquaryGame());
+  const agesPreviewEnabled =
+    AgesPreviewPanel !== null &&
+    typeof window !== "undefined" &&
+    new URLSearchParams(window.location.search).get("ages-preview") === "1";
+  const g =
+    gameRef.current ??
+    (gameRef.current = new ReliquaryGame(
+      agesPreviewEnabled
+        ? { readOnlySaveSource: { getItem: (key) => localStorage.getItem(`ages-preview:${key}`) } }
+        : undefined,
+    ));
   const snap = useSyncExternalStore(g.subscribe, g.getSnapshot, g.getSnapshot);
 
   useEffect(() => {
@@ -80,25 +95,27 @@ export function GameApp() {
     setMuted(isSoundMutedStored());
     let saveSession: { release: () => void } | null = null;
     let disposed = false;
-    // Web-Locks browsers start write-blocked: an acquisition that is still
-    // pending must never authorize durable writes. The documented fallback for
-    // browsers without Web Locks keeps writes allowed (no cross-tab safety is
-    // claimed for that path).
-    g.setSaveWriteAllowed(false);
-    void acquireSaveSession().then(({ result, session }) => {
-      if (disposed) {
-        // Unmounted before the lock resolved: release it immediately so a
-        // later tab is not locked out by a document that is already gone.
-        session?.release();
-        return;
-      }
-      saveSession = session;
-      if (result === "denied") {
-        g.setSaveWriteAllowed(false, "Another Reliquary window holds the save lock. This tab is read-only.");
-      } else {
-        g.setSaveWriteAllowed(true);
-      }
-    });
+    if (!agesPreviewEnabled) {
+      // Web-Locks browsers start write-blocked: an acquisition that is still
+      // pending must never authorize durable writes. The documented fallback
+      // for browsers without Web Locks keeps writes allowed (no cross-tab
+      // safety is claimed for that path).
+      g.setSaveWriteAllowed(false);
+      void acquireSaveSession().then(({ result, session }) => {
+        if (disposed) {
+          // Unmounted before the lock resolved: release it immediately so a
+          // later tab is not locked out by a document that is already gone.
+          session?.release();
+          return;
+        }
+        saveSession = session;
+        if (result === "denied") {
+          g.setSaveWriteAllowed(false, "Another Reliquary window holds the save lock. This tab is read-only.");
+        } else {
+          g.setSaveWriteAllowed(true);
+        }
+      });
+    }
     // A new build applies itself by reloading, but only at a calm moment and
     // only after a successful flush: a failed or throwing required save vetoes
     // the reload (see register.ts) so unflushed live changes are never lost.
@@ -124,7 +141,7 @@ export function GameApp() {
         return g.persist() ? "flushed" : "failed";
       },
     });
-    void registerReliquaryServiceWorker();
+    if (!agesPreviewEnabled) void registerReliquaryServiceWorker();
     const reliquaryHandle = {
       confirm: g.confirm,
       cancel: g.cancel,
@@ -304,6 +321,11 @@ export function GameApp() {
           }}
         />
       </div>
+      {agesPreviewEnabled && AgesPreviewPanel ? (
+        <Suspense fallback={null}>
+          <AgesPreviewPanel game={g} inBattle={snap.mode === "battle"} />
+        </Suspense>
+      ) : null}
       {showTouch ? <TouchPad game={g} variant={showDialogTouch && !showExplorationTouch ? "dialog" : "full"} /> : null}
     </div>
   );

@@ -56,7 +56,8 @@ export function startStaticServer(port = 0, options = {}) {
 }
 
 export async function withBrowser(fn, options = {}) {
-  const browser = await chromium.launch({ headless: true });
+  const executablePath = process.env.RELIQUARY_QA_CHROMIUM || undefined;
+  const browser = await chromium.launch({ headless: true, executablePath });
   try {
     const context = await browser.newContext({ serviceWorkers: "block", ...(options.context ?? {}) });
     if (options.textScale !== undefined) {
