@@ -654,10 +654,6 @@ export class ReliquaryGame {
 		this.emit();
 	}
 	importGame(text: string): boolean {
-		if (!this.saveWriteAllowed) {
-			this.toastMsg("This tab is read-only.");
-			return false;
-		}
 		if (this.battle) {
 			this.toastMsg("Not in the middle of a fight.");
 			this.emit();
