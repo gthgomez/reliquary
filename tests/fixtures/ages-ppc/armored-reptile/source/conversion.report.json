@@ -1,0 +1,205 @@
+{
+  "schema_version": 1,
+  "conversion_version": 2,
+  "backend": "procedural_pixel_creatures",
+  "profile": "ages",
+  "limits": {
+    "max_frames": 256,
+    "max_cell": 512,
+    "max_page": 4096,
+    "max_pixels": 8388608
+  },
+  "ages_compatible": true,
+  "upstream_commit": "a2207c4bd6f1be51d426684cf58f11668def7579",
+  "framework": "Procedural Pixel Creatures 1.0.0",
+  "generator_version": 2,
+  "exporter_fingerprint": "e16c4fdf3c263f9c9fa6982a26c5ace7715620825fc8b70df2dc330229799c3e",
+  "generator": {
+    "backend": "procedural_pixel_creatures",
+    "repository": "https://github.com/idlerunner00/procedural-pixel-creatures",
+    "framework": "Procedural Pixel Creatures 1.0.0",
+    "generator_version": 2,
+    "upstream_commit": "a2207c4bd6f1be51d426684cf58f11668def7579",
+    "exporter_fingerprint": "e16c4fdf3c263f9c9fa6982a26c5ace7715620825fc8b70df2dc330229799c3e",
+    "genome": {
+      "family": "reptile",
+      "name": "Grovek",
+      "content_id": "34054f35c6af4de3",
+      "sha256": "e9398bae3610451fc0ea3fd84bf38c9b9e689745b921af4e37a5130ec069b00f",
+      "seed": null,
+      "source": "genome_file",
+      "lineage": {
+        "origin": "sampled",
+        "generation": 0,
+        "parents": [],
+        "mutationStrength": 0
+      }
+    },
+    "conversion_version": 2,
+    "profile": "ages",
+    "requested_direction": "E",
+    "actual_direction": "east",
+    "clips": [
+      {
+        "source_state": "idle",
+        "ages_state": "idle",
+        "frames": 24,
+        "loop": true,
+        "duration_ms": 1992
+      },
+      {
+        "source_state": "walk",
+        "ages_state": "walk",
+        "frames": 5,
+        "loop": true,
+        "duration_ms": 415
+      },
+      {
+        "source_state": "action",
+        "ages_state": "attack_melee",
+        "frames": 30,
+        "loop": false,
+        "duration_ms": 2490
+      },
+      {
+        "source_state": "hit",
+        "ages_state": "hit",
+        "frames": 16,
+        "loop": false,
+        "duration_ms": 1328
+      }
+    ],
+    "render": {
+      "fps": 12,
+      "quality": 2,
+      "shadow": true,
+      "bake_hit_flash": false
+    },
+    "warnings": [
+      "walk: upstream root-motion speed 36.8095 is preserved in the source metadata but is not consumed by the AGES v1.7 runtime",
+      "action is a generic upstream action mapped to attack_melee; it is not a skill-specific melee or elemental animation",
+      "action impact timing comes from an AGES authoring profile (reviewed per family), not from upstream PPC metadata; it is presentation-only"
+    ],
+    "review_status": "UNREVIEWED",
+    "runtime_status": "PREVIEW_ONLY"
+  },
+  "creature": {
+    "name": "Grovek",
+    "family": "reptile",
+    "contentId": "34054f35c6af4de3"
+  },
+  "genome": {
+    "family": "reptile",
+    "name": "Grovek",
+    "content_id": "34054f35c6af4de3",
+    "sha256": "e9398bae3610451fc0ea3fd84bf38c9b9e689745b921af4e37a5130ec069b00f",
+    "seed": null,
+    "source": "genome_file",
+    "lineage": {
+      "origin": "sampled",
+      "generation": 0,
+      "parents": [],
+      "mutationStrength": 0
+    }
+  },
+  "frame": {
+    "width": 135,
+    "height": 51,
+    "origin_x": 78,
+    "origin_y": 43
+  },
+  "atlas": {
+    "file": "page_000.png",
+    "width": 4050,
+    "height": 204,
+    "columns": 30,
+    "rows": 4
+  },
+  "direction": "east",
+  "requested_direction": "E",
+  "actual_direction": "east",
+  "state_mapping": {
+    "idle": "idle",
+    "walk": "walk",
+    "action": "attack_melee",
+    "hit": "hit"
+  },
+  "clips": [
+    {
+      "source_state": "idle",
+      "ages_state": "idle",
+      "direction": 0,
+      "direction_name": "east",
+      "loop": true,
+      "frames": 24,
+      "duration_ms": 1992,
+      "root_motion": {
+        "groundSpeed": 0,
+        "screenVelocityX": 0,
+        "screenVelocityY": 0
+      },
+      "impact_frame": null
+    },
+    {
+      "source_state": "walk",
+      "ages_state": "walk",
+      "direction": 0,
+      "direction_name": "east",
+      "loop": true,
+      "frames": 5,
+      "duration_ms": 415,
+      "root_motion": {
+        "groundSpeed": 36.8095,
+        "screenVelocityX": 36.8095,
+        "screenVelocityY": 0
+      },
+      "impact_frame": null
+    },
+    {
+      "source_state": "action",
+      "ages_state": "attack_melee",
+      "direction": 0,
+      "direction_name": "east",
+      "loop": false,
+      "frames": 30,
+      "duration_ms": 2490,
+      "root_motion": {
+        "groundSpeed": 0,
+        "screenVelocityX": 0,
+        "screenVelocityY": 0
+      },
+      "impact_frame": 12
+    },
+    {
+      "source_state": "hit",
+      "ages_state": "hit",
+      "direction": 0,
+      "direction_name": "east",
+      "loop": false,
+      "frames": 16,
+      "duration_ms": 1328,
+      "root_motion": {
+        "groundSpeed": 0,
+        "screenVelocityX": 0,
+        "screenVelocityY": 0
+      },
+      "impact_frame": null
+    }
+  ],
+  "total_frames": 75,
+  "root_motion_consumed_by_runtime": false,
+  "generator_license": "MIT",
+  "artwork_rights": {
+    "generator_source_license": "MIT",
+    "generated_artwork": "UNKNOWN",
+    "genome_source": "EXTERNAL_UNVERIFIED",
+    "basis": "The generator's MIT license covers its source code, not an automatic grant for every generated derivative or externally supplied genome. Artwork rights remain UNKNOWN until reviewed."
+  },
+  "review_status": "UNREVIEWED",
+  "runtime_status": "PREVIEW_ONLY",
+  "warnings": [
+    "walk: upstream root-motion speed 36.8095 is preserved in the source metadata but is not consumed by the AGES v1.7 runtime",
+    "action is a generic upstream action mapped to attack_melee; it is not a skill-specific melee or elemental animation",
+    "action impact timing comes from an AGES authoring profile (reviewed per family), not from upstream PPC metadata; it is presentation-only"
+  ]
+}

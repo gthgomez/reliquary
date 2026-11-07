@@ -1,0 +1,10 @@
+{
+  "files": {
+    "atlas.png": "f3714ea3ed5ec591bf23ecccf19a871a729b4314bbd0dba9994f9ea966b483f2",
+    "provenance.json": "61749efe8c90620d0cef4749f1e19fd561745dace3f8f1e4fd4c783bbe058875",
+    "sprite.runtime.json": "cfbeaadf754811a313f3c4c1f4ee1f040cdd180376949e4e3580c405d3d26f13"
+  },
+  "package_digest": "b1ea2572363d01a4df4ec48e66c7909dcf6ea0a86be250325756a295a5a5c789",
+  "schema_version": "1.7.0",
+  "total_files": 3
+}

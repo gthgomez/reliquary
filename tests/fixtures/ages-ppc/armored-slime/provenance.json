@@ -1,0 +1,108 @@
+{
+  "asset_id": "ppc_amorphous_c47b31c2fcd2bcf5",
+  "backend": "procedural_pixel_creatures",
+  "backend_commit": "a2207c4bd6f1be51d426684cf58f11668def7579",
+  "backend_version": "ppc-Procedural Pixel Creatures 1.0.0+a2207c4bd6f1",
+  "candidate_pack_id": "cand_20261107_183604_4fd5c6bf",
+  "direction": "east",
+  "dispositions": {
+    "attack_melee": "UNREVIEWED",
+    "hit": "UNREVIEWED",
+    "idle": "UNREVIEWED",
+    "walk": "UNREVIEWED"
+  },
+  "export_target": "web",
+  "external_import": {
+    "asset_type": "sprite",
+    "direction": "east",
+    "generator": {
+      "actual_direction": "east",
+      "backend": "procedural_pixel_creatures",
+      "clips": [
+        {
+          "ages_state": "idle",
+          "duration_ms": 1992,
+          "frames": 24,
+          "loop": true,
+          "source_state": "idle"
+        },
+        {
+          "ages_state": "walk",
+          "duration_ms": 498,
+          "frames": 6,
+          "loop": true,
+          "source_state": "walk"
+        },
+        {
+          "ages_state": "attack_melee",
+          "duration_ms": 913,
+          "frames": 11,
+          "loop": false,
+          "source_state": "action"
+        },
+        {
+          "ages_state": "hit",
+          "duration_ms": 664,
+          "frames": 8,
+          "loop": false,
+          "source_state": "hit"
+        }
+      ],
+      "conversion_version": 2,
+      "exporter_fingerprint": "e16c4fdf3c263f9c9fa6982a26c5ace7715620825fc8b70df2dc330229799c3e",
+      "framework": "Procedural Pixel Creatures 1.0.0",
+      "generator_version": 2,
+      "genome": {
+        "content_id": "c47b31c2fcd2bcf5",
+        "family": "amorphous",
+        "lineage": {
+          "generation": 0,
+          "mutationStrength": 0,
+          "origin": "sampled",
+          "parents": []
+        },
+        "name": "Kromoubel",
+        "seed": null,
+        "sha256": "f411ae419fbb79d1e27abb18106e00da622a7de749d35b9c952a9e0bb01b8040",
+        "source": "genome_file"
+      },
+      "profile": "ages",
+      "render": {
+        "bake_hit_flash": false,
+        "fps": 12,
+        "quality": 2,
+        "shadow": true
+      },
+      "repository": "https://github.com/idlerunner00/procedural-pixel-creatures",
+      "requested_direction": "E",
+      "review_status": "UNREVIEWED",
+      "runtime_status": "PREVIEW_ONLY",
+      "upstream_commit": "a2207c4bd6f1be51d426684cf58f11668def7579",
+      "warnings": [
+        "walk: upstream root-motion speed 47.6674 is preserved in the source metadata but is not consumed by the AGES v1.7 runtime",
+        "action is a generic upstream action mapped to attack_melee; it is not a skill-specific melee or elemental animation",
+        "action impact timing comes from an AGES authoring profile (reviewed per family), not from upstream PPC metadata; it is presentation-only"
+      ]
+    },
+    "license_status": "DECLARED_UNVERIFIED",
+    "rights": {
+      "basis": "The generator's MIT license covers its source code, not an automatic grant for every generated derivative or externally supplied genome. Artwork rights remain UNKNOWN until reviewed.",
+      "generated_artwork": "UNKNOWN",
+      "generator_source_license": "MIT",
+      "genome_source": "EXTERNAL_UNVERIFIED"
+    },
+    "source_provenance_sha256": "7c1ef14cad98534f36cd95ce2fd34beef52dc7eb45b95aaefdc54c38b5b37423"
+  },
+  "frame_counts": {
+    "attack_melee": 11,
+    "hit": 8,
+    "idle": 24,
+    "walk": 6
+  },
+  "locomotion_anchor_sha256": "",
+  "runtime_status": "PREVIEW_ONLY",
+  "schema_version": "1.7.0",
+  "source_master_sha256": "7c1ef14cad98534f36cd95ce2fd34beef52dc7eb45b95aaefdc54c38b5b37423",
+  "source_request_hash": "668f25246addd558ebfc611b6a971e1371c9d2268ec0c7355d90d3ad4e8e4a08",
+  "v1_6_manifest_sha256": ""
+}

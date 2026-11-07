@@ -141,7 +141,7 @@ try {
             assertClip(first, "attack_melee", `${candidate.name} attack`);
             assert.equal(first.agesPlaybackPlayerFrame, "0");
             await page.screenshot({ path: join(artifactDir, `${candidate.name}-attack.png`) });
-            await page.clock.runFor(2200);
+            await page.clock.runFor(Math.ceil(candidate.clips.attack_melee.duration_ms) + 400);
             assertClip(await getData(page), "idle", `${candidate.name} returned to idle`);
             evidence.runs.push({ candidate: candidate.name, mode, idleHash, first });
           } else {
@@ -150,7 +150,7 @@ try {
             const hit = await getData(page);
             assertClip(hit, "hit", `${candidate.name} hit reaction`);
             await page.screenshot({ path: join(artifactDir, `${candidate.name}-hit.png`) });
-            await page.clock.runFor(1900);
+            await page.clock.runFor(Math.ceil(candidate.clips.hit.duration_ms) + 600);
             assertClip(await getData(page), "idle", `${candidate.name} recovered to idle`);
             evidence.runs.push({ candidate: candidate.name, mode, hit });
           }
