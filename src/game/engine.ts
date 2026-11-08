@@ -1,5 +1,6 @@
 import {
   currentStats,
+  ELEMENTS,
   healFull,
   ITEMS,
   makeBeast,
@@ -8,6 +9,7 @@ import {
   PRACTICE_LORE,
   SHOP_STOCK,
   SKILLS,
+  skillsForLevel,
   SPECIES,
   typeMod,
 	STARTING_GOLD,
@@ -1228,7 +1230,9 @@ export class ReliquaryGame {
 		}
 		const sp = SPECIES[id];
 		if (!sp) return;
-		this.openDialog(sp.name, [`${sp.name}, the ${sp.epithet}. ${sp.description}`, "Speak the pact? (A bind · B wait)"], () => {
+		const elements = sp.elements.map((element) => ELEMENTS[element].name).join(" / ");
+		const skills = skillsForLevel(sp, 5).map((skill) => SKILLS[skill]?.name ?? skill).join(", ");
+		this.openDialog(sp.name, [`${sp.name}, the ${sp.epithet}. ${sp.description}`, `${elements} · Starting skills: ${skills}. Speak the pact? (A bind · B wait and inspect another)`], () => {
 			const b = makeBeast(id, 5, { nickname: sp.name, random: this.random });
 			this.party = [b];
 			this.caught[id] = true;
@@ -1964,6 +1968,7 @@ export class ReliquaryGame {
 	menuConfirm(): void {
 		if (this.menu === "root") {
 			const c = ROOT_MENU[this.menuIndex];
+			if (!c) return;
 			if (c === "Party") this.menu = "party";
 			else if (c === "Storage") this.menu = "storage";
 			else if (c === "Reliquary") this.menu = "reliquary";
@@ -1986,7 +1991,9 @@ export class ReliquaryGame {
 				const next = !isMuted();
 				setMuted(next);
 				setSoundMutedStored(next);
-			} else this.menu = null;
+			} else if (c === "Close") {
+				this.menu = null;
+			}
 			// The Sound toggle stays highlighted on its own row so repeated
 			// toggles and keyboard focus do not jump back to the top.
 			this.menuIndex = c === "Sound" ? ROOT_MENU.indexOf("Sound") : 0;

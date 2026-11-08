@@ -247,6 +247,22 @@ test("starter pact follow-up reopens as Elder Maren with her portrait", async ()
   });
 });
 
+test("starter inspection shows current skills and cancel leaves the pact unchosen", async () => {
+  await withGame((game) => {
+    game.mode = "world";
+    for (const [id, element, skill] of [["emberkit", "Ember", "Cinder"], ["mirewhelp", "Tide", "Torrent"], ["briarling", "Verdant", "Rootgrasp"]] as const) {
+      (game as unknown as { chooseStarter(id: string): void }).chooseStarter(id);
+      game.confirm();
+      const text = game.getSnapshot().dialog?.text ?? "";
+      assert.match(text, new RegExp(element));
+      assert.match(text, new RegExp(skill));
+      game.cancel();
+      assert.equal(game.flags.starter, undefined);
+      assert.equal(game.party.length, 0);
+    }
+  });
+});
+
 test("alternate placements preserve identity, including inn success and insufficient funds", async () => {
   await withGame((game) => {
     game.mode = "world";

@@ -209,6 +209,25 @@ test("arrow navigation moves focus to the selected menu button", async () => {
   });
 });
 
+test("root menu wraps over its actions and cancel closes it", async () => {
+  await withGame((game, _frame, events) => {
+    game.mode = "world";
+    game.menu = "root";
+    game.menuIndex = ROOT_MENU.length - 1;
+    game.menuConfirm();
+    assert.equal(game.menu, null, "confirming the Close row closes the menu");
+    game.menu = "root";
+    game.menuIndex = ROOT_MENU.length - 1;
+    events.get("keydown")!({ target: null, code: "ArrowDown", repeat: false, preventDefault() {} } as unknown as Event);
+    assert.equal(game.menuIndex, 0);
+    game.menuIndex = ROOT_MENU.length;
+    game.menuConfirm();
+    assert.equal(game.menu, "root", "a stale index must not close the menu or invoke an action");
+    game.cancel();
+    assert.equal(game.menu, null);
+  });
+});
+
 test("successful persistence advertises Continue and returns true", async () => {
   await withGame((game) => {
     const slots = new Map<string, string>();
