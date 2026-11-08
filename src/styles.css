@@ -471,10 +471,31 @@
   font-size: 1.1rem;
   line-height: 1;
 }
+/* A narrow phone needs the objective text more than a single clipped line.
+   Stack the label over the text and keep the disclosure affordance beside it. */
+@container (max-width: 500px) {
+  .hud-objective-btn {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 0.1rem 0.3rem;
+  }
+  .hud-objective-label { grid-column: 1; }
+  .hud-objective-preview {
+    grid-column: 1;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    line-height: 1.2;
+  }
+  .hud-objective-chevron { grid-column: 2; grid-row: 1 / 3; }
+}
 @container (max-width: 300px) {
   .hud-sigil { display: none; }
   .hud-objective-label { display: none; }
   .hud-objective-btn { grid-template-columns: 1fr auto; }
+  .hud-objective-preview { grid-row: 1; }
+  .hud-objective-chevron { grid-row: 1; }
   .hud-chip-stats { min-width: 4.5rem; }
   .hud-menu { flex-basis: 3rem; }
 }

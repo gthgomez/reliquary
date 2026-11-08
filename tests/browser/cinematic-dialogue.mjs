@@ -301,12 +301,32 @@ try {
           } else await closePages(page);
         }
 
-        await speak(page, "elderhall", 13, 2);
+        const checkSignToast = v.width === 568 && v.height === 320 && !v.classic;
+        if (checkSignToast) {
+          await page.locator(".hud-menu").click();
+          await page.getByRole("button", { name: "Save", exact: true }).click();
+          await page.locator(".top-stack .toast[role=status]").waitFor();
+        }
+        await speak(page, "elderhall", 13, 2, "z", !checkSignToast);
+        assert.equal(await page.locator(".hud").evaluate((el) => el.inert), true, "text-only dialogue keeps the HUD inert");
+        assert.equal(await page.locator(".hud").isVisible(), false, "text-only dialogue hides the HUD");
+        if (checkSignToast) {
+          const toast = page.locator(".top-stack .toast[role=status]");
+          assert.equal(await toast.isVisible(), true, "save status stays visible during text-only dialogue");
+          assert.equal(await toast.evaluate((el) => !el.closest("[inert]") && !el.closest('[aria-hidden="true"]')), true,
+            "save status remains accessible during text-only dialogue");
+          const toastBox = await toast.boundingBox();
+          const panelBox = await page.locator(".dialog").boundingBox();
+          assert.ok(toastBox && panelBox && toastBox.y + toastBox.height <= panelBox.y + 1,
+            "live status stays clear of the sign dialogue");
+        }
         const sign = await checkLayout(page, `${prefix}-sign`, !v.mobile);
         assert.equal(sign.portraitKey, "none");
         assert.equal(sign.portrait, null);
         assert.match(sign.textContent, /BRIAR ROAD/);
         await closePages(page);
+        assert.equal(await page.locator(".hud").isVisible(), true, "HUD returns after text-only dialogue");
+        assert.equal(await page.locator(".hud").evaluate((el) => el.inert), false, "returned HUD is interactive");
         const pos = await page.evaluate(() => window.__controlsTest.getPos());
         await page.keyboard.down("ArrowRight");
         await page.waitForFunction((x) => window.__controlsTest.getPos().x !== x, pos.x);
