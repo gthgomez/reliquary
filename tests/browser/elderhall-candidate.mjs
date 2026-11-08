@@ -102,6 +102,25 @@ async function verifyTouchMovement(page) {
   return { method: "Chromium touch press and release on the on-screen right control", before, after };
 }
 
+async function sampleFrameIntervals(page) {
+  // Scheduling intervals are a coarse CI signal, not a phone benchmark or a
+  // direct measurement of renderer CPU/GPU cost.
+  return page.evaluate(() => new Promise((resolve) => {
+    const intervals = [];
+    let previous = null;
+    function frame(now) {
+      if (previous !== null) intervals.push(now - previous);
+      previous = now;
+      if (intervals.length < 120) return requestAnimationFrame(frame);
+      const sorted = [...intervals].sort((a, b) => a - b);
+      resolve({ samples: intervals.length, p50Ms: sorted[59], p95Ms: sorted[113],
+        maxMs: sorted[119], framesOver50Ms: intervals.filter((value) => value > 50).length,
+        scope: "headless Chromium animation-frame scheduling; not a physical-device benchmark" });
+    }
+    requestAnimationFrame(frame);
+  }));
+}
+
 async function captureView(page, viewport, viewpoint) {
   await page.setViewportSize({ width: viewport.width, height: viewport.height });
   // This teleport is deliberately recorded as framing-only, not journey proof.
@@ -201,7 +220,10 @@ async function run() {
       });
       try {
         await prepareWorld(page, observations);
-        if (mobile) observations.touchMovement = await verifyTouchMovement(page);
+        if (mobile) {
+          observations.touchMovement = await verifyTouchMovement(page);
+          observations.frameIntervals = await sampleFrameIntervals(page);
+        }
         for (const viewport of viewports) for (const viewpoint of VIEWPOINTS) {
           try {
             report.captures.push(await captureView(page, viewport, viewpoint));
