@@ -174,6 +174,8 @@ export interface MapDef {
   ground: string[];
   /** Optional visual treatment for dirt paths; does not change collision. */
   terrainPathStyle?: "soft";
+  /** Draw a trail under these tall-grass tiles; encounters remain unchanged. */
+  overgrownPaths?: { x: number; y: number }[];
   battleBg: BattleBg;
   encounterRate: number;
   encounters: Encounter[];

@@ -31,6 +31,21 @@ export function clipSoftPath(ctx: CanvasRenderingContext2D, dx: number, dy: numb
   ctx.clip();
 }
 
+/** Stagger small strips of cobble into dirt so a surface change isn't a hard tile line. */
+export function clipStoneTransition(ctx: CanvasRenderingContext2D, dx: number, dy: number, size: number, mask: number): void {
+  const step = size / 16;
+  const phase = (Math.floor(dx / size) * 7 + Math.floor(dy / size) * 11) % 4;
+  ctx.beginPath();
+  for (let i = 0; i < 16; i++) {
+    const depth = step * (2 + ((i * 5 + phase) % 4));
+    if (mask & 1) ctx.rect(dx + i * step, dy, step, depth);
+    if (mask & 2) ctx.rect(dx + size - depth, dy + i * step, depth, step);
+    if (mask & 4) ctx.rect(dx + i * step, dy + size - depth, step, depth);
+    if (mask & 8) ctx.rect(dx, dy + i * step, depth, step);
+  }
+  ctx.clip();
+}
+
 export function chooseTileAccent(
   mapId: string,
   x: number,

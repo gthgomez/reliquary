@@ -67,7 +67,7 @@ import {
   resetWorldCamRelief,
   type WorldCamReliefState,
 } from "./render/world-camera-safe.ts";
-import { clipSoftPath, drawAtlasTile, paintTileAccent, tileAtlasQuadrant } from "./render/tile-surface.ts";
+import { clipSoftPath, clipStoneTransition, drawAtlasTile, paintTileAccent, tileAtlasQuadrant } from "./render/tile-surface.ts";
 import { paintWorldActorShadow, paintWorldPropShadow } from "./render/world-actors.ts";
 import { captureChance, captureSucceeds, storeCapturedBeast } from "./systems/capture.ts";
 import { healBeast, playerActsFirst, spendSkillMp } from "./systems/combat.ts";
@@ -2180,7 +2180,7 @@ export class ReliquaryGame {
 			bakeMapTerrain({
 				map: m,
 				tileSize: TILE,
-				drawTile: (name, dx, dy, variant, pathMask) => {
+				drawTile: (name, dx, dy, variant, pathMask, stoneMask) => {
 					const tx = dx / TILE;
 					const ty = dy / TILE;
 					const atlas = this.images[`tile_${name}-2x2`];
@@ -2199,6 +2199,13 @@ export class ReliquaryGame {
 					if (variant > 0 && !atlas) {
 						ground.fillStyle = `rgba(20,17,14,${0.035 * variant})`;
 						ground.fillRect(dx, dy, TILE, TILE);
+					}
+					const stone = stoneMask ? this.images.tile_cobble : undefined;
+					if (stone && stoneMask) {
+						ground.save();
+						clipStoneTransition(ground, dx, dy, TILE, stoneMask);
+						ground.drawImage(stone, dx, dy, TILE, TILE);
+						ground.restore();
 					}
 					if (pathMask !== undefined) ground.restore();
 				},

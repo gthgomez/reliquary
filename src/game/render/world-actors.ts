@@ -19,6 +19,7 @@ export function paintWorldActorShadow(
 const PROP_BASE: Record<string, { left: number; width: number; bottom: number }> = {
   well: { left: 3 / 48, width: 35 / 48, bottom: 33 / 48 },
   shrub: { left: 10 / 48, width: 32 / 48, bottom: 35 / 48 },
+  boulder: { left: 7 / 48, width: 30 / 48, bottom: 35 / 48 },
   cottage: { left: 28 / 160, width: 125 / 160, bottom: 158 / 160 },
   inn: { left: 25 / 160, width: 125 / 160, bottom: 158 / 160 },
   shop: { left: 27 / 160, width: 125 / 160, bottom: 158 / 160 },
