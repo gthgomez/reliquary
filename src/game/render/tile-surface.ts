@@ -27,8 +27,8 @@ export function paintStoneRoadBorder(ctx: CanvasRenderingContext2D, dx: number, 
   if (!edges && !corners) return;
   const inset = Math.round(size / 8);
   const step = Math.round(size / 4);
-  const stone = Math.round(size / 5);
-  const thick = Math.max(2, Math.round(size / 14));
+  const stone = Math.max(2, Math.round(size / 4) - 1);
+  const thick = Math.max(2, Math.round(size / 8));
   ctx.save();
   clipSoftPath(ctx, dx, dy, size, mask);
   const paint = (x: number, y: number, w: number, h: number) => {
@@ -62,17 +62,20 @@ export function clipSoftPath(ctx: CanvasRenderingContext2D, dx: number, dy: numb
   const corner = size / 16;
   // Round only genuinely exposed outer corners. Rounding at every tile seam
   // makes an otherwise straight road look scalloped.
-  const nw = north || west ? 0 : corner, ne = north || east ? 0 : corner;
-  const se = south || east ? 0 : corner, sw = south || west ? 0 : corner;
+  const nw = !north && !west ? corner : north && west && !(mask & 128) ? inset : 0;
+  const ne = !north && !east ? corner : north && east && !(mask & 16) ? inset : 0;
+  const se = !south && !east ? corner : south && east && !(mask & 32) ? inset : 0;
+  const sw = !south && !west ? corner : south && west && !(mask & 64) ? inset : 0;
   ctx.beginPath();
   ctx.moveTo(left + nw, top);
   ctx.lineTo(right - ne, top);
-  ctx.lineTo(right, top + ne);
+  if (ne) ctx.quadraticCurveTo(right, top, right, top + ne);
   ctx.lineTo(right, bottom - se);
-  ctx.lineTo(right - se, bottom);
+  if (se) ctx.quadraticCurveTo(right, bottom, right - se, bottom);
   ctx.lineTo(left + sw, bottom);
-  ctx.lineTo(left, bottom - sw);
+  if (sw) ctx.quadraticCurveTo(left, bottom, left, bottom - sw);
   ctx.lineTo(left, top + nw);
+  if (nw) ctx.quadraticCurveTo(left, top, left + nw, top);
   ctx.closePath();
   ctx.clip();
 }

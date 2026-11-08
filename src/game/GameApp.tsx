@@ -325,7 +325,7 @@ export function GameApp() {
           <AgesPreviewPanel game={g} inBattle={snap.mode === "battle"} />
         </Suspense>
       ) : null}
-      {showTouch ? <TouchPad game={g} variant={showDialogTouch && !showExplorationTouch ? "dialog" : "full"} /> : null}
+      {showTouch ? <TouchPad game={g} variant={showDialogTouch && !showExplorationTouch ? "dialog" : "full"} dialogActive={!!snap.dialog} /> : null}
     </div>
   );
 }

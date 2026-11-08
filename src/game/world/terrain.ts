@@ -87,7 +87,9 @@ export function bakeMapTerrain(ctx: TerrainBakeContext): void {
         ctx.drawDecoration("tallgrass", dx, dy, 1, 1);
       }
       const mask = walkableEdgeMask(map.ground, x, y);
-      if (mask !== 0 && mask !== 15) {
+      // The village's stone edge replaces the rectangular boundary tint, which
+      // otherwise makes isolated dark squares along the outdoor map boundary.
+      if (mask !== 0 && mask !== 15 && map.roadBorder !== "stone") {
         ctx.drawOverlay("edge", dx, dy, (15 - mask) / 15);
       }
       if ((symbol === "p" || symbol === "c") && map.terrainPathStyle !== "soft") {

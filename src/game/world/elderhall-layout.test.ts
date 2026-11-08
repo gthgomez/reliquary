@@ -76,6 +76,12 @@ test("village paths are blended over grass instead of tiled with repeated shadow
   assert.equal(shadows.length, 0, "individual road tiles do not receive dark bottom stripes");
 });
 
+test("village boundary grass does not receive detached square edge shadows", () => {
+  const overlays: string[] = [];
+  bakeMapTerrain({ map: MAPS.elderhall, tileSize: 32, drawTile: () => {}, drawOverlay: (style) => overlays.push(style), drawDecoration: () => {} });
+  assert.equal(overlays.includes("edge"), false);
+});
+
 test("the village-green tree has a real footprint without blocking the roads or Maren", () => {
   const map = MAPS.elderhall;
   const tree = map.objects.find((object) => object.id === "green_tree");

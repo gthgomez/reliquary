@@ -20,6 +20,8 @@ try {
     assert.equal(dialogChrome.dialogTouch, true, "compact dialog touch row");
     assert.equal(dialogChrome.dpad, false, "N/W/E/S hidden while Next is shown");
     assert.equal(dialogChrome.ab, true, "A/B still available for dialogue");
+    assert.equal(await page.getByRole("button", { name: "A — Next", exact: true }).count(), 1);
+    assert.equal(await page.getByRole("button", { name: "B — Back", exact: true }).count(), 1);
 
     for (let i = 0; i < 16; i += 1) {
       if ((await page.locator(".dialog").count()) === 0) break;
@@ -71,6 +73,8 @@ try {
     assert.equal(dialogClassic.classic, true, "classic-touch class when localStorage=1");
     assert.equal(dialogClassic.explore, true, "classic keeps exploration pad during dialogue");
     assert.equal(dialogClassic.dpad, true, "dpad visible in classic dialogue");
+    assert.equal(await page.getByRole("button", { name: "A — Next", exact: true }).count(), 1, "classic dialogue labels A as Next");
+    assert.equal(await page.getByRole("button", { name: "B — Back", exact: true }).count(), 1, "classic dialogue labels B as Back");
 
     for (let i = 0; i < 16; i += 1) {
       if ((await page.locator(".dialog").count()) === 0) break;
@@ -84,6 +88,28 @@ try {
     }));
     assert.equal(worldClassic.explore, true, "classic pad in overworld");
     assert.equal(worldClassic.dpad, true);
+    assert.equal(await page.getByRole("button", { name: "A — Interact", exact: true }).count(), 1, "classic exploration restores Interact");
+    assert.equal(await page.getByRole("button", { name: "B — Cancel", exact: true }).count(), 1, "classic exploration restores Cancel");
+
+    // Classic keeps the same full pad mounted while the gate dialogue opens.
+    // An unreleased pointer must not leave movement held after it closes.
+    await page.evaluate(() => window.__controlsTest.warp("elderhall", 10, 1));
+    const northClassic = await page.locator(".touch-full .d.up").boundingBox();
+    assert.ok(northClassic, "classic north pad is visible");
+    await page.mouse.move(northClassic.x + northClassic.width / 2, northClassic.y + northClassic.height / 2);
+    await page.mouse.down();
+    try {
+      await page.waitForSelector(".dialog", { timeout: 10_000 });
+      assert.equal(await page.getByRole("button", { name: "A — Next", exact: true }).count(), 1);
+      await page.evaluate(() => window.__reliquary.confirm());
+      await page.waitForFunction(() => !document.querySelector(".dialog"), null, { timeout: 10_000 });
+      await page.waitForTimeout(500);
+      const after = await page.evaluate(() => window.__controlsTest.getPos());
+      assert.deepEqual({ map: after.map, x: after.x, y: after.y, dialog: after.dialog },
+        { map: "elderhall", x: 10, y: 1, dialog: false }, "classic dialogue clears the old held direction");
+    } finally {
+      await page.mouse.up();
+    }
 
     await page.click(".hud-menu");
     await page.waitForSelector(".overlay-panel");

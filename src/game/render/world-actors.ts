@@ -74,5 +74,14 @@ export function paintWorldPropShadow(
     paintWorldActorShadow(ctx, x, y + height - 4, width);
     return;
   }
+  if (["cottage", "inn", "shop", "elderhall-cottage-reference"].includes(sprite)) {
+    if (typeof ctx.beginPath !== "function" || typeof ctx.ellipse !== "function") return;
+    ctx.fillStyle = "rgba(0,0,0,0.14)";
+    ctx.beginPath();
+    ctx.ellipse(x + (base.left + base.width / 2) * width, y + base.bottom * height - 1,
+      base.width * width * 0.38, Math.max(1, width * 0.02), 0, 0, Math.PI * 2);
+    ctx.fill();
+    return;
+  }
   paintWorldActorShadow(ctx, x + base.left * width, y + base.bottom * height - 1, base.width * width);
 }
