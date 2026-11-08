@@ -100,6 +100,18 @@ jobs:
           RELIQUARY_QA_CHANNEL: chrome
           RELIQUARY_ELDERHALL_CANDIDATE: '1'
           VITE_ELDERHALL_CANDIDATE: '1'
+      - name: Play the candidate starter journey
+        if: ${{ !cancelled() && matrix.os == 'ubuntu-latest' && steps.elderhall_candidate_build.outcome == 'success' }}
+        run: node tests/browser/elderhall-candidate-journey.mjs
+        env:
+          RELIQUARY_QA_CHANNEL: chrome
+          VITE_ELDERHALL_CANDIDATE: '1'
+      - name: Check the candidate offline
+        if: ${{ !cancelled() && matrix.os == 'ubuntu-latest' && steps.elderhall_candidate_build.outcome == 'success' }}
+        run: node tests/browser/elderhall-candidate-offline.mjs
+        env:
+          RELIQUARY_QA_CHANNEL: chrome
+          VITE_ELDERHALL_CANDIDATE: '1'
       - name: Upload journey evidence
         if: always()
         uses: actions/upload-artifact@v4
