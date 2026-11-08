@@ -1,5 +1,7 @@
 import { SPECIES } from "./content.ts";
 import { GROUND_TILE } from "./maps.ts";
+import { isElderhallCandidateBuild } from "./build-flags.ts";
+export { isElderhallCandidateBuild } from "./build-flags.ts";
 
 export type AssetEntry = { key: string; url: string; required: boolean };
 
@@ -11,7 +13,7 @@ const PROP_SPRITES = [
 ] as const;
 const BG_KEYS = ["grass", "forest", "cave", "marsh", "keep"] as const;
 
-export function collectGameAssets(): readonly AssetEntry[] {
+export function collectGameAssets(options: { elderhallCandidate?: boolean } = {}): readonly AssetEntry[] {
   const out: AssetEntry[] = [
     { key: "title", url: "/game/bg/title.jpg", required: true },
     { key: "manifest_game", url: "/game/manifest.json", required: false },
@@ -32,6 +34,12 @@ export function collectGameAssets(): readonly AssetEntry[] {
   }
   for (const p of PROP_SPRITES) {
     out.push({ key: `prop_${p}`, url: `/game/props/${p}.png`, required: true });
+  }
+  if (options.elderhallCandidate ?? isElderhallCandidateBuild()) {
+    for (const id of ["grass-atlas", "dirt-atlas", "stone-atlas", "well-reference", "cottage-reference", "tree-reference", "gate-reference", "bench", "flowers"]) {
+      const kind = id.endsWith("-atlas") ? "tile" : "prop";
+      out.push({ key: `${kind}_elderhall-${id}`, url: `/game/elderhall/assets/elderhall.${id}.png`, required: true });
+    }
   }
   for (const bg of BG_KEYS) {
     out.push({ key: `bg_${bg}`, url: `/game/bg/bg_${bg}.jpg`, required: true });

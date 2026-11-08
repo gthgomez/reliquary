@@ -1,4 +1,4 @@
-import type { PointerEvent, ReactNode, RefObject } from "react";
+import type { MouseEvent, PointerEvent, ReactNode, RefObject } from "react";
 import { useEffect, useRef, useState } from "react";
 import {
   currentStats,
@@ -27,6 +27,7 @@ import { battlePanelHeading, isBattleSubmenuPhase } from "./battle-chrome.ts";
 import { shopBuyAffordability, skillMpAffordability, skillMpHint } from "./ui-chrome.ts";
 import { STATUS_ADJECTIVES } from "../systems/status.ts";
 import { objectiveHint } from "../systems/objective.ts";
+import { clearTouchHolds, requestAccessibleStep, updateTouchHold, type HoldId } from "./touch-hold.ts";
 
 export function TitleScreen({ game, snap }: { game: ReliquaryGame; snap: Snapshot }) {
   const [confirmingReplace, setConfirmingReplace] = useState(false);
@@ -172,18 +173,45 @@ export function Hud({
   const lead = snap.party[0];
   const st = lead ? currentStats(lead) : null;
   const [objectiveOpen, setObjectiveOpen] = useState(false);
+  const objectiveButtonRef = useRef<HTMLButtonElement>(null);
   const hint = objectiveHint(snap.flags, snap.mapName);
+  useEffect(() => {
+    if (dormant) setObjectiveOpen(false);
+  }, [dormant]);
   return (
-    <div className={`hud${dormant ? " hud-dormant" : ""}${objectiveOpen ? " hud-objective-expanded" : ""}`} aria-hidden={dormant}>
+    <div
+      className={`hud${dormant ? " hud-dormant" : ""}${objectiveOpen ? " hud-objective-expanded" : ""}`}
+      aria-hidden={dormant}
+      inert={dormant}
+      onKeyDown={(event) => {
+        if (event.key !== "Escape" || !objectiveOpen) return;
+        event.preventDefault();
+        event.stopPropagation();
+        setObjectiveOpen(false);
+        objectiveButtonRef.current?.focus();
+      }}
+    >
       <div className="hud-row">
         <div className="hud-chip hud-chip-grow">
-          <span className="hud-place">{snap.mapName}</span>
-          <span className="hud-muted hud-region">{snap.region}</span>
+          <div className="hud-location">
+            <span className="hud-sigil" aria-hidden="true">
+              <svg viewBox="0 0 32 38" focusable="false">
+                <path d="M2 1h28v27l-14 8L2 28z" fill="currentColor" />
+                <path d="M16 27V12m0 9-7-5m7 2 7-6M9 16l-2-4m16 0 2-4M16 12l-3-5m3 5 4-6M10 28h12" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+                <circle cx="7" cy="11" r="1.6" /><circle cx="13" cy="6" r="1.6" /><circle cx="20" cy="5" r="1.6" /><circle cx="25" cy="7" r="1.6" />
+              </svg>
+            </span>
+            <div className="hud-location-copy">
+              <span className="hud-place">{snap.mapName}</span>
+              <span className="hud-muted hud-region">{snap.region}</span>
+            </div>
+          </div>
           {snap.objective ? (
             <div className="hud-objective-slot">
               <button
                 type="button"
                 className="hud-objective-btn"
+                ref={objectiveButtonRef}
                 aria-expanded={objectiveOpen}
                 onClick={() => setObjectiveOpen((open) => !open)}
               >
@@ -204,17 +232,17 @@ export function Hud({
           ) : null}
         </div>
         <div className="hud-chip hud-chip-stats">
-          <span className="hud-gold">{snap.gold} cr</span>
+          <span className="hud-gold"><span className="hud-coin" aria-hidden="true">◉</span> {snap.gold} cr</span>
           {lead && st ? (
-            <span className="hud-muted">
-              {lead.nickname} {lead.hp}/{st.hp}
+            <span className="hud-muted hud-companion" aria-label={`Lead companion ${lead.nickname}, health ${lead.hp} of ${st.hp}`}>
+              <span className="hud-companion-name">{lead.nickname}</span> <span>{lead.hp}/{st.hp}</span>
             </span>
           ) : (
-            <span className="hud-muted">No pact yet</span>
+            <span className="hud-muted hud-companion">No pact yet</span>
           )}
         </div>
         <button type="button" className="hud-menu" ref={menuButtonRef} onClick={onMenu}>
-          Menu
+          <span className="hud-menu-icon" aria-hidden="true">☰</span><span>Menu</span>
         </button>
       </div>
     </div>
@@ -964,11 +992,12 @@ export function ShopPanel({ game, snap }: { game: ReliquaryGame; snap: Snapshot 
 }
 
 export function TouchPad({ game, variant = "full" }: { game: ReliquaryGame; variant?: "full" | "dialog" }) {
-  const heldRef = useRef<Set<string>>(new Set());
-  const hold = (code: string, on: boolean) => {
-    if (on) heldRef.current.add(code);
-    else heldRef.current.delete(code);
-    game.holdKey(code, on);
+  const heldRef = useRef<Map<string, Set<HoldId>>>(new Map());
+  const accessibleStops = useRef(new Set<() => void>());
+  const accessibleSequence = useRef(0);
+  const hold = (code: string, pointerId: HoldId, on: boolean) => {
+    const transition = updateTouchHold(heldRef.current, code, pointerId, on);
+    if (transition !== null) game.holdKey(code, transition);
   };
   // S25: a held key must not outlive the control that owns it. The pad STAYS
   // MOUNTED across the world↔dialog transition (only its variant changes), so
@@ -976,46 +1005,75 @@ export function TouchPad({ game, variant = "full" }: { game: ReliquaryGame; vari
   // battle opening under the finger ends the hold here.
   useEffect(() => {
     const held = heldRef.current;
+    const stops = accessibleStops.current;
     return () => {
-      for (const code of held) game.holdKey(code, false);
-      held.clear();
+      for (const stop of stops) stop();
+      stops.clear();
+      for (const code of clearTouchHolds(held)) game.holdKey(code, false);
     };
   }, [game, variant]);
   const dir = (code: string) => ({
     onPointerDown: (e: PointerEvent<HTMLButtonElement>) => {
       e.preventDefault();
       (e.currentTarget as HTMLButtonElement).setPointerCapture(e.pointerId);
-      hold(code, true);
+      hold(code, e.pointerId, true);
     },
-    onPointerUp: () => hold(code, false),
-    onPointerCancel: () => hold(code, false),
-    onLostPointerCapture: () => hold(code, false),
+    onPointerUp: (e: PointerEvent<HTMLButtonElement>) => hold(code, e.pointerId, false),
+    onPointerCancel: (e: PointerEvent<HTMLButtonElement>) => hold(code, e.pointerId, false),
+    onLostPointerCapture: (e: PointerEvent<HTMLButtonElement>) => hold(code, e.pointerId, false),
+    onClick: (e: MouseEvent<HTMLButtonElement>) => {
+      // Pointer presses already drive a hold. Keyboard and screen-reader
+      // activation generate a detail=0 click; request one discrete step.
+      if (e.detail !== 0) return;
+      const id = `accessible-${++accessibleSequence.current}`;
+      const stopRef: { current?: () => void } = {};
+      let done = false;
+      const stop = requestAccessibleStep(
+        () => ({
+          canMove: game.mode === "world" && !game.dialog && !game.menu,
+          moving: game.moving,
+          map: game.mapId,
+          x: game.tx,
+          y: game.ty,
+        }),
+        (on) => hold(code, id, on),
+        {
+          frame: (fn) => requestAnimationFrame(fn),
+          cancelFrame: (handle) => cancelAnimationFrame(handle),
+          timeout: (fn, ms) => window.setTimeout(fn, ms),
+          cancelTimeout: (handle) => window.clearTimeout(handle),
+        },
+        () => { done = true; if (stopRef.current) accessibleStops.current.delete(stopRef.current); },
+      );
+      stopRef.current = stop;
+      if (!done) accessibleStops.current.add(stop);
+    },
   });
   return (
-    <div className={`touch touch-${variant}`} aria-label={variant === "dialog" ? "Dialog controls" : "Movement controls"}>
+    <div className={`touch touch-${variant}`} role="group" aria-label={variant === "dialog" ? "Dialog controls" : "Movement controls"}>
       {variant === "full" ? (
         <div className="dpad">
           <button type="button" className="d up" aria-label="North" {...dir("KeyW")}>
-            <span>N</span>
+            <span aria-hidden="true">▲</span>
           </button>
           <button type="button" className="d left" aria-label="West" {...dir("KeyA")}>
-            <span>W</span>
+            <span aria-hidden="true">◀</span>
           </button>
           <button type="button" className="d right" aria-label="East" {...dir("KeyD")}>
-            <span>E</span>
+            <span aria-hidden="true">▶</span>
           </button>
           <button type="button" className="d down" aria-label="South" {...dir("KeyS")}>
-            <span>S</span>
+            <span aria-hidden="true">▼</span>
           </button>
         </div>
       ) : (
         <p className="touch-dialog-hint">A · Next · B · Back</p>
       )}
       <div className="ab">
-        <button type="button" className="b-btn" onClick={() => game.cancel()}>
+        <button type="button" className="b-btn" aria-label={variant === "dialog" ? "B — Back" : "B — Cancel"} onClick={() => game.cancel()}>
           B
         </button>
-        <button type="button" className="a-btn" onClick={() => game.confirm()}>
+        <button type="button" className="a-btn" aria-label={variant === "dialog" ? "A — Next" : "A — Interact"} onClick={() => game.confirm()}>
           A
         </button>
       </div>

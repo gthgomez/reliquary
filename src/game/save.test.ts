@@ -47,6 +47,24 @@ function validSave(): GameSave {
   };
 }
 
+test("a revision-one save underneath the new village tree is safely relocated", () => {
+  const old = { ...validSave(), worldRevision: 1, x: 13, y: 12, gold: 123 };
+  const restored = parseSave(JSON.stringify(old));
+  assert.ok(restored);
+  assert.notDeepEqual({ x: restored.x, y: restored.y }, { x: old.x, y: old.y });
+  assert.equal(restored.worldRevision, WORLD_REVISION);
+  assert.equal(restored.gold, 123);
+  assert.equal(isOccupied(MAPS.elderhall, restored.flags, restored.x, restored.y), false);
+});
+
+test("a standable old save is not moved merely because it is disconnected from spawn", () => {
+  const old = { ...validSave(), worldRevision: 1, mapId: "mirefen", x: 9, y: 3 };
+  assert.equal(isOccupied(MAPS.mirefen, old.flags, old.x, old.y), false);
+  const restored = parseSave(JSON.stringify(old));
+  assert.ok(restored);
+  assert.deepEqual({ x: restored.x, y: restored.y }, { x: old.x, y: old.y });
+});
+
 test("valid saves round-trip through the current schema", () => {
   const store = new MemoryStorage();
   assert.equal(writeSave(validSave(), store), true);

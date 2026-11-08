@@ -26,8 +26,7 @@ export function isOccupied(map: MapDef, flags: Record<string, boolean>, x: numbe
   for (const o of map.objects) {
     if (!isObjectSolidAt(o, flags, x, y)) continue;
     if (flags.starter && o.id.startsWith("st_")) continue;
-    const fy = o.y + o.h - o.foot;
-    if (x >= o.x && x < o.x + o.w && y >= fy && y < o.y + o.h) return true;
+    return true;
   }
   for (const n of map.npcs) if (n.x === x && n.y === y) return true;
   return false;

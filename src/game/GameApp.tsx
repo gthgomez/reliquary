@@ -269,9 +269,8 @@ export function GameApp() {
             />
           ) : null}
           {/* HUD and toast share one top column so the toast always lands below the HUD. */}
-          {/* inert (not just aria-hidden): a dormant HUD whose Menu button
-              stays tabbable is an ARIA violation and leans on the document
-              trap to keep focus out. React 19 supports boolean inert. */}
+          {/* The HUD makes its own dormant subtree inert. Keep the adjacent
+              live-status toast outside that subtree during portrait dialogue. */}
           <div className={`top-stack${uiModal ? " top-stack-dormant" : ""}`} ref={topStackRef} inert={uiModal}>
             {showHudBar ? (
               <Hud

@@ -52,6 +52,15 @@ test("a solid object's foot determines which rows are occupied", () => {
   assert.equal(isOccupied(map, {}, 3, 2), false);
 });
 
+test("a gateway may block two post footprints while leaving its center walkable", () => {
+  const map = fixture();
+  map.objects = [{ id: "gate", sprite: "gate", x: 0, y: 0, w: 4, h: 2, foot: 1, solid: true,
+    collision: [{ x: 0, y: 1, w: 1, h: 1 }, { x: 3, y: 1, w: 1, h: 1 }] }];
+  assert.equal(isOccupied(map, {}, 0, 1), true);
+  assert.equal(isOccupied(map, {}, 1, 1), false);
+  assert.equal(isOccupied(map, {}, 3, 1), true);
+});
+
 test("starter objects are skipped only while the starter flag is set", () => {
   assert.equal(isOccupied(fixture(), {}, 1, 3), true);
   assert.equal(isOccupied(fixture(), { starter: true }, 1, 3), false);

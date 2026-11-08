@@ -4,9 +4,12 @@ import { MAPS } from "./maps.ts";
 import type { GameSave } from "./types.ts";
 import { isOccupied } from "./world/movement.ts";
 import { isLegacyCoordinateValid, resolveSafeSpawn } from "./world/reachability.ts";
+import { isElderhallCandidateBuild } from "./build-flags.ts";
 
 export const SAVE_VERSION = 3;
-export const WORLD_REVISION = 1;
+// Preview gate posts change collision; a preview save must not be silently
+// mistaken for a compatible production-world save.
+export const WORLD_REVISION = isElderhallCandidateBuild() ? 3 : 2;
 export const SAVE_KEY = "reliquary.save.v3";
 export const SAVE_BACKUP = "reliquary.save.v3.bak";
 export const SAVE_FORWARD_KEY = "reliquary.save.forward";
@@ -93,7 +96,9 @@ function validateSemantics(save: GameSave, options: { migrate?: "none" | "legacy
     if (!isLegacyCoordinateValid(map, x, y)) return null;
     ({ x, y } = resolveSafeSpawn(map, { x, y }, save.flags));
   } else if (migrate === "relocated") {
-    ({ x, y } = resolveSafeSpawn(map, { x, y }, save.flags));
+    // Preserve a valid old location even when it is disconnected from the
+    // current default spawn; only moved or obstructed tiles need relocation.
+    if (isOccupied(map, save.flags, x, y)) ({ x, y } = resolveSafeSpawn(map, { x, y }, save.flags));
   } else if (isOccupied(map, save.flags, x, y)) {
     return null;
   }

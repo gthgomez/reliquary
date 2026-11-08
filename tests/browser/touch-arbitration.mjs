@@ -33,6 +33,24 @@ try {
     }));
     assert.equal(worldChrome.explore, true, "walk pad returns in overworld");
     assert.equal(worldChrome.dpad, true);
+
+    // Direction buttons accept native keyboard activation and a screen-reader-
+    // shaped synthetic click, each requesting one step without a pointer hold.
+    await page.evaluate(() => window.__controlsTest.warp("elderhall", 9, 13));
+    const east = page.getByRole("button", { name: "East", exact: true });
+    await east.focus();
+    await page.keyboard.press("Enter");
+    await page.waitForFunction(() => window.__controlsTest.getPos().x === 10);
+    await page.waitForTimeout(220);
+    assert.equal((await page.evaluate(() => window.__controlsTest.getPos())).x, 10, "Enter requests one step");
+    await page.keyboard.press("Space");
+    await page.waitForFunction(() => window.__controlsTest.getPos().x === 11);
+    await page.waitForTimeout(220);
+    assert.equal((await page.evaluate(() => window.__controlsTest.getPos())).x, 11, "Space requests one step");
+    await east.evaluate((button) => button.click());
+    await page.waitForFunction(() => window.__controlsTest.getPos().x === 12);
+    await page.waitForTimeout(220);
+    assert.equal((await page.evaluate(() => window.__controlsTest.getPos())).x, 12, "assistive click requests one step");
   });
   console.log("[touch-arbitration] dialog vs overworld pad ok");
 

@@ -246,8 +246,9 @@ test("a hit on the subject plays a reaction after the attacker clip", async () =
   assert.equal(report.playerClip, "hit");
 });
 
-test("a defender reaction follows the real elemental impact marker", async () => {
+test("a defender reaction follows the real elemental impact marker", () => {
   let report: Record<string, string> = {};
+  let clock = 0;
   const battle = {} as BattleState;
   const view = createBattlePreview(
     previewAsset({
@@ -259,6 +260,7 @@ test("a defender reaction follows the real elemental impact marker", async () =>
     (data) => {
       report = data;
     },
+    { now: () => clock },
   );
   view.beginFrame(battle, false);
   view.attack(battle, {
@@ -272,12 +274,12 @@ test("a defender reaction follows the real elemental impact marker", async () =>
     element: "ember",
   });
   // Impact marker is on frame 3 => 300 ms; a fixed 240 ms reaction would be early.
-  await new Promise((resolve) => setTimeout(resolve, 240));
+  clock = 240;
   view.beginFrame(battle, false);
   view.sprite("foe", "emberkit");
   view.overlay(recordingContext().ctx, layoutFixture());
   assert.notEqual(report.foeClip, "hit");
-  await new Promise((resolve) => setTimeout(resolve, 120));
+  clock = 360;
   view.beginFrame(battle, false);
   view.sprite("foe", "emberkit");
   view.overlay(recordingContext().ctx, layoutFixture());

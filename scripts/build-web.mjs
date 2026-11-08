@@ -2,14 +2,19 @@ import { copyFileSync, mkdirSync, existsSync, readdirSync, rmSync, statSync } fr
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
+import { copyElderhallCandidate } from "./elderhall-pack.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
+// Candidate assets are reviewable on preview builds and must never ship on a
+// production Vercel build, even if a local override was accidentally set.
+const candidateBuild = process.env.VERCEL_ENV !== "production" &&
+  (process.env.VERCEL_ENV === "preview" || process.env.RELIQUARY_ELDERHALL_CANDIDATE === "1");
 
 function run(cmd, args, env = {}) {
   const result = spawnSync(cmd, args, {
     cwd: root,
     stdio: "inherit",
-    env: { ...process.env, VITE_RELIQUARY_PUBLIC: "1", ...env },
+    env: { ...process.env, VITE_RELIQUARY_PUBLIC: "1", VITE_ELDERHALL_CANDIDATE: candidateBuild ? "1" : "0", ...env },
   });
   if (result.status !== 0) process.exit(result.status ?? 1);
 }
@@ -55,6 +60,11 @@ if (!existsSync(gameShell)) {
   process.exit(1);
 }
 copyFileSync(gameShell, indexShell);
+
+if (candidateBuild) {
+  copyElderhallCandidate(join(root, "assets/elderhall-candidate"), join(staticDir, "game/elderhall"));
+  console.log("[elderhall] unapproved candidate assets included in preview only");
+}
 
 run(process.execPath, [join(root, "scripts/build-pwa.mjs")]);
 

@@ -1,5 +1,7 @@
 import type { MapDef } from "../types.ts";
 import { house, prop, tree } from "./helpers.ts";
+import { isElderhallCandidateBuild } from "../build-flags.ts";
+import { elderhallCandidateGate, elderhallCandidateBench } from "../render/elderhall-visual.ts";
 
 const elderhall: MapDef = {
   id: "elderhall",
@@ -9,6 +11,7 @@ const elderhall: MapDef = {
   encounterRate: 0,
   encounters: [],
   terrainPathStyle: "soft",
+  roadBorder: "stone",
   spawn: { x: 12, y: 14 },
   ground: [
     "..........pp............",
@@ -31,10 +34,13 @@ const elderhall: MapDef = {
     "........................",
   ],
   objects: [
+    ...(isElderhallCandidateBuild() ? [elderhallCandidateGate(), elderhallCandidateBench()] : []),
     tree("t1", 0, 0), tree("t2", 2, 0), tree("t3", 4, 0), tree("t4", 6, 0), tree("t5", 16, 0), tree("t6", 18, 0), tree("t7", 20, 0), tree("t8", 22, 0),
     tree("t9", 0, 2), tree("t10", 22, 2), tree("t11", 0, 4), tree("t12", 22, 4),
     tree("t14", 22, 8), tree("t15", 0, 12), tree("t16", 22, 12),
     tree("t17", 0, 16), tree("t18", 2, 16), tree("t19", 20, 16), tree("t20", 22, 16),
+    { id: "green_tree", sprite: "tree", x: 13, y: 12, w: 1, h: 1, foot: 1, solid: true,
+      visual: { width: 2.8, height: 3.2, anchorX: 0.5, anchorY: 115 / 128, groundX: 0.5, groundY: 1 } },
     house("h_home", "cottage", 4, 12, "enter_home"),
     house("h_guild", "cottage", 4, 6, "enter_guild"),
     house("h_inn", "inn", 16, 2, "enter_inn"),
@@ -50,6 +56,12 @@ const elderhall: MapDef = {
     prop("lantern1", "sign", 12, 3),
   ],
   decorations: [
+    ...(isElderhallCandidateBuild() ? [
+      { sprite: "elderhall-flowers", x: 8.3, y: 7.2, w: 1, h: 0.5, layer: "ground" as const },
+      { sprite: "elderhall-flowers", x: 3.2, y: 11.3, w: 1, h: 0.5, layer: "ground" as const },
+      { sprite: "elderhall-flowers", x: 15.2, y: 15.4, w: 1, h: 0.5, layer: "ground" as const },
+      { sprite: "elderhall-flowers", x: 19.2, y: 11.4, w: 1, h: 0.5, layer: "ground" as const },
+    ] : []),
     { sprite: "shrub", x: 3, y: 15, w: 1, h: 1, layer: "ground" },
     { sprite: "shrub", x: 19, y: 4, w: 1, h: 1, layer: "ground" },
     { sprite: "barrel", x: 18, y: 8, w: 1, h: 1, layer: "ground" },
