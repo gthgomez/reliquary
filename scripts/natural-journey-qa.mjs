@@ -55,13 +55,40 @@ try {
 
   let position = await travel("home", { x: 5, y: 8 });
   if (position.map !== "elderhall") throw new Error("Home exit failed");
+
+  // Visit the elder and every starting-village building through normal input.
+  // Only position and facing are read from the test probe.
+  async function faceNorthAndInteract() {
+    await page.keyboard.down("KeyW");
+    await page.waitForFunction(() => window.__controlsTest.getYaw() === Math.PI);
+    await page.keyboard.up("KeyW");
+    await page.keyboard.press("KeyZ");
+  }
+  await travel("elderhall", { x: 7, y: 10 });
+  await faceNorthAndInteract();
+  await page.waitForSelector("button.dialog", { timeout: 5000 });
+  const speaker = await page.locator(".dialog-name").textContent();
+  if (speaker !== "Elder Maren") throw new Error(`Expected Elder Maren, got ${speaker}`);
+  for (let i = 0; i < 16 && await page.locator("button.dialog").count(); i++) await page.locator("button.dialog").click();
+  await page.waitForSelector("button.dialog", { state: "detached", timeout: 5000 });
+  report.events.push("Spoke with Elder Maren beside the well");
+  for (const building of [
+    { name: "home", front: { x: 4, y: 15 }, inside: "home", exit: { x: 5, y: 8 } },
+    { name: "guild", front: { x: 4, y: 9 }, inside: "guild_in", exit: { x: 6, y: 10 } },
+    { name: "inn", front: { x: 16, y: 5 }, inside: "inn_in", exit: { x: 6, y: 9 } },
+    { name: "shop", front: { x: 16, y: 9 }, inside: "shop_in", exit: { x: 5, y: 8 } },
+  ]) {
+    await travel("elderhall", building.front);
+    await faceNorthAndInteract();
+    await page.waitForFunction((map) => window.__controlsTest.getPos().map === map, building.inside, { timeout: 5000 });
+    position = await travel(building.inside, building.exit);
+    if (position.map !== "elderhall") throw new Error(`${building.name} exit failed`);
+    report.events.push(`Entered and exited the ${building.name}`);
+  }
   position = await travel("elderhall", { x: 0, y: 10 });
   if (position.map !== "grove") throw new Error("Grove entrance failed");
   await travel("grove", { x: 4, y: 7 });
-  await page.keyboard.down("KeyW");
-  await page.waitForFunction(() => window.__controlsTest.getYaw() === Math.PI);
-  await page.keyboard.up("KeyW");
-  await page.keyboard.press("KeyZ");
+  await faceNorthAndInteract();
   for (let i = 0; i < 4; i++) await page.locator("button.dialog").click();
   await page.getByText(/Emberkit \d+\/\d+/).waitFor();
   await page.getByRole("button", { name: "Menu", exact: true }).click();
