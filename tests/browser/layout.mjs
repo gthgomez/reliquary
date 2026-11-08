@@ -11,8 +11,10 @@ async function dismissIntro(page) {
 
 const VIEWPORTS = [
   { width: 320, height: 568 },
+  { width: 360, height: 800 },
   { width: 390, height: 667 },
   { width: 390, height: 844 },
+  { width: 412, height: 915 },
   { width: 640, height: 320 },
   { width: 844, height: 390 },
   { width: 1280, height: 800 },
@@ -30,6 +32,19 @@ try {
       await dismissIntro(page);
       await page.waitForSelector(".hud-menu", { timeout: 15_000 });
       await page.waitForFunction(() => typeof window.__reliquary?.openMenu === "function");
+      assert.match((await page.locator(".hud-place").textContent()) ?? "", /Cottage|Hollowmere|Elderhall/i);
+      assert.ok((await page.locator(".hud-region").textContent())?.trim(), "region is populated from current map");
+      assert.equal((await page.locator(".hud-companion").textContent())?.trim(), "No pact yet", "fresh game has no fabricated companion");
+      await page.evaluate(() => window.__reliquary.setGold(321));
+      assert.match((await page.locator(".hud-gold").textContent()) ?? "", /321\s*cr/, "HUD follows current currency");
+      if (await page.locator(".touch-full").isVisible()) {
+        assert.equal(await page.getByRole("button", { name: "A — Interact", exact: true }).count(), 1);
+        assert.equal(await page.getByRole("button", { name: "B — Cancel", exact: true }).count(), 1);
+        for (const button of await page.locator(".touch-full button").all()) {
+          const target = await button.boundingBox();
+          assert.ok(target && target.width >= 44 && target.height >= 44, "touch control bounding boxes are at least 44px; clipped hit regions require separate verification");
+        }
+      }
       // The stage must fit the viewport (no sideways scroll) and the HUD pieces
       // must not sit on top of each other.
       const fit = await page.evaluate(() => {
@@ -73,6 +88,10 @@ try {
           return Number.parseFloat(getComputedStyle(vp).getPropertyValue("--ui-safe-top-px"));
         });
         assert.ok(safeTop > 24, `--ui-safe-top-px should reflect HUD stack (${safeTop})`);
+        await page.keyboard.press("Escape");
+        assert.equal(await page.locator(".hud-objective-popover").count(), 0, "Escape dismisses the objective");
+        assert.equal(await page.locator(".hud-objective-btn").getAttribute("aria-expanded"), "false");
+        assert.equal(await page.locator(".hud-objective-btn").evaluate((el) => el === document.activeElement), true, "dismissal restores objective focus");
       }
       await page.evaluate(() => {
         window.__reliquary?.openMenu?.();

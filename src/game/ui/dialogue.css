@@ -94,7 +94,7 @@
 /* Secondary chrome yields for a conversation, and returns immediately on
    close. AppStatus stays mounted so offline/update state is never reset. */
 .game-root.is-dialog .app-status,
-.game-root.is-dialog-portrait .top-stack {
+.game-root.is-dialog-portrait .hud {
   visibility: hidden;
   pointer-events: none;
 }

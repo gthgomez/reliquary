@@ -17,6 +17,7 @@ export function objectHidden(obj: MapObj, flags: Record<string, boolean>): boole
 
 export function isObjectSolidAt(obj: MapObj, flags: Record<string, boolean>, x: number, y: number): boolean {
   if (!obj.solid || objectHidden(obj, flags)) return false;
+  if (obj.collision) return obj.collision.some((box) => x >= obj.x + box.x && x < obj.x + box.x + box.w && y >= obj.y + box.y && y < obj.y + box.y + box.h);
   const fy = obj.y + obj.h - obj.foot;
   return x >= obj.x && x < obj.x + obj.w && y >= fy && y < obj.y + obj.h;
 }

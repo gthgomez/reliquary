@@ -4,6 +4,7 @@ import { MAPS } from "../maps.ts";
 import { isOccupied } from "./movement.ts";
 import { reachableTiles } from "./reachability.ts";
 import { bakeMapTerrain } from "./terrain.ts";
+import { roadBorderCorners } from "../render/tile-surface.ts";
 
 test("Elderhall roads connect each doorway and both exits without isolated paving", () => {
   const map = MAPS.elderhall;
@@ -36,6 +37,18 @@ test("Elderhall roads connect each doorway and both exits without isolated pavin
   assert.equal(map.ground[3]!.slice(4, 7), "...", "the unused cobblestone pad is gone");
 });
 
+test("the north-east corner of the guild-road junction has a border cap", () => {
+  let mask = 0;
+  bakeMapTerrain({
+    map: MAPS.elderhall, tileSize: 32,
+    drawTile: (_name, x, y, _variant, pathMask) => {
+      if (x === 11 * 32 && y === 5 * 32 && pathMask !== undefined) mask = pathMask;
+    },
+    drawOverlay: () => {}, drawDecoration: () => {},
+  });
+  assert.ok(roadBorderCorners(mask) & 16, "road bends around the exposed diagonal");
+});
+
 test("Elderhall road passes the well without changing its collision position", () => {
   const map = MAPS.elderhall;
   const well = map.objects.find((object) => object.id === "well")!;
@@ -61,4 +74,15 @@ test("village paths are blended over grass instead of tiled with repeated shadow
   assert.equal(calls[road - 1]!.name, "grass", "grass is drawn beneath the clipped path");
   assert.equal(typeof calls[road]!.pathMask, "number", "the path uses its neighboring tiles for its outline");
   assert.equal(shadows.length, 0, "individual road tiles do not receive dark bottom stripes");
+});
+
+test("the village-green tree has a real footprint without blocking the roads or Maren", () => {
+  const map = MAPS.elderhall;
+  const tree = map.objects.find((object) => object.id === "green_tree");
+  assert.ok(tree && tree.solid);
+  assert.equal(isOccupied(map, {}, tree.x, tree.y), true);
+  const reachable = reachableTiles(map, map.spawn, {});
+  const maren = map.npcs.find((npc) => npc.id === "maren")!;
+  assert.ok([[0, 1], [1, 0], [0, -1], [-1, 0]].some(([dx, dy]) => reachable.has(`${maren.x + dx!},${maren.y + dy!}`)), "Maren remains reachable");
+  for (const warp of map.warps) assert.ok(reachable.has(`${warp.x},${warp.y}`), `${warp.to} remains reachable`);
 });

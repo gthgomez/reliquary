@@ -22,3 +22,14 @@ test("new release creatures register sprite paths", () => {
     assert.equal(hit, true, id);
   }
 });
+
+test("Elderhall candidate sprites and distinct atlases are registered only for a candidate build", () => {
+  const normal = collectGameAssets({ elderhallCandidate: false });
+  const candidate = collectGameAssets({ elderhallCandidate: true });
+  const expected = ["grass-atlas", "dirt-atlas", "stone-atlas", "well-reference", "cottage-reference", "tree-reference", "gate-reference", "bench", "flowers"];
+  for (const id of expected) {
+    const url = `/game/elderhall/assets/elderhall.${id}.png`;
+    assert.equal(normal.some((asset) => asset.url === url), false, `${id} excluded from normal builds`);
+    assert.equal(candidate.some((asset) => asset.url === url), true, `${id} registered for candidate preview`);
+  }
+});

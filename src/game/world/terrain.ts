@@ -42,13 +42,15 @@ export type TerrainBakeContext = {
   drawAccent?: (kind: TileAccentKind, dx: number, dy: number) => void;
 };
 
-/** Cardinal neighboring path tiles (or a map edge), N=1, E=2, S=4, W=8. */
+/** Neighboring path tiles (or map edges): cardinal bits 1–8 and NE/SE/SW/NW bits 16–128. */
 function pathNeighborMask(ground: string[], x: number, y: number, overgrown: Set<string>): number {
   const width = ground[0]?.length ?? 0;
   const isPath = (tx: number, ty: number) =>
     tx < 0 || ty < 0 || tx >= width || ty >= ground.length || ground[ty]?.[tx] === "p" || ground[ty]?.[tx] === "c" || overgrown.has(`${tx},${ty}`);
   return (isPath(x, y - 1) ? 1 : 0) | (isPath(x + 1, y) ? 2 : 0) |
-    (isPath(x, y + 1) ? 4 : 0) | (isPath(x - 1, y) ? 8 : 0);
+    (isPath(x, y + 1) ? 4 : 0) | (isPath(x - 1, y) ? 8 : 0) |
+    (isPath(x + 1, y - 1) ? 16 : 0) | (isPath(x + 1, y + 1) ? 32 : 0) |
+    (isPath(x - 1, y + 1) ? 64 : 0) | (isPath(x - 1, y - 1) ? 128 : 0);
 }
 
 /** Dirt blends into neighboring stone on the dirt side, without changing the map. */
