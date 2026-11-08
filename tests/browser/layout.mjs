@@ -9,6 +9,26 @@ async function dismissIntro(page) {
   }
 }
 
+async function waitForObjectiveSafeArea(page, checkPlayer) {
+  await page.waitForFunction((shouldCheckPlayer) => {
+    const popover = document.querySelector(".hud-objective-popover");
+    const viewport = document.querySelector(".viewport");
+    const canvas = document.querySelector(".game-canvas");
+    if (!popover || !viewport || !canvas || !popover.getClientRects().length) return false;
+    const pop = popover.getBoundingClientRect();
+    const view = viewport.getBoundingClientRect();
+    const safe = Number.parseFloat(getComputedStyle(viewport).getPropertyValue("--ui-safe-top-px"));
+    if (safe < pop.bottom - view.top + 3) return false;
+    if (!shouldCheckPlayer) return true;
+    const report = window.__worldCameraReport;
+    const canvasRect = canvas.getBoundingClientRect();
+    const popBottomCanvas = (pop.bottom - canvasRect.top) * canvas.height / canvasRect.height;
+    return report && report.canvasH === canvas.height && report.hudInsetBottom >= popBottomCanvas
+      && report.effectivePlayerHeadCanvasY >= popBottomCanvas
+      && report.effectivePlayerHeadCanvasY + 48 <= canvas.height + 1;
+  }, checkPlayer, { timeout: 10_000 });
+}
+
 const VIEWPORTS = [
   { width: 320, height: 568 },
   { width: 360, height: 800 },
@@ -134,10 +154,32 @@ try {
       assert.ok(fit.vpLeft >= -1 && fit.vpRight <= fit.innerWidth + 1, "game viewport inside the window");
       assert.deepEqual(fit.overlaps, [], "HUD elements do not overlap");
       if (await page.locator(".hud-objective-btn").count()) {
+        const checkPlayer = viewport.width === 390 && (viewport.height === 844 || viewport.height === 667);
+        if (checkPlayer) {
+          // Put the player at the north edge for the popover geometry check.
+          await page.evaluate(() => window.__controlsTest.warp("elderhall", 11, 1));
+        }
         const menuBoxBefore = await page.locator(".hud-menu").boundingBox();
         assert.ok(menuBoxBefore, "menu visible before objective expand");
         await page.locator(".hud-objective-btn").first().click();
         await page.waitForSelector(".hud-objective-popover", { timeout: 3000 });
+        await waitForObjectiveSafeArea(page, checkPlayer);
+        if (checkPlayer) {
+          const action = page.locator(".hud-objective-lantern");
+          assert.equal(await action.isVisible(), true, "objective action remains visible");
+          assert.equal(await action.evaluate((button) => {
+            const rect = button.getBoundingClientRect();
+            const hit = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
+            return hit === button || button.contains(hit);
+          }), true, "objective action remains pointer-accessible");
+        }
+        if (viewport.width === 390 && viewport.height === 844) {
+          // Reflow the open panel; its new visible bottom must remain reserved.
+          await page.setViewportSize({ width: 360, height: 844 });
+          await waitForObjectiveSafeArea(page, true);
+          await page.setViewportSize(viewport);
+          await waitForObjectiveSafeArea(page, true);
+        }
         const menuBoxAfter = await page.locator(".hud-menu").boundingBox();
         assert.ok(menuBoxAfter, "menu visible after objective expand");
         assert.ok(
@@ -152,6 +194,12 @@ try {
         assert.ok(safeTop > 24, `--ui-safe-top-px should reflect HUD stack (${safeTop})`);
         await page.keyboard.press("Escape");
         assert.equal(await page.locator(".hud-objective-popover").count(), 0, "Escape dismisses the objective");
+        await page.waitForFunction(() => {
+          const stack = document.querySelector(".top-stack");
+          const viewport = document.querySelector(".viewport");
+          const safe = Number.parseFloat(getComputedStyle(viewport).getPropertyValue("--ui-safe-top-px"));
+          return safe <= stack.getBoundingClientRect().bottom - viewport.getBoundingClientRect().top + 5;
+        });
         assert.equal(await page.locator(".hud-objective-btn").getAttribute("aria-expanded"), "false");
         assert.equal(await page.locator(".hud-objective-btn").evaluate((el) => el === document.activeElement), true, "dismissal restores objective focus");
       }

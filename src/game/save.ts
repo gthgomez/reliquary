@@ -9,7 +9,7 @@ import { isElderhallCandidateBuild } from "./build-flags.ts";
 export const SAVE_VERSION = 3;
 // Preview gate posts change collision; a preview save must not be silently
 // mistaken for a compatible production-world save.
-export const WORLD_REVISION = isElderhallCandidateBuild() ? 4 : 2;
+export const WORLD_REVISION = isElderhallCandidateBuild() ? 5 : 2;
 export const SAVE_KEY = "reliquary.save.v3";
 export const SAVE_BACKUP = "reliquary.save.v3.bak";
 export const SAVE_FORWARD_KEY = "reliquary.save.forward";

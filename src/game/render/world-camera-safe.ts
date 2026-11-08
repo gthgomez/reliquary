@@ -3,7 +3,6 @@
 import { readUiSafeTopCanvas } from "./ui-safe-top.ts";
 import { shouldPublishRenderGeometryReports } from "./render-report-gate.ts";
 
-const ENTER_PX = 10;
 const LEAVE_PX = 4;
 const RELIEF_STEP = 0.18;
 const MAX_RELIEF = 96;
@@ -28,6 +27,7 @@ export function computeWorldCamReliefTargets(
   playerHeadCanvasY: number,
   hudInsetBottom: number,
   state: WorldCamReliefState,
+  maxContentPan = MAX_CONTENT_PAN,
 ): { targetRelief: number; targetPanY: number; targetMin: number } {
   const targetMin = hudInsetBottom + 4;
   const rawDeficit = targetMin - playerHeadCanvasY;
@@ -38,12 +38,12 @@ export function computeWorldCamReliefTargets(
   const clearBand = rawDeficit <= -LEAVE_PX && effectiveDeficit <= -LEAVE_PX;
   if (clearBand) return { targetRelief: 0, targetPanY: 0, targetMin };
 
-  const needEnter = rawDeficit >= ENTER_PX || effectiveDeficit >= ENTER_PX;
+  const needEnter = rawDeficit > 0 || effectiveDeficit > 0;
   if (needEnter) {
     const lift = Math.max(0, rawDeficit, effectiveDeficit);
     const maxCam = Math.min(camY, MAX_RELIEF);
     const targetRelief = Math.min(maxCam, lift);
-    const targetPanY = Math.min(MAX_CONTENT_PAN, Math.max(0, lift - targetRelief));
+    const targetPanY = Math.min(maxContentPan, Math.max(0, lift - targetRelief));
     return { targetRelief, targetPanY, targetMin };
   }
 
@@ -56,17 +56,21 @@ export function adjustCamYForHudInset(
   playerHeadCanvasY: number,
   hudInsetBottom: number,
   state: WorldCamReliefState,
+  bounds?: { viewportHeight: number; playerHeight: number },
 ): { camY: number; relief: number; contentPanY: number; effectiveHeadCanvasY: number; headAfterCamRelief: number } {
-  const { targetRelief, targetPanY } = computeWorldCamReliefTargets(camY, playerHeadCanvasY, hudInsetBottom, state);
+  const maxPan = bounds ? Math.max(0, bounds.viewportHeight - bounds.playerHeight - playerHeadCanvasY) : MAX_CONTENT_PAN;
+  const { targetRelief, targetPanY } = computeWorldCamReliefTargets(camY, playerHeadCanvasY, hudInsetBottom, state, maxPan);
 
-  let relief = stepToward(state.relief, targetRelief);
-  relief = Math.max(0, Math.min(relief, MAX_RELIEF, camY));
-
-  let contentPanY = stepToward(state.contentPanY, targetPanY);
-  contentPanY = Math.max(0, Math.min(contentPanY, MAX_CONTENT_PAN));
+  // Never ease into the HUD: follow an approaching player immediately, and
+  // ease only the return once the world is safely clear again.
+  let relief = targetRelief > state.relief ? targetRelief : stepToward(state.relief, targetRelief);
+  relief = Math.max(0, Math.min(relief, MAX_RELIEF, camY, maxPan));
 
   const adjustedCamY = Math.max(0, camY - relief);
   const headAfterCamRelief = playerHeadCanvasY + (camY - adjustedCamY);
+  let contentPanY = targetPanY > state.contentPanY ? targetPanY : stepToward(state.contentPanY, targetPanY);
+  const remainingPan = bounds ? Math.max(0, bounds.viewportHeight - bounds.playerHeight - headAfterCamRelief) : MAX_CONTENT_PAN;
+  contentPanY = Math.max(0, Math.min(contentPanY, remainingPan));
   const effectiveHeadCanvasY = headAfterCamRelief + contentPanY;
 
   state.relief = relief;

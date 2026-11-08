@@ -12,7 +12,83 @@ const source = join(import.meta.dirname, "..", "assets", "elderhall-candidate");
 test("the committed candidate pack passes hash and identity validation", () => {
   const manifest = validateElderhallPack(source);
   assert.equal(manifest.schema_version, "ages.environment-pack/1");
-  assert.ok(manifest.assets.length >= 9);
+  assert.ok(manifest.assets.length >= 33, "the existing catalog is present and may grow");
+});
+
+test("rejects missing or malformed provenance on selected and unselected assets before copying", () => {
+  const dir = mkdtempSync(join(tmpdir(), "elderhall-lineage-"));
+  try {
+    const staged = join(dir, "pack");
+    const output = join(dir, "output");
+    cpSync(source, staged, { recursive: true });
+    const path = join(staged, "manifest.json");
+    const original = JSON.parse(readFileSync(path, "utf8"));
+    const cases = [
+      ["elderhall.guild-reference", (asset) => { delete asset.provenance; }],
+      ["elderhall.inn", (asset) => { delete asset.provenance; }],
+      ["elderhall.grass-atlas", (asset) => { asset.provenance = []; }],
+      ["elderhall.grass-atlas", (asset) => { asset.provenance.source_type = "unknown"; }],
+      ["elderhall.grass-atlas", (asset) => { asset.provenance.method = "   "; }],
+      ["elderhall.grass-atlas", (asset) => { asset.provenance.method = "\u0085\u001c"; }],
+      ["elderhall.grass-atlas", (asset) => { delete asset.provenance.rights_holder; }],
+      ["elderhall.grass-atlas", (asset) => { asset.provenance.license = "x".repeat(1025); }],
+      ["elderhall.grass-atlas", (asset) => { asset.provenance.authorization = 42; }],
+    ];
+    for (const [id, change] of cases) {
+      const manifest = structuredClone(original);
+      change(manifest.assets.find((asset) => asset.id === id));
+      writeFileSync(path, JSON.stringify(manifest));
+      assert.throws(() => copyElderhallCandidate(staged, output), /provenance/i, id);
+      assert.equal(existsSync(output), false, "invalid lineage must fail before creating the export");
+    }
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+test("reference-conditioned assets require valid source and reference digests and an attestation", () => {
+  const dir = mkdtempSync(join(tmpdir(), "elderhall-reference-lineage-"));
+  try {
+    cpSync(source, dir, { recursive: true });
+    const path = join(dir, "manifest.json");
+    const original = JSON.parse(readFileSync(path, "utf8"));
+    const cases = [
+      ["source_sha256", undefined],
+      ["source_sha256", "a".repeat(63)],
+      ["source_sha256", "A".repeat(64)],
+      ["reference_sha256", undefined],
+      ["reference_sha256", "z".repeat(64)],
+      ["reference_attestation", undefined],
+      ["reference_attestation", "  "],
+      ["reference_attestation", "x".repeat(1025)],
+    ];
+    for (const [key, value] of cases) {
+      const manifest = structuredClone(original);
+      const asset = manifest.assets.find((entry) => entry.id === "elderhall.guild-reference");
+      asset.provenance[key] = value;
+      writeFileSync(path, JSON.stringify(manifest));
+      assert.throws(() => validateElderhallPack(dir), new RegExp(key), key);
+    }
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+test("external sources require license evidence, which remains an unverified claim", () => {
+  const dir = mkdtempSync(join(tmpdir(), "elderhall-external-lineage-"));
+  try {
+    cpSync(source, dir, { recursive: true });
+    const path = join(dir, "manifest.json");
+    const manifest = JSON.parse(readFileSync(path, "utf8"));
+    const asset = manifest.assets.find((entry) => entry.id === "elderhall.grass-atlas");
+    asset.provenance.source_type = "external";
+    for (const value of [undefined, "  ", 42, "x".repeat(1025)]) {
+      asset.provenance.license_evidence = value;
+      writeFileSync(path, JSON.stringify(manifest));
+      assert.throws(() => validateElderhallPack(dir), /license_evidence/);
+    }
+    asset.provenance.license_evidence = "Evidence supplied by caller; rights review pending";
+    asset.provenance.review_status = "rights review pending";
+    writeFileSync(path, JSON.stringify(manifest));
+    const validated = validateElderhallPack(dir);
+    assert.equal(validated.assets.find((entry) => entry.id === asset.id).provenance.review_status, "rights review pending");
+  } finally { rmSync(dir, { recursive: true, force: true }); }
 });
 
 test("tampering or a path escaping the pack is rejected before copying", () => {

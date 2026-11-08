@@ -68,8 +68,8 @@ import {
   type WorldCamReliefState,
 } from "./render/world-camera-safe.ts";
 import { clipSoftPath, clipStoneTransition, drawAtlasTile, paintStoneRoadBorder, paintTileAccent, tileAtlasQuadrant } from "./render/tile-surface.ts";
-import { paintWorldActorShadow, paintWorldPropShadow, resolveWorldPropLayout, shouldFadePropForPlayer, worldPropCullBounds } from "./render/world-actors.ts";
-import { elderhallCandidateObject, elderhallTerrainAtlas, paintCandidateGateFallback, paintCandidateBenchFallback } from "./render/elderhall-visual.ts";
+import { paintPropWithLocalFade, paintWorldActorShadow, paintWorldPropShadow, resolveWorldPropLayout, shouldFadePropForPlayer, worldPropCullBounds } from "./render/world-actors.ts";
+import { elderhallCandidateObject, elderhallTerrainAtlas, paintCandidateGateFallback, paintCandidateBenchFallback, paintElderhallRoadJunctions } from "./render/elderhall-visual.ts";
 import { captureChance, captureSucceeds, storeCapturedBeast } from "./systems/capture.ts";
 import { healBeast, playerActsFirst, spendSkillMp } from "./systems/combat.ts";
 import { applySkillEvents, resolveSkillUse } from "./systems/battle-engine.ts";
@@ -2163,7 +2163,8 @@ export class ReliquaryGame {
 		if (canvas && typeof document !== "undefined" && this.mode === "world" && !this.menu && !this.dialog) {
 			const { insetCanvas, source } = readUiSafeTopCanvas(canvas);
 			if (source) {
-				const adjusted = adjustCamYForHudInset(camY, playerHeadCanvasY, insetCanvas, this.worldCamRelief);
+				const adjusted = adjustCamYForHudInset(camY, playerHeadCanvasY, insetCanvas, this.worldCamRelief,
+					{ viewportHeight: this.ch(), playerHeight: TILE * 1.5 });
 				camY = adjusted.camY;
 				this.worldCamRelief.relief = adjusted.relief;
 				this.worldCamRelief.contentPanY = adjusted.contentPanY;
@@ -2194,9 +2195,13 @@ export class ReliquaryGame {
 			const ground = canvas.getContext("2d");
 			if (!ground) return;
 			ground.imageSmoothingEnabled = false;
+			const candidateDirtAtlas = this.images["tile_elderhall-dirt-atlas"];
+			const candidateGrassAtlas = this.images["tile_elderhall-grass-atlas"];
 			bakeMapTerrain({
 				map: m,
 				tileSize: TILE,
+				drawJunctions: elderhallCandidate && m.id === "elderhall" && candidateDirtAtlas && candidateGrassAtlas
+					? () => paintElderhallRoadJunctions(ground, m, TILE, candidateDirtAtlas) : undefined,
 				drawTile: (name, dx, dy, variant, pathMask, stoneMask) => {
 					const tx = dx / TILE;
 					const ty = dy / TILE;
@@ -2218,11 +2223,14 @@ export class ReliquaryGame {
 						ground.fillStyle = `rgba(20,17,14,${0.035 * variant})`;
 						ground.fillRect(dx, dy, TILE, TILE);
 					}
+					const candidateStoneKey = stoneMask ? elderhallTerrainAtlas(m.id, "cobble", elderhallCandidate) : null;
+					const candidateStone = candidateStoneKey ? this.images[candidateStoneKey] : undefined;
 					const stone = stoneMask ? this.images.tile_cobble : undefined;
-					if (stone && stoneMask) {
+					if (stoneMask && (candidateStone || stone)) {
 						ground.save();
 						clipStoneTransition(ground, dx, dy, TILE, stoneMask);
-						ground.drawImage(stone, dx, dy, TILE, TILE);
+						if (candidateStone) drawAtlasTile(ground, candidateStone, dx, dy, TILE, tileAtlasQuadrant(variant, tx, ty));
+						else if (stone) ground.drawImage(stone, dx, dy, TILE, TILE);
 						ground.restore();
 					}
 					if (pathMask !== undefined) {
@@ -2268,10 +2276,16 @@ export class ReliquaryGame {
 					const dw = visual.width;
 					const dh = visual.height;
 					if (img) {
-						if (faded) { ctx.save(); ctx.globalAlpha = 0.35; }
-						paintWorldPropShadow(ctx, art.sprite, dx, dy, dw, dh);
-						ctx.drawImage(img, dx, dy, dw, dh);
-						if (faded) ctx.restore();
+						if (faded && art.sprite === "elderhall-gate-reference") {
+							paintWorldPropShadow(ctx, art.sprite, dx, dy, dw, dh);
+							paintPropWithLocalFade(ctx, img, { x: dx, y: dy, width: dw, height: dh },
+								{ x: this.px - camX, y: this.py - TILE * 0.5 - camY, width: TILE, height: TILE * 1.5 });
+						} else {
+							if (faded) { ctx.save(); ctx.globalAlpha = 0.35; }
+							paintWorldPropShadow(ctx, art.sprite, dx, dy, dw, dh);
+							ctx.drawImage(img, dx, dy, dw, dh);
+							if (faded) ctx.restore();
+						}
 					} else if (o.id === "north_gate_candidate") paintCandidateGateFallback(ctx, o, camX, camY, TILE);
 					else if (o.id === "green_bench_candidate") paintCandidateBenchFallback(ctx, o, camX, camY, TILE);
 				}

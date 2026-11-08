@@ -14,7 +14,7 @@ import {
 } from "./ui/Overlays";
 import { AppStatus } from "./ui/AppStatus";
 import { battleSubmenuRootClass } from "./ui/battle-chrome.ts";
-import { formatUiSafeTopPx } from "./ui/ui-geometry.ts";
+import { observeUiSafeTop } from "./ui/ui-geometry.ts";
 import { isClassicTouchEnabled, isSoundMutedStored, isUiModalOpen, shouldShowDialogTouch, shouldShowExplorationTouch } from "./ui/ui-chrome.ts";
 import { registerReliquaryServiceWorker, setUpdateGuard } from "../pwa/register.ts";
 import { setMuted } from "./audio.ts";
@@ -238,20 +238,7 @@ export function GameApp() {
     if (!stage || !stack) return;
     const viewport = stage.querySelector<HTMLElement>(".viewport");
     if (!viewport) return;
-    const applySafeTop = () => {
-      const vr = viewport.getBoundingClientRect();
-      const sr = stack.getBoundingClientRect();
-      if (sr.height <= 0) {
-        viewport.style.removeProperty("--ui-safe-top-px");
-        return;
-      }
-      viewport.style.setProperty("--ui-safe-top-px", formatUiSafeTopPx(sr.bottom - vr.top));
-    };
-    applySafeTop();
-    const ro = new ResizeObserver(applySafeTop);
-    ro.observe(stack);
-    ro.observe(viewport);
-    return () => ro.disconnect();
+    return observeUiSafeTop(viewport, stack);
   }, [showHudBar, snap.toast, uiModal, snap.objective, snap.mode]);
 
   return (

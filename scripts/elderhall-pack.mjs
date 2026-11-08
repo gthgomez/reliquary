@@ -5,6 +5,31 @@ import pngjs from "pngjs";
 
 export const CANDIDATE_IDS = ["grass-atlas", "dirt-atlas", "stone-atlas", "well-reference", "cottage-reference", "guild-reference", "shop-reference", "tree-reference", "gate-reference", "bench", "flowers"];
 
+const PROVENANCE_SOURCE_TYPES = new Set(["original_programmatic", "reference_conditioned", "owner_provided", "external", "native_recipe"]);
+
+// This checks the presence and shape of recorded claims; it does not approve rights or verify attestations.
+function validateProvenance(asset) {
+  const provenance = asset.provenance;
+  if (!provenance || typeof provenance !== "object" || Array.isArray(provenance) || !PROVENANCE_SOURCE_TYPES.has(provenance.source_type)) {
+    throw new Error(`Invalid provenance source_type: ${asset.id}`);
+  }
+  const requireText = (key) => {
+    const value = provenance[key];
+    const characters = typeof value === "string" ? Array.from(value) : [];
+    // Python's str.strip also treats control characters 28–31 as whitespace.
+    const blank = characters.every((character) => /\p{White_Space}/u.test(character) || (character.codePointAt(0) >= 28 && character.codePointAt(0) <= 31));
+    if (typeof value !== "string" || !value.trim() || blank || characters.length > 1024) throw new Error(`Invalid provenance ${key}: ${asset.id}`);
+  };
+  for (const key of ["method", "rights_holder", "license", "authorization"]) requireText(key);
+  if (provenance.source_type === "reference_conditioned") {
+    for (const key of ["source_sha256", "reference_sha256"]) {
+      if (typeof provenance[key] !== "string" || !/^[0-9a-f]{64}$/.test(provenance[key])) throw new Error(`Invalid provenance ${key}: ${asset.id}`);
+    }
+    requireText("reference_attestation");
+  }
+  if (provenance.source_type === "external") requireText("license_evidence");
+}
+
 /** Validate the versioned AGES interchange and every file before exporting any. */
 export function validateElderhallPack(root) {
   const manifest = JSON.parse(readFileSync(join(root, "manifest.json"), "utf8"));
@@ -14,6 +39,7 @@ export function validateElderhallPack(root) {
   for (const asset of manifest.assets) {
     if (typeof asset.id !== "string" || !/^elderhall\.[a-z0-9-]+$/.test(asset.id) || ids.has(asset.id)) throw new Error("Invalid or duplicate asset identity");
     ids.add(asset.id);
+    validateProvenance(asset);
     if (asset.file !== `assets/${asset.id}.png`) throw new Error(`Invalid asset path: ${asset.file}`);
     const filename = join(root, asset.file);
     if (!lstatSync(filename).isFile()) throw new Error(`Invalid asset path: ${asset.file}`);
