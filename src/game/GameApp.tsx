@@ -276,7 +276,7 @@ export function GameApp() {
               <Hud
                 snap={snap}
                 menuButtonRef={menuButtonRef}
-                dormant={uiModal || !!snap.dialog?.portraitKey}
+                dormant={uiModal || !!snap.dialog}
                 onMenu={() => g.toggleMenu()}
               />
             ) : null}

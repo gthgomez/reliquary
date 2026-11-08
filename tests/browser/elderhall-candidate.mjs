@@ -77,6 +77,31 @@ async function prepareWorld(page, observations) {
   await page.waitForFunction(() => document.querySelector(".hud-place")?.textContent?.includes("Elderhall"), null, { timeout: 10_000 });
 }
 
+async function verifyTouchMovement(page) {
+  // Send real Chromium touch input to the rendered virtual pad, not a game
+  // probe. The probe observes the resulting position and stopped state only.
+  await page.waitForFunction(() => window.__controlsTest?.getSpeed?.() === 0, null, { timeout: 10_000 });
+  const before = await page.evaluate(() => window.__controlsTest.getPos());
+  const button = page.locator(".touch-full .d.right");
+  const box = await button.boundingBox();
+  assert.ok(box && box.width >= 44 && box.height >= 44, "right touch control has a usable target");
+  const cdp = await page.context().newCDPSession(page);
+  try {
+    await cdp.send("Input.dispatchTouchEvent", {
+      type: "touchStart", touchPoints: [{ x: box.x + box.width / 2, y: box.y + box.height / 2, id: 1 }],
+    });
+    await page.waitForFunction((x) => window.__controlsTest?.getPos?.().x > x, before.x, { timeout: 10_000 });
+  } finally {
+    await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] }).catch(() => {});
+    await cdp.detach();
+  }
+  await page.waitForFunction(() => window.__controlsTest?.getSpeed?.() === 0, null, { timeout: 10_000 });
+  const after = await page.evaluate(() => window.__controlsTest.getPos());
+  assert.equal(after.map, "elderhall");
+  assert.ok(after.x > before.x, "the touch hold moved right and released");
+  return { method: "Chromium touch press and release on the on-screen right control", before, after };
+}
+
 async function captureView(page, viewport, viewpoint) {
   await page.setViewportSize({ width: viewport.width, height: viewport.height });
   // This teleport is deliberately recorded as framing-only, not journey proof.
@@ -176,6 +201,7 @@ async function run() {
       });
       try {
         await prepareWorld(page, observations);
+        if (mobile) observations.touchMovement = await verifyTouchMovement(page);
         for (const viewport of viewports) for (const viewpoint of VIEWPOINTS) {
           try {
             report.captures.push(await captureView(page, viewport, viewpoint));
@@ -199,6 +225,7 @@ async function run() {
     assert.deepEqual(failedAssets, [], "no failed candidate asset requests");
     for (const context of report.contexts) {
       assert.equal(context.naturalEntry?.map, "elderhall", "fresh start exits cottage by keyboard");
+      if (context.mobileEmulation) assert.ok(context.touchMovement?.after.x > context.touchMovement?.before.x, "real touch input moves the candidate player");
       assert.equal(context.decodedAssets.length, CANDIDATE_URLS.length, "all candidate images decode");
       assert.ok(CANDIDATE_URLS.every((path) => context.assetResponses.some((entry) => entry.path === path && entry.status === 200)), "each candidate was served successfully");
     }

@@ -37,6 +37,15 @@ try {
       assert.equal((await page.locator(".hud-companion").textContent())?.trim(), "No pact yet", "fresh game has no fabricated companion");
       await page.evaluate(() => window.__reliquary.setGold(321));
       assert.match((await page.locator(".hud-gold").textContent()) ?? "", /321\s*cr/, "HUD follows current currency");
+      if ((viewport.width === 390 && viewport.height === 844) || (viewport.width === 412 && viewport.height === 915)) {
+        const objective = await page.locator(".hud-objective-preview").evaluate((el) => ({
+          text: el.textContent ?? "", clientHeight: el.clientHeight, scrollHeight: el.scrollHeight,
+          clientWidth: el.clientWidth, scrollWidth: el.scrollWidth,
+        }));
+        assert.ok(objective.text.trim(), "the current objective is present");
+        assert.ok(objective.scrollHeight <= objective.clientHeight + 1 && objective.scrollWidth <= objective.clientWidth + 1,
+          `the opening objective is readable without clipping at ${viewport.width}x${viewport.height}: ${JSON.stringify(objective)}`);
+      }
       if (await page.locator(".touch-full").isVisible()) {
         assert.equal(await page.getByRole("button", { name: "A — Interact", exact: true }).count(), 1);
         assert.equal(await page.getByRole("button", { name: "B — Cancel", exact: true }).count(), 1);
