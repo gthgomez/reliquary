@@ -262,13 +262,17 @@ export function MenuPanel({ game, snap, onImportActivate }: { game: ReliquaryGam
       <OverlayPanel
         title="Lantern"
         subtitle={snap.objective ? `Objective — ${snap.objective}` : undefined}
+        closeLabel="Close"
+        onClose={() => game.chooseMenu(ROOT_MENU.length - 1)}
+        onCloseFocus={() => { game.setMenuIndex(ROOT_MENU.length - 1); game.emitPublic(); }}
       >
         <ul className="menu-list">
-          {ROOT_MENU.map((it, i) => (
+          {ROOT_MENU.slice(0, -1).map((it, i) => (
             <li key={it}>
               <button
                 type="button"
                 className={i === snap.menuIndex ? "active" : ""}
+                onFocus={() => { game.setMenuIndex(i); game.emitPublic(); }}
                 onClick={() => {
                   // Open the picker inside this gesture (Safari-safe); the
                   // engine ticket effect stays as the fallback path.

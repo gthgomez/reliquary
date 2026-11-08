@@ -209,6 +209,28 @@ test("arrow navigation moves focus to the selected menu button", async () => {
   });
 });
 
+test("root menu arrows move focus between the sticky Close and menu rows", async () => {
+  await withGame((game, _frame, events) => {
+    game.mode = "world";
+    game.menu = "root";
+    game.menuIndex = ROOT_MENU.length - 1;
+    let focused = -1;
+    const buttons = Array.from({ length: ROOT_MENU.length }, (_, index) => ({
+      disabled: false,
+      focus: () => { focused = index; },
+    }));
+    const panel = { querySelectorAll: () => buttons };
+    const target = Object.assign(new HTMLElement(), {
+      closest: (selector: string) => selector === ".overlay-panel" ? panel : null,
+    });
+    events.get("keydown")!({ target, code: "ArrowUp", repeat: false, preventDefault() {} } as unknown as Event);
+    assert.equal(game.menuIndex, ROOT_MENU.length - 2);
+    assert.equal(focused, ROOT_MENU.length - 2, "focus follows selection out of the footer");
+    events.get("keydown")!({ target, code: "ArrowDown", repeat: false, preventDefault() {} } as unknown as Event);
+    assert.equal(focused, ROOT_MENU.length - 1, "focus returns to the sticky Close button");
+  });
+});
+
 test("root menu wraps over its actions and cancel closes it", async () => {
   await withGame((game, _frame, events) => {
     game.mode = "world";

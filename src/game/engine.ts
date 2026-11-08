@@ -481,7 +481,10 @@ export class ReliquaryGame {
 				const direction = up ? -1 : 1;
 				this.moveMenu(direction, max);
 				const list = target instanceof HTMLElement ? target.closest("ul.cmd, ul.menu-list") : null;
-				const buttons = list?.querySelectorAll<HTMLButtonElement>("button");
+				const rootPanel = this.menu === "root" && target instanceof HTMLElement ? target.closest(".overlay-panel") : null;
+				const buttons = rootPanel
+					? rootPanel.querySelectorAll<HTMLButtonElement>(".menu-list button, .overlay-panel-close")
+					: list?.querySelectorAll<HTMLButtonElement>("button");
 				if (buttons?.length === max) {
 					for (let i = 0; i < max && buttons[this.menuIndex]?.disabled; i++) this.moveMenu(direction, max);
 					buttons[this.menuIndex]?.focus();
