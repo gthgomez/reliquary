@@ -92,6 +92,25 @@ test("copy exposes only selected runtime PNGs and their candidate manifest", () 
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
 
+test("the selected export contains distinct guild and shop images with reference lineage", () => {
+  const dir = mkdtempSync(join(tmpdir(), "elderhall-landmarks-"));
+  try {
+    copyElderhallCandidate(source, dir);
+    const manifest = JSON.parse(readFileSync(join(dir, "manifest.json"), "utf8"));
+    const guild = manifest.assets.find((asset) => asset.id === "elderhall.guild-reference");
+    const shop = manifest.assets.find((asset) => asset.id === "elderhall.shop-reference");
+    for (const asset of [guild, shop]) {
+      assert.ok(asset, "selected landmark appears in exported manifest");
+      assert.equal(asset.provenance.source_type, "reference_conditioned");
+      assert.match(asset.provenance.source_sha256, /^[0-9a-f]{64}$/);
+      assert.match(asset.provenance.reference_sha256, /^[0-9a-f]{64}$/);
+      assert.deepEqual(asset.logical_footprint, [3, 3], "building footprint reflects the authored logical size");
+      assert.ok(existsSync(join(dir, asset.file)));
+    }
+    assert.notEqual(guild.sha256, shop.sha256, "the landmarks are different images");
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
 test("the actual terrain atlas cells are distinct and share compatible edges", () => {
   for (const family of ["grass", "dirt", "stone"]) {
     const image = pngjs.PNG.sync.read(readFileSync(join(source, "assets", `elderhall.${family}-atlas.png`)));

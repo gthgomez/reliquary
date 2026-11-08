@@ -1175,10 +1175,134 @@
           7
         ]
       }
+    },
+    {
+      "anchor": [
+        80,
+        156
+      ],
+      "collision": null,
+      "depth_baseline": 156,
+      "dimensions": [
+        160,
+        160
+      ],
+      "file": "assets/elderhall.guild-reference.png",
+      "id": "elderhall.guild-reference",
+      "interaction_anchor": null,
+      "kind": "prop",
+      "logical_footprint": [
+        3,
+        3
+      ],
+      "provenance": {
+        "authorization": "Created at the project owner request for Reliquary; production approval pending",
+        "license": "Project candidate; rights review pending",
+        "method": "OpenAI built-in image generation, conditioned on the owner-supplied reference and cottage master SHA-256 533ab9605ba4165442d5eae5986f065b2c6aea715f99933ce8e24842603a3629",
+        "reference_attestation": "Caller supplied the reference to the cited generation method; this claim is recorded, not independently verified.",
+        "reference_sha256": "04ac8efeb1b52dd63f026c222dceb4427ab2514f54741561813ddbfb90f967c5",
+        "repair": {
+          "alpha_below": 16,
+          "bottom_margin": 4,
+          "canvas": [
+            160,
+            160
+          ],
+          "crop_bbox": [
+            102,
+            76,
+            1281,
+            1034
+          ],
+          "opaque_at_or_above": 240,
+          "resampling": "Pillow LANCZOS"
+        },
+        "review_status": "candidate; visual and rights review pending",
+        "rights_holder": "Not independently verified",
+        "source_sha256": "d79ffea36f61dae48c9497e4f0ede24f40c79dd1436d185cc93f392e2e91e077",
+        "source_type": "reference_conditioned"
+      },
+      "render_size_tiles": [
+        3.0,
+        3.0
+      ],
+      "sha256": "eb3d8615874030b0c8553135a0be8c0af209876adf0abe319f91c651323c8dd8",
+      "shadow": {
+        "center": [
+          80,
+          156
+        ],
+        "radius": [
+          40,
+          7
+        ]
+      }
+    },
+    {
+      "anchor": [
+        80,
+        156
+      ],
+      "collision": null,
+      "depth_baseline": 156,
+      "dimensions": [
+        160,
+        160
+      ],
+      "file": "assets/elderhall.shop-reference.png",
+      "id": "elderhall.shop-reference",
+      "interaction_anchor": null,
+      "kind": "prop",
+      "logical_footprint": [
+        3,
+        3
+      ],
+      "provenance": {
+        "authorization": "Created at the project owner request for Reliquary; production approval pending",
+        "license": "Project candidate; rights review pending",
+        "method": "OpenAI built-in image generation, conditioned on the owner-supplied reference and cottage master SHA-256 533ab9605ba4165442d5eae5986f065b2c6aea715f99933ce8e24842603a3629",
+        "reference_attestation": "Caller supplied the reference to the cited generation method; this claim is recorded, not independently verified.",
+        "reference_sha256": "04ac8efeb1b52dd63f026c222dceb4427ab2514f54741561813ddbfb90f967c5",
+        "repair": {
+          "alpha_below": 16,
+          "bottom_margin": 4,
+          "canvas": [
+            160,
+            160
+          ],
+          "crop_bbox": [
+            193,
+            121,
+            1106,
+            1059
+          ],
+          "opaque_at_or_above": 240,
+          "resampling": "Pillow LANCZOS"
+        },
+        "review_status": "candidate; visual and rights review pending",
+        "rights_holder": "Not independently verified",
+        "source_sha256": "b8ef29089f3634c08b911081ef9bfe58932299b09ddb5bfa3c376624c95073b0",
+        "source_type": "reference_conditioned"
+      },
+      "render_size_tiles": [
+        3.0,
+        3.0
+      ],
+      "sha256": "fd6f313084e80c59dcc74274d4ffa47722f3949a904b3c4f5d7f6e7fbaa27160",
+      "shadow": {
+        "center": [
+          80,
+          156
+        ],
+        "radius": [
+          40,
+          7
+        ]
+      }
     }
   ],
   "id": "reliquary.elderhall",
   "schema_version": "ages.environment-pack/1",
   "tile_size": 32,
-  "version": "0.1.0"
+  "version": "0.2.0"
 }

@@ -22,6 +22,8 @@ const PROP_BASE: Record<string, { left: number; width: number; bottom: number }>
   "elderhall-bench": { left: 16 / 96, width: 64 / 96, bottom: 43 / 48 },
   "elderhall-well-reference": { left: 27 / 128, width: 74 / 128, bottom: 156 / 160 },
   "elderhall-cottage-reference": { left: 20 / 160, width: 120 / 160, bottom: 156 / 160 },
+  "elderhall-guild-reference": { left: 20 / 160, width: 120 / 160, bottom: 156 / 160 },
+  "elderhall-shop-reference": { left: 20 / 160, width: 120 / 160, bottom: 156 / 160 },
   "elderhall-tree-reference": { left: 55 / 160, width: 50 / 160, bottom: 140 / 144 },
   tree: { left: 44 / 128, width: 40 / 128, bottom: 115 / 128 },
   well: { left: 3 / 48, width: 35 / 48, bottom: 33 / 48 },
@@ -74,7 +76,7 @@ export function paintWorldPropShadow(
     paintWorldActorShadow(ctx, x, y + height - 4, width);
     return;
   }
-  if (["cottage", "inn", "shop", "elderhall-cottage-reference"].includes(sprite)) {
+  if (["cottage", "inn", "shop", "elderhall-cottage-reference", "elderhall-guild-reference", "elderhall-shop-reference"].includes(sprite)) {
     if (typeof ctx.beginPath !== "function" || typeof ctx.ellipse !== "function") return;
     ctx.fillStyle = "rgba(0,0,0,0.14)";
     ctx.beginPath();

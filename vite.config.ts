@@ -154,6 +154,8 @@ export default defineConfig(({ command, isPreview }) => {
       // Fixture hooks are enabled only by the dedicated public browser-test build.
       __RELIQUARY_BROWSER_TEST__: "false",
       __RELIQUARY_AGES_PREVIEW__: "false",
+      // The full app build is not the isolated Elderhall candidate preview.
+      ...(command === "build" ? { "import.meta.env.VITE_ELDERHALL_CANDIDATE": '"0"' } : {}),
     },
     server: {
       host: "0.0.0.0",
@@ -165,7 +167,13 @@ export default defineConfig(({ command, isPreview }) => {
       port: 8081,
       strictPort: true,
     },
-    resolve: { tsconfigPaths: true },
+    resolve: {
+      tsconfigPaths: true,
+      ...(command === "build" ? { alias: [
+        { find: /^(?:\.\/|\.\.\/)render\/elderhall-visual\.ts$/, replacement: fileURLToPath(new URL("./src/game/render/elderhall-visual.stub.ts", import.meta.url)) },
+        { find: /^\.\/elderhall-candidate\.ts$/, replacement: fileURLToPath(new URL("./src/game/maps/elderhall-candidate.stub.ts", import.meta.url)) },
+      ] } : {}),
+    },
     plugins: [
       pgliteBootstrapPlugin(),
       // Before tanstackStart so /auth/popup never falls through to the SPA.

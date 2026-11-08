@@ -31,6 +31,59 @@ try {
       await page.click("text=Start");
       await dismissIntro(page);
       await page.waitForSelector(".hud-menu", { timeout: 15_000 });
+      if (viewport.width === 390 && (viewport.height === 844 || viewport.height === 667)) {
+        // Test-only warp establishes repeatable framing; this is not journey proof.
+        await page.evaluate(() => window.__controlsTest.warp("elderhall", 12, 12));
+        await page.waitForFunction((tall) => {
+          const canvas = document.querySelector(".game-canvas");
+          return canvas?.width === 320 && (tall ? canvas.height === 576 : canvas.height > 400 && canvas.height < 480);
+        }, viewport.height === 844);
+        const geometry = await page.evaluate(() => {
+          const canvas = document.querySelector(".game-canvas");
+          const stage = document.querySelector(".stage");
+          const controls = document.querySelector(".touch-full");
+          const canvasRect = canvas.getBoundingClientRect();
+          const stageRect = stage.getBoundingClientRect();
+          const controlRect = controls.getBoundingClientRect();
+          return {
+            logicalWidth: canvas.width, logicalHeight: canvas.height,
+            width: canvasRect.width, height: canvasRect.height,
+            stageWidth: stageRect.width, canvasBottom: canvasRect.bottom, controlTop: controlRect.top,
+          };
+        });
+        assert.ok(geometry.width >= geometry.stageWidth - 2, `exploration uses available width: ${JSON.stringify(geometry)}`);
+        assert.ok(geometry.canvasBottom <= geometry.controlTop + 1, `world stays above touch controls: ${JSON.stringify(geometry)}`);
+        assert.ok(Math.abs(geometry.width / geometry.logicalWidth - geometry.height / geometry.logicalHeight) < 0.005,
+          `canvas preserves its proportions: ${JSON.stringify(geometry)}`);
+        // At the north edge the camera cannot scroll any farther; check that
+        // its existing HUD relief makes the player's head visible after it settles.
+        const previousReportTime = await page.evaluate(() => {
+          const previous = window.__worldCameraReport?.ts ?? 0;
+          window.__controlsTest.warp("elderhall", 11, 1);
+          return previous;
+        });
+        await page.waitForFunction((previous) => {
+          const report = window.__worldCameraReport;
+          return report && report.ts > previous && report.hudInsetBottom > 20 && report.effectivePlayerHeadCanvasY >= report.hudInsetBottom + 3;
+        }, previousReportTime);
+        await page.evaluate(() => window.__controlsTest.warp("elderhall", 12, 12));
+        if (viewport.height === 844) {
+          // A smaller map restores its old maximum, then a return to Elderhall
+          // reapplies the map-sized view even without a window resize.
+          await page.evaluate(() => window.__controlsTest.warp("home", 5, 6));
+          await page.waitForFunction(() => document.querySelector(".game-canvas")?.height === 512);
+          await page.evaluate(() => window.__controlsTest.warp("elderhall", 12, 12));
+          await page.waitForFunction(() => document.querySelector(".game-canvas")?.height === 576);
+          // ResizeObserver must update and then restore the exploration view.
+          await page.setViewportSize({ width: 390, height: 667 });
+          await page.waitForFunction(() => {
+            const canvas = document.querySelector(".game-canvas");
+            return canvas?.width === 320 && canvas.height > 400 && canvas.height < 480;
+          });
+          await page.setViewportSize(viewport);
+          await page.waitForFunction(() => document.querySelector(".game-canvas")?.height === 576);
+        }
+      }
       await page.waitForFunction(() => typeof window.__reliquary?.openMenu === "function");
       assert.match((await page.locator(".hud-place").textContent()) ?? "", /Cottage|Hollowmere|Elderhall/i);
       assert.ok((await page.locator(".hud-region").textContent())?.trim(), "region is populated from current map");
@@ -119,6 +172,9 @@ try {
       assert.equal(modalChrome.touchHidden, true, "exploration touch hidden in menu");
       assert.equal(modalChrome.explorePad, false, "walk pad hidden in menu");
       assert.equal(modalChrome.hudHidden, true, "world HUD dormant under menu sheet");
+      if (viewport.width === 390 && (viewport.height === 844 || viewport.height === 667)) {
+        await page.waitForFunction(() => document.querySelector(".game-canvas")?.height === 512);
+      }
       const panel = page.locator(".overlay-panel, .sheet").first();
       const box = await panel.boundingBox();
       assert.ok(box, "overlay panel visible");

@@ -3,7 +3,7 @@ import { copyFileSync, lstatSync, mkdirSync, readFileSync, writeFileSync } from 
 import { join } from "node:path";
 import pngjs from "pngjs";
 
-export const CANDIDATE_IDS = ["grass-atlas", "dirt-atlas", "stone-atlas", "well-reference", "cottage-reference", "tree-reference", "gate-reference", "bench", "flowers"];
+export const CANDIDATE_IDS = ["grass-atlas", "dirt-atlas", "stone-atlas", "well-reference", "cottage-reference", "guild-reference", "shop-reference", "tree-reference", "gate-reference", "bench", "flowers"];
 
 /** Validate the versioned AGES interchange and every file before exporting any. */
 export function validateElderhallPack(root) {

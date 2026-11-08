@@ -58,14 +58,28 @@ try {
 
   // Visit the elder and every starting-village building through normal input.
   // Only position and facing are read from the test probe.
-  async function faceNorthAndInteract() {
-    await page.keyboard.down("KeyW");
-    await page.waitForFunction(() => window.__controlsTest.getYaw() === Math.PI);
-    await page.keyboard.up("KeyW");
+  async function faceAndInteract(key, yaw) {
+    await page.keyboard.down(key);
+    await page.waitForFunction((expected) => window.__controlsTest.getYaw() === expected, yaw);
+    await page.keyboard.up(key);
     await page.keyboard.press("KeyZ");
   }
-  await travel("elderhall", { x: 7, y: 10 });
-  await faceNorthAndInteract();
+  const maren = MAPS.elderhall.npcs.find((npc) => npc.id === "maren");
+  if (!maren) throw new Error("Elder Maren is missing from Elderhall");
+  const start = await page.evaluate(() => window.__controlsTest.getPos());
+  const approaches = [
+    { x: maren.x - 1, y: maren.y, key: "KeyD", yaw: -Math.PI / 2 },
+    { x: maren.x, y: maren.y + 1, key: "KeyW", yaw: Math.PI },
+    { x: maren.x + 1, y: maren.y, key: "KeyA", yaw: Math.PI / 2 },
+    { x: maren.x, y: maren.y - 1, key: "KeyS", yaw: 0 },
+  ];
+  const approach = approaches.find((candidate) => {
+    if (MAPS.elderhall.warps.some((warp) => warp.x === candidate.x && warp.y === candidate.y)) return false;
+    try { pathFor(MAPS.elderhall, start, candidate, false); return true; } catch { return false; }
+  });
+  if (!approach) throw new Error("No reachable approach to Elder Maren");
+  await travel("elderhall", approach);
+  await faceAndInteract(approach.key, approach.yaw);
   await page.waitForSelector("button.dialog", { timeout: 5000 });
   const speaker = await page.locator(".dialog-name").textContent();
   if (speaker !== "Elder Maren") throw new Error(`Expected Elder Maren, got ${speaker}`);
@@ -79,7 +93,7 @@ try {
     { name: "shop", front: { x: 16, y: 9 }, inside: "shop_in", exit: { x: 5, y: 8 } },
   ]) {
     await travel("elderhall", building.front);
-    await faceNorthAndInteract();
+    await faceAndInteract("KeyW", Math.PI);
     await page.waitForFunction((map) => window.__controlsTest.getPos().map === map, building.inside, { timeout: 5000 });
     position = await travel(building.inside, building.exit);
     if (position.map !== "elderhall") throw new Error(`${building.name} exit failed`);
@@ -88,7 +102,7 @@ try {
   position = await travel("elderhall", { x: 0, y: 10 });
   if (position.map !== "grove") throw new Error("Grove entrance failed");
   await travel("grove", { x: 4, y: 7 });
-  await faceNorthAndInteract();
+  await faceAndInteract("KeyW", Math.PI);
   for (let i = 0; i < 4; i++) await page.locator("button.dialog").click();
   await page.getByText(/Emberkit \d+\/\d+/).waitFor();
   await page.getByRole("button", { name: "Menu", exact: true }).click();

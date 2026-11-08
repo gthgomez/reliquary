@@ -48,7 +48,9 @@ function validSave(): GameSave {
 }
 
 test("a revision-one save underneath the new village tree is safely relocated", () => {
-  const old = { ...validSave(), worldRevision: 1, x: 13, y: 12, gold: 123 };
+  const tree = MAPS.elderhall.objects.find((object) => object.id === "green_tree");
+  assert.ok(tree);
+  const old = { ...validSave(), worldRevision: 1, x: tree.x, y: tree.y, gold: 123 };
   const restored = parseSave(JSON.stringify(old));
   assert.ok(restored);
   assert.notDeepEqual({ x: restored.x, y: restored.y }, { x: old.x, y: old.y });

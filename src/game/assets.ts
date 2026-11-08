@@ -36,7 +36,7 @@ export function collectGameAssets(options: { elderhallCandidate?: boolean } = {}
     out.push({ key: `prop_${p}`, url: `/game/props/${p}.png`, required: true });
   }
   if (options.elderhallCandidate ?? isElderhallCandidateBuild()) {
-    for (const id of ["grass-atlas", "dirt-atlas", "stone-atlas", "well-reference", "cottage-reference", "tree-reference", "gate-reference", "bench", "flowers"]) {
+    for (const id of ["grass-atlas", "dirt-atlas", "stone-atlas", "well-reference", "cottage-reference", "guild-reference", "shop-reference", "tree-reference", "gate-reference", "bench", "flowers"]) {
       const kind = id.endsWith("-atlas") ? "tile" : "prop";
       out.push({ key: `${kind}_elderhall-${id}`, url: `/game/elderhall/assets/elderhall.${id}.png`, required: true });
     }

@@ -70,3 +70,14 @@ test("a building shadow stays shallow and subtle beneath its foundation", () => 
   assert.ok(ellipse[3]! <= 2.5, `shadow height ${ellipse[3]}`);
   assert.equal(canvas.fillStyle, "rgba(0,0,0,0.14)");
 });
+
+test("new guild and shop shadows stay grounded beneath their sprite foundations", () => {
+  for (const sprite of ["elderhall-guild-reference", "elderhall-shop-reference"]) {
+    let ellipse: number[] = [];
+    const canvas = { fillStyle: "", beginPath() {}, ellipse(...args: number[]) { ellipse = args; }, fill() {} } as unknown as CanvasRenderingContext2D;
+    paintWorldPropShadow(canvas, sprite, 0, 0, 96, 96);
+    assert.ok(ellipse[3]! <= 2.5, `${sprite} shadow height ${ellipse[3]}`);
+    assert.ok(Math.abs(ellipse[1]! - 92.6) < 2, `${sprite} foundation y=${ellipse[1]}`);
+    assert.equal(canvas.fillStyle, "rgba(0,0,0,0.14)");
+  }
+});
