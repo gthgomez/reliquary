@@ -62,3 +62,11 @@ test("boulder shadow meets the sprite's visible bottom", () => {
   assert.ok(Math.abs(ellipse[0]! - 22) < 3);
   assert.ok(Math.abs(ellipse[1]! - 35) < 3);
 });
+
+test("a building shadow stays shallow and subtle beneath its foundation", () => {
+  let ellipse: number[] = [];
+  const canvas = { fillStyle: "", beginPath() {}, ellipse(...args: number[]) { ellipse = args; }, fill() {} } as unknown as CanvasRenderingContext2D;
+  paintWorldPropShadow(canvas, "cottage", 0, 0, 96, 96);
+  assert.ok(ellipse[3]! <= 2.5, `shadow height ${ellipse[3]}`);
+  assert.equal(canvas.fillStyle, "rgba(0,0,0,0.14)");
+});

@@ -991,7 +991,11 @@ export function ShopPanel({ game, snap }: { game: ReliquaryGame; snap: Snapshot 
   );
 }
 
-export function TouchPad({ game, variant = "full" }: { game: ReliquaryGame; variant?: "full" | "dialog" }) {
+export function TouchPad({ game, variant = "full", dialogActive = variant === "dialog" }: {
+  game: ReliquaryGame;
+  variant?: "full" | "dialog";
+  dialogActive?: boolean;
+}) {
   const heldRef = useRef<Map<string, Set<HoldId>>>(new Map());
   const accessibleStops = useRef(new Set<() => void>());
   const accessibleSequence = useRef(0);
@@ -1001,8 +1005,8 @@ export function TouchPad({ game, variant = "full" }: { game: ReliquaryGame; vari
   };
   // S25: a held key must not outlive the control that owns it. The pad STAYS
   // MOUNTED across the world↔dialog transition (only its variant changes), so
-  // release on both the variant change and the final unmount — a dialog or
-  // battle opening under the finger ends the hold here.
+  // release on dialogue/variant change and final unmount — classic mode keeps
+  // its full pad mounted during dialogue, but a prior movement hold must end.
   useEffect(() => {
     const held = heldRef.current;
     const stops = accessibleStops.current;
@@ -1011,7 +1015,7 @@ export function TouchPad({ game, variant = "full" }: { game: ReliquaryGame; vari
       stops.clear();
       for (const code of clearTouchHolds(held)) game.holdKey(code, false);
     };
-  }, [game, variant]);
+  }, [game, variant, dialogActive]);
   const dir = (code: string) => ({
     onPointerDown: (e: PointerEvent<HTMLButtonElement>) => {
       e.preventDefault();
@@ -1050,7 +1054,7 @@ export function TouchPad({ game, variant = "full" }: { game: ReliquaryGame; vari
     },
   });
   return (
-    <div className={`touch touch-${variant}`} role="group" aria-label={variant === "dialog" ? "Dialog controls" : "Movement controls"}>
+    <div className={`touch touch-${variant}`} role="group" aria-label={dialogActive ? "Dialog controls" : "Movement controls"}>
       {variant === "full" ? (
         <div className="dpad">
           <button type="button" className="d up" aria-label="North" {...dir("KeyW")}>
@@ -1070,10 +1074,10 @@ export function TouchPad({ game, variant = "full" }: { game: ReliquaryGame; vari
         <p className="touch-dialog-hint">A · Next · B · Back</p>
       )}
       <div className="ab">
-        <button type="button" className="b-btn" aria-label={variant === "dialog" ? "B — Back" : "B — Cancel"} onClick={() => game.cancel()}>
+        <button type="button" className="b-btn" aria-label={dialogActive ? "B — Back" : "B — Cancel"} onClick={() => game.cancel()}>
           B
         </button>
-        <button type="button" className="a-btn" aria-label={variant === "dialog" ? "A — Next" : "A — Interact"} onClick={() => game.confirm()}>
+        <button type="button" className="a-btn" aria-label={dialogActive ? "A — Next" : "A — Interact"} onClick={() => game.confirm()}>
           A
         </button>
       </div>

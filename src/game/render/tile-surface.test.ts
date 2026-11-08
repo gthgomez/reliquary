@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { chooseTileAccent, tileAtlasQuadrant, roadBorderEdges, roadBorderCorners, paintStoneRoadBorder } from "./tile-surface.ts";
+import { chooseTileAccent, tileAtlasQuadrant, roadBorderEdges, roadBorderCorners, paintStoneRoadBorder, clipSoftPath } from "./tile-surface.ts";
 
 test("stone borders appear only where the road meets its surroundings", () => {
   assert.equal(roadBorderEdges(15), 0, "a road interior has no borders");
@@ -17,11 +17,25 @@ test("a concave road junction gets a cap at its missing diagonal", () => {
 
 test("the exposed junction corner paints a bridge across the tile seam", () => {
   const rects: number[][] = [];
-  const ctx = { save() {}, restore() {}, beginPath() {}, moveTo() {}, lineTo() {}, closePath() {}, clip() {}, fillStyle: "", fillRect(...args: number[]) { rects.push(args); } } as unknown as CanvasRenderingContext2D;
+  const ctx = { save() {}, restore() {}, beginPath() {}, moveTo() {}, lineTo() {}, quadraticCurveTo() {}, closePath() {}, clip() {}, fillStyle: "", fillRect(...args: number[]) { rects.push(args); } } as unknown as CanvasRenderingContext2D;
   paintStoneRoadBorder(ctx, 0, 0, 32, 255 & ~16);
   assert.ok(rects.some(([x, y, w, h]) => x! + w! >= 31 && y === 0 && h! > 0), "horizontal cap reaches the seam");
-  assert.ok(rects.some(([x, y, _w, h]) => x! >= 30 && y === 0 && y! + h! >= 4), "vertical cap covers the exposed step");
+  assert.ok(rects.some(([x, y, _w, h]) => x! >= 28 && y === 0 && y! + h! >= 4), "vertical cap covers the exposed step");
   assert.ok(rects.every((rect) => rect.every(Number.isInteger)), "stone geometry aligns to source pixels");
+});
+
+test("road edging uses visible stones rather than thin dashed strokes", () => {
+  const rects: number[][] = [];
+  const ctx = { save() {}, restore() {}, beginPath() {}, moveTo() {}, lineTo() {}, quadraticCurveTo() {}, closePath() {}, clip() {}, fillStyle: "", fillRect(...args: number[]) { rects.push(args); } } as unknown as CanvasRenderingContext2D;
+  paintStoneRoadBorder(ctx, 0, 0, 32, 245); // north/south connected, east/west exposed
+  assert.ok(rects.some(([, , w, h]) => w! >= 4 && h! >= 7), "each vertical stone has a substantial footprint");
+});
+
+test("a path curves at exposed and concave corners", () => {
+  let curves = 0;
+  const ctx = { beginPath() {}, moveTo() {}, lineTo() {}, quadraticCurveTo() { curves++; }, closePath() {}, clip() {} } as unknown as CanvasRenderingContext2D;
+  clipSoftPath(ctx, 0, 0, 32, 255 & ~16);
+  assert.ok(curves > 0, "missing north-east diagonal produces a curved join");
 });
 
 test("tileAtlasQuadrant is stable per tile coordinate", () => {
