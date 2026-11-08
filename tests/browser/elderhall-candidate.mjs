@@ -22,7 +22,8 @@ export const VIEWPORTS = [
 export const VIEWPOINTS = [
   { id: "village-green", x: 9, y: 13 },
   { id: "maren-and-well", x: 12, y: 10 },
-  { id: "north-gate", x: 11, y: 4 },
+  { id: "north-gate", x: 11, y: 8 },
+  { id: "north-gate-close", x: 11, y: 4 },
   { id: "west-approach", x: 1, y: 10 },
 ];
 export const CANDIDATE_IDS = [

@@ -123,3 +123,30 @@ test("content pan clears head when camera is clamped at map top", () => {
   assert.ok(out.contentPanY >= TARGET_MIN - 16 - 1);
   assert.ok(out.effectiveHeadCanvasY >= TARGET_MIN);
 });
+
+test("the player's head clears the HUD on every frame while walking north", () => {
+  const state = { relief: 0, contentPanY: 0 };
+  const inset = 90;
+  // A 32px tile takes 160ms; move 3.2px per 16ms frame, including
+  // the engine's one-frame pause when it starts the next step.
+  for (let tile = 4; tile > 1; tile -= 1) {
+    for (let i = 1; i <= 11; i += 1) {
+      const py = (tile - Math.min(i, 10) / 10) * 32;
+      const out = adjustCamYForHudInset(0, py - 16, inset, state, { viewportHeight: 576, playerHeight: 48 });
+      assert.ok(out.effectiveHeadCanvasY >= inset, `tile ${tile}, frame ${i} enters the HUD`);
+      assert.ok(out.effectiveHeadCanvasY + 48 <= 576, `tile ${tile}, frame ${i} clips the feet`);
+    }
+  }
+});
+
+test("an expanded HUD can use available canvas space without clipping the player", () => {
+  const state = { relief: 0, contentPanY: 0 };
+  const out = adjustCamYForHudInset(0, 16, 200, state, { viewportHeight: 576, playerHeight: 48 });
+  assert.ok(out.contentPanY > 160, "an open objective may require more than the old fixed pan cap");
+  assert.ok(out.effectiveHeadCanvasY >= 204);
+  assert.ok(out.effectiveHeadCanvasY + 48 <= 576);
+  const tight = adjustCamYForHudInset(0, 16, 500, { relief: 0, contentPanY: 0 }, { viewportHeight: 512, playerHeight: 48 });
+  assert.ok(tight.effectiveHeadCanvasY + 48 <= 512, "a very tall HUD must not push feet outside the canvas");
+  const staleRelief = adjustCamYForHudInset(100, 450, 90, { relief: 96, contentPanY: 0 }, { viewportHeight: 512, playerHeight: 48 });
+  assert.ok(staleRelief.effectiveHeadCanvasY + 48 <= 512, "old camera relief cannot push feet below the viewport");
+});

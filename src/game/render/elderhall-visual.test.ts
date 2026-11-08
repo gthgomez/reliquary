@@ -30,11 +30,12 @@ test("guild and shop use distinct preview art without changing gameplay footprin
 
 test("the preview gate keeps the two northern routes open", () => {
   const map = { ...MAPS.elderhall, objects: [...MAPS.elderhall.objects, elderhallCandidateGate()] };
-  assert.equal(isOccupied(map, {}, 9, 3), true);
-  assert.equal(isOccupied(map, {}, 12, 3), true);
-  assert.equal(isOccupied(map, {}, 10, 3), false);
-  assert.equal(isOccupied(map, {}, 11, 3), false);
-  assert.ok(resolveWorldPropLayout(elderhallCandidateGate(), 32).y >= 0, "the arch is not clipped above the map");
+  assert.equal(isOccupied(map, {}, 9, 6), true);
+  assert.equal(isOccupied(map, {}, 12, 6), true);
+  assert.equal(isOccupied(map, {}, 10, 6), false);
+  assert.equal(isOccupied(map, {}, 11, 6), false);
+  assert.ok(resolveWorldPropLayout(elderhallCandidateGate(), 32).y >= 3 * 32,
+    "the arch begins below the top three map rows, rather than under the opening HUD");
 });
 
 test("the village bench has a visible solid footprint away from the spawn", () => {
@@ -55,8 +56,8 @@ test("if gate art fails, its solid posts remain visibly marked", () => {
   const rectangles: number[][] = [];
   const ctx = { fillStyle: "", fillRect(...args: number[]) { rectangles.push(args); } } as unknown as CanvasRenderingContext2D;
   paintCandidateGateFallback(ctx, elderhallCandidateGate(), 0, 0, 32);
-  assert.ok(rectangles.some(([x, y]) => x === 9 * 32 && y === 3 * 32));
-  assert.ok(rectangles.some(([x, y]) => x === 12 * 32 && y === 3 * 32));
+  assert.ok(rectangles.some(([x, y]) => x === 9 * 32 && y === 6 * 32));
+  assert.ok(rectangles.some(([x, y]) => x === 12 * 32 && y === 6 * 32));
 });
 
 test("Elderhall terrain uses candidate atlases only when explicitly enabled", () => {

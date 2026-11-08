@@ -49,6 +49,7 @@ export function resolveWorldPropLayout(obj: MapObj, tileSize: number): {
 }
 
 type DrawFootprint = { x: number; y: number; width: number; height: number; baseline: number };
+type DrawRect = { x: number; y: number; width: number; height: number };
 
 /** Keep both visible artwork and logical fallback footprints within culling bounds. */
 export function worldPropCullBounds(obj: MapObj, visual: DrawFootprint, tileSize: number): { left: number; top: number; right: number; bottom: number } {
@@ -60,6 +61,25 @@ export function worldPropCullBounds(obj: MapObj, visual: DrawFootprint, tileSize
 export function shouldFadePropForPlayer(prop: DrawFootprint, player: DrawFootprint): boolean {
   return prop.baseline > player.baseline && prop.x < player.x + player.width && prop.x + prop.width > player.x &&
     prop.y < player.y + player.height && prop.y + prop.height > player.y;
+}
+
+/** Keep the gate opaque except where its foreground overlaps the player's body. */
+export function paintPropWithLocalFade(ctx: CanvasRenderingContext2D, image: CanvasImageSource, prop: DrawRect, player: DrawRect): void {
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(prop.x, prop.y, prop.width, prop.height);
+  ctx.rect(player.x, player.y, player.width, player.height);
+  ctx.clip("evenodd");
+  ctx.drawImage(image, prop.x, prop.y, prop.width, prop.height);
+  ctx.restore();
+
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(player.x, player.y, player.width, player.height);
+  ctx.clip();
+  ctx.globalAlpha *= 0.35;
+  ctx.drawImage(image, prop.x, prop.y, prop.width, prop.height);
+  ctx.restore();
 }
 
 export function paintWorldPropShadow(

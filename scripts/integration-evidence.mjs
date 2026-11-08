@@ -248,7 +248,7 @@ try {
         playerHeadCanvasY: r.playerHeadCanvasY,
         hudInsetBottom: r.hudInsetBottom,
         clearanceFromHudFloorPx: r.playerHeadCanvasY - targetMin,
-        note: "Smaller canvas Y = closer to canvas top; relief engages when clearance < -ENTER_PX (10)",
+        note: "Smaller canvas Y is closer to the top; relief follows immediately into the safe band and eases away after clearing it",
       });
     }
     await page.screenshot({ path: join(outDir, "world-390x667-objective-closed.png") });

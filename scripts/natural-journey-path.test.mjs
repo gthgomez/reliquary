@@ -13,7 +13,7 @@ test("candidate journey can reach the northern warp with its real objects", () =
 });
 
 test("the planner uses the gap between split gate posts", () => {
-  const gate = { ...elderhallCandidateGate(), x: 0 };
+  const gate = { ...elderhallCandidateGate(), x: 0, y: 0 };
   const map = { id: "gate-fixture", ground: ["#p##", "#p##", "#p##", "....", "...."],
     objects: [gate], npcs: [], warps: [{ x: 1, y: 0, to: "next", tx: 0, ty: 0 }] };
   const steps = pathFor(map, { x: 1, y: 4 }, { x: 1, y: 0 }, true);

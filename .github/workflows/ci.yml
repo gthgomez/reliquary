@@ -112,6 +112,13 @@ jobs:
         env:
           RELIQUARY_QA_CHANNEL: chrome
           VITE_ELDERHALL_CANDIDATE: '1'
+      # npm ci reports advisory counts; retain the details for triage rather
+      # than treating a non-gating inventory as a security clearance.
+      - name: Record dependency advisory inventory
+        if: ${{ !cancelled() && matrix.os == 'ubuntu-latest' }}
+        run: |
+          mkdir -p qa-evidence
+          npm audit --json > qa-evidence/npm-audit.json || true
       - name: Upload journey evidence
         if: always()
         uses: actions/upload-artifact@v4

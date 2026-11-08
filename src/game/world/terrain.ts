@@ -40,6 +40,7 @@ export type TerrainBakeContext = {
   drawOverlay: (style: "edge" | "shadow", dx: number, dy: number, strength: number) => void;
   drawDecoration: (sprite: string, dx: number, dy: number, w: number, h: number) => void;
   drawAccent?: (kind: TileAccentKind, dx: number, dy: number) => void;
+  drawJunctions?: () => void;
 };
 
 /** Neighboring path tiles (or map edges): cardinal bits 1–8 and NE/SE/SW/NW bits 16–128. */
@@ -97,6 +98,7 @@ export function bakeMapTerrain(ctx: TerrainBakeContext): void {
       }
     }
   }
+  ctx.drawJunctions?.();
   for (const deco of map.decorations ?? []) {
     if (deco.layer !== "ground") continue;
     ctx.drawDecoration(

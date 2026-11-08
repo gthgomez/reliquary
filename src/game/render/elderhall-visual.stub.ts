@@ -7,3 +7,4 @@ export function elderhallCandidateGate(): MapObj { throw new Error("Candidate ga
 export function elderhallCandidateBench(): MapObj { throw new Error("Candidate bench is not available in production"); }
 export function paintCandidateGateFallback(): void {}
 export function paintCandidateBenchFallback(): void {}
+export function paintElderhallRoadJunctions(): void {}
