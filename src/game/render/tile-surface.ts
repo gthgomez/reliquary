@@ -7,6 +7,30 @@ export function tileAtlasQuadrant(variant: number, tileX: number, tileY: number)
 
 export type TileAccentKind = "speckle" | "blade" | "pebble";
 
+/** Clip a dirt tile to an inset, chamfered outline connected to nearby paths. */
+export function clipSoftPath(ctx: CanvasRenderingContext2D, dx: number, dy: number, size: number, mask: number): void {
+  const north = !!(mask & 1), east = !!(mask & 2), south = !!(mask & 4), west = !!(mask & 8);
+  const inset = size / 8;
+  const left = dx + (west ? 0 : inset), right = dx + size - (east ? 0 : inset);
+  const top = dy + (north ? 0 : inset), bottom = dy + size - (south ? 0 : inset);
+  const corner = size / 16;
+  // Round only genuinely exposed outer corners. Rounding at every tile seam
+  // makes an otherwise straight road look scalloped.
+  const nw = north || west ? 0 : corner, ne = north || east ? 0 : corner;
+  const se = south || east ? 0 : corner, sw = south || west ? 0 : corner;
+  ctx.beginPath();
+  ctx.moveTo(left + nw, top);
+  ctx.lineTo(right - ne, top);
+  ctx.lineTo(right, top + ne);
+  ctx.lineTo(right, bottom - se);
+  ctx.lineTo(right - se, bottom);
+  ctx.lineTo(left + sw, bottom);
+  ctx.lineTo(left, bottom - sw);
+  ctx.lineTo(left, top + nw);
+  ctx.closePath();
+  ctx.clip();
+}
+
 export function chooseTileAccent(
   mapId: string,
   x: number,

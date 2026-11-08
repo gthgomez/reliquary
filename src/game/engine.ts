@@ -67,8 +67,8 @@ import {
   resetWorldCamRelief,
   type WorldCamReliefState,
 } from "./render/world-camera-safe.ts";
-import { drawAtlasTile, paintTileAccent, tileAtlasQuadrant } from "./render/tile-surface.ts";
-import { paintWorldActorShadow } from "./render/world-actors.ts";
+import { clipSoftPath, drawAtlasTile, paintTileAccent, tileAtlasQuadrant } from "./render/tile-surface.ts";
+import { paintWorldActorShadow, paintWorldPropShadow } from "./render/world-actors.ts";
 import { captureChance, captureSucceeds, storeCapturedBeast } from "./systems/capture.ts";
 import { healBeast, playerActsFirst, spendSkillMp } from "./systems/combat.ts";
 import { applySkillEvents, resolveSkillUse } from "./systems/battle-engine.ts";
@@ -2180,11 +2180,15 @@ export class ReliquaryGame {
 			bakeMapTerrain({
 				map: m,
 				tileSize: TILE,
-				drawTile: (name, dx, dy, variant) => {
+				drawTile: (name, dx, dy, variant, pathMask) => {
 					const tx = dx / TILE;
 					const ty = dy / TILE;
 					const atlas = this.images[`tile_${name}-2x2`];
 					const base = this.images[`tile_${name}`];
+					if (pathMask !== undefined) {
+						ground.save();
+						clipSoftPath(ground, dx, dy, TILE, pathMask);
+					}
 					if (atlas && variant > 0) {
 						drawAtlasTile(ground, atlas, dx, dy, TILE, tileAtlasQuadrant(variant, tx, ty));
 					} else if (base) ground.drawImage(base, dx, dy, TILE, TILE);
@@ -2196,6 +2200,7 @@ export class ReliquaryGame {
 						ground.fillStyle = `rgba(20,17,14,${0.035 * variant})`;
 						ground.fillRect(dx, dy, TILE, TILE);
 					}
+					if (pathMask !== undefined) ground.restore();
 				},
 				drawOverlay: (style, dx, dy, strength) => {
 					if (style === "edge") {
@@ -2230,7 +2235,7 @@ export class ReliquaryGame {
 					const dw = o.w * TILE;
 					const dh = o.h * TILE;
 					if (img) {
-						paintWorldActorShadow(ctx, dx, dy + dh - 4, dw);
+						paintWorldPropShadow(ctx, o.sprite, dx, dy, dw, dh);
 						ctx.drawImage(img, dx, dy, dw, dh);
 					}
 				}

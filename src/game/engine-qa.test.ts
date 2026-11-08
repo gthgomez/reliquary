@@ -774,6 +774,7 @@ test("terrain is reused between frames and rebuilt when the map changes", async 
         terrainDraws++;
       },
       fillRect() {},
+      save() {}, restore() {}, beginPath() {}, moveTo() {}, lineTo() {}, closePath() {}, clip() {},
     };
     const canvas = { getContext: () => ground, width: 0, height: 0 };
     Object.assign(document, { createElement: () => canvas });

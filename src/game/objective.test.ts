@@ -25,6 +25,7 @@ test("after the trial, the objective closes chapter one", () => {
 test("optional directions change with place and progression", () => {
   assert.match(objectiveHint({}, "Rowan's Cottage")!, /doorway/);
   assert.match(objectiveHint({}, "Elderhall")!, /western|west/);
+  assert.doesNotMatch(objectiveHint({}, "Elderhall")!, /stone path/i);
   assert.match(objectiveHint({}, "Binding Grove")!, /face it.*inspect/);
   assert.match(objectiveHint({ starter: true }, "Elderhall")!, /north.*Briar Road/);
   assert.match(objectiveHint({ starter: true }, "Briar Road")!, /north.*Wildwood/);

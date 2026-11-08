@@ -37,3 +37,12 @@ test("legacy v1 saves with impossible coordinates fail migration", () => {
   const legacy = { ...base, version: 1, x: 99, y: 99 };
   assert.equal(parseSave(JSON.stringify(legacy)), null);
 });
+
+test("an existing save beside the Elderhall well restores its original position", () => {
+  const previous = { ...validSave(), x: 8, y: 8, gold: 223 };
+  const restored = parseSave(JSON.stringify(previous));
+  assert.ok(restored);
+  assert.deepEqual({ x: restored.x, y: restored.y }, { x: 8, y: 8 });
+  assert.equal(restored.gold, 223);
+  assert.equal(restored.party[0]!.speciesId, "emberkit");
+});

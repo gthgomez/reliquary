@@ -172,6 +172,8 @@ export interface MapDef {
   name: string;
   region: string;
   ground: string[];
+  /** Optional visual treatment for dirt paths; does not change collision. */
+  terrainPathStyle?: "soft";
   battleBg: BattleBg;
   encounterRate: number;
   encounters: Encounter[];
