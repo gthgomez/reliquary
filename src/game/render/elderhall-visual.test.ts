@@ -16,6 +16,18 @@ test("candidate art changes drawing geometry without moving the original well co
   assert.equal(elderhallCandidateObject("elderhall", well, false), well);
 });
 
+test("guild and shop use distinct preview art without changing gameplay footprints", () => {
+  for (const [id, sprite] of [["h_guild", "elderhall-guild-reference"], ["h_shop", "elderhall-shop-reference"]] as const) {
+    const object = MAPS.elderhall.objects.find((item) => item.id === id)!;
+    const candidate = elderhallCandidateObject("elderhall", object, true);
+    assert.equal(candidate.sprite, sprite);
+    assert.deepEqual({ x: candidate.x, y: candidate.y, w: candidate.w, h: candidate.h, foot: candidate.foot, interact: candidate.interact },
+      { x: object.x, y: object.y, w: object.w, h: object.h, foot: object.foot, interact: object.interact });
+    assert.equal(elderhallCandidateObject("elderhall", object, false), object);
+    assert.equal(elderhallCandidateObject("grove", object, true), object);
+  }
+});
+
 test("the preview gate keeps the two northern routes open", () => {
   const map = { ...MAPS.elderhall, objects: [...MAPS.elderhall.objects, elderhallCandidateGate()] };
   assert.equal(isOccupied(map, {}, 9, 3), true);

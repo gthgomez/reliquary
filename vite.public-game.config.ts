@@ -14,7 +14,7 @@ export default defineConfig(({ command, mode }) => {
   const agesPreview = browserTestBuild && mode === "ages-preview";
   const candidate = process.env.VITE_ELDERHALL_CANDIDATE === "1";
   const geometry = candidate ? Object.fromEntries(validateElderhallPack(resolve(root, "assets/elderhall-candidate")).assets
-    .filter((entry: { id: string }) => ["elderhall.well-reference", "elderhall.tree-reference", "elderhall.cottage-reference", "elderhall.gate-reference", "elderhall.bench"].includes(entry.id))
+    .filter((entry: { id: string }) => ["elderhall.well-reference", "elderhall.tree-reference", "elderhall.cottage-reference", "elderhall.guild-reference", "elderhall.shop-reference", "elderhall.gate-reference", "elderhall.bench"].includes(entry.id))
     .map((entry: { id: string; dimensions: number[]; anchor: number[]; render_size_tiles: number[] }) => [entry.id.slice("elderhall.".length), { dimensions: entry.dimensions, anchor: entry.anchor, render_size_tiles: entry.render_size_tiles }])) : {};
   if (command === "build") assertNoAgesPreviewAssets(resolve(root, "public"));
   return {
@@ -38,7 +38,10 @@ export default defineConfig(({ command, mode }) => {
     resolve: {
       tsconfigPaths: true,
       alias: [
-        ...(!candidate ? [{ find: /^(?:\.\/|\.\.\/)render\/elderhall-visual\.ts$/, replacement: resolve(root, "src/game/render/elderhall-visual.stub.ts") }] : []),
+        ...(!candidate ? [
+          { find: /^(?:\.\/|\.\.\/)render\/elderhall-visual\.ts$/, replacement: resolve(root, "src/game/render/elderhall-visual.stub.ts") },
+          { find: /^\.\/elderhall-candidate\.ts$/, replacement: resolve(root, "src/game/maps/elderhall-candidate.stub.ts") },
+        ] : []),
         { find: "reliquary-economy-probes", replacement: resolve(
           root,
           browserTestBuild

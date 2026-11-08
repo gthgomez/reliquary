@@ -8,6 +8,8 @@ const NODE_TEST_GEOMETRY: Record<string, VisualMetadata> = {
   "well-reference": { dimensions: [128, 160], anchor: [64, 156], render_size_tiles: [2, 2.5] },
   "tree-reference": { dimensions: [160, 144], anchor: [80, 140], render_size_tiles: [3, 2.7] },
   "cottage-reference": { dimensions: [160, 160], anchor: [80, 156], render_size_tiles: [3, 3] },
+  "guild-reference": { dimensions: [160, 160], anchor: [80, 156], render_size_tiles: [3, 3] },
+  "shop-reference": { dimensions: [160, 160], anchor: [80, 156], render_size_tiles: [3, 3] },
   "gate-reference": { dimensions: [160, 112], anchor: [80, 108], render_size_tiles: [3, 2.1] },
   bench: { dimensions: [96, 48], anchor: [48, 43], render_size_tiles: [1.5, 0.75] },
 };
@@ -34,7 +36,7 @@ export function elderhallCandidateGate(): MapObj {
 }
 
 export function elderhallCandidateBench(): MapObj {
-  const bench: MapObj = { id: "green_bench_candidate", sprite: "elderhall-bench", x: 14, y: 14, w: 1, h: 1, foot: 1, solid: true };
+  const bench: MapObj = { id: "green_bench_candidate", sprite: "elderhall-bench", x: 8, y: 14, w: 1, h: 1, foot: 1, solid: true };
   return { ...bench, visual: candidateVisualFromMetadata(bench, assetMetadata("bench")) };
 }
 
@@ -54,6 +56,8 @@ export function elderhallCandidateObject(mapId: string, obj: MapObj, enabled: bo
   if (!enabled || mapId !== "elderhall") return obj;
   if (obj.id === "well") return { ...obj, sprite: "elderhall-well-reference", visual: candidateVisualFromMetadata(obj, assetMetadata("well-reference"), 0.75) };
   if (obj.id === "green_tree") return { ...obj, sprite: "elderhall-tree-reference", visual: candidateVisualFromMetadata(obj, assetMetadata("tree-reference"), 14 / 15) };
+  if (obj.id === "h_guild") return { ...obj, sprite: "elderhall-guild-reference", visual: candidateVisualFromMetadata(obj, assetMetadata("guild-reference")) };
+  if (obj.id === "h_shop") return { ...obj, sprite: "elderhall-shop-reference", visual: candidateVisualFromMetadata(obj, assetMetadata("shop-reference")) };
   if (obj.sprite === "cottage") return { ...obj, sprite: "elderhall-cottage-reference", visual: candidateVisualFromMetadata(obj, assetMetadata("cottage-reference")) };
   return obj;
 }

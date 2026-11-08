@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useRef, useSyncExternalStore } from "react";
+import { lazy, Suspense, useEffect, useLayoutEffect, useRef, useSyncExternalStore } from "react";
 import { ReliquaryGame, TILE } from "./engine";
 import {
   BattleHud,
@@ -32,6 +32,7 @@ const AgesPreviewPanel = __RELIQUARY_AGES_PREVIEW__
 export function GameApp() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
+  const applyLayoutRef = useRef<(() => void) | null>(null);
   const topStackRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const askedImport = useRef(0);
@@ -157,13 +158,18 @@ export function GameApp() {
       const cs = getComputedStyle(stage);
       const padX = parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight);
       const padY = parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom);
-      g.layout(Math.max(0, r.width - padX), Math.max(0, r.height - padY));
+      const devicePortrait = typeof window.matchMedia === "function"
+        ? window.matchMedia("(orientation: portrait)").matches
+        : window.innerHeight >= window.innerWidth;
+      g.layout(Math.max(0, r.width - padX), Math.max(0, r.height - padY), devicePortrait);
     };
+    applyLayoutRef.current = apply;
     apply();
     const ro = new ResizeObserver(apply);
     if (stage) ro.observe(stage);
     return () => {
       disposed = true;
+      applyLayoutRef.current = null;
       ro.disconnect();
       saveSession?.release();
       setUpdateGuard(null);
@@ -187,8 +193,16 @@ export function GameApp() {
   const showExplorationTouch = shouldShowExplorationTouch(snap, classicTouch);
   const showDialogTouch = shouldShowDialogTouch(snap, classicTouch);
   const showTouch = showExplorationTouch || showDialogTouch;
+  const mapId = g.mapId;
+  const dialogActive = !!snap.dialog;
   const menuButtonRef = useRef<HTMLButtonElement>(null);
   const wasUiModal = useRef(false);
+
+  // Stage padding and adaptive eligibility change with the current screen and
+  // map, even when the stage's outer border box does not resize.
+  useLayoutEffect(() => {
+    applyLayoutRef.current?.();
+  }, [snap.mode, snap.menu, dialogActive, mapId]);
 
   useEffect(() => {
     if (uiModal) {

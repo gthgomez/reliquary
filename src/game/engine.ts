@@ -422,10 +422,22 @@ export class ReliquaryGame {
 	ch(): number {
 		return this.viewH * TILE;
 	}
-	layout(stageW: number, stageH: number): void {
+	layout(stageW: number, stageH: number, devicePortrait = false): void {
 		const portrait = stageW > 0 && stageH > stageW * 1.05 && stageW < 920;
 		const vw = portrait ? VIEW_W_PORT : VIEW_W;
-		const vh = portrait ? VIEW_H_PORT : VIEW_H;
+		let vh = portrait ? VIEW_H_PORT : VIEW_H;
+		if (portrait && devicePortrait && this.mode === "world" && !this.menu && !this.dialog) {
+			const map = this.map();
+			if ((map.ground[0]?.length ?? 0) >= VIEW_W_PORT) {
+				// Keep the authored 10-tile width and fit the height to the space
+				// left after the shell reserves its controls. Short maps retain at
+				// most the old 16-tile view; taller ones stop at the map edge.
+				// A 12–20 tile bound keeps extreme aspect ratios usable.
+				const maxHeight = Math.min(20, Math.max(VIEW_H_PORT, map.ground.length)) * TILE;
+				const height = Math.max(12 * TILE, Math.min(maxHeight, Math.floor(stageH / stageW * vw * TILE)));
+				vh = height / TILE;
+			}
+		}
 		const ar = vw / vh;
 		let cssW = stageW;
 		let cssH = stageW / ar;
@@ -437,7 +449,7 @@ export class ReliquaryGame {
 		cssH = Math.max(1, Math.floor(cssH));
 		const canvas = this.canvas;
 		if (!canvas) return;
-		if (this.viewW === vw && this.viewH === vh && this.cssW === cssW && this.cssH === cssH && canvas.width === vw * TILE) return;
+		if (this.viewW === vw && this.viewH === vh && this.cssW === cssW && this.cssH === cssH && canvas.width === vw * TILE && canvas.height === vh * TILE) return;
 		this.viewW = vw;
 		this.viewH = vh;
 		this.cssW = cssW;

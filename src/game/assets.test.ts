@@ -26,7 +26,7 @@ test("new release creatures register sprite paths", () => {
 test("Elderhall candidate sprites and distinct atlases are registered only for a candidate build", () => {
   const normal = collectGameAssets({ elderhallCandidate: false });
   const candidate = collectGameAssets({ elderhallCandidate: true });
-  const expected = ["grass-atlas", "dirt-atlas", "stone-atlas", "well-reference", "cottage-reference", "tree-reference", "gate-reference", "bench", "flowers"];
+  const expected = ["grass-atlas", "dirt-atlas", "stone-atlas", "well-reference", "cottage-reference", "guild-reference", "shop-reference", "tree-reference", "gate-reference", "bench", "flowers"];
   for (const id of expected) {
     const url = `/game/elderhall/assets/elderhall.${id}.png`;
     assert.equal(normal.some((asset) => asset.url === url), false, `${id} excluded from normal builds`);

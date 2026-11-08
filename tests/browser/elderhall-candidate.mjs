@@ -20,13 +20,14 @@ export const VIEWPORTS = [
   { width: 1280, height: 800, mobile: false },
 ];
 export const VIEWPOINTS = [
-  { id: "village-green", x: 13, y: 11 },
-  { id: "maren-and-well", x: 7, y: 10 },
-  { id: "north-gate", x: 10, y: 4 },
+  { id: "village-green", x: 9, y: 13 },
+  { id: "maren-and-well", x: 12, y: 10 },
+  { id: "north-gate", x: 11, y: 4 },
+  { id: "west-approach", x: 1, y: 10 },
 ];
 export const CANDIDATE_IDS = [
   "grass-atlas", "dirt-atlas", "stone-atlas", "well-reference", "cottage-reference",
-  "tree-reference", "gate-reference", "bench", "flowers",
+  "guild-reference", "shop-reference", "tree-reference", "gate-reference", "bench", "flowers",
 ];
 export const CANDIDATE_URLS = CANDIDATE_IDS.map((id) => `/game/elderhall/assets/elderhall.${id}.png`);
 export const captureName = (viewport, viewpoint) => `${viewport.width}x${viewport.height}-${viewpoint.id}.png`;
@@ -240,7 +241,7 @@ async function run() {
       }
     }
     await verifyClassicDialogue(browser, report);
-    assert.equal(report.captures.length, VIEWPORTS.length * VIEWPOINTS.length, "all 18 visual frames captured");
+    assert.equal(report.captures.length, VIEWPORTS.length * VIEWPOINTS.length, "all requested visual frames captured");
     assert.deepEqual(report.pageErrors, [], "no uncaught page exceptions");
     assert.deepEqual(report.consoleErrors, [], "no browser console errors");
     const failedAssets = report.failedRequests.filter((item) => CANDIDATE_URLS.some((path) => new URL(item.url).pathname === path));
