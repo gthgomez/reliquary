@@ -34,7 +34,7 @@ async function settle(page) {
   });
 }
 
-async function speak(page, map, x, y, key = "z") {
+async function speak(page, map, x, y, key = "z", waitForAnimation = true) {
   assert.equal(await page.locator(".dialog").count(), 0, "previous conversation finished");
   await page.evaluate(([map, x, y]) => window.__controlsTest.warp(map, x, y), [map, x, y]);
   // Face the solid NPC/object immediately above us. Wait for the actual engine
@@ -44,7 +44,7 @@ async function speak(page, map, x, y, key = "z") {
   await page.keyboard.up("ArrowUp");
   await page.keyboard.press(key);
   await page.waitForSelector(".dialog");
-  await settle(page);
+  if (waitForAnimation) await settle(page);
 }
 
 async function closePages(page) {
@@ -176,10 +176,27 @@ try {
         await page.waitForSelector(".app-status");
         const status = await page.locator(".app-status").textContent();
 
-        await speak(page, "elderhall", 7, 10);
+        const checkToast = v.width === 390 && v.height === 844 && !v.classic;
+        if (checkToast) {
+          await page.locator(".hud-menu").click();
+          await page.getByRole("button", { name: "Save", exact: true }).click();
+          await page.locator(".top-stack .toast[role=status]").waitFor();
+        }
+
+        await speak(page, "elderhall", 7, 10, "z", !checkToast);
+        if (checkToast) {
+          const toast = page.locator(".top-stack .toast[role=status]");
+          assert.equal(await toast.count(), 1, "save status remains mounted during portrait dialogue");
+          assert.equal(await toast.evaluate((el) => !el.closest("[inert]") && !el.closest('[aria-hidden="true"]')), true,
+            "save status is not in an inaccessible HUD subtree");
+          assert.equal(await toast.evaluate((el) => getComputedStyle(el).visibility), "visible", "save status remains CSS-visible");
+          assert.equal(await toast.isVisible(), true, "save status is visible to the player");
+        }
         const maren = await checkLayout(page, `${prefix}-maren`, true);
         assert.equal(maren.portraitKey, "elder-maren");
         assert.equal(maren.nameContent, "Elder Maren");
+        assert.equal(await page.locator(".hud").evaluate((el) => el.inert), true, "hidden portrait-dialogue HUD is inert");
+        assert.equal(await page.locator(".top-stack").evaluate((el) => el.inert), false, "status toast remains outside the inert HUD subtree");
         if (v.reduced)
           assert.equal(
             await page
@@ -194,7 +211,7 @@ try {
           "one Enter advances exactly one page",
         );
         await checkLayout(page, `${prefix}-maren-page2`);
-        if (v.mobile) await page.getByRole("button", { name: "A", exact: true }).tap();
+        if (v.mobile) await page.getByRole("button", { name: "A — Next", exact: true }).tap();
         else await page.keyboard.press("x");
         await page.waitForSelector(".dialog", { state: "detached" });
         assert.equal(await page.locator(".app-status").isVisible(), true);
@@ -238,7 +255,7 @@ try {
         );
         await page.keyboard.up("ArrowRight");
         assert.deepEqual(await page.evaluate(() => window.__controlsTest.getPos()), before);
-        if (v.mobile) await page.getByRole("button", { name: "B", exact: true }).tap();
+        if (v.mobile) await page.getByRole("button", { name: "B — Back", exact: true }).tap();
         else await page.keyboard.press("Escape");
         await page.waitForSelector(".dialog", { state: "detached" });
         assert.equal(
@@ -284,12 +301,32 @@ try {
           } else await closePages(page);
         }
 
-        await speak(page, "elderhall", 13, 2);
+        const checkSignToast = v.width === 568 && v.height === 320 && !v.classic;
+        if (checkSignToast) {
+          await page.locator(".hud-menu").click();
+          await page.getByRole("button", { name: "Save", exact: true }).click();
+          await page.locator(".top-stack .toast[role=status]").waitFor();
+        }
+        await speak(page, "elderhall", 13, 2, "z", !checkSignToast);
+        assert.equal(await page.locator(".hud").evaluate((el) => el.inert), true, "text-only dialogue keeps the HUD inert");
+        assert.equal(await page.locator(".hud").isVisible(), false, "text-only dialogue hides the HUD");
+        if (checkSignToast) {
+          const toast = page.locator(".top-stack .toast[role=status]");
+          assert.equal(await toast.isVisible(), true, "save status stays visible during text-only dialogue");
+          assert.equal(await toast.evaluate((el) => !el.closest("[inert]") && !el.closest('[aria-hidden="true"]')), true,
+            "save status remains accessible during text-only dialogue");
+          const toastBox = await toast.boundingBox();
+          const panelBox = await page.locator(".dialog").boundingBox();
+          assert.ok(toastBox && panelBox && toastBox.y + toastBox.height <= panelBox.y + 1,
+            "live status stays clear of the sign dialogue");
+        }
         const sign = await checkLayout(page, `${prefix}-sign`, !v.mobile);
         assert.equal(sign.portraitKey, "none");
         assert.equal(sign.portrait, null);
         assert.match(sign.textContent, /BRIAR ROAD/);
         await closePages(page);
+        assert.equal(await page.locator(".hud").isVisible(), true, "HUD returns after text-only dialogue");
+        assert.equal(await page.locator(".hud").evaluate((el) => el.inert), false, "returned HUD is interactive");
         const pos = await page.evaluate(() => window.__controlsTest.getPos());
         await page.keyboard.down("ArrowRight");
         await page.waitForFunction((x) => window.__controlsTest.getPos().x !== x, pos.x);

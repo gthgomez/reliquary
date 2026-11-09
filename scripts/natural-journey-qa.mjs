@@ -2,59 +2,14 @@
 import { chromium } from "playwright";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { BLOCKED, MAPS } from "../src/game/maps.ts";
+import { MAPS } from "../src/game/maps.ts";
+import { pathFor } from "./natural-journey-path.mjs";
 
 const url = process.argv[2] ?? "http://127.0.0.1:8181";
 const output = process.argv[3];
 if (!output || !["localhost", "127.0.0.1"].includes(new URL(url).hostname))
   throw new Error("usage: node scripts/natural-journey-qa.mjs <local-url> <evidence-directory>");
 mkdirSync(output, { recursive: true });
-const dirs = [
-  { dx: 0, dy: -1, key: "KeyW" },
-  { dx: 0, dy: 1, key: "KeyS" },
-  { dx: -1, dy: 0, key: "KeyA" },
-  { dx: 1, dy: 0, key: "KeyD" },
-];
-function pathFor(map, start, target, starterChosen) {
-  const key = (x, y) => `${x},${y}`;
-  const todo = [{ ...start, path: [] }],
-    seen = new Set([key(start.x, start.y)]);
-  while (todo.length) {
-    const point = todo.shift();
-    if (point.x === target.x && point.y === target.y) return point.path;
-    for (const dir of dirs) {
-      const x = point.x + dir.dx,
-        y = point.y + dir.dy;
-      if (
-        y < 0 ||
-        x < 0 ||
-        y >= map.ground.length ||
-        x >= map.ground[0].length ||
-        seen.has(key(x, y))
-      )
-        continue;
-      const warp = map.warps.some((item) => item.x === x && item.y === y);
-      if (warp && (x !== target.x || y !== target.y)) continue;
-      const blocked =
-        BLOCKED.has(map.ground[y][x]) ||
-        map.objects.some(
-          (item) =>
-            item.solid &&
-            !(starterChosen && item.id.startsWith("st_")) &&
-            x >= item.x &&
-            x < item.x + item.w &&
-            y >= item.y + item.h - item.foot &&
-            y < item.y + item.h,
-        ) ||
-        map.npcs.some((item) => item.x === x && item.y === y);
-      if (!warp && blocked) continue;
-      seen.add(key(x, y));
-      todo.push({ x, y, path: [...point.path, { x, y, key: dir.key, warp }] });
-    }
-  }
-  throw new Error(`No route through ${map.id} to ${key(target.x, target.y)}`);
-}
-
 const browser = await chromium.launch({ channel: process.env.RELIQUARY_QA_CHANNEL ?? "msedge", headless: true });
 const report = { browser: browser.version(), events: [], errors: [] };
 try {
@@ -73,51 +28,81 @@ try {
     const start = await page.evaluate(() => window.__controlsTest.getPos());
     if (start.map !== mapId) throw new Error(`Expected ${mapId}, got ${start.map}`);
     for (const step of pathFor(MAPS[mapId], start, target, starterChosen)) {
-      const result = await page.evaluate(
-        async ({ step, mapId }) => {
-          window.__controlsTest.setKeys([step.key]);
-          try {
-            return await new Promise((resolve, reject) => {
-              const timeout = setTimeout(
-                () => reject(new Error(`Movement timed out at ${step.x},${step.y}`)),
-                3000,
-              );
-              function check() {
-                const pos = window.__controlsTest.getPos();
-                if (
-                  pos.mode === "battle" ||
-                  pos.map !== mapId ||
-                  (pos.x === step.x && pos.y === step.y)
-                ) {
-                  clearTimeout(timeout);
-                  resolve(pos);
-                } else requestAnimationFrame(check);
-              }
-              requestAnimationFrame(check);
-            });
-          } finally {
-            window.__controlsTest.setKeys([]);
-          }
-        },
-        { step, mapId },
-      );
+      // Real key events drive movement. The probe observes state only: release
+      // after a step starts so slow runners cannot enqueue an unintended step.
+      await page.keyboard.down(step.key);
+      try {
+        await page.waitForFunction((fromMap) => {
+          const pos = window.__controlsTest.getPos();
+          return pos.mode === "battle" || pos.map !== fromMap || window.__controlsTest.getSpeed() === 1;
+        }, mapId, { timeout: 5000 });
+      } finally {
+        await page.keyboard.up(step.key);
+      }
+      await page.waitForFunction(({ step, mapId }) => {
+        const pos = window.__controlsTest.getPos();
+        return pos.mode === "battle" || pos.map !== mapId || (pos.x === step.x && pos.y === step.y);
+      }, { step, mapId }, { timeout: 5000 });
+      await page.waitForFunction(() => window.__controlsTest.getSpeed() === 0, null, { timeout: 5000 });
+      const result = await page.evaluate(() => window.__controlsTest.getPos());
       if (result.mode === "battle") return result;
       if (result.map !== mapId && !step.warp) throw new Error(`Unexpected warp from ${mapId}`);
+      if (result.map === mapId && (result.x !== step.x || result.y !== step.y))
+        throw new Error(`Movement overshot ${step.x},${step.y}: ${result.x},${result.y}`);
     }
     return await page.evaluate(() => window.__controlsTest.getPos());
   }
 
   let position = await travel("home", { x: 5, y: 8 });
   if (position.map !== "elderhall") throw new Error("Home exit failed");
+
+  // Visit the elder and every starting-village building through normal input.
+  // Only position and facing are read from the test probe.
+  async function faceAndInteract(key, yaw) {
+    await page.keyboard.down(key);
+    await page.waitForFunction((expected) => window.__controlsTest.getYaw() === expected, yaw);
+    await page.keyboard.up(key);
+    await page.keyboard.press("KeyZ");
+  }
+  const maren = MAPS.elderhall.npcs.find((npc) => npc.id === "maren");
+  if (!maren) throw new Error("Elder Maren is missing from Elderhall");
+  const start = await page.evaluate(() => window.__controlsTest.getPos());
+  const approaches = [
+    { x: maren.x - 1, y: maren.y, key: "KeyD", yaw: -Math.PI / 2 },
+    { x: maren.x, y: maren.y + 1, key: "KeyW", yaw: Math.PI },
+    { x: maren.x + 1, y: maren.y, key: "KeyA", yaw: Math.PI / 2 },
+    { x: maren.x, y: maren.y - 1, key: "KeyS", yaw: 0 },
+  ];
+  const approach = approaches.find((candidate) => {
+    if (MAPS.elderhall.warps.some((warp) => warp.x === candidate.x && warp.y === candidate.y)) return false;
+    try { pathFor(MAPS.elderhall, start, candidate, false); return true; } catch { return false; }
+  });
+  if (!approach) throw new Error("No reachable approach to Elder Maren");
+  await travel("elderhall", approach);
+  await faceAndInteract(approach.key, approach.yaw);
+  await page.waitForSelector("button.dialog", { timeout: 5000 });
+  const speaker = await page.locator(".dialog-name").textContent();
+  if (speaker !== "Elder Maren") throw new Error(`Expected Elder Maren, got ${speaker}`);
+  for (let i = 0; i < 16 && await page.locator("button.dialog").count(); i++) await page.locator("button.dialog").click();
+  await page.waitForSelector("button.dialog", { state: "detached", timeout: 5000 });
+  report.events.push("Spoke with Elder Maren beside the well");
+  for (const building of [
+    { name: "home", front: { x: 5, y: 15 }, inside: "home", exit: { x: 5, y: 8 } },
+    { name: "guild", front: { x: 5, y: 9 }, inside: "guild_in", exit: { x: 6, y: 10 } },
+    { name: "inn", front: { x: 17, y: 5 }, inside: "inn_in", exit: { x: 6, y: 9 } },
+    { name: "shop", front: { x: 17, y: 9 }, inside: "shop_in", exit: { x: 5, y: 8 } },
+  ]) {
+    await travel("elderhall", building.front);
+    await faceAndInteract("KeyW", Math.PI);
+    await page.waitForFunction((map) => window.__controlsTest.getPos().map === map, building.inside, { timeout: 5000 });
+    position = await travel(building.inside, building.exit);
+    if (position.map !== "elderhall") throw new Error(`${building.name} exit failed`);
+    report.events.push(`Entered and exited the ${building.name}`);
+  }
   position = await travel("elderhall", { x: 0, y: 10 });
   if (position.map !== "grove") throw new Error("Grove entrance failed");
   await travel("grove", { x: 4, y: 7 });
-  await page.evaluate(async () => {
-    window.__controlsTest.setKeys(["KeyW"]);
-    await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
-    window.__controlsTest.setKeys([]);
-  });
-  await page.keyboard.press("KeyZ");
+  await faceAndInteract("KeyW", Math.PI);
   for (let i = 0; i < 4; i++) await page.locator("button.dialog").click();
   await page.getByText(/Emberkit \d+\/\d+/).waitFor();
   await page.getByRole("button", { name: "Menu", exact: true }).click();

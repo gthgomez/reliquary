@@ -108,6 +108,11 @@ try {
       { timeout: 15_000 },
     );
     await page.keyboard.up("ArrowDown");
+    // A key release prevents the next step, but the current tile transition
+    // may still be in flight. Snapshot only after that transition has settled;
+    // otherwise a slower runner can observe a legitimate final step during the
+    // update and mistake it for a lost or altered live session.
+    await page.waitForFunction(() => window.__controlsTest?.getSpeed?.() === 0, null, { timeout: 15_000 });
     const livePos = await page.evaluate(() => window.__controlsTest.getPos());
     const durableBefore = await page.evaluate(() => JSON.parse(localStorage.getItem("reliquary.save.v3")));
     assert.ok(livePos.y > durableBefore.y, `live state must be ahead of durable (live y ${livePos.y} > durable y ${durableBefore.y})`);
@@ -124,6 +129,8 @@ try {
     const blocked = await page.locator(".app-status").innerText();
     assert.match(blocked, /Update paused/, `a persistent, usable warning must be visible, got: ${blocked}`);
     const liveAfterVeto = await page.evaluate(() => window.__controlsTest.getPos());
+    assert.equal(liveAfterVeto.map, livePos.map, "the live map survives the veto");
+    assert.equal(liveAfterVeto.x, livePos.x, "the live x coordinate survives the veto");
     assert.equal(liveAfterVeto.y, livePos.y, "the live session survives the veto");
     assert.equal(
       await page.evaluate(() => localStorage.getItem("reliquary.save.v3")),
@@ -146,6 +153,8 @@ try {
     await page.getByRole("button", { name: "Continue", exact: true }).click();
     await page.waitForSelector(".hud-menu", { timeout: 20_000 });
     const restoredPos = await page.evaluate(() => window.__controlsTest.getPos());
+    assert.equal(restoredPos.map, livePos.map, "Continue restores the live map");
+    assert.equal(restoredPos.x, livePos.x, "Continue restores the live x coordinate");
     assert.equal(restoredPos.y, livePos.y, "Continue restores the flushed transaction");
   }, { context: { serviceWorkers: "allow" } });
 } finally {

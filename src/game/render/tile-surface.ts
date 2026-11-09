@@ -7,6 +7,52 @@ export function tileAtlasQuadrant(variant: number, tileX: number, tileY: number)
 
 export type TileAccentKind = "speckle" | "blade" | "pebble";
 
+/** Cardinal exposed sides, using the same N/E/S/W bits as the path mask. */
+export function roadBorderEdges(pathMask: number): number {
+  return (~pathMask) & 15;
+}
+
+/** Missing diagonals inside connected cardinal arms expose short inner corners. */
+export function roadBorderCorners(mask: number): number {
+  return ((mask & 3) === 3 && !(mask & 16) ? 16 : 0) |
+    ((mask & 6) === 6 && !(mask & 32) ? 32 : 0) |
+    ((mask & 12) === 12 && !(mask & 64) ? 64 : 0) |
+    ((mask & 9) === 9 && !(mask & 128) ? 128 : 0);
+}
+
+/** Paint separate stones only along exposed road edges; connected arms stay open. */
+export function paintStoneRoadBorder(ctx: CanvasRenderingContext2D, dx: number, dy: number, size: number, mask: number): void {
+  const edges = roadBorderEdges(mask);
+  const corners = roadBorderCorners(mask);
+  if (!edges && !corners) return;
+  const inset = Math.round(size / 8);
+  const step = Math.round(size / 4);
+  const stone = Math.max(2, Math.round(size / 4) - 1);
+  const thick = Math.max(2, Math.round(size / 8));
+  ctx.save();
+  clipSoftPath(ctx, dx, dy, size, mask);
+  const paint = (x: number, y: number, w: number, h: number) => {
+    ctx.fillStyle = "#504d40";
+    ctx.fillRect(x, y, w, h);
+    ctx.fillStyle = "#aaa48d";
+    ctx.fillRect(x, y, w - 1, Math.max(1, h - 1));
+    ctx.fillStyle = "rgba(238,225,194,.35)";
+    ctx.fillRect(x + 1, y, Math.max(1, w - 3), 1);
+  };
+  for (let i = 0; i < 4; i++) {
+    const p = i * step + 1;
+    if (edges & 1) paint(dx + p, dy + inset, stone, thick);
+    if (edges & 2) paint(dx + size - inset - thick, dy + p, thick, stone);
+    if (edges & 4) paint(dx + p, dy + size - inset - thick, stone, thick);
+    if (edges & 8) paint(dx + inset, dy + p, thick, stone);
+  }
+  if (corners & 16) { paint(dx + size - inset, dy, inset, thick); paint(dx + size - thick, dy, thick, inset); }
+  if (corners & 32) { paint(dx + size - inset, dy + size - thick, inset, thick); paint(dx + size - thick, dy + size - inset, thick, inset); }
+  if (corners & 64) { paint(dx, dy + size - thick, inset, thick); paint(dx, dy + size - inset, thick, inset); }
+  if (corners & 128) { paint(dx, dy, inset, thick); paint(dx, dy, thick, inset); }
+  ctx.restore();
+}
+
 /** Clip a dirt tile to an inset, chamfered outline connected to nearby paths. */
 export function clipSoftPath(ctx: CanvasRenderingContext2D, dx: number, dy: number, size: number, mask: number): void {
   const north = !!(mask & 1), east = !!(mask & 2), south = !!(mask & 4), west = !!(mask & 8);
@@ -16,17 +62,20 @@ export function clipSoftPath(ctx: CanvasRenderingContext2D, dx: number, dy: numb
   const corner = size / 16;
   // Round only genuinely exposed outer corners. Rounding at every tile seam
   // makes an otherwise straight road look scalloped.
-  const nw = north || west ? 0 : corner, ne = north || east ? 0 : corner;
-  const se = south || east ? 0 : corner, sw = south || west ? 0 : corner;
+  const nw = !north && !west ? corner : north && west && !(mask & 128) ? inset : 0;
+  const ne = !north && !east ? corner : north && east && !(mask & 16) ? inset : 0;
+  const se = !south && !east ? corner : south && east && !(mask & 32) ? inset : 0;
+  const sw = !south && !west ? corner : south && west && !(mask & 64) ? inset : 0;
   ctx.beginPath();
   ctx.moveTo(left + nw, top);
   ctx.lineTo(right - ne, top);
-  ctx.lineTo(right, top + ne);
+  if (ne) ctx.quadraticCurveTo(right, top, right, top + ne);
   ctx.lineTo(right, bottom - se);
-  ctx.lineTo(right - se, bottom);
+  if (se) ctx.quadraticCurveTo(right, bottom, right - se, bottom);
   ctx.lineTo(left + sw, bottom);
-  ctx.lineTo(left, bottom - sw);
+  if (sw) ctx.quadraticCurveTo(left, bottom, left, bottom - sw);
   ctx.lineTo(left, top + nw);
+  if (nw) ctx.quadraticCurveTo(left, top, left + nw, top);
   ctx.closePath();
   ctx.clip();
 }

@@ -120,6 +120,21 @@ export interface MapObj {
   foot: number;
   solid: boolean;
   interact?: string;
+  /** Tile footprint (relative to x/y) that accepts A/interact; defaults to the full object bounds. */
+  interactZone?: { x: number; y: number; w: number; h: number };
+  /** Optional solid rectangles relative to x/y; defaults to the foot rows. */
+  collision?: { x: number; y: number; w: number; h: number }[];
+  /** Optional art geometry in tile units; gameplay uses x/y/w/h/foot above. */
+  visual?: {
+    width: number;
+    height: number;
+    /** Ground-contact point as a fraction of the source image. */
+    anchorX: number;
+    anchorY: number;
+    /** Ground-contact point relative to the logical object's top-left, in tiles. */
+    groundX: number;
+    groundY: number;
+  };
 }
 
 export interface MapNpc {
@@ -174,6 +189,8 @@ export interface MapDef {
   ground: string[];
   /** Optional visual treatment for dirt paths; does not change collision. */
   terrainPathStyle?: "soft";
+  /** Decorative path edging; never changes walkability. */
+  roadBorder?: "stone";
   /** Draw a trail under these tall-grass tiles; encounters remain unchanged. */
   overgrownPaths?: { x: number; y: number }[];
   battleBg: BattleBg;

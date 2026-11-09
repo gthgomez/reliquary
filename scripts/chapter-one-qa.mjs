@@ -1,7 +1,7 @@
 /**
  * Chapter One acceptance journey: start a new game, choose a starter, walk the
- * natural route (BFS pathing + real key presses only — no warps, no probe
- * battle seeding), bind a wild beast successfully, manage the party by
+ * natural route (BFS pathing + probe-driven direction holds — no warps or
+ * probe battle seeding), bind a wild beast successfully, manage the party by
  * keyboard alone, decline and accept an inn rest, save, reload, and verify
  * that everything persists. Math.random is seeded at fixed moments so the
  * encounter/capture outcome is reproducible; every UI action is real.
@@ -9,6 +9,7 @@
 import { chromium } from "playwright";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { pathFor } from "./natural-journey-path.mjs";
 
 const url = process.argv[2] ?? "http://127.0.0.1:8083";
 const output = process.argv[3];
@@ -44,43 +45,7 @@ try {
   async function press(code, times = 1) {
     for (let i = 0; i < times; i++) await page.keyboard.press(code);
   }
-  // Reimplemented BFS from natural-journey-qa (shared shape, kept simple).
-  const { MAPS, BLOCKED } = await import("../src/game/maps.ts");
-  const dirs = [
-    { dx: 0, dy: -1, key: "KeyW" },
-    { dx: 0, dy: 1, key: "KeyS" },
-    { dx: -1, dy: 0, key: "KeyA" },
-    { dx: 1, dy: 0, key: "KeyD" },
-  ];
-  function pathFor(map, start, target, starterChosen) {
-    const k = (x, y) => `${x},${y}`;
-    const todo = [{ ...start, path: [] }];
-    const seen = new Set([k(start.x, start.y)]);
-    while (todo.length) {
-      const point = todo.shift();
-      if (point.x === target.x && point.y === target.y) return point.path;
-      for (const dir of dirs) {
-        const x = point.x + dir.dx;
-        const y = point.y + dir.dy;
-        if (y < 0 || x < 0 || y >= map.ground.length || x >= map.ground[0].length || seen.has(k(x, y))) continue;
-        const warp = map.warps.some((item) => item.x === x && item.y === y);
-        if (warp && (x !== target.x || y !== target.y)) continue;
-        const blocked =
-          BLOCKED.has(map.ground[y][x]) ||
-          map.objects.some(
-            (item) =>
-              item.solid &&
-              !(starterChosen && item.id.startsWith("st_")) &&
-              x >= item.x && x < item.x + item.w && y >= item.y + item.h - item.foot && y < item.y + item.h,
-          ) ||
-          map.npcs.some((item) => item.x === x && item.y === y);
-        if (!warp && blocked) continue;
-        seen.add(k(x, y));
-        todo.push({ x, y, path: [...point.path, { key: dir.key, x, y, warp }] });
-      }
-    }
-    throw new Error(`no route through ${map.id} to ${k(target.x, target.y)}`);
-  }
+  const { MAPS } = await import("../src/game/maps.ts");
   async function travel(mapId, target, starterChosen = false) {
     const start = await page.evaluate(() => window.__controlsTest.getPos());
     if (start.map !== mapId) throw new Error(`expected ${mapId}, at ${start.map}`);
@@ -211,9 +176,8 @@ try {
   position = await travel("briar_road", { x: 10, y: 27 }, true);
   if (position.map !== "elderhall") throw new Error(`Briar Road exit failed, at ${position.map}`);
 
-  // Inn: decline first, then accept. The inn door faces up at (17,5); the
-  // innkeeper waits at (4,4) inside The Quiet Lantern.
-  position = await travel("elderhall", { x: 16, y: 5 });
+  // Inn: decline first, then accept. Door interact tile is (17,4); stand on (17,5).
+  position = await travel("elderhall", { x: 17, y: 5 });
   await page.evaluate(() => window.__controlsTest.setKeys(["KeyW"]));
   await page.waitForTimeout(120);
   await page.evaluate(() => window.__controlsTest.setKeys([]));

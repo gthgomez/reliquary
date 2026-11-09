@@ -9,10 +9,32 @@ async function dismissIntro(page) {
   }
 }
 
+async function waitForObjectiveSafeArea(page, checkPlayer) {
+  await page.waitForFunction((shouldCheckPlayer) => {
+    const popover = document.querySelector(".hud-objective-popover");
+    const viewport = document.querySelector(".viewport");
+    const canvas = document.querySelector(".game-canvas");
+    if (!popover || !viewport || !canvas || !popover.getClientRects().length) return false;
+    const pop = popover.getBoundingClientRect();
+    const view = viewport.getBoundingClientRect();
+    const safe = Number.parseFloat(getComputedStyle(viewport).getPropertyValue("--ui-safe-top-px"));
+    if (safe < pop.bottom - view.top + 3) return false;
+    if (!shouldCheckPlayer) return true;
+    const report = window.__worldCameraReport;
+    const canvasRect = canvas.getBoundingClientRect();
+    const popBottomCanvas = (pop.bottom - canvasRect.top) * canvas.height / canvasRect.height;
+    return report && report.canvasH === canvas.height && report.hudInsetBottom >= popBottomCanvas
+      && report.effectivePlayerHeadCanvasY >= popBottomCanvas
+      && report.effectivePlayerHeadCanvasY + 48 <= canvas.height + 1;
+  }, checkPlayer, { timeout: 10_000 });
+}
+
 const VIEWPORTS = [
   { width: 320, height: 568 },
+  { width: 360, height: 800 },
   { width: 390, height: 667 },
   { width: 390, height: 844 },
+  { width: 412, height: 915 },
   { width: 640, height: 320 },
   { width: 844, height: 390 },
   { width: 1280, height: 800 },
@@ -29,7 +51,82 @@ try {
       await page.click("text=Start");
       await dismissIntro(page);
       await page.waitForSelector(".hud-menu", { timeout: 15_000 });
+      if (viewport.width === 390 && (viewport.height === 844 || viewport.height === 667)) {
+        // Test-only warp establishes repeatable framing; this is not journey proof.
+        await page.evaluate(() => window.__controlsTest.warp("elderhall", 12, 12));
+        await page.waitForFunction((tall) => {
+          const canvas = document.querySelector(".game-canvas");
+          return canvas?.width === 320 && (tall ? canvas.height === 576 : canvas.height > 400 && canvas.height < 480);
+        }, viewport.height === 844);
+        const geometry = await page.evaluate(() => {
+          const canvas = document.querySelector(".game-canvas");
+          const stage = document.querySelector(".stage");
+          const controls = document.querySelector(".touch-full");
+          const canvasRect = canvas.getBoundingClientRect();
+          const stageRect = stage.getBoundingClientRect();
+          const controlRect = controls.getBoundingClientRect();
+          return {
+            logicalWidth: canvas.width, logicalHeight: canvas.height,
+            width: canvasRect.width, height: canvasRect.height,
+            stageWidth: stageRect.width, canvasBottom: canvasRect.bottom, controlTop: controlRect.top,
+          };
+        });
+        assert.ok(geometry.width >= geometry.stageWidth - 2, `exploration uses available width: ${JSON.stringify(geometry)}`);
+        assert.ok(geometry.canvasBottom <= geometry.controlTop + 1, `world stays above touch controls: ${JSON.stringify(geometry)}`);
+        assert.ok(Math.abs(geometry.width / geometry.logicalWidth - geometry.height / geometry.logicalHeight) < 0.005,
+          `canvas preserves its proportions: ${JSON.stringify(geometry)}`);
+        // At the north edge the camera cannot scroll any farther; check that
+        // its existing HUD relief makes the player's head visible after it settles.
+        const previousReportTime = await page.evaluate(() => {
+          const previous = window.__worldCameraReport?.ts ?? 0;
+          window.__controlsTest.warp("elderhall", 11, 1);
+          return previous;
+        });
+        await page.waitForFunction((previous) => {
+          const report = window.__worldCameraReport;
+          return report && report.ts > previous && report.hudInsetBottom > 20 && report.effectivePlayerHeadCanvasY >= report.hudInsetBottom + 3;
+        }, previousReportTime);
+        await page.evaluate(() => window.__controlsTest.warp("elderhall", 12, 12));
+        if (viewport.height === 844) {
+          // A smaller map restores its old maximum, then a return to Elderhall
+          // reapplies the map-sized view even without a window resize.
+          await page.evaluate(() => window.__controlsTest.warp("home", 5, 6));
+          await page.waitForFunction(() => document.querySelector(".game-canvas")?.height === 512);
+          await page.evaluate(() => window.__controlsTest.warp("elderhall", 12, 12));
+          await page.waitForFunction(() => document.querySelector(".game-canvas")?.height === 576);
+          // ResizeObserver must update and then restore the exploration view.
+          await page.setViewportSize({ width: 390, height: 667 });
+          await page.waitForFunction(() => {
+            const canvas = document.querySelector(".game-canvas");
+            return canvas?.width === 320 && canvas.height > 400 && canvas.height < 480;
+          });
+          await page.setViewportSize(viewport);
+          await page.waitForFunction(() => document.querySelector(".game-canvas")?.height === 576);
+        }
+      }
       await page.waitForFunction(() => typeof window.__reliquary?.openMenu === "function");
+      assert.match((await page.locator(".hud-place").textContent()) ?? "", /Cottage|Hollowmere|Elderhall/i);
+      assert.ok((await page.locator(".hud-region").textContent())?.trim(), "region is populated from current map");
+      assert.equal((await page.locator(".hud-companion").textContent())?.trim(), "No pact yet", "fresh game has no fabricated companion");
+      await page.evaluate(() => window.__reliquary.setGold(321));
+      assert.match((await page.locator(".hud-gold").textContent()) ?? "", /321\s*cr/, "HUD follows current currency");
+      if ((viewport.width === 390 && viewport.height === 844) || (viewport.width === 412 && viewport.height === 915)) {
+        const objective = await page.locator(".hud-objective-preview").evaluate((el) => ({
+          text: el.textContent ?? "", clientHeight: el.clientHeight, scrollHeight: el.scrollHeight,
+          clientWidth: el.clientWidth, scrollWidth: el.scrollWidth,
+        }));
+        assert.ok(objective.text.trim(), "the current objective is present");
+        assert.ok(objective.scrollHeight <= objective.clientHeight + 1 && objective.scrollWidth <= objective.clientWidth + 1,
+          `the opening objective is readable without clipping at ${viewport.width}x${viewport.height}: ${JSON.stringify(objective)}`);
+      }
+      if (await page.locator(".touch-full").isVisible()) {
+        assert.equal(await page.getByRole("button", { name: "A — Interact", exact: true }).count(), 1);
+        assert.equal(await page.getByRole("button", { name: "B — Cancel", exact: true }).count(), 1);
+        for (const button of await page.locator(".touch-full button").all()) {
+          const target = await button.boundingBox();
+          assert.ok(target && target.width >= 44 && target.height >= 44, "touch control bounding boxes are at least 44px; clipped hit regions require separate verification");
+        }
+      }
       // The stage must fit the viewport (no sideways scroll) and the HUD pieces
       // must not sit on top of each other.
       const fit = await page.evaluate(() => {
@@ -57,10 +154,32 @@ try {
       assert.ok(fit.vpLeft >= -1 && fit.vpRight <= fit.innerWidth + 1, "game viewport inside the window");
       assert.deepEqual(fit.overlaps, [], "HUD elements do not overlap");
       if (await page.locator(".hud-objective-btn").count()) {
+        const checkPlayer = viewport.width === 390 && (viewport.height === 844 || viewport.height === 667);
+        if (checkPlayer) {
+          // Put the player at the north edge for the popover geometry check.
+          await page.evaluate(() => window.__controlsTest.warp("elderhall", 11, 1));
+        }
         const menuBoxBefore = await page.locator(".hud-menu").boundingBox();
         assert.ok(menuBoxBefore, "menu visible before objective expand");
         await page.locator(".hud-objective-btn").first().click();
         await page.waitForSelector(".hud-objective-popover", { timeout: 3000 });
+        await waitForObjectiveSafeArea(page, checkPlayer);
+        if (checkPlayer) {
+          const action = page.locator(".hud-objective-lantern");
+          assert.equal(await action.isVisible(), true, "objective action remains visible");
+          assert.equal(await action.evaluate((button) => {
+            const rect = button.getBoundingClientRect();
+            const hit = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
+            return hit === button || button.contains(hit);
+          }), true, "objective action remains pointer-accessible");
+        }
+        if (viewport.width === 390 && viewport.height === 844) {
+          // Reflow the open panel; its new visible bottom must remain reserved.
+          await page.setViewportSize({ width: 360, height: 844 });
+          await waitForObjectiveSafeArea(page, true);
+          await page.setViewportSize(viewport);
+          await waitForObjectiveSafeArea(page, true);
+        }
         const menuBoxAfter = await page.locator(".hud-menu").boundingBox();
         assert.ok(menuBoxAfter, "menu visible after objective expand");
         assert.ok(
@@ -73,6 +192,16 @@ try {
           return Number.parseFloat(getComputedStyle(vp).getPropertyValue("--ui-safe-top-px"));
         });
         assert.ok(safeTop > 24, `--ui-safe-top-px should reflect HUD stack (${safeTop})`);
+        await page.keyboard.press("Escape");
+        assert.equal(await page.locator(".hud-objective-popover").count(), 0, "Escape dismisses the objective");
+        await page.waitForFunction(() => {
+          const stack = document.querySelector(".top-stack");
+          const viewport = document.querySelector(".viewport");
+          const safe = Number.parseFloat(getComputedStyle(viewport).getPropertyValue("--ui-safe-top-px"));
+          return safe <= stack.getBoundingClientRect().bottom - viewport.getBoundingClientRect().top + 5;
+        });
+        assert.equal(await page.locator(".hud-objective-btn").getAttribute("aria-expanded"), "false");
+        assert.equal(await page.locator(".hud-objective-btn").evaluate((el) => el === document.activeElement), true, "dismissal restores objective focus");
       }
       await page.evaluate(() => {
         window.__reliquary?.openMenu?.();
@@ -91,6 +220,9 @@ try {
       assert.equal(modalChrome.touchHidden, true, "exploration touch hidden in menu");
       assert.equal(modalChrome.explorePad, false, "walk pad hidden in menu");
       assert.equal(modalChrome.hudHidden, true, "world HUD dormant under menu sheet");
+      if (viewport.width === 390 && (viewport.height === 844 || viewport.height === 667)) {
+        await page.waitForFunction(() => document.querySelector(".game-canvas")?.height === 512);
+      }
       const panel = page.locator(".overlay-panel, .sheet").first();
       const box = await panel.boundingBox();
       assert.ok(box, "overlay panel visible");

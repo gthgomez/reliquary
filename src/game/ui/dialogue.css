@@ -93,10 +93,14 @@
 }
 /* Secondary chrome yields for a conversation, and returns immediately on
    close. AppStatus stays mounted so offline/update state is never reset. */
-.game-root.is-dialog .app-status,
-.game-root.is-dialog-portrait .top-stack {
+.game-root.is-dialog .app-status {
   visibility: hidden;
   pointer-events: none;
+}
+.game-root.is-dialog .hud {
+  /* Dialogue owns the playfield. Remove the inactive HUD from layout so a
+     sibling live-status toast can remain visible at the top of the viewport. */
+  display: none;
 }
 @media (max-width: 600px) and (orientation: portrait) {
   .dialog-scene-npc {

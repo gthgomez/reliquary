@@ -116,3 +116,29 @@ test("production rebuild discards the previous browser-test bundle and cache ent
   const serviceWorker = readFileSync(join(root, ".vercel/output/static/sw.js"), "utf8");
   assert.equal(serviceWorker.includes(basename(browserTestBundle)), false, "previous browser-test bundle remains precached");
 });
+
+test("production rebuild excludes the candidate map implementation and artwork", () => {
+  const staticDir = join(root, ".vercel/output/static");
+  const build = (env) => spawnSync(process.execPath, [join(root, "scripts/build-web.mjs")], {
+    cwd: root, encoding: "utf8", timeout: 180_000,
+    env: { ...process.env, VITE_RELIQUARY_BROWSER_TEST: "", ...env },
+  });
+  const candidate = build({ VERCEL_ENV: "preview", RELIQUARY_ELDERHALL_CANDIDATE: "1" });
+  assert.equal(candidate.status, 0, `${candidate.stdout}\n${candidate.stderr}`);
+  const before = bundlePath();
+  const candidateMap = JSON.parse(readFileSync(`${before}.map`, "utf8"));
+  assert.ok(candidateMap.sources.some((name) => name.endsWith("/maps/elderhall-candidate.ts")), "candidate build contains its map implementation");
+  assert.ok(existsSync(join(staticDir, "game/elderhall/assets/elderhall.well-reference.png")), "candidate contains review artwork");
+
+  // A production build wins over an accidentally inherited candidate override.
+  const production = build({ VERCEL_ENV: "production", RELIQUARY_ELDERHALL_CANDIDATE: "1" });
+  assert.equal(production.status, 0, `${production.stdout}\n${production.stderr}`);
+  const after = bundlePath();
+  const productionMap = JSON.parse(readFileSync(`${after}.map`, "utf8"));
+  assert.equal(productionMap.sources.some((name) => name.endsWith("/maps/elderhall-candidate.ts")), false,
+    "candidate coordinates and implementation are absent from the production source map");
+  assert.equal(existsSync(join(staticDir, "game/elderhall")), false, "candidate images are absent from production");
+  assert.equal(readFileSync(join(staticDir, "sw.js"), "utf8").includes("game/elderhall/"), false,
+    "candidate images are absent from the production offline cache");
+  if (before !== after) assert.equal(existsSync(before), false, "old candidate bundle was removed");
+});

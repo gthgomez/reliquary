@@ -1,0 +1,1308 @@
+{
+  "art_direction": {
+    "lighting": "upper left",
+    "palette": [
+      "forest green",
+      "warm ochre",
+      "timber brown",
+      "stone gray",
+      "copper gold"
+    ],
+    "perspective": "three-quarter, south-facing",
+    "reference_sha256": "04ac8efeb1b52dd63f026c222dceb4427ab2514f54741561813ddbfb90f967c5",
+    "reference_use": "visual direction; procedural drawings are not reference-conditioned generation"
+  },
+  "assets": [
+    {
+      "anchor": [
+        16,
+        32
+      ],
+      "collision": null,
+      "depth_baseline": 32,
+      "dimensions": [
+        32,
+        32
+      ],
+      "file": "assets/elderhall.grass-0.png",
+      "id": "elderhall.grass-0",
+      "interaction_anchor": null,
+      "kind": "terrain",
+      "logical_footprint": [
+        1,
+        1
+      ],
+      "provenance": {
+        "authorization": "Created at project owner's request for Reliquary; production approval pending",
+        "license": "Legal license not independently verified",
+        "method": "locally drawn deterministic Pillow operations",
+        "rights_holder": "Not independently verified",
+        "source_type": "original_programmatic"
+      },
+      "render_size_tiles": [
+        1,
+        1
+      ],
+      "sha256": "c0baa4e703623cacc02b98ac43400fb8019b4d4891105ec534c10c91390bcff6",
+      "shadow": null
+    },
+    {
+      "anchor": [
+        16,
+        32
+      ],
+      "collision": null,
+      "depth_baseline": 32,
+      "dimensions": [
+        32,
+        32
+      ],
+      "file": "assets/elderhall.grass-1.png",
+      "id": "elderhall.grass-1",
+      "interaction_anchor": null,
+      "kind": "terrain",
+      "logical_footprint": [
+        1,
+        1
+      ],
+      "provenance": {
+        "authorization": "Created at project owner's request for Reliquary; production approval pending",
+        "license": "Legal license not independently verified",
+        "method": "locally drawn deterministic Pillow operations",
+        "rights_holder": "Not independently verified",
+        "source_type": "original_programmatic"
+      },
+      "render_size_tiles": [
+        1,
+        1
+      ],
+      "sha256": "654d8ba2334175b7baff8d3ce5ed8e86808ec5ab19376c3d74d259ad83419b2a",
+      "shadow": null
+    },
+    {
+      "anchor": [
+        16,
+        32
+      ],
+      "collision": null,
+      "depth_baseline": 32,
+      "dimensions": [
+        32,
+        32
+      ],
+      "file": "assets/elderhall.grass-2.png",
+      "id": "elderhall.grass-2",
+      "interaction_anchor": null,
+      "kind": "terrain",
+      "logical_footprint": [
+        1,
+        1
+      ],
+      "provenance": {
+        "authorization": "Created at project owner's request for Reliquary; production approval pending",
+        "license": "Legal license not independently verified",
+        "method": "locally drawn deterministic Pillow operations",
+        "rights_holder": "Not independently verified",
+        "source_type": "original_programmatic"
+      },
+      "render_size_tiles": [
+        1,
+        1
+      ],
+      "sha256": "5521e13ffa0b56adac2e1adc2c44933ae13245f348acf129f0c5b7a2ed1d7d4a",
+      "shadow": null
+    },
+    {
+      "anchor": [
+        16,
+        32
+      ],
+      "collision": null,
+      "depth_baseline": 32,
+      "dimensions": [
+        32,
+        32
+      ],
+      "file": "assets/elderhall.grass-3.png",
+      "id": "elderhall.grass-3",
+      "interaction_anchor": null,
+      "kind": "terrain",
+      "logical_footprint": [
+        1,
+        1
+      ],
+      "provenance": {
+        "authorization": "Created at project owner's request for Reliquary; production approval pending",
+        "license": "Legal license not independently verified",
+        "method": "locally drawn deterministic Pillow operations",
+        "rights_holder": "Not independently verified",
+        "source_type": "original_programmatic"
+      },
+      "render_size_tiles": [
+        1,
+        1
+      ],
+      "sha256": "1dc2784417ec78585a89975c6adaa64ce9f14835bc936c7f9a20caa685de2074",
+      "shadow": null
+    },
+    {
+      "anchor": [
+        32,
+        64
+      ],
+      "atlas": {
+        "cell_size": [
+          32,
+          32
+        ],
+        "columns": 2,
+        "rows": 2
+      },
+      "collision": null,
+      "depth_baseline": 64,
+      "dimensions": [
+        64,
+        64
+      ],
+      "file": "assets/elderhall.grass-atlas.png",
+      "id": "elderhall.grass-atlas",
+      "interaction_anchor": null,
+      "kind": "terrain",
+      "logical_footprint": [
+        2,
+        2
+      ],
+      "provenance": {
+        "authorization": "Created at project owner's request for Reliquary; production approval pending",
+        "license": "Legal license not independently verified",
+        "method": "locally drawn deterministic Pillow operations",
+        "rights_holder": "Not independently verified",
+        "source_type": "original_programmatic"
+      },
+      "render_size_tiles": [
+        2,
+        2
+      ],
+      "sha256": "947464207a3dd47d23020be5062db7d215070dedb173e7cf77ddf9f8dd8895a8",
+      "shadow": null
+    },
+    {
+      "anchor": [
+        16,
+        32
+      ],
+      "collision": null,
+      "depth_baseline": 32,
+      "dimensions": [
+        32,
+        32
+      ],
+      "file": "assets/elderhall.dirt-0.png",
+      "id": "elderhall.dirt-0",
+      "interaction_anchor": null,
+      "kind": "terrain",
+      "logical_footprint": [
+        1,
+        1
+      ],
+      "provenance": {
+        "authorization": "Created at project owner's request for Reliquary; production approval pending",
+        "license": "Legal license not independently verified",
+        "method": "locally drawn deterministic Pillow operations",
+        "rights_holder": "Not independently verified",
+        "source_type": "original_programmatic"
+      },
+      "render_size_tiles": [
+        1,
+        1
+      ],
+      "sha256": "08bc88461dc1af44d4abedd8dc4232e142c1720d2df298f7b90e1aee71250893",
+      "shadow": null
+    },
+    {
+      "anchor": [
+        16,
+        32
+      ],
+      "collision": null,
+      "depth_baseline": 32,
+      "dimensions": [
+        32,
+        32
+      ],
+      "file": "assets/elderhall.dirt-1.png",
+      "id": "elderhall.dirt-1",
+      "interaction_anchor": null,
+      "kind": "terrain",
+      "logical_footprint": [
+        1,
+        1
+      ],
+      "provenance": {
+        "authorization": "Created at project owner's request for Reliquary; production approval pending",
+        "license": "Legal license not independently verified",
+        "method": "locally drawn deterministic Pillow operations",
+        "rights_holder": "Not independently verified",
+        "source_type": "original_programmatic"
+      },
+      "render_size_tiles": [
+        1,
+        1
+      ],
+      "sha256": "02634e2f4eec6954393320168a55221d26ea2df5065a0c7ff746807e40279016",
+      "shadow": null
+    },
+    {
+      "anchor": [
+        16,
+        32
+      ],
+      "collision": null,
+      "depth_baseline": 32,
+      "dimensions": [
+        32,
+        32
+      ],
+      "file": "assets/elderhall.dirt-2.png",
+      "id": "elderhall.dirt-2",
+      "interaction_anchor": null,
+      "kind": "terrain",
+      "logical_footprint": [
+        1,
+        1
+      ],
+      "provenance": {
+        "authorization": "Created at project owner's request for Reliquary; production approval pending",
+        "license": "Legal license not independently verified",
+        "method": "locally drawn deterministic Pillow operations",
+        "rights_holder": "Not independently verified",
+        "source_type": "original_programmatic"
+      },
+      "render_size_tiles": [
+        1,
+        1
+      ],
+      "sha256": "aad0cfd69e8ad6b222a6665c9f1b07b32ecdb87e2c4fbcf1ca0aad9a42b78f1a",
+      "shadow": null
+    },
+    {
+      "anchor": [
+        16,
+        32
+      ],
+      "collision": null,
+      "depth_baseline": 32,
+      "dimensions": [
+        32,
+        32
+      ],
+      "file": "assets/elderhall.dirt-3.png",
+      "id": "elderhall.dirt-3",
+      "interaction_anchor": null,
+      "kind": "terrain",
+      "logical_footprint": [
+        1,
+        1
+      ],
+      "provenance": {
+        "authorization": "Created at project owner's request for Reliquary; production approval pending",
+        "license": "Legal license not independently verified",
+        "method": "locally drawn deterministic Pillow operations",
+        "rights_holder": "Not independently verified",
+        "source_type": "original_programmatic"
+      },
+      "render_size_tiles": [
+        1,
+        1
+      ],
+      "sha256": "f0fa5b87f00a36c42badffe593b186b6548ec77e287c638e1cbca09b7642c085",
+      "shadow": null
+    },
+    {
+      "anchor": [
+        32,
+        64
+      ],
+      "atlas": {
+        "cell_size": [
+          32,
+          32
+        ],
+        "columns": 2,
+        "rows": 2
+      },
+      "collision": null,
+      "depth_baseline": 64,
+      "dimensions": [
+        64,
+        64
+      ],
+      "file": "assets/elderhall.dirt-atlas.png",
+      "id": "elderhall.dirt-atlas",
+      "interaction_anchor": null,
+      "kind": "terrain",
+      "logical_footprint": [
+        2,
+        2
+      ],
+      "provenance": {
+        "authorization": "Created at project owner's request for Reliquary; production approval pending",
+        "license": "Legal license not independently verified",
+        "method": "locally drawn deterministic Pillow operations",
+        "rights_holder": "Not independently verified",
+        "source_type": "original_programmatic"
+      },
+      "render_size_tiles": [
+        2,
+        2
+      ],
+      "sha256": "76bd995c45d3484a4ee53996705fb8a0646fef3857d20bd6fe9d2b343c0f552b",
+      "shadow": null
+    },
+    {
+      "anchor": [
+        16,
+        32
+      ],
+      "collision": null,
+      "depth_baseline": 32,
+      "dimensions": [
+        32,
+        32
+      ],
+      "file": "assets/elderhall.stone-0.png",
+      "id": "elderhall.stone-0",
+      "interaction_anchor": null,
+      "kind": "terrain",
+      "logical_footprint": [
+        1,
+        1
+      ],
+      "provenance": {
+        "authorization": "Created at project owner's request for Reliquary; production approval pending",
+        "license": "Legal license not independently verified",
+        "method": "locally drawn deterministic Pillow operations",
+        "rights_holder": "Not independently verified",
+        "source_type": "original_programmatic"
+      },
+      "render_size_tiles": [
+        1,
+        1
+      ],
+      "sha256": "4961c3595f6f25355560f6b9b51c16afefcfbbe53a214cce73b0a005a8235e06",
+      "shadow": null
+    },
+    {
+      "anchor": [
+        16,
+        32
+      ],
+      "collision": null,
+      "depth_baseline": 32,
+      "dimensions": [
+        32,
+        32
+      ],
+      "file": "assets/elderhall.stone-1.png",
+      "id": "elderhall.stone-1",
+      "interaction_anchor": null,
+      "kind": "terrain",
+      "logical_footprint": [
+        1,
+        1
+      ],
+      "provenance": {
+        "authorization": "Created at project owner's request for Reliquary; production approval pending",
+        "license": "Legal license not independently verified",
+        "method": "locally drawn deterministic Pillow operations",
+        "rights_holder": "Not independently verified",
+        "source_type": "original_programmatic"
+      },
+      "render_size_tiles": [
+        1,
+        1
+      ],
+      "sha256": "0c9366bdc170b6b986dee7223e8deb11531c3beb3cded4e04fd01a681e626234",
+      "shadow": null
+    },
+    {
+      "anchor": [
+        16,
+        32
+      ],
+      "collision": null,
+      "depth_baseline": 32,
+      "dimensions": [
+        32,
+        32
+      ],
+      "file": "assets/elderhall.stone-2.png",
+      "id": "elderhall.stone-2",
+      "interaction_anchor": null,
+      "kind": "terrain",
+      "logical_footprint": [
+        1,
+        1
+      ],
+      "provenance": {
+        "authorization": "Created at project owner's request for Reliquary; production approval pending",
+        "license": "Legal license not independently verified",
+        "method": "locally drawn deterministic Pillow operations",
+        "rights_holder": "Not independently verified",
+        "source_type": "original_programmatic"
+      },
+      "render_size_tiles": [
+        1,
+        1
+      ],
+      "sha256": "617b55641baad076828ec0397c7718d53cfc498182668ef7a7d00b940e23160b",
+      "shadow": null
+    },
+    {
+      "anchor": [
+        16,
+        32
+      ],
+      "collision": null,
+      "depth_baseline": 32,
+      "dimensions": [
+        32,
+        32
+      ],
+      "file": "assets/elderhall.stone-3.png",
+      "id": "elderhall.stone-3",
+      "interaction_anchor": null,
+      "kind": "terrain",
+      "logical_footprint": [
+        1,
+        1
+      ],
+      "provenance": {
+        "authorization": "Created at project owner's request for Reliquary; production approval pending",
+        "license": "Legal license not independently verified",
+        "method": "locally drawn deterministic Pillow operations",
+        "rights_holder": "Not independently verified",
+        "source_type": "original_programmatic"
+      },
+      "render_size_tiles": [
+        1,
+        1
+      ],
+      "sha256": "d076887391d0a62d8254e7cf3694d1acbdfeb90d04f7c7b344ebcf86d4f34e5a",
+      "shadow": null
+    },
+    {
+      "anchor": [
+        32,
+        64
+      ],
+      "atlas": {
+        "cell_size": [
+          32,
+          32
+        ],
+        "columns": 2,
+        "rows": 2
+      },
+      "collision": null,
+      "depth_baseline": 64,
+      "dimensions": [
+        64,
+        64
+      ],
+      "file": "assets/elderhall.stone-atlas.png",
+      "id": "elderhall.stone-atlas",
+      "interaction_anchor": null,
+      "kind": "terrain",
+      "logical_footprint": [
+        2,
+        2
+      ],
+      "provenance": {
+        "authorization": "Created at project owner's request for Reliquary; production approval pending",
+        "license": "Legal license not independently verified",
+        "method": "locally drawn deterministic Pillow operations",
+        "rights_holder": "Not independently verified",
+        "source_type": "original_programmatic"
+      },
+      "render_size_tiles": [
+        2,
+        2
+      ],
+      "sha256": "01f6975745f3e0fa7b55a4e118d26da6742b4e56b94498d3ea8c1558c64ed436",
+      "shadow": null
+    },
+    {
+      "anchor": [
+        48,
+        43
+      ],
+      "collision": null,
+      "depth_baseline": 43,
+      "dimensions": [
+        96,
+        48
+      ],
+      "file": "assets/elderhall.bench.png",
+      "id": "elderhall.bench",
+      "interaction_anchor": null,
+      "kind": "prop",
+      "logical_footprint": [
+        1,
+        1
+      ],
+      "provenance": {
+        "authorization": "Created at project owner's request for Reliquary; production approval pending",
+        "license": "Legal license not independently verified",
+        "method": "locally drawn deterministic Pillow operations",
+        "rights_holder": "Not independently verified",
+        "source_type": "original_programmatic"
+      },
+      "render_size_tiles": [
+        1.5,
+        0.75
+      ],
+      "sha256": "2e6285f5aced8444684a90c9bb1105d08cb30eb82103fb2db5346fa55f6cd3fc",
+      "shadow": null
+    },
+    {
+      "anchor": [
+        24,
+        75
+      ],
+      "collision": null,
+      "depth_baseline": 75,
+      "dimensions": [
+        48,
+        80
+      ],
+      "file": "assets/elderhall.sign.png",
+      "id": "elderhall.sign",
+      "interaction_anchor": null,
+      "kind": "prop",
+      "logical_footprint": [
+        1,
+        1
+      ],
+      "provenance": {
+        "authorization": "Created at project owner's request for Reliquary; production approval pending",
+        "license": "Legal license not independently verified",
+        "method": "locally drawn deterministic Pillow operations",
+        "rights_holder": "Not independently verified",
+        "source_type": "original_programmatic"
+      },
+      "render_size_tiles": [
+        0.75,
+        1.25
+      ],
+      "sha256": "af32806c610ce55d5e6b7d3484d4243863a5a1b4e25bd7d88f08be8d964f30eb",
+      "shadow": null
+    },
+    {
+      "anchor": [
+        48,
+        34
+      ],
+      "collision": null,
+      "depth_baseline": 34,
+      "dimensions": [
+        96,
+        40
+      ],
+      "file": "assets/elderhall.fence.png",
+      "id": "elderhall.fence",
+      "interaction_anchor": null,
+      "kind": "prop",
+      "logical_footprint": [
+        1,
+        1
+      ],
+      "provenance": {
+        "authorization": "Created at project owner's request for Reliquary; production approval pending",
+        "license": "Legal license not independently verified",
+        "method": "locally drawn deterministic Pillow operations",
+        "rights_holder": "Not independently verified",
+        "source_type": "original_programmatic"
+      },
+      "render_size_tiles": [
+        1.5,
+        0.625
+      ],
+      "sha256": "6462a347c7b4d9f420a68c9e5236301958a0e1c89439d8e55776806185482537",
+      "shadow": null
+    },
+    {
+      "anchor": [
+        20,
+        44
+      ],
+      "collision": null,
+      "depth_baseline": 44,
+      "dimensions": [
+        40,
+        52
+      ],
+      "file": "assets/elderhall.barrel.png",
+      "id": "elderhall.barrel",
+      "interaction_anchor": null,
+      "kind": "prop",
+      "logical_footprint": [
+        1,
+        1
+      ],
+      "provenance": {
+        "authorization": "Created at project owner's request for Reliquary; production approval pending",
+        "license": "Legal license not independently verified",
+        "method": "locally drawn deterministic Pillow operations",
+        "rights_holder": "Not independently verified",
+        "source_type": "original_programmatic"
+      },
+      "render_size_tiles": [
+        0.625,
+        0.8125
+      ],
+      "sha256": "71fff38eca65f903bd3a863b9e916b7c30180ec8d1eba5fb2395527166b59222",
+      "shadow": null
+    },
+    {
+      "anchor": [
+        32,
+        30
+      ],
+      "collision": null,
+      "depth_baseline": 30,
+      "dimensions": [
+        64,
+        32
+      ],
+      "file": "assets/elderhall.flowers.png",
+      "id": "elderhall.flowers",
+      "interaction_anchor": null,
+      "kind": "prop",
+      "logical_footprint": [
+        1,
+        1
+      ],
+      "provenance": {
+        "authorization": "Created at project owner's request for Reliquary; production approval pending",
+        "license": "Legal license not independently verified",
+        "method": "locally drawn deterministic Pillow operations",
+        "rights_holder": "Not independently verified",
+        "source_type": "original_programmatic"
+      },
+      "render_size_tiles": [
+        1,
+        0.5
+      ],
+      "sha256": "5bfb890582224be7b7639dd4c05f32115a70413ed8a2a84f486a2788de7b244c",
+      "shadow": null
+    },
+    {
+      "anchor": [
+        16,
+        60
+      ],
+      "collision": null,
+      "depth_baseline": 60,
+      "dimensions": [
+        32,
+        64
+      ],
+      "file": "assets/elderhall.lantern.png",
+      "id": "elderhall.lantern",
+      "interaction_anchor": null,
+      "kind": "prop",
+      "logical_footprint": [
+        1,
+        1
+      ],
+      "provenance": {
+        "authorization": "Created at project owner's request for Reliquary; production approval pending",
+        "license": "Legal license not independently verified",
+        "method": "locally drawn deterministic Pillow operations",
+        "rights_holder": "Not independently verified",
+        "source_type": "original_programmatic"
+      },
+      "render_size_tiles": [
+        0.5,
+        1
+      ],
+      "sha256": "4fb7d2140459802035000d1896345cb0afbf66f144127cba2514713a3ee0f8a6",
+      "shadow": null
+    },
+    {
+      "anchor": [
+        80,
+        145
+      ],
+      "collision": null,
+      "depth_baseline": 145,
+      "dimensions": [
+        160,
+        160
+      ],
+      "file": "assets/elderhall.tree.png",
+      "id": "elderhall.tree",
+      "interaction_anchor": null,
+      "kind": "prop",
+      "logical_footprint": [
+        1,
+        1
+      ],
+      "provenance": {
+        "authorization": "Created at project owner's request for Reliquary; production approval pending",
+        "license": "Legal license not independently verified",
+        "method": "locally drawn deterministic Pillow operations",
+        "rights_holder": "Not independently verified",
+        "source_type": "original_programmatic"
+      },
+      "render_size_tiles": [
+        2.5,
+        2.5
+      ],
+      "sha256": "9f7f63174fec9309d091be7b13b1fd105802e02bc1f678b39af2e7721bce6a2a",
+      "shadow": null
+    },
+    {
+      "anchor": [
+        56,
+        102
+      ],
+      "collision": null,
+      "depth_baseline": 102,
+      "dimensions": [
+        112,
+        120
+      ],
+      "file": "assets/elderhall.well.png",
+      "id": "elderhall.well",
+      "interaction_anchor": null,
+      "kind": "prop",
+      "logical_footprint": [
+        1,
+        1
+      ],
+      "provenance": {
+        "authorization": "Created at project owner's request for Reliquary; production approval pending",
+        "license": "Legal license not independently verified",
+        "method": "locally drawn deterministic Pillow operations",
+        "rights_holder": "Not independently verified",
+        "source_type": "original_programmatic"
+      },
+      "render_size_tiles": [
+        1.75,
+        1.875
+      ],
+      "sha256": "f56b9045621644fe1589b9eec13bc930779f00e37e4e92d92a19c9e644bc160f",
+      "shadow": null
+    },
+    {
+      "anchor": [
+        80,
+        98
+      ],
+      "collision": null,
+      "depth_baseline": 98,
+      "dimensions": [
+        160,
+        104
+      ],
+      "file": "assets/elderhall.gate.png",
+      "id": "elderhall.gate",
+      "interaction_anchor": null,
+      "kind": "prop",
+      "logical_footprint": [
+        2,
+        1
+      ],
+      "provenance": {
+        "authorization": "Created at project owner's request for Reliquary; production approval pending",
+        "license": "Legal license not independently verified",
+        "method": "locally drawn deterministic Pillow operations",
+        "rights_holder": "Not independently verified",
+        "source_type": "original_programmatic"
+      },
+      "render_size_tiles": [
+        2.5,
+        1.625
+      ],
+      "sha256": "bfe00830ef7717fd4f9c2b1bf557ce21d0b463a317009d8bafdf65e97159395c",
+      "shadow": null
+    },
+    {
+      "anchor": [
+        80,
+        121
+      ],
+      "collision": null,
+      "depth_baseline": 121,
+      "dimensions": [
+        160,
+        132
+      ],
+      "file": "assets/elderhall.cottage.png",
+      "id": "elderhall.cottage",
+      "interaction_anchor": null,
+      "kind": "prop",
+      "logical_footprint": [
+        2,
+        1
+      ],
+      "provenance": {
+        "authorization": "Created at project owner's request for Reliquary; production approval pending",
+        "license": "Legal license not independently verified",
+        "method": "locally drawn deterministic Pillow operations",
+        "rights_holder": "Not independently verified",
+        "source_type": "original_programmatic"
+      },
+      "render_size_tiles": [
+        2.5,
+        2.0625
+      ],
+      "sha256": "3a6d4f446a3a3c6b5f635ae28bccf9f09b02f47fa067d5d4492ddf7042d0699c",
+      "shadow": null
+    },
+    {
+      "anchor": [
+        80,
+        121
+      ],
+      "collision": null,
+      "depth_baseline": 121,
+      "dimensions": [
+        160,
+        132
+      ],
+      "file": "assets/elderhall.inn.png",
+      "id": "elderhall.inn",
+      "interaction_anchor": null,
+      "kind": "prop",
+      "logical_footprint": [
+        2,
+        1
+      ],
+      "provenance": {
+        "authorization": "Created at project owner's request for Reliquary; production approval pending",
+        "license": "Legal license not independently verified",
+        "method": "locally drawn deterministic Pillow operations",
+        "rights_holder": "Not independently verified",
+        "source_type": "original_programmatic"
+      },
+      "render_size_tiles": [
+        2.5,
+        2.0625
+      ],
+      "sha256": "e5af823c63ccab7f06487202bc95574b0dd30a920cf3528601c13ee6d9e63a51",
+      "shadow": null
+    },
+    {
+      "anchor": [
+        80,
+        121
+      ],
+      "collision": null,
+      "depth_baseline": 121,
+      "dimensions": [
+        160,
+        132
+      ],
+      "file": "assets/elderhall.shop.png",
+      "id": "elderhall.shop",
+      "interaction_anchor": null,
+      "kind": "prop",
+      "logical_footprint": [
+        2,
+        1
+      ],
+      "provenance": {
+        "authorization": "Created at project owner's request for Reliquary; production approval pending",
+        "license": "Legal license not independently verified",
+        "method": "locally drawn deterministic Pillow operations",
+        "rights_holder": "Not independently verified",
+        "source_type": "original_programmatic"
+      },
+      "render_size_tiles": [
+        2.5,
+        2.0625
+      ],
+      "sha256": "f514ec95da4ed0951bfb7bd81c28b0e1740d07cf39f7e53eb905301e1c2411eb",
+      "shadow": null
+    },
+    {
+      "anchor": [
+        64,
+        156
+      ],
+      "collision": null,
+      "depth_baseline": 156,
+      "dimensions": [
+        128,
+        160
+      ],
+      "file": "assets/elderhall.well-reference.png",
+      "id": "elderhall.well-reference",
+      "interaction_anchor": null,
+      "kind": "prop",
+      "logical_footprint": [
+        1,
+        1
+      ],
+      "provenance": {
+        "authorization": "Project owner requested generation and Reliquary integration",
+        "license": "Owner-authorized project candidate; rights review pending",
+        "method": "Built-in reference-conditioned image tool",
+        "reference_attestation": "Caller supplied the reference to the cited generation method; this claim is recorded, not independently verified.",
+        "reference_sha256": "04ac8efeb1b52dd63f026c222dceb4427ab2514f54741561813ddbfb90f967c5",
+        "repair": {
+          "alpha_below": 16,
+          "bottom_margin": 4,
+          "canvas": [
+            128,
+            160
+          ],
+          "crop_bbox": [
+            259,
+            111,
+            1025,
+            1069
+          ],
+          "opaque_at_or_above": 240,
+          "resampling": "Pillow LANCZOS"
+        },
+        "review_status": "candidate; visual and rights review pending",
+        "rights_holder": "Ownership not independently verified",
+        "source_sha256": "13ac3e804f413a07a6b6301ad17e6942beaf5e1b9ffe3f17f593ecb6ccf45688",
+        "source_type": "reference_conditioned"
+      },
+      "render_size_tiles": [
+        2.0,
+        2.5
+      ],
+      "sha256": "f0b5f7a80d1bd3de6ddd2ded34e7cf059af0d7930e831936b21ddef383eb0112",
+      "shadow": {
+        "center": [
+          64,
+          156
+        ],
+        "radius": [
+          32,
+          7
+        ]
+      }
+    },
+    {
+      "anchor": [
+        80,
+        156
+      ],
+      "collision": null,
+      "depth_baseline": 156,
+      "dimensions": [
+        160,
+        160
+      ],
+      "file": "assets/elderhall.cottage-reference.png",
+      "id": "elderhall.cottage-reference",
+      "interaction_anchor": null,
+      "kind": "prop",
+      "logical_footprint": [
+        1,
+        1
+      ],
+      "provenance": {
+        "authorization": "Project owner requested generation and Reliquary integration",
+        "license": "Owner-authorized project candidate; rights review pending",
+        "method": "Built-in reference-conditioned image tool",
+        "reference_attestation": "Caller supplied the reference to the cited generation method; this claim is recorded, not independently verified.",
+        "reference_sha256": "04ac8efeb1b52dd63f026c222dceb4427ab2514f54741561813ddbfb90f967c5",
+        "repair": {
+          "alpha_below": 16,
+          "bottom_margin": 4,
+          "canvas": [
+            160,
+            160
+          ],
+          "crop_bbox": [
+            198,
+            143,
+            1099,
+            1057
+          ],
+          "opaque_at_or_above": 240,
+          "resampling": "Pillow LANCZOS"
+        },
+        "review_status": "candidate; visual and rights review pending",
+        "rights_holder": "Ownership not independently verified",
+        "source_sha256": "533ab9605ba4165442d5eae5986f065b2c6aea715f99933ce8e24842603a3629",
+        "source_type": "reference_conditioned"
+      },
+      "render_size_tiles": [
+        3.0,
+        3.0
+      ],
+      "sha256": "8354a8f1b81bde22af0f1808f477992e9bb0fcada3820092fa4e9d3bf3dde7be",
+      "shadow": {
+        "center": [
+          80,
+          156
+        ],
+        "radius": [
+          40,
+          7
+        ]
+      }
+    },
+    {
+      "anchor": [
+        80,
+        140
+      ],
+      "collision": null,
+      "depth_baseline": 140,
+      "dimensions": [
+        160,
+        144
+      ],
+      "file": "assets/elderhall.tree-reference.png",
+      "id": "elderhall.tree-reference",
+      "interaction_anchor": null,
+      "kind": "prop",
+      "logical_footprint": [
+        1,
+        1
+      ],
+      "provenance": {
+        "authorization": "Project owner requested generation and Reliquary integration",
+        "license": "Owner-authorized project candidate; rights review pending",
+        "method": "Built-in reference-conditioned image tool",
+        "reference_attestation": "Caller supplied the reference to the cited generation method; this claim is recorded, not independently verified.",
+        "reference_sha256": "04ac8efeb1b52dd63f026c222dceb4427ab2514f54741561813ddbfb90f967c5",
+        "repair": {
+          "alpha_below": 16,
+          "bottom_margin": 4,
+          "canvas": [
+            160,
+            144
+          ],
+          "crop_bbox": [
+            228,
+            50,
+            1309,
+            963
+          ],
+          "opaque_at_or_above": 240,
+          "resampling": "Pillow LANCZOS"
+        },
+        "review_status": "candidate; visual and rights review pending",
+        "rights_holder": "Ownership not independently verified",
+        "source_sha256": "886c4e5feff38428930367c8afb70af189e8d468d909b39b5c82e5e5e32b6e4e",
+        "source_type": "reference_conditioned"
+      },
+      "render_size_tiles": [
+        3.0,
+        2.7
+      ],
+      "sha256": "f99d75be756d406d1c27a12ff388b3a20f88234245e4c13f9b4726cddc15935f",
+      "shadow": {
+        "center": [
+          80,
+          140
+        ],
+        "radius": [
+          40,
+          7
+        ]
+      }
+    },
+    {
+      "anchor": [
+        80,
+        108
+      ],
+      "collision": null,
+      "depth_baseline": 108,
+      "dimensions": [
+        160,
+        112
+      ],
+      "file": "assets/elderhall.gate-reference.png",
+      "id": "elderhall.gate-reference",
+      "interaction_anchor": null,
+      "kind": "prop",
+      "logical_footprint": [
+        1,
+        1
+      ],
+      "provenance": {
+        "authorization": "Project owner requested generation and Reliquary integration",
+        "license": "Owner-authorized project candidate; rights review pending",
+        "method": "Built-in reference-conditioned image tool",
+        "reference_attestation": "Caller supplied the reference to the cited generation method; this claim is recorded, not independently verified.",
+        "reference_sha256": "04ac8efeb1b52dd63f026c222dceb4427ab2514f54741561813ddbfb90f967c5",
+        "repair": {
+          "alpha_below": 16,
+          "bottom_margin": 4,
+          "canvas": [
+            160,
+            112
+          ],
+          "crop_bbox": [
+            281,
+            200,
+            1252,
+            839
+          ],
+          "opaque_at_or_above": 240,
+          "resampling": "Pillow LANCZOS"
+        },
+        "review_status": "candidate; visual and rights review pending",
+        "rights_holder": "Ownership not independently verified",
+        "source_sha256": "60ca48ce5b5e63264f98b0416c04b900f6e6638b51612c0010178169c038fc13",
+        "source_type": "reference_conditioned"
+      },
+      "render_size_tiles": [
+        3.0,
+        2.1
+      ],
+      "sha256": "823697b2ee8d42ffeba1772f890dd1cca503bd121ffd201c4a3f7a654ead6008",
+      "shadow": {
+        "center": [
+          80,
+          108
+        ],
+        "radius": [
+          40,
+          7
+        ]
+      }
+    },
+    {
+      "anchor": [
+        80,
+        156
+      ],
+      "collision": null,
+      "depth_baseline": 156,
+      "dimensions": [
+        160,
+        160
+      ],
+      "file": "assets/elderhall.guild-reference.png",
+      "id": "elderhall.guild-reference",
+      "interaction_anchor": null,
+      "kind": "prop",
+      "logical_footprint": [
+        3,
+        3
+      ],
+      "provenance": {
+        "authorization": "Created at the project owner request for Reliquary; production approval pending",
+        "license": "Project candidate; rights review pending",
+        "method": "OpenAI built-in image generation, conditioned on the owner-supplied reference and cottage master SHA-256 533ab9605ba4165442d5eae5986f065b2c6aea715f99933ce8e24842603a3629",
+        "reference_attestation": "Caller supplied the reference to the cited generation method; this claim is recorded, not independently verified.",
+        "reference_sha256": "04ac8efeb1b52dd63f026c222dceb4427ab2514f54741561813ddbfb90f967c5",
+        "repair": {
+          "alpha_below": 16,
+          "bottom_margin": 4,
+          "canvas": [
+            160,
+            160
+          ],
+          "crop_bbox": [
+            102,
+            76,
+            1281,
+            1034
+          ],
+          "opaque_at_or_above": 240,
+          "resampling": "Pillow LANCZOS"
+        },
+        "review_status": "candidate; visual and rights review pending",
+        "rights_holder": "Not independently verified",
+        "source_sha256": "d79ffea36f61dae48c9497e4f0ede24f40c79dd1436d185cc93f392e2e91e077",
+        "source_type": "reference_conditioned"
+      },
+      "render_size_tiles": [
+        3.0,
+        3.0
+      ],
+      "sha256": "eb3d8615874030b0c8553135a0be8c0af209876adf0abe319f91c651323c8dd8",
+      "shadow": {
+        "center": [
+          80,
+          156
+        ],
+        "radius": [
+          40,
+          7
+        ]
+      }
+    },
+    {
+      "anchor": [
+        80,
+        156
+      ],
+      "collision": null,
+      "depth_baseline": 156,
+      "dimensions": [
+        160,
+        160
+      ],
+      "file": "assets/elderhall.shop-reference.png",
+      "id": "elderhall.shop-reference",
+      "interaction_anchor": null,
+      "kind": "prop",
+      "logical_footprint": [
+        3,
+        3
+      ],
+      "provenance": {
+        "authorization": "Created at the project owner request for Reliquary; production approval pending",
+        "license": "Project candidate; rights review pending",
+        "method": "OpenAI built-in image generation, conditioned on the owner-supplied reference and cottage master SHA-256 533ab9605ba4165442d5eae5986f065b2c6aea715f99933ce8e24842603a3629",
+        "reference_attestation": "Caller supplied the reference to the cited generation method; this claim is recorded, not independently verified.",
+        "reference_sha256": "04ac8efeb1b52dd63f026c222dceb4427ab2514f54741561813ddbfb90f967c5",
+        "repair": {
+          "alpha_below": 16,
+          "bottom_margin": 4,
+          "canvas": [
+            160,
+            160
+          ],
+          "crop_bbox": [
+            193,
+            121,
+            1106,
+            1059
+          ],
+          "opaque_at_or_above": 240,
+          "resampling": "Pillow LANCZOS"
+        },
+        "review_status": "candidate; visual and rights review pending",
+        "rights_holder": "Not independently verified",
+        "source_sha256": "b8ef29089f3634c08b911081ef9bfe58932299b09ddb5bfa3c376624c95073b0",
+        "source_type": "reference_conditioned"
+      },
+      "render_size_tiles": [
+        3.0,
+        3.0
+      ],
+      "sha256": "fd6f313084e80c59dcc74274d4ffa47722f3949a904b3c4f5d7f6e7fbaa27160",
+      "shadow": {
+        "center": [
+          80,
+          156
+        ],
+        "radius": [
+          40,
+          7
+        ]
+      }
+    }
+  ],
+  "id": "reliquary.elderhall",
+  "schema_version": "ages.environment-pack/1",
+  "tile_size": 32,
+  "version": "0.2.0"
+}

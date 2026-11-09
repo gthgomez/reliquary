@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useRef, useSyncExternalStore } from "react";
+import { lazy, Suspense, useEffect, useLayoutEffect, useRef, useSyncExternalStore } from "react";
 import { ReliquaryGame, TILE } from "./engine";
 import {
   BattleHud,
@@ -14,7 +14,7 @@ import {
 } from "./ui/Overlays";
 import { AppStatus } from "./ui/AppStatus";
 import { battleSubmenuRootClass } from "./ui/battle-chrome.ts";
-import { formatUiSafeTopPx } from "./ui/ui-geometry.ts";
+import { observeUiSafeTop } from "./ui/ui-geometry.ts";
 import { isClassicTouchEnabled, isSoundMutedStored, isUiModalOpen, shouldShowDialogTouch, shouldShowExplorationTouch } from "./ui/ui-chrome.ts";
 import { registerReliquaryServiceWorker, setUpdateGuard } from "../pwa/register.ts";
 import { setMuted } from "./audio.ts";
@@ -32,6 +32,7 @@ const AgesPreviewPanel = __RELIQUARY_AGES_PREVIEW__
 export function GameApp() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
+  const applyLayoutRef = useRef<(() => void) | null>(null);
   const topStackRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const askedImport = useRef(0);
@@ -157,13 +158,18 @@ export function GameApp() {
       const cs = getComputedStyle(stage);
       const padX = parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight);
       const padY = parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom);
-      g.layout(Math.max(0, r.width - padX), Math.max(0, r.height - padY));
+      const devicePortrait = typeof window.matchMedia === "function"
+        ? window.matchMedia("(orientation: portrait)").matches
+        : window.innerHeight >= window.innerWidth;
+      g.layout(Math.max(0, r.width - padX), Math.max(0, r.height - padY), devicePortrait);
     };
+    applyLayoutRef.current = apply;
     apply();
     const ro = new ResizeObserver(apply);
     if (stage) ro.observe(stage);
     return () => {
       disposed = true;
+      applyLayoutRef.current = null;
       ro.disconnect();
       saveSession?.release();
       setUpdateGuard(null);
@@ -187,8 +193,16 @@ export function GameApp() {
   const showExplorationTouch = shouldShowExplorationTouch(snap, classicTouch);
   const showDialogTouch = shouldShowDialogTouch(snap, classicTouch);
   const showTouch = showExplorationTouch || showDialogTouch;
+  const mapId = g.mapId;
+  const dialogActive = !!snap.dialog;
   const menuButtonRef = useRef<HTMLButtonElement>(null);
   const wasUiModal = useRef(false);
+
+  // Stage padding and adaptive eligibility change with the current screen and
+  // map, even when the stage's outer border box does not resize.
+  useLayoutEffect(() => {
+    applyLayoutRef.current?.();
+  }, [snap.mode, snap.menu, dialogActive, mapId]);
 
   useEffect(() => {
     if (uiModal) {
@@ -224,20 +238,7 @@ export function GameApp() {
     if (!stage || !stack) return;
     const viewport = stage.querySelector<HTMLElement>(".viewport");
     if (!viewport) return;
-    const applySafeTop = () => {
-      const vr = viewport.getBoundingClientRect();
-      const sr = stack.getBoundingClientRect();
-      if (sr.height <= 0) {
-        viewport.style.removeProperty("--ui-safe-top-px");
-        return;
-      }
-      viewport.style.setProperty("--ui-safe-top-px", formatUiSafeTopPx(sr.bottom - vr.top));
-    };
-    applySafeTop();
-    const ro = new ResizeObserver(applySafeTop);
-    ro.observe(stack);
-    ro.observe(viewport);
-    return () => ro.disconnect();
+    return observeUiSafeTop(viewport, stack);
   }, [showHudBar, snap.toast, uiModal, snap.objective, snap.mode]);
 
   return (
@@ -269,15 +270,14 @@ export function GameApp() {
             />
           ) : null}
           {/* HUD and toast share one top column so the toast always lands below the HUD. */}
-          {/* inert (not just aria-hidden): a dormant HUD whose Menu button
-              stays tabbable is an ARIA violation and leans on the document
-              trap to keep focus out. React 19 supports boolean inert. */}
+          {/* The HUD makes its own dormant subtree inert. Keep the adjacent
+              live-status toast outside that subtree during portrait dialogue. */}
           <div className={`top-stack${uiModal ? " top-stack-dormant" : ""}`} ref={topStackRef} inert={uiModal}>
             {showHudBar ? (
               <Hud
                 snap={snap}
                 menuButtonRef={menuButtonRef}
-                dormant={uiModal || !!snap.dialog?.portraitKey}
+                dormant={uiModal || !!snap.dialog}
                 onMenu={() => g.toggleMenu()}
               />
             ) : null}
@@ -326,7 +326,7 @@ export function GameApp() {
           <AgesPreviewPanel game={g} inBattle={snap.mode === "battle"} />
         </Suspense>
       ) : null}
-      {showTouch ? <TouchPad game={g} variant={showDialogTouch && !showExplorationTouch ? "dialog" : "full"} /> : null}
+      {showTouch ? <TouchPad game={g} variant={showDialogTouch && !showExplorationTouch ? "dialog" : "full"} dialogActive={!!snap.dialog} /> : null}
     </div>
   );
 }

@@ -83,6 +83,42 @@ jobs:
         run: node scripts/journeys-ci.mjs
         env:
           RELIQUARY_QA_CHANNEL: ${{ matrix.os == 'ubuntu-latest' && 'chrome' || 'msedge' }}
+      # Keep the existing cross-platform journey on the normal build. On Ubuntu,
+      # rebuild the test shell with the candidate and collect a separate visual
+      # matrix even if an earlier journey failed; the artifact upload stays last.
+      - name: Build Elderhall candidate browser-test bundle
+        id: elderhall_candidate_build
+        if: ${{ !cancelled() && matrix.os == 'ubuntu-latest' }}
+        run: node scripts/build-web-test.mjs
+        env:
+          RELIQUARY_ELDERHALL_CANDIDATE: '1'
+          VITE_ELDERHALL_CANDIDATE: '1'
+      - name: Capture Elderhall candidate gameplay evidence
+        if: ${{ !cancelled() && matrix.os == 'ubuntu-latest' && steps.elderhall_candidate_build.outcome == 'success' }}
+        run: node tests/browser/elderhall-candidate.mjs
+        env:
+          RELIQUARY_QA_CHANNEL: chrome
+          RELIQUARY_ELDERHALL_CANDIDATE: '1'
+          VITE_ELDERHALL_CANDIDATE: '1'
+      - name: Play the candidate starter journey
+        if: ${{ !cancelled() && matrix.os == 'ubuntu-latest' && steps.elderhall_candidate_build.outcome == 'success' }}
+        run: node tests/browser/elderhall-candidate-journey.mjs
+        env:
+          RELIQUARY_QA_CHANNEL: chrome
+          VITE_ELDERHALL_CANDIDATE: '1'
+      - name: Check the candidate offline
+        if: ${{ !cancelled() && matrix.os == 'ubuntu-latest' && steps.elderhall_candidate_build.outcome == 'success' }}
+        run: node tests/browser/elderhall-candidate-offline.mjs
+        env:
+          RELIQUARY_QA_CHANNEL: chrome
+          VITE_ELDERHALL_CANDIDATE: '1'
+      # npm ci reports advisory counts; retain the details for triage rather
+      # than treating a non-gating inventory as a security clearance.
+      - name: Record dependency advisory inventory
+        if: ${{ !cancelled() && matrix.os == 'ubuntu-latest' }}
+        run: |
+          mkdir -p qa-evidence
+          npm audit --json > qa-evidence/npm-audit.json || true
       - name: Upload journey evidence
         if: always()
         uses: actions/upload-artifact@v4

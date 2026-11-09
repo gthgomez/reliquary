@@ -4,6 +4,10 @@ import { ReliquaryGame, ROOT_MENU, TILE } from "./engine.ts";
 import { currentStats, makeBeast } from "./content.ts";
 import { playerActsFirst } from "./systems/combat.ts";
 import { SAVE_BACKUP, SAVE_FORWARD_KEY, SAVE_KEY, SAVE_VERSION, WORLD_REVISION, loadSave, parseSave } from "./save.ts";
+import { MAPS } from "./maps.ts";
+import { makeElderhallCandidate } from "./maps/elderhall-candidate.ts";
+import { chooseTileVariant } from "./world/terrain.ts";
+import { tileAtlasQuadrant } from "./render/tile-surface.ts";
 import type { Beast } from "./types.ts";
 
 async function withGame(
@@ -796,7 +800,7 @@ test("terrain is reused between frames and rebuilt when the map changes", async 
         terrainDraws++;
       },
       fillRect() {},
-      save() {}, restore() {}, beginPath() {}, moveTo() {}, lineTo() {}, closePath() {}, rect() {}, clip() {},
+      save() {}, restore() {}, beginPath() {}, moveTo() {}, lineTo() {}, quadraticCurveTo() {}, closePath() {}, rect() {}, clip() {},
     };
     const canvas = { getContext: () => ground, width: 0, height: 0 };
     Object.assign(document, { createElement: () => canvas });
@@ -818,6 +822,108 @@ test("terrain is reused between frames and rebuilt when the map changes", async 
     frame(48);
     assert.ok(terrainDraws > first);
   });
+});
+
+/** Capture the real terrain bake for a dirt tile immediately west of stone. */
+async function stoneTransitionDraws(options: { candidate: boolean; atlas: boolean; mapId?: "elderhall" | "grove" }) {
+  const mapId = options.mapId ?? "elderhall";
+  const originalMap = MAPS[mapId]!;
+  const originalFlag = process.env.VITE_ELDERHALL_CANDIDATE;
+  const atlas = {} as HTMLImageElement;
+  const legacy = {} as HTMLImageElement;
+  const dirt = {} as HTMLImageElement;
+  const grass = {} as HTMLImageElement;
+  const draws: unknown[][] = [];
+  process.env.VITE_ELDERHALL_CANDIDATE = options.candidate ? "1" : "0";
+  MAPS[mapId] = { ...originalMap, ground: ["....", ".pc.", "...."], objects: [], npcs: [], decorations: [], terrainPathStyle: "soft" };
+  try {
+    await withGame((game, frame) => {
+      const ground = {
+        drawImage(...args: unknown[]) { draws.push(args); }, fillRect() {}, save() {}, restore() {},
+        beginPath() {}, moveTo() {}, lineTo() {}, quadraticCurveTo() {}, closePath() {}, rect() {}, clip() {},
+      };
+      Object.assign(document, { createElement: () => ({ getContext: () => ground, width: 0, height: 0 }) });
+      game.canvas = { getContext: () => ({ drawImage() {}, fillRect() {} }) } as unknown as HTMLCanvasElement;
+      game.images = { tile_cobble: legacy, tile_dirt: dirt, tile_grass: grass,
+        ...(options.atlas ? { "tile_elderhall-stone-atlas": atlas } : {}) };
+      game.mapId = mapId;
+      game.mode = "world";
+      frame(16);
+    });
+  } finally {
+    MAPS[mapId] = originalMap;
+    if (originalFlag === undefined) delete process.env.VITE_ELDERHALL_CANDIDATE;
+    else process.env.VITE_ELDERHALL_CANDIDATE = originalFlag;
+  }
+  return { draws, atlas, legacy };
+}
+
+test("Elderhall candidate dirt-to-stone transition draws a deterministic candidate atlas cell", async () => {
+  const { draws, atlas, legacy } = await stoneTransitionDraws({ candidate: true, atlas: true });
+  const atPath = draws.filter((args) => args.length === 9 && args[0] === atlas && args[5] === TILE && args[6] === TILE);
+  assert.equal(atPath.length, 1, "the candidate stone atlas is drawn into the dirt tile");
+  const variant = chooseTileVariant("elderhall", 1, 1, "dirt", 3);
+  const quadrant = tileAtlasQuadrant(variant, 1, 1);
+  assert.deepEqual(atPath[0]!.slice(1, 5), [(quadrant & 1) * TILE, (quadrant >> 1) * TILE, TILE, TILE]);
+  assert.equal(draws.some((args) => args.length === 5 && args[0] === legacy && args[1] === TILE && args[2] === TILE), false,
+    "the legacy stone texture is not mixed into the candidate transition");
+});
+
+test("stone transitions fall back to the legacy tile in normal, missing-atlas, and other-map builds", async () => {
+  for (const options of [
+    { candidate: false, atlas: true },
+    { candidate: true, atlas: false },
+    { candidate: true, atlas: true, mapId: "grove" as const },
+  ]) {
+    const { draws, atlas, legacy } = await stoneTransitionDraws(options);
+    assert.ok(draws.some((args) => args.length === 5 && args[0] === legacy && args[1] === TILE && args[2] === TILE),
+      `legacy transition is drawn for ${JSON.stringify(options)}`);
+    assert.equal(draws.some((args) => args.length === 9 && args[0] === atlas && args[5] === TILE && args[6] === TILE), false,
+      `candidate atlas is not drawn for ${JSON.stringify(options)}`);
+  }
+});
+
+test("a player behind the candidate gate dims only the overlapping area of the arch", async () => {
+  const originalMap = MAPS.elderhall!;
+  const originalFlag = process.env.VITE_ELDERHALL_CANDIDATE;
+  process.env.VITE_ELDERHALL_CANDIDATE = "1";
+  MAPS.elderhall = makeElderhallCandidate(originalMap);
+  try {
+    await withGame((game, frame) => {
+      const gateImage = {} as HTMLImageElement;
+      let alpha = 1;
+      let rects: number[][] = [];
+      type Clip = { rule: string; rects: number[][] } | null;
+      let activeClip: Clip = null;
+      const saved: { alpha: number; clip: Clip }[] = [];
+      const gateDraws: { alpha: number; clip: Clip }[] = [];
+      const screen = {
+        get globalAlpha() { return alpha; }, set globalAlpha(value: number) { alpha = value; },
+        save() { saved.push({ alpha, clip: activeClip }); },
+        restore() { const previous = saved.pop(); if (previous) { alpha = previous.alpha; activeClip = previous.clip; } },
+        beginPath() { rects = []; }, rect(...args: number[]) { rects.push(args); },
+        clip(rule?: CanvasFillRule) { activeClip = { rule: rule ?? "nonzero", rects: rects.map((rect) => [...rect]) }; },
+        drawImage(image: unknown) { if (image === gateImage) gateDraws.push({ alpha, clip: activeClip }); }, fillRect() {},
+      };
+      const ground = { drawImage() {}, fillRect() {}, save() {}, restore() {}, beginPath() {}, moveTo() {}, lineTo() {},
+        quadraticCurveTo() {}, closePath() {}, rect() {}, clip() {} };
+      Object.assign(document, { createElement: () => ({ getContext: () => ground, width: 0, height: 0 }) });
+      game.canvas = { getContext: () => screen } as unknown as HTMLCanvasElement;
+      game.images = { "prop_elderhall-gate-reference": gateImage };
+      game.mapId = "elderhall"; game.mode = "world";
+      game.tx = 11; game.ty = 4; game.px = 11 * TILE; game.py = 4 * TILE;
+      frame(16);
+      assert.deepEqual(gateDraws.map((draw) => draw.alpha), [1, 0.35], "the arch stays opaque outside the locally faded player area");
+      assert.equal(gateDraws[0]!.clip?.rule, "evenodd", "the opaque pass excludes the player rectangle");
+      assert.equal(gateDraws[0]!.clip?.rects.length, 2);
+      assert.equal(gateDraws[1]!.clip?.rects.length, 1, "only the player rectangle is translucent");
+      assert.equal(alpha, 1, "canvas opacity is restored for subsequent actors");
+    });
+  } finally {
+    MAPS.elderhall = originalMap;
+    if (originalFlag === undefined) delete process.env.VITE_ELDERHALL_CANDIDATE;
+    else process.env.VITE_ELDERHALL_CANDIDATE = originalFlag;
+  }
 });
 
 test("the objective follows the chapter's flags in the snapshot", async () => {

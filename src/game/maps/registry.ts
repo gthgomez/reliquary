@@ -1,7 +1,9 @@
 import type { MapDef } from "../types.ts";
 import { house, prop, tree } from "./helpers.ts";
+import { isElderhallCandidateBuild } from "../build-flags.ts";
+import { makeElderhallCandidate } from "./elderhall-candidate.ts";
 
-const elderhall: MapDef = {
+const elderhallBase: MapDef = {
   id: "elderhall",
   name: "Elderhall",
   region: "Hollowmere",
@@ -9,6 +11,7 @@ const elderhall: MapDef = {
   encounterRate: 0,
   encounters: [],
   terrainPathStyle: "soft",
+  roadBorder: "stone",
   spawn: { x: 12, y: 14 },
   ground: [
     "..........pp............",
@@ -35,11 +38,14 @@ const elderhall: MapDef = {
     tree("t9", 0, 2), tree("t10", 22, 2), tree("t11", 0, 4), tree("t12", 22, 4),
     tree("t14", 22, 8), tree("t15", 0, 12), tree("t16", 22, 12),
     tree("t17", 0, 16), tree("t18", 2, 16), tree("t19", 20, 16), tree("t20", 22, 16),
+    { id: "green_tree", sprite: "tree", x: 13, y: 12, w: 1, h: 1, foot: 1, solid: true,
+      visual: { width: 2.8, height: 3.2, anchorX: 0.5, anchorY: 115 / 128, groundX: 0.5, groundY: 1 } },
     house("h_home", "cottage", 4, 12, "enter_home"),
     house("h_guild", "cottage", 4, 6, "enter_guild"),
     house("h_inn", "inn", 16, 2, "enter_inn"),
     house("h_shop", "shop", 16, 6, "enter_shop"),
-    { id: "shrine", sprite: "shrine", x: 16, y: 12, w: 1, h: 2, foot: 1, solid: true, interact: "shrine" },
+    { id: "shrine", sprite: "shrine", x: 16, y: 12, w: 1, h: 2, foot: 1, solid: true, interact: "shrine",
+      interactZone: { x: 0, y: 1, w: 1, h: 1 } },
     prop("well", "well", 8, 10),
     prop("sign_n", "sign", 13, 1, "sign_road"),
     prop("sign_w", "sign", 2, 8, "sign_grove"),
@@ -68,6 +74,8 @@ const elderhall: MapDef = {
     { x: 0, y: 10, to: "grove", tx: 13, ty: 7 },
   ],
 };
+
+const elderhall = isElderhallCandidateBuild() ? makeElderhallCandidate(elderhallBase) : elderhallBase;
 
 const grove: MapDef = {
   id: "grove",
@@ -178,7 +186,8 @@ const guild_in = interior("guild_in", "Reliquary Chapter", 13, 11, 6, "elderhall
     { id: "books2", sprite: "bookshelf", x: 3, y: 1, w: 1, h: 1, foot: 1, solid: true },
     { id: "table", sprite: "table", x: 6, y: 4, w: 1, h: 1, foot: 1, solid: true },
     { id: "hearth", sprite: "hearth", x: 10, y: 3, w: 1, h: 1, foot: 1, solid: true },
-    { id: "shrine", sprite: "shrine", x: 6, y: 1, w: 1, h: 2, foot: 1, solid: true, interact: "shrine" },
+    { id: "shrine", sprite: "shrine", x: 6, y: 1, w: 1, h: 2, foot: 1, solid: true, interact: "shrine",
+      interactZone: { x: 0, y: 1, w: 1, h: 1 } },
   ],
   npcs: [{ id: "maren2", sprite: "elder", x: 6, y: 6, name: "Elder Maren", talk: "maren_guild" }],
 });
@@ -539,7 +548,8 @@ const thornkeep: MapDef = {
     house("k_inn", "inn", 4, 2, "enter_keep_inn"),
     house("k_hall", "cottage", 14, 2, "enter_hall"),
     house("k_shop", "shop", 14, 7, "enter_keep_shop"),
-    { id: "kshrine", sprite: "shrine", x: 8, y: 7, w: 1, h: 2, foot: 1, solid: true, interact: "shrine" },
+    { id: "kshrine", sprite: "shrine", x: 8, y: 7, w: 1, h: 2, foot: 1, solid: true, interact: "shrine",
+      interactZone: { x: 0, y: 1, w: 1, h: 1 } },
     prop("ksign", "sign", 12, 12, "sign_keep"),
     prop("cave_return", "sign", 4, 7, "enter_ashen_north"),
   ],

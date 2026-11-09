@@ -46,6 +46,8 @@ export const REACTION_DELAY_MS = 240;
 export const FAINT_DELAY_MS = 240;
 
 export type PreviewOptions = {
+  /** Monotonic time source; defaults to the browser clock. */
+  now?: () => number;
   /**
    * Preview-only binding of a package to a game species. The package keeps its
    * true subject id and provenance; this only lets an experimental pack stand in
@@ -194,11 +196,12 @@ export function createBattlePreview(
   report: (data: Record<string, string>) => void,
   options: PreviewOptions = {},
 ): BattlePreview {
+  const clock = options.now ?? (() => performance.now());
   const clips = spriteAsset.manifest.animations;
   const effectClips = effectAsset?.manifest.animations ?? {};
   const subject =
     options.subjectAlias?.trim() || spriteAsset.manifest.subject_id;
-  let idleStartedAt = performance.now();
+  let idleStartedAt = clock();
   const attacks = new Map<BattleAnimSide, PlayingAttack>();
   const reactions = new Map<BattleAnimSide, Reaction>();
   const faints = new Map<BattleAnimSide, Faint>();
@@ -211,7 +214,7 @@ export function createBattlePreview(
   function switchBattle(battle: BattleState) {
     if (battleRef === battle) return;
     battleRef = battle;
-    idleStartedAt = performance.now();
+    idleStartedAt = clock();
     attacks.clear();
     reactions.clear();
     faints.clear();
@@ -229,7 +232,7 @@ export function createBattlePreview(
       const isTarget = (cue.targetSpeciesId ?? "") === subject;
       if (!isAttacker && !isTarget) return;
       switchBattle(battle);
-      const startedAt = performance.now();
+      const startedAt = clock();
       if (isAttacker) {
         const clip = resolveAttackClip(clips, cue);
         if (clip) {
@@ -284,7 +287,7 @@ export function createBattlePreview(
         attack && Number.isFinite(attack.impactAt) ? attack.impactAt : FAINT_DELAY_MS;
       faints.set(side, {
         clip,
-        startAt: performance.now() + Math.max(0, delay),
+        startAt: clock() + Math.max(0, delay),
       });
     },
     faintVisible(side, speciesId) {
@@ -292,7 +295,7 @@ export function createBattlePreview(
     },
     beginFrame(battle, reduce) {
       switchBattle(battle);
-      now = performance.now();
+      now = clock();
       reduced = reduce;
       Object.assign(readout, {
         playerClip: "",

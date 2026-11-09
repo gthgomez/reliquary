@@ -5,7 +5,10 @@ export function tree(id: string, x: number, y: number): MapObj {
 }
 
 export function house(id: string, sprite: string, x: number, y: number, interact: string): MapObj {
-  return { id, sprite, x, y, w: 3, h: 3, foot: 2, solid: true, interact };
+  return {
+    id, sprite, x, y, w: 3, h: 3, foot: 2, solid: true, interact,
+    interactZone: { x: 1, y: 2, w: 1, h: 1 },
+  };
 }
 
 export function prop(id: string, sprite: string, x: number, y: number, interact?: string): MapObj {
