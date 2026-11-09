@@ -2184,10 +2184,8 @@ export class ReliquaryGame {
 			this.resetWorldCameraRelief();
 		}
 		const worldPanY = this.worldCamRelief.contentPanY;
-		if (worldPanY > 0) {
-			ctx.save();
-			ctx.translate(0, worldPanY);
-		}
+		const panWorld = worldPanY > 0;
+		if (panWorld) ctx.save();
 		if (this.terrain?.map !== m) {
 			const canvas = document.createElement("canvas");
 			canvas.width = mw * TILE;
@@ -2254,6 +2252,15 @@ export class ReliquaryGame {
 				drawAccent: (kind, dx, dy) => paintTileAccent(ground, dx, dy, TILE, kind),
 			});
 			this.terrain = { map: m, canvas };
+		}
+		if (panWorld) {
+			const bleed = Math.ceil(worldPanY);
+			const srcY = Math.ceil(camY);
+			const srcH = Math.min(bleed + TILE, mh * TILE - srcY);
+			if (srcH > 0) {
+				ctx.drawImage(this.terrain.canvas, Math.ceil(camX), srcY, this.cw(), srcH, 0, 0, this.cw(), bleed);
+			}
+			ctx.translate(0, worldPanY);
 		}
 		ctx.drawImage(this.terrain.canvas, Math.ceil(camX), Math.ceil(camY), this.cw(), this.ch(), 0, 0, this.cw(), this.ch());
 		const list: { y: number; draw: () => void }[] = [];
@@ -2329,7 +2336,7 @@ export class ReliquaryGame {
 		});
 		list.sort((a, b) => a.y - b.y);
 		for (const s of list) s.draw();
-		if (worldPanY > 0) ctx.restore();
+		if (panWorld) ctx.restore();
 	}
 	private drawBattle(ctx: CanvasRenderingContext2D): void {
 		const b = this.battle!;
