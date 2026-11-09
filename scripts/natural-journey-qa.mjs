@@ -4,6 +4,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { MAPS } from "../src/game/maps.ts";
 import { pathFor } from "./natural-journey-path.mjs";
+import { finishStarterPact } from "./finish-starter-pact.mjs";
 
 const url = process.argv[2] ?? "http://127.0.0.1:8181";
 const output = process.argv[3];
@@ -103,8 +104,7 @@ try {
   if (position.map !== "grove") throw new Error("Grove entrance failed");
   await travel("grove", { x: 4, y: 7 });
   await faceAndInteract("KeyW", Math.PI);
-  for (let i = 0; i < 4; i++) await page.locator("button.dialog").click();
-  await page.getByText(/Emberkit \d+\/\d+/).waitFor();
+  await finishStarterPact(page);
   await page.getByRole("button", { name: "Menu", exact: true }).click();
   await page.getByRole("button", { name: "Pack", exact: true }).click();
   const tonic = page.getByRole("button", { name: /Field Tonic/ });

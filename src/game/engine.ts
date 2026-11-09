@@ -2335,6 +2335,31 @@ export class ReliquaryGame {
 				}
 			}
 		});
+		const playerFoot = { x: this.px, y: this.py - TILE * 0.5, width: TILE, height: TILE * 1.5, baseline: this.py + TILE };
+		for (const deco of m.decorations ?? []) {
+			if (deco.layer !== "canopy") continue;
+			const baseline = (deco.y + deco.h) * TILE;
+			const width = deco.w * TILE;
+			const height = deco.h * TILE;
+			const ox = deco.x * TILE;
+			const oy = deco.y * TILE;
+			if (ox + width < camX || ox > camX + this.cw() || oy + height < camY || oy > camY + this.ch()) continue;
+			const canopyRect = { x: ox, y: oy, width, height, baseline };
+			const faded = shouldFadePropForPlayer(canopyRect, playerFoot);
+			list.push({
+				y: baseline,
+				draw: () => {
+					const img = this.images[`prop_${deco.sprite}`];
+					if (!img) return;
+					const dx = ox - camX;
+					const dy = oy - camY;
+					paintWorldPropShadow(ctx, deco.sprite, dx, dy, width, height);
+					if (faded) { ctx.save(); ctx.globalAlpha = 0.35; }
+					ctx.drawImage(img, dx, dy, width, height);
+					if (faded) ctx.restore();
+				},
+			});
+		}
 		list.sort((a, b) => a.y - b.y);
 		for (const s of list) s.draw();
 		if (panWorld) ctx.restore();

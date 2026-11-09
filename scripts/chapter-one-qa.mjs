@@ -10,6 +10,7 @@ import { chromium } from "playwright";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { pathFor } from "./natural-journey-path.mjs";
+import { finishStarterPact } from "./finish-starter-pact.mjs";
 
 const url = process.argv[2] ?? "http://127.0.0.1:8083";
 const output = process.argv[3];
@@ -89,8 +90,7 @@ try {
     window.__controlsTest.setKeys([]);
   });
   await press("KeyZ");
-  for (let i = 0; i < 4; i++) await page.locator("button.dialog").click();
-  await page.getByText(/Emberkit \d+\/\d+/).waitFor();
+  await finishStarterPact(page);
   await objectiveAt(/Wildwood/);
   report.events.push("Pact spoken with Emberkit; objective advanced to Thornkeep");
 

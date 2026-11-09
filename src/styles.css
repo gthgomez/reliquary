@@ -267,7 +267,7 @@
 .hud-row {
   display: flex;
   gap: 0.35rem;
-  align-items: stretch;
+  align-items: flex-start;
   width: 100%;
 }
 .hud-chip {
@@ -291,7 +291,26 @@
 .hud-chip-stats {
   flex: 0 1 6.2rem;
   min-width: 5.1rem;
-  gap: 0.2rem;
+  gap: 0.15rem;
+  align-self: flex-start;
+}
+.hud-companion-meter {
+  display: block;
+  width: 100%;
+  height: 4px;
+  border-radius: 999px;
+  background: #1a1510;
+  border: 1px solid #6f5438;
+  overflow: hidden;
+}
+.hud-companion-meter > span {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, #6fb86f, #9fd49f);
+  min-width: 2px;
+}
+.hud-companion-critical .hud-companion-meter > span {
+  background: linear-gradient(90deg, #c45a42, #e88468);
 }
 .hud-location {
   display: flex;
@@ -383,6 +402,13 @@
 .hud-companion-critical .hud-companion-hp {
   color: #ffb088;
   font-weight: 700;
+}
+.hud-companion-fainted .hud-companion-hp {
+  color: #b9a6a0;
+  font-weight: 700;
+}
+.hud-companion-fainted .hud-companion-meter > span {
+  background: #5a4a48;
 }
 .hud-companion-alert {
   display: inline-flex;

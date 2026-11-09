@@ -173,6 +173,8 @@ export function Hud({
   const lead = snap.party[0];
   const st = lead ? currentStats(lead) : null;
   const companionCritical = lead && st ? lead.hp > 0 && lead.hp * 4 <= st.hp : false;
+  const companionFainted = lead ? lead.hp <= 0 : false;
+  const hpRatio = lead && st && st.hp > 0 ? Math.max(0, Math.min(1, lead.hp / st.hp)) : 0;
   const [objectiveOpen, setObjectiveOpen] = useState(false);
   const objectiveButtonRef = useRef<HTMLButtonElement>(null);
   const hint = objectiveHint(snap.flags, snap.mapName);
@@ -236,12 +238,15 @@ export function Hud({
           <span className="hud-gold"><span className="hud-coin" aria-hidden="true">◉</span> {snap.gold} cr</span>
           {lead && st ? (
             <span
-              className={`hud-muted hud-companion${companionCritical ? " hud-companion-critical" : ""}`}
-              aria-label={`Lead companion ${lead.nickname}, health ${lead.hp} of ${st.hp}${companionCritical ? ", critically wounded" : ""}`}
+              className={`hud-muted hud-companion${companionCritical ? " hud-companion-critical" : ""}${companionFainted ? " hud-companion-fainted" : ""}`}
+              aria-label={`Lead companion ${lead.nickname}, health ${lead.hp} of ${st.hp}${companionFainted ? ", fainted" : companionCritical ? ", critically wounded" : ""}`}
             >
               <span className="hud-companion-name">{lead.nickname}</span>
-              <span className="hud-companion-hp">{lead.hp}/{st.hp}</span>
+              <span className="hud-companion-hp">{lead.hp}/{st.hp} HP</span>
               {companionCritical ? <span className="hud-companion-alert" aria-hidden="true">!</span> : null}
+              <span className="hud-companion-meter" aria-hidden="true">
+                <span style={{ width: `${Math.round(hpRatio * 100)}%` }} />
+              </span>
             </span>
           ) : (
             <span className="hud-muted hud-companion">No pact yet</span>
