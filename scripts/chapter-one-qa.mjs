@@ -176,9 +176,8 @@ try {
   position = await travel("briar_road", { x: 10, y: 27 }, true);
   if (position.map !== "elderhall") throw new Error(`Briar Road exit failed, at ${position.map}`);
 
-  // Inn: decline first, then accept. The inn door faces up at (17,5); the
-  // innkeeper waits at (4,4) inside The Quiet Lantern.
-  position = await travel("elderhall", { x: 16, y: 5 });
+  // Inn: decline first, then accept. Door interact tile is (17,4); stand on (17,5).
+  position = await travel("elderhall", { x: 17, y: 5 });
   await page.evaluate(() => window.__controlsTest.setKeys(["KeyW"]));
   await page.waitForTimeout(120);
   await page.evaluate(() => window.__controlsTest.setKeys([]));
