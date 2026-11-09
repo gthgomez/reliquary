@@ -17,6 +17,9 @@ verification:
     - name: build_web
       command: [node, scripts/ages-verify.mjs, 'build:web']
       timeout_sec: 180
+    - name: elderhall_environment_pack
+      command: [node, scripts/ages-verify.mjs, elderhall-pack]
+      timeout_sec: 60
   T1_logic:
     - name: gameplay_and_save_regression
       command: [node, scripts/ages-verify.mjs, test]

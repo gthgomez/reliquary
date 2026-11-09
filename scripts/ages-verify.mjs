@@ -4,10 +4,10 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = fileURLToPath(new URL("..", import.meta.url));
-const allowed = new Set(["typecheck", "validate:content", "build:web", "test"]);
+const allowed = new Set(["typecheck", "validate:content", "build:web", "test", "elderhall-pack"]);
 const check = process.argv[2];
 if (!allowed.has(check) || process.argv.length !== 3) {
-  console.error("Usage: node scripts/ages-verify.mjs {typecheck|validate:content|build:web|test}");
+  console.error("Usage: node scripts/ages-verify.mjs {typecheck|validate:content|build:web|test|elderhall-pack}");
   process.exit(4);
 }
 if (Number(process.versions.node.split(".")[0]) < 24) {
@@ -27,9 +27,19 @@ if (
 // Windows layout). POSIX npm wrappers use the standard executable search.
 const npmCli = join(dirname(process.execPath), "node_modules", "npm", "bin", "npm-cli.js");
 const useNode = existsSync(npmCli);
-const result = spawnSync(
+const npmScript = check === "elderhall-pack"
+  ? null
+  : check;
+const direct = check === "elderhall-pack"
+  ? spawnSync(
+      process.execPath,
+      ["--test", join(root, "scripts/elderhall-pack.test.mjs")],
+      { cwd: root, stdio: "inherit" },
+    )
+  : null;
+const result = direct ?? spawnSync(
   useNode ? process.execPath : process.platform === "win32" ? "npm.cmd" : "npm",
-  useNode ? [npmCli, "run", check] : ["run", check],
+  useNode ? [npmCli, "run", npmScript] : ["run", npmScript],
   { cwd: root, stdio: "inherit", shell: !useNode && process.platform === "win32" },
 );
 if (result.error || result.status === null) {

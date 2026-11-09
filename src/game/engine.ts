@@ -2283,7 +2283,8 @@ export class ReliquaryGame {
 					const dw = visual.width;
 					const dh = visual.height;
 					if (img) {
-						if (faded && art.sprite === "elderhall-gate-reference") {
+						const tallCandidateFade = faded && /^elderhall-(gate|tree|well|cottage|guild|shop)-reference$/.test(art.sprite);
+						if (tallCandidateFade) {
 							paintWorldPropShadow(ctx, art.sprite, dx, dy, dw, dh);
 							paintPropWithLocalFade(ctx, img, { x: dx, y: dy, width: dw, height: dh },
 								{ x: this.px - camX, y: this.py - TILE * 0.5 - camY, width: TILE, height: TILE * 1.5 });
