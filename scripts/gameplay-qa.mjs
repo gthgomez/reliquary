@@ -117,7 +117,7 @@ try {
     await page.getByRole("button", { name: "Storage", exact: true }).click();
     await page.getByRole("button", { name: "Add Kindling to party" }).waitFor();
     await page.getByRole("button", { name: "Back", exact: true }).click();
-    await page.locator(".menu-list").getByRole("button", { name: "Close", exact: true }).click();
+    await page.getByRole("dialog", { name: "Lantern" }).getByRole("button", { name: "Close", exact: true }).click();
 
     const transitions = [];
     for (const [name, map] of Object.entries(MAPS)) {

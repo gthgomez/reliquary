@@ -26,6 +26,7 @@ import {
 import { battlePanelHeading, isBattleSubmenuPhase } from "./battle-chrome.ts";
 import { shopBuyAffordability, skillMpAffordability, skillMpHint } from "./ui-chrome.ts";
 import { STATUS_ADJECTIVES } from "../systems/status.ts";
+import { objectiveHint } from "../systems/objective.ts";
 
 export function TitleScreen({ game, snap }: { game: ReliquaryGame; snap: Snapshot }) {
   const [confirmingReplace, setConfirmingReplace] = useState(false);
@@ -171,6 +172,7 @@ export function Hud({
   const lead = snap.party[0];
   const st = lead ? currentStats(lead) : null;
   const [objectiveOpen, setObjectiveOpen] = useState(false);
+  const hint = objectiveHint(snap.flags, snap.mapName);
   return (
     <div className={`hud${dormant ? " hud-dormant" : ""}${objectiveOpen ? " hud-objective-expanded" : ""}`} aria-hidden={dormant}>
       <div className="hud-row">
@@ -192,6 +194,7 @@ export function Hud({
               {objectiveOpen ? (
                 <div className="hud-objective-popover" role="region" aria-label="Current objective">
                   <p className="hud-objective-full">{snap.objective}</p>
+                  {hint ? <p className="hud-objective-full">{hint}</p> : null}
                   <button type="button" className="hud-objective-lantern" onClick={onMenu}>
                     Open in Lantern menu
                   </button>
@@ -259,15 +262,17 @@ export function MenuPanel({ game, snap, onImportActivate }: { game: ReliquaryGam
       <OverlayPanel
         title="Lantern"
         subtitle={snap.objective ? `Objective — ${snap.objective}` : undefined}
-        onClose={() => game.cancel()}
         closeLabel="Close"
+        onClose={() => game.chooseMenu(ROOT_MENU.length - 1)}
+        onCloseFocus={() => { game.setMenuIndex(ROOT_MENU.length - 1); game.emitPublic(); }}
       >
         <ul className="menu-list">
-          {ROOT_MENU.map((it, i) => (
+          {ROOT_MENU.slice(0, -1).map((it, i) => (
             <li key={it}>
               <button
                 type="button"
                 className={i === snap.menuIndex ? "active" : ""}
+                onFocus={() => { game.setMenuIndex(i); game.emitPublic(); }}
                 onClick={() => {
                   // Open the picker inside this gesture (Safari-safe); the
                   // engine ticket effect stays as the fallback path.

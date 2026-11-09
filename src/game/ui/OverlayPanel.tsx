@@ -7,6 +7,7 @@ type OverlayPanelProps = {
   children: ReactNode;
   onClose?: () => void;
   closeLabel?: string;
+  onCloseFocus?: () => void;
   footer?: ReactNode;
   wide?: boolean;
 };
@@ -18,6 +19,7 @@ export function OverlayPanel({
   children,
   onClose,
   closeLabel = "Back",
+  onCloseFocus,
   footer,
   wide = false,
 }: OverlayPanelProps) {
@@ -49,7 +51,7 @@ export function OverlayPanel({
       <footer className="overlay-panel-foot">
         {footer}
         {onClose ? (
-          <button type="button" className="btn-ghost overlay-panel-close" onClick={onClose}>
+          <button type="button" className="btn-ghost overlay-panel-close" onClick={onClose} onFocus={onCloseFocus}>
             {closeLabel}
           </button>
         ) : null}

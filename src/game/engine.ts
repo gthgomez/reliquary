@@ -1,5 +1,6 @@
 import {
   currentStats,
+  ELEMENTS,
   healFull,
   ITEMS,
   makeBeast,
@@ -8,6 +9,7 @@ import {
   PRACTICE_LORE,
   SHOP_STOCK,
   SKILLS,
+  skillsForLevel,
   SPECIES,
   typeMod,
 	STARTING_GOLD,
@@ -65,8 +67,8 @@ import {
   resetWorldCamRelief,
   type WorldCamReliefState,
 } from "./render/world-camera-safe.ts";
-import { drawAtlasTile, paintTileAccent, tileAtlasQuadrant } from "./render/tile-surface.ts";
-import { paintWorldActorShadow } from "./render/world-actors.ts";
+import { clipSoftPath, clipStoneTransition, drawAtlasTile, paintTileAccent, tileAtlasQuadrant } from "./render/tile-surface.ts";
+import { paintWorldActorShadow, paintWorldPropShadow } from "./render/world-actors.ts";
 import { captureChance, captureSucceeds, storeCapturedBeast } from "./systems/capture.ts";
 import { healBeast, playerActsFirst, spendSkillMp } from "./systems/combat.ts";
 import { applySkillEvents, resolveSkillUse } from "./systems/battle-engine.ts";
@@ -479,7 +481,10 @@ export class ReliquaryGame {
 				const direction = up ? -1 : 1;
 				this.moveMenu(direction, max);
 				const list = target instanceof HTMLElement ? target.closest("ul.cmd, ul.menu-list") : null;
-				const buttons = list?.querySelectorAll<HTMLButtonElement>("button");
+				const rootPanel = this.menu === "root" && target instanceof HTMLElement ? target.closest(".overlay-panel") : null;
+				const buttons = rootPanel
+					? rootPanel.querySelectorAll<HTMLButtonElement>(".menu-list button, .overlay-panel-close")
+					: list?.querySelectorAll<HTMLButtonElement>("button");
 				if (buttons?.length === max) {
 					for (let i = 0; i < max && buttons[this.menuIndex]?.disabled; i++) this.moveMenu(direction, max);
 					buttons[this.menuIndex]?.focus();
@@ -1228,7 +1233,9 @@ export class ReliquaryGame {
 		}
 		const sp = SPECIES[id];
 		if (!sp) return;
-		this.openDialog(sp.name, [`${sp.name}, the ${sp.epithet}. ${sp.description}`, "Speak the pact? (A bind · B wait)"], () => {
+		const elements = sp.elements.map((element) => ELEMENTS[element].name).join(" / ");
+		const skills = skillsForLevel(sp, 5).map((skill) => SKILLS[skill]?.name ?? skill).join(", ");
+		this.openDialog(sp.name, [`${sp.name}, the ${sp.epithet}. ${sp.description}`, `${elements} · Starting skills: ${skills}. Speak the pact? (A bind · B wait and inspect another)`], () => {
 			const b = makeBeast(id, 5, { nickname: sp.name, random: this.random });
 			this.party = [b];
 			this.caught[id] = true;
@@ -1964,6 +1971,7 @@ export class ReliquaryGame {
 	menuConfirm(): void {
 		if (this.menu === "root") {
 			const c = ROOT_MENU[this.menuIndex];
+			if (!c) return;
 			if (c === "Party") this.menu = "party";
 			else if (c === "Storage") this.menu = "storage";
 			else if (c === "Reliquary") this.menu = "reliquary";
@@ -1986,7 +1994,9 @@ export class ReliquaryGame {
 				const next = !isMuted();
 				setMuted(next);
 				setSoundMutedStored(next);
-			} else this.menu = null;
+			} else if (c === "Close") {
+				this.menu = null;
+			}
 			// The Sound toggle stays highlighted on its own row so repeated
 			// toggles and keyboard focus do not jump back to the top.
 			this.menuIndex = c === "Sound" ? ROOT_MENU.indexOf("Sound") : 0;
@@ -2173,11 +2183,15 @@ export class ReliquaryGame {
 			bakeMapTerrain({
 				map: m,
 				tileSize: TILE,
-				drawTile: (name, dx, dy, variant) => {
+				drawTile: (name, dx, dy, variant, pathMask, stoneMask) => {
 					const tx = dx / TILE;
 					const ty = dy / TILE;
 					const atlas = this.images[`tile_${name}-2x2`];
 					const base = this.images[`tile_${name}`];
+					if (pathMask !== undefined) {
+						ground.save();
+						clipSoftPath(ground, dx, dy, TILE, pathMask);
+					}
 					if (atlas && variant > 0) {
 						drawAtlasTile(ground, atlas, dx, dy, TILE, tileAtlasQuadrant(variant, tx, ty));
 					} else if (base) ground.drawImage(base, dx, dy, TILE, TILE);
@@ -2189,6 +2203,14 @@ export class ReliquaryGame {
 						ground.fillStyle = `rgba(20,17,14,${0.035 * variant})`;
 						ground.fillRect(dx, dy, TILE, TILE);
 					}
+					const stone = stoneMask ? this.images.tile_cobble : undefined;
+					if (stone && stoneMask) {
+						ground.save();
+						clipStoneTransition(ground, dx, dy, TILE, stoneMask);
+						ground.drawImage(stone, dx, dy, TILE, TILE);
+						ground.restore();
+					}
+					if (pathMask !== undefined) ground.restore();
 				},
 				drawOverlay: (style, dx, dy, strength) => {
 					if (style === "edge") {
@@ -2223,7 +2245,7 @@ export class ReliquaryGame {
 					const dw = o.w * TILE;
 					const dh = o.h * TILE;
 					if (img) {
-						paintWorldActorShadow(ctx, dx, dy + dh - 4, dw);
+						paintWorldPropShadow(ctx, o.sprite, dx, dy, dw, dh);
 						ctx.drawImage(img, dx, dy, dw, dh);
 					}
 				}

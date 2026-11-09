@@ -62,6 +62,7 @@ try {
     await page.getByRole("button", { name: "New Game", exact: true }).click();
     const confirm = page.getByRole("alertdialog");
     await confirm.waitFor();
+    assert.ok(await page.locator("#new-game-confirm-detail").isVisible(), "replacement consequences remain visible on mobile");
     await page.getByRole("button", { name: "New Game", exact: true }).click().catch(() => {});
     assert.ok(await confirm.isVisible(), "repeated clicks do not bypass the question");
 
@@ -80,6 +81,32 @@ try {
     await page.waitForSelector(".hud-menu", { timeout: 20_000 });
     const hud = await page.locator(".hud").innerText();
     assert.match(hud, /137 cr/, "the old run survives cancellation");
+
+    await page.click(".hud-menu");
+    assert.equal(await page.getByRole("dialog", { name: "Lantern" }).getByRole("button", { name: "Close", exact: true }).count(), 1,
+      "the root menu has one visible exit");
+    await page.getByRole("button", { name: "Party", exact: true }).click();
+    const meters = await page.locator(".beast-card .meter-kicker, .beast-card .meter-abbr").evaluateAll((nodes) => {
+      const rgb = (color) => color.match(/[\d.]+/g).slice(0, 3).map(Number);
+      const luminance = (color) => rgb(color).map((v) => {
+        const c = v / 255;
+        return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+      }).reduce((sum, v, i) => sum + v * [0.2126, 0.7152, 0.0722][i], 0);
+      return nodes.map((node) => {
+        const fg = luminance(getComputedStyle(node).color);
+        const bg = luminance(getComputedStyle(node.closest(".beast-card")).backgroundColor);
+        return { text: node.textContent, ratio: (Math.max(fg, bg) + 0.05) / (Math.min(fg, bg) + 0.05),
+          fontSize: parseFloat(getComputedStyle(node).fontSize) };
+      });
+    });
+    assert.equal(meters.length, 6, "three meters expose labels and numerical abbreviations");
+    for (const meter of meters) assert.ok(meter.ratio >= 4.5, `${meter.text} contrast ${meter.ratio}`);
+    assert.ok(meters.filter((meter) => meter.text !== "HP" && meter.text !== "MP" && meter.text !== "Lore")
+      .every((meter) => meter.fontSize >= 12), "meter descriptions are at least 12 CSS pixels");
+    await page.locator(".overlay-panel-close").click();
+    await page.getByRole("dialog", { name: "Lantern" }).waitFor();
+    await page.keyboard.press("Escape");
+    await page.waitForFunction(() => document.querySelector(".overlay-panel") == null);
 
     // Confirming starts a fresh run; the first save intentionally replaces.
     await page.reload({ waitUntil: "load" });

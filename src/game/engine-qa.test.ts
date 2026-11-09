@@ -209,6 +209,47 @@ test("arrow navigation moves focus to the selected menu button", async () => {
   });
 });
 
+test("root menu arrows move focus between the sticky Close and menu rows", async () => {
+  await withGame((game, _frame, events) => {
+    game.mode = "world";
+    game.menu = "root";
+    game.menuIndex = ROOT_MENU.length - 1;
+    let focused = -1;
+    const buttons = Array.from({ length: ROOT_MENU.length }, (_, index) => ({
+      disabled: false,
+      focus: () => { focused = index; },
+    }));
+    const panel = { querySelectorAll: () => buttons };
+    const target = Object.assign(new HTMLElement(), {
+      closest: (selector: string) => selector === ".overlay-panel" ? panel : null,
+    });
+    events.get("keydown")!({ target, code: "ArrowUp", repeat: false, preventDefault() {} } as unknown as Event);
+    assert.equal(game.menuIndex, ROOT_MENU.length - 2);
+    assert.equal(focused, ROOT_MENU.length - 2, "focus follows selection out of the footer");
+    events.get("keydown")!({ target, code: "ArrowDown", repeat: false, preventDefault() {} } as unknown as Event);
+    assert.equal(focused, ROOT_MENU.length - 1, "focus returns to the sticky Close button");
+  });
+});
+
+test("root menu wraps over its actions and cancel closes it", async () => {
+  await withGame((game, _frame, events) => {
+    game.mode = "world";
+    game.menu = "root";
+    game.menuIndex = ROOT_MENU.length - 1;
+    game.menuConfirm();
+    assert.equal(game.menu, null, "confirming the Close row closes the menu");
+    game.menu = "root";
+    game.menuIndex = ROOT_MENU.length - 1;
+    events.get("keydown")!({ target: null, code: "ArrowDown", repeat: false, preventDefault() {} } as unknown as Event);
+    assert.equal(game.menuIndex, 0);
+    game.menuIndex = ROOT_MENU.length;
+    game.menuConfirm();
+    assert.equal(game.menu, "root", "a stale index must not close the menu or invoke an action");
+    game.cancel();
+    assert.equal(game.menu, null);
+  });
+});
+
 test("successful persistence advertises Continue and returns true", async () => {
   await withGame((game) => {
     const slots = new Map<string, string>();
@@ -755,6 +796,7 @@ test("terrain is reused between frames and rebuilt when the map changes", async 
         terrainDraws++;
       },
       fillRect() {},
+      save() {}, restore() {}, beginPath() {}, moveTo() {}, lineTo() {}, closePath() {}, rect() {}, clip() {},
     };
     const canvas = { getContext: () => ground, width: 0, height: 0 };
     Object.assign(document, { createElement: () => canvas });

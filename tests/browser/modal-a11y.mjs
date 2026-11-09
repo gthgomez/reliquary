@@ -46,6 +46,18 @@ try {
     await page.click(".hud-menu");
     await page.waitForSelector(".overlay-panel-close");
     await waitForSheetFocus(page);
+    assert.equal(await page.getByRole("dialog", { name: "Lantern" }).getByRole("button", { name: "Close", exact: true }).count(), 1,
+      "root menu has a single Close action");
+    await page.locator(".overlay-panel-close").focus();
+    await page.keyboard.press("ArrowUp");
+    await page.waitForFunction(() => document.activeElement?.textContent?.includes("Sound"));
+    await page.keyboard.press("ArrowDown");
+    await page.waitForFunction(() => document.activeElement?.classList.contains("overlay-panel-close"));
+    await page.keyboard.press("z");
+    await page.waitForFunction(() => !document.querySelector(".overlay-panel"));
+    await page.click(".hud-menu");
+    await page.waitForSelector(".overlay-panel-close");
+    await waitForSheetFocus(page);
     for (let i = 0; i < 3; i += 1) {
       await page.click(".overlay-panel-close");
       await page.waitForSelector(".hud-menu");

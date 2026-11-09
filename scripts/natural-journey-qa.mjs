@@ -136,7 +136,7 @@ try {
     "No-effect tonic and salve preserved their counts; binding stones remained visible",
   );
   await page.getByRole("button", { name: "Back", exact: true }).click();
-  await page.locator(".menu-list").getByRole("button", { name: "Close", exact: true }).click();
+  await page.getByRole("dialog", { name: "Lantern" }).getByRole("button", { name: "Close", exact: true }).click();
   report.events.push(
     "Started, walked from home through Elderhall to the Grove, and chose Emberkit",
   );

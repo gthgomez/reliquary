@@ -36,17 +36,34 @@ export function walkableEdgeMask(ground: string[], x: number, y: number): number
 export type TerrainBakeContext = {
   map: MapDef;
   tileSize: number;
-  drawTile: (name: string, dx: number, dy: number, variant: number) => void;
+  drawTile: (name: string, dx: number, dy: number, variant: number, pathMask?: number, stoneMask?: number) => void;
   drawOverlay: (style: "edge" | "shadow", dx: number, dy: number, strength: number) => void;
   drawDecoration: (sprite: string, dx: number, dy: number, w: number, h: number) => void;
   drawAccent?: (kind: TileAccentKind, dx: number, dy: number) => void;
 };
+
+/** Cardinal neighboring path tiles (or a map edge), N=1, E=2, S=4, W=8. */
+function pathNeighborMask(ground: string[], x: number, y: number, overgrown: Set<string>): number {
+  const width = ground[0]?.length ?? 0;
+  const isPath = (tx: number, ty: number) =>
+    tx < 0 || ty < 0 || tx >= width || ty >= ground.length || ground[ty]?.[tx] === "p" || ground[ty]?.[tx] === "c" || overgrown.has(`${tx},${ty}`);
+  return (isPath(x, y - 1) ? 1 : 0) | (isPath(x + 1, y) ? 2 : 0) |
+    (isPath(x, y + 1) ? 4 : 0) | (isPath(x - 1, y) ? 8 : 0);
+}
+
+/** Dirt blends into neighboring stone on the dirt side, without changing the map. */
+function stoneNeighborMask(ground: string[], x: number, y: number): number {
+  const isStone = (tx: number, ty: number) => ground[ty]?.[tx] === "c";
+  return (isStone(x, y - 1) ? 1 : 0) | (isStone(x + 1, y) ? 2 : 0) |
+    (isStone(x, y + 1) ? 4 : 0) | (isStone(x - 1, y) ? 8 : 0);
+}
 
 /** Bake static ground, edge accents, ground-layer décor, and canopy shadows. */
 export function bakeMapTerrain(ctx: TerrainBakeContext): void {
   const { map, tileSize: TILE } = ctx;
   const mh = map.ground.length;
   const mw = map.ground[0]?.length ?? 0;
+  const overgrown = new Set((map.overgrownPaths ?? []).map(({ x, y }) => `${x},${y}`));
   for (let y = 0; y < mh; y++) {
     for (let x = 0; x < mw; x++) {
       const symbol = map.ground[y]![x]!;
@@ -54,7 +71,14 @@ export function bakeMapTerrain(ctx: TerrainBakeContext): void {
       const variant = chooseTileVariant(map.id, x, y, name, 3);
       const dx = x * TILE;
       const dy = y * TILE;
-      ctx.drawTile(name, dx, dy, variant);
+      const overgrownPath = symbol === "," && overgrown.has(`${x},${y}`);
+      if (((symbol === "p" || symbol === "c") && map.terrainPathStyle === "soft") || overgrownPath) {
+        ctx.drawTile("grass", dx, dy, chooseTileVariant(map.id, x, y, "grass", 3));
+        ctx.drawTile(overgrownPath ? "dirt" : name, dx, dy, variant, pathNeighborMask(map.ground, x, y, overgrown),
+          symbol === "p" ? stoneNeighborMask(map.ground, x, y) : 0);
+      } else {
+        ctx.drawTile(name, dx, dy, variant);
+      }
       const accent = chooseTileAccent(map.id, x, y, symbol);
       if (accent && ctx.drawAccent) ctx.drawAccent(accent, dx, dy);
       if (symbol === ",") {
@@ -64,7 +88,7 @@ export function bakeMapTerrain(ctx: TerrainBakeContext): void {
       if (mask !== 0 && mask !== 15) {
         ctx.drawOverlay("edge", dx, dy, (15 - mask) / 15);
       }
-      if (symbol === "p" || symbol === "c") {
+      if ((symbol === "p" || symbol === "c") && map.terrainPathStyle !== "soft") {
         ctx.drawOverlay("shadow", dx, dy, 0.35);
       }
     }
