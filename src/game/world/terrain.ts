@@ -109,14 +109,4 @@ export function bakeMapTerrain(ctx: TerrainBakeContext): void {
       deco.h,
     );
   }
-  for (const deco of map.decorations ?? []) {
-    if (deco.layer !== "canopy") continue;
-    ctx.drawDecoration(
-      deco.sprite,
-      deco.x * TILE,
-      deco.y * TILE,
-      deco.w,
-      deco.h,
-    );
-  }
 }

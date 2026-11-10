@@ -29,7 +29,9 @@ review are still required before production promotion.
   manifest identity, provenance field structure, selected export paths and
   the actual atlas cell edges. It does not verify the underlying rights claims.
 * The pack is supplied by AGES as `ages.environment-pack/1`. Re-export it in
-  AGES, replace `assets/elderhall-candidate/`, run the test above, then build a
+  AGES, replace `assets/elderhall-candidate/`, validate with
+  `ages environment-pack-verify assets/elderhall-candidate --json` (private AGES
+  checkout) or `node --test scripts/elderhall-pack.test.mjs`, then build a
   preview. The build copies a selected subset only after validation.
 
 The pack records source image dimensions, anchors and authored render sizes.
