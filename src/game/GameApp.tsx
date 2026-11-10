@@ -4,6 +4,7 @@ import {
   BattleHud,
   DialogBox,
   Hud,
+  NamePrompt,
   LoadingScreen,
   MenuPanel,
   ShopPanel,
@@ -123,14 +124,14 @@ export function GameApp() {
     setUpdateGuard({
       canReloadNow: () => {
         const s = g.getSnapshot();
-        return (s.mode === "title" || s.mode === "world" || s.mode === "victory") && !s.dialog && !s.menu && !isUiModalOpen(s);
+        return (s.mode === "title" || s.mode === "world" || s.mode === "victory") && !s.dialog && !s.menu && !s.namePrompt && !isUiModalOpen(s);
       },
       canForceReload: () => {
         const s = g.getSnapshot();
         // Consequential context (a dialog whose final action commits a choice)
         // outlives the overdue/hidden path: a reload here would drop the offer
         // without its outcome. Pure-text pages may still force.
-        if (s.mode === "battle" || s.dialog?.commits) return false;
+        if (s.mode === "battle" || s.dialog?.commits || s.namePrompt) return false;
         return true;
       },
       beforeReload: () => {
@@ -281,17 +282,18 @@ export function GameApp() {
                 onMenu={() => g.toggleMenu()}
               />
             ) : null}
+            <AppStatus />
             {snap.toast && !uiModal ? <Toast text={snap.toast} /> : null}
           </div>
           {snap.mode === "battle" ? <BattleHud game={g} snap={snap} /> : null}
           {snap.dialog ? <DialogBox snap={snap} onAdvance={() => g.confirm()} /> : null}
+          {snap.namePrompt ? <NamePrompt key={snap.namePrompt.uid} game={g} prompt={snap.namePrompt} /> : null}
           {snap.menu ? <MenuPanel game={g} snap={snap} onImportActivate={openImportPicker} /> : null}
           {snap.mode === "shop" ? <ShopPanel game={g} snap={snap} /> : null}
           {uiModal && snap.toast ? <Toast text={snap.toast} className="toast-modal" /> : null}
         </div>
         {snap.mode === "boot" ? <LoadingScreen progress={snap.loadProgress} /> : null}
         {snap.mode === "title" ? <TitleScreen game={g} snap={snap} /> : null}
-        <AppStatus />
         {snap.mode === "victory" ? <VictoryScreen game={g} /> : null}
         <input
           ref={fileRef}

@@ -87,10 +87,10 @@ try {
   await page.waitForSelector("button.dialog", { state: "detached", timeout: 5000 });
   report.events.push("Spoke with Elder Maren beside the well");
   for (const building of [
-    { name: "home", front: { x: 5, y: 15 }, inside: "home", exit: { x: 5, y: 8 } },
-    { name: "guild", front: { x: 5, y: 9 }, inside: "guild_in", exit: { x: 6, y: 10 } },
-    { name: "inn", front: { x: 17, y: 5 }, inside: "inn_in", exit: { x: 6, y: 9 } },
-    { name: "shop", front: { x: 17, y: 9 }, inside: "shop_in", exit: { x: 5, y: 8 } },
+    { name: "home", front: { x: 4, y: 15 }, inside: "home", exit: { x: 5, y: 8 } },
+    { name: "guild", front: { x: 4, y: 9 }, inside: "guild_in", exit: { x: 6, y: 10 } },
+    { name: "inn", front: { x: 16, y: 5 }, inside: "inn_in", exit: { x: 6, y: 9 } },
+    { name: "shop", front: { x: 16, y: 9 }, inside: "shop_in", exit: { x: 5, y: 8 } },
   ]) {
     await travel("elderhall", building.front);
     await faceAndInteract("KeyW", Math.PI);
@@ -103,7 +103,9 @@ try {
   if (position.map !== "grove") throw new Error("Grove entrance failed");
   await travel("grove", { x: 4, y: 7 });
   await faceAndInteract("KeyW", Math.PI);
-  for (let i = 0; i < 4; i++) await page.locator("button.dialog").click();
+  for (let i = 0; i < 3; i++) await page.locator("button.dialog").click();
+  await page.getByRole("button", { name: "Keep Emberkit" }).click();
+  for (let i = 0; i < 2; i++) await page.locator("button.dialog").click();
   await page.getByText(/Emberkit \d+\/\d+/).waitFor();
   await page.getByRole("button", { name: "Menu", exact: true }).click();
   await page.getByRole("button", { name: "Pack", exact: true }).click();

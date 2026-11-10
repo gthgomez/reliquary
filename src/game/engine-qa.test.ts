@@ -297,6 +297,52 @@ test("foe retaliation targets the incoming beast on a voluntary switch", async (
   });
 });
 
+test("a caught beast can take a nickname, and declining leaves the species name", async () => {
+  await withGame((game, frame) => {
+    game.party = [makeBeast("emberkit", 5)];
+    (game as unknown as { random: () => number }).random = () => 0;
+    let ts = 100;
+    const catchOne = () => {
+      window.__controlsTest!.startWild!();
+      game.battle!.foes[0]!.hp = 1;
+      (game as unknown as { tryCatch(item: string): void }).tryCatch("common_sigil");
+      const end = ts + 3000;
+      for (; ts <= end; ts += 100) frame(ts);
+      assert.equal(game.battle?.phase, "win");
+      game.confirm();
+    };
+    catchOne();
+    const offer = game.getSnapshot().dialog;
+    assert.match(offer?.text ?? "", /accepts the compact/);
+    assert.equal(offer?.doneLabel, "Give a name");
+    const kept = game.party[1]!.nickname;
+    game.cancel();
+    assert.equal(game.getSnapshot().namePrompt, null);
+    assert.equal(game.party[1]!.nickname, kept);
+
+    catchOne();
+    game.confirm();
+    assert.equal(game.getSnapshot().namePrompt?.kind, "tame");
+    const beforeBlank = game.party[2]!.nickname;
+    game.submitCreatureName("   ");
+    assert.equal(game.getSnapshot().namePrompt, null);
+    assert.equal(game.party[2]!.nickname, beforeBlank);
+
+    catchOne();
+    game.confirm();
+    game.submitCreatureName("Pebble");
+    assert.equal(game.party[3]!.nickname, "Pebble");
+    assert.equal(game.getSnapshot().namePrompt, null);
+
+    while (game.party.length < 4) game.party.push(makeBeast("mirewhelp", 5));
+    catchOne();
+    game.confirm();
+    game.submitCreatureName("Moss");
+    assert.ok(game.box.some((beast) => beast.nickname === "Moss"));
+    assert.equal(game.party.some((beast) => beast.nickname === "Moss"), false);
+  });
+});
+
 test("failed binding remains visible alongside the foe's response", async () => {
   await withGame((game, frame) => {
     game.party = [makeBeast("emberkit", 5)];

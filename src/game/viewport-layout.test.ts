@@ -63,7 +63,12 @@ test("title, battle, menu, dialogue and physical landscape retain their former c
   expectLegacy("menu");
   game.menu = null;
   game.dialog = { speaker: "", pages: [""], index: 0, npcId: null, portraitKey: null };
-  expectLegacy("dialogue");
+  game.layout(390, 708, true);
+  assert.deepEqual(
+    [canvas.width, canvas.height, game.cssW, game.cssH],
+    [320, 576, 390, 702],
+    "dialogue keeps the exploration view",
+  );
   game.dialog = null;
   // Landscape can leave a tall content box after side-control padding; it must not use adaptive portrait mode.
   game.layout(304, 320, false);
