@@ -57,6 +57,9 @@ export function rollEncounter(
 
 export type BattleCommand = "Strike" | "Skill" | "Item" | "Bind" | "Party" | "Flee";
 
+/** Binding sigils in menu order; filtered by inventory at presentation time. */
+export const BATTLE_SIGILS = ["common_sigil", "thorn_sigil", "relic_sigil"] as const;
+
 export function battleCommands(battle: { canBind: boolean; canFlee: boolean }): BattleCommand[] {
   const cmds: BattleCommand[] = ["Strike", "Skill", "Item"];
   if (battle.canBind) cmds.push("Bind");

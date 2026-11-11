@@ -86,6 +86,9 @@ if (serveOnly) {
       "battle-item-scope.mjs",
       "battle-recap.mjs",
       "battle-reach.mjs",
+      "battle-stage-browser.mjs",
+      "battle-input-parity.mjs",
+      "battle-journeys.mjs",
       "save-permission.mjs",
       "title-consent.mjs",
       "pwa.mjs",
@@ -107,7 +110,15 @@ if (serveOnly) {
     journey: ["journey.mjs"],
     dialogue: ["cinematic-dialogue.mjs"],
     saves: ["save-permission.mjs", "title-consent.mjs"],
-    battle: ["battle-hud-layout.mjs", "battle-item-scope.mjs", "battle-recap.mjs", "battle-reach.mjs"],
+    battle: [
+      "battle-hud-layout.mjs",
+      "battle-item-scope.mjs",
+      "battle-recap.mjs",
+      "battle-reach.mjs",
+      "battle-stage-browser.mjs",
+      "battle-input-parity.mjs",
+      "battle-journeys.mjs",
+    ],
   };
   const files = map[suite] ?? map.all;
 

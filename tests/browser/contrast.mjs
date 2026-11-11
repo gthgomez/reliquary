@@ -190,9 +190,9 @@ async function measureBattleComposited(page, canvasFills) {
     const ctx = canvas.getContext("2d");
     const saved = ctx.getImageData(0, 0, canvas.width, canvas.height);
     const targets = [
-      ["battler-name", ".battle-ui .battler.foe strong"],
-      ["battler-meta", ".battle-ui .battler.me span"],
-      ["meter-label", ".battle-ui .battler.me .meter"],
+      ["battler-name", ".battle-ui .battler.foe .battle-status-name"],
+      ["battler-meta", ".battle-ui .battler.me .battle-status-level"],
+      ["meter-label", ".battle-ui .battler.me .battle-stat-label"],
     ];
     const rows = [];
     for (const fill of fills) {
@@ -260,7 +260,7 @@ try {
     await page.evaluate(() => window.__reliquary?.cancel?.());
     await page.waitForSelector(".hud-menu");
     await page.evaluate(() => window.__controlsTest?.startWild?.());
-    await page.waitForSelector(".battle-ui .battler.foe strong", { timeout: 20_000 });
+    await page.waitForSelector(".battle-ui .battler.foe .battle-status-name", { timeout: 20_000 });
 
     const battleReport = await measureBattleComposited(page, ["#ffffff", "#000000"]);
 

@@ -115,11 +115,11 @@ try {
   await page.getByRole("button", { name: "Bind", exact: true }).click();
   await page.getByRole("button", { name: /Common Sigil/ }).click();
   await page.waitForFunction(
-    () => document.querySelector(".battle-ui .cmd") || document.querySelector(".battle-ui .btn-primary"),
+    () => document.querySelector(".battle-ui .battle-action") || document.querySelector(".battle-ui .btn-primary"),
     null,
     { timeout: 20000 },
   );
-  const battleText = await page.locator(".battle-log").innerText();
+  const battleText = await page.locator(".battle-log-text").innerText();
   if (!/accepts the compact/.test(battleText))
     throw new Error(`binding did not succeed: ${battleText}`);
   await page.screenshot({ path: join(output, "06-bind.png") });
