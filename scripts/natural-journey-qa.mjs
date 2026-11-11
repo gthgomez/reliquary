@@ -88,10 +88,10 @@ try {
   await page.waitForSelector("button.dialog", { state: "detached", timeout: 5000 });
   report.events.push("Spoke with Elder Maren beside the well");
   for (const building of [
-    { name: "home", front: { x: 5, y: 15 }, inside: "home", exit: { x: 5, y: 8 } },
-    { name: "guild", front: { x: 5, y: 9 }, inside: "guild_in", exit: { x: 6, y: 10 } },
-    { name: "inn", front: { x: 17, y: 5 }, inside: "inn_in", exit: { x: 6, y: 9 } },
-    { name: "shop", front: { x: 17, y: 9 }, inside: "shop_in", exit: { x: 5, y: 8 } },
+    { name: "home", front: { x: 4, y: 15 }, inside: "home", exit: { x: 5, y: 8 } },
+    { name: "guild", front: { x: 4, y: 9 }, inside: "guild_in", exit: { x: 6, y: 10 } },
+    { name: "inn", front: { x: 16, y: 5 }, inside: "inn_in", exit: { x: 6, y: 9 } },
+    { name: "shop", front: { x: 16, y: 9 }, inside: "shop_in", exit: { x: 5, y: 8 } },
   ]) {
     await travel("elderhall", building.front);
     await faceAndInteract("KeyW", Math.PI);

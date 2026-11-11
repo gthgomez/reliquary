@@ -53,7 +53,8 @@ const elderhallBase: MapDef = {
     prop("crate1", "crate", 20, 9),
     prop("shrub1", "shrub", 9, 4),
     prop("shrub2", "shrub", 14, 8),
-    prop("lantern1", "sign", 12, 3),
+    // Scenery only. A sign sprite here sat beside the real Briar Road sign and did not speak.
+    prop("lantern1", "shrub", 12, 3),
   ],
   decorations: [
     { sprite: "shrub", x: 3, y: 15, w: 1, h: 1, layer: "ground" },
@@ -109,7 +110,8 @@ const grove: MapDef = {
     { id: "st_ember", sprite: "emberkit", x: 4, y: 6, w: 1, h: 1, foot: 1, solid: true, interact: "starter_emberkit" },
     { id: "st_mire", sprite: "mirewhelp", x: 8, y: 5, w: 1, h: 1, foot: 1, solid: true, interact: "starter_mirewhelp" },
     { id: "st_briar", sprite: "briarling", x: 11, y: 6, w: 1, h: 1, foot: 1, solid: true, interact: "starter_briarling" },
-    prop("gsign", "sign", 9, 10, "sign_grove_inner"),
+    // On the path spur, one tile north of the grass, so the post stays in frame at the crossroads.
+    prop("gsign", "sign", 9, 9, "sign_grove_inner"),
   ],
   npcs: [],
   warps: [
@@ -148,7 +150,7 @@ function interior(id: string, name: string, w: number, h: number, doorX: number,
   };
 }
 
-const home = interior("home", "Rowan's Cottage", 11, 9, 5, "elderhall", 5, 15, {
+const home = interior("home", "Rowan's Cottage", 11, 9, 5, "elderhall", 4, 15, {
   objects: [
     { id: "bed", sprite: "bed", x: 2, y: 2, w: 1, h: 1, foot: 1, solid: true, interact: "bed" },
     { id: "table", sprite: "table", x: 5, y: 3, w: 1, h: 1, foot: 1, solid: true },
@@ -158,7 +160,7 @@ const home = interior("home", "Rowan's Cottage", 11, 9, 5, "elderhall", 5, 15, {
   ],
 });
 
-const inn_in = interior("inn_in", "The Quiet Lantern", 13, 10, 6, "elderhall", 17, 5, {
+const inn_in = interior("inn_in", "The Quiet Lantern", 13, 10, 6, "elderhall", 16, 5, {
   objects: [
     { id: "counter", sprite: "counter", x: 3, y: 3, w: 1, h: 1, foot: 1, solid: true },
     { id: "bed1", sprite: "bed", x: 9, y: 2, w: 1, h: 1, foot: 1, solid: true },
@@ -169,7 +171,7 @@ const inn_in = interior("inn_in", "The Quiet Lantern", 13, 10, 6, "elderhall", 1
   npcs: [{ id: "innkeep", sprite: "innkeep", x: 4, y: 4, name: "Innmother Cald", talk: "innkeep" }],
 });
 
-const shop_in = interior("shop_in", "Calders' Sundries", 11, 9, 5, "elderhall", 17, 9, {
+const shop_in = interior("shop_in", "Calders' Sundries", 11, 9, 5, "elderhall", 16, 9, {
   objects: [
     { id: "counter", sprite: "counter", x: 3, y: 3, w: 1, h: 1, foot: 1, solid: true },
     prop("cellar_hatch", "crate", 8, 6, "enter_cellar"),
@@ -180,7 +182,7 @@ const shop_in = interior("shop_in", "Calders' Sundries", 11, 9, 5, "elderhall", 
   npcs: [{ id: "shopkeep", sprite: "shopkeep", x: 4, y: 4, name: "Calder", talk: "shopkeep" }],
 });
 
-const guild_in = interior("guild_in", "Reliquary Chapter", 13, 11, 6, "elderhall", 5, 9, {
+const guild_in = interior("guild_in", "Reliquary Chapter", 13, 11, 6, "elderhall", 4, 9, {
   objects: [
     { id: "books1", sprite: "bookshelf", x: 2, y: 1, w: 1, h: 1, foot: 1, solid: true },
     { id: "books2", sprite: "bookshelf", x: 3, y: 1, w: 1, h: 1, foot: 1, solid: true },
@@ -564,7 +566,7 @@ const thornkeep: MapDef = {
   ],
 };
 
-const keep_inn = interior("keep_inn", "Thornkeep Inn", 13, 10, 6, "thornkeep", 5, 5, {
+const keep_inn = interior("keep_inn", "Thornkeep Inn", 13, 10, 6, "thornkeep", 4, 5, {
   objects: [
     { id: "counter", sprite: "counter", x: 3, y: 3, w: 1, h: 1, foot: 1, solid: true },
     { id: "bed1", sprite: "bed", x: 9, y: 2, w: 1, h: 1, foot: 1, solid: true },
@@ -573,7 +575,7 @@ const keep_inn = interior("keep_inn", "Thornkeep Inn", 13, 10, 6, "thornkeep", 5
   npcs: [{ id: "keep_innkeep", sprite: "innkeep", x: 4, y: 4, name: "Innmother", talk: "innkeep" }],
 });
 
-const keep_shop = interior("keep_shop", "Thornkeep Chandler", 11, 9, 5, "thornkeep", 15, 10, {
+const keep_shop = interior("keep_shop", "Thornkeep Chandler", 11, 9, 5, "thornkeep", 14, 10, {
   objects: [
     { id: "counter", sprite: "counter", x: 3, y: 3, w: 1, h: 1, foot: 1, solid: true },
     prop("b1", "barrel", 8, 2),
@@ -609,7 +611,7 @@ const warden_hall: MapDef = {
     { id: "b2", sprite: "bookshelf", x: 12, y: 1, w: 1, h: 1, foot: 1, solid: true },
   ],
   npcs: [{ id: "cael_hall", sprite: "warden", x: 7, y: 4, name: "Warden Cael", talk: "cael_trial" }],
-  warps: [{ x: 6, y: 11, to: "thornkeep", tx: 15, ty: 5, dir: 0 }, { x: 7, y: 11, to: "thornkeep", tx: 15, ty: 5, dir: 0 }],
+  warps: [{ x: 6, y: 11, to: "thornkeep", tx: 14, ty: 5, dir: 0 }, { x: 7, y: 11, to: "thornkeep", tx: 14, ty: 5, dir: 0 }],
 };
 
 const elderhall_cellar: MapDef = {

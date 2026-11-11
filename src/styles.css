@@ -278,25 +278,31 @@
   border: 1px solid #b98c51;
   border-radius: 7px;
   box-shadow: inset 0 0 0 2px #15130f, inset 0 0 0 3px #92764a, 0 3px 7px #090b08a8;
-  padding: 0.35rem 0.5rem;
+  padding: 0.12rem 0.45rem;
   display: flex;
-  flex-direction: column;
-  justify-content: center;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.55rem;
+  min-height: 44px;
   font-variant-numeric: tabular-nums;
 }
 .hud-chip-grow {
   flex: 1 1 0;
   min-width: 0;
 }
-.hud-chip-stats {
-  flex: 0 1 6.2rem;
-  min-width: 5.1rem;
-  gap: 0.15rem;
-  align-self: flex-start;
+.hud-stats {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 0.45rem;
+  min-width: 0;
+  margin-left: auto;
+  order: 3;
 }
 .hud-companion-meter {
   display: block;
-  width: 100%;
+  width: 3.2rem;
   height: 4px;
   border-radius: 999px;
   background: #1a1510;
@@ -316,14 +322,16 @@
   display: flex;
   align-items: center;
   min-width: 0;
-  gap: 0.4rem;
+  gap: 0.3rem;
+  flex: 0 1 auto;
+  order: 1;
 }
 .hud-sigil {
   display: block;
-  flex: 0 0 1.7rem;
-  width: 1.7rem;
+  flex: 0 0 1rem;
+  width: 1rem;
   color: #f1d28b;
-  filter: drop-shadow(0 2px 1px #080907);
+  filter: drop-shadow(0 1px 1px #080907);
 }
 .hud-sigil svg {
   display: block;
@@ -338,7 +346,14 @@
 .hud-location-copy {
   display: flex;
   min-width: 0;
-  flex-direction: column;
+  flex-direction: row;
+  align-items: baseline;
+  gap: 0.28rem;
+}
+.hud-region-sep {
+  color: var(--color-parchment);
+  font-size: 0.72rem;
+  line-height: 1;
 }
 .hud-objective-expanded .hud-place,
 .hud-objective-expanded .hud-region {
@@ -353,10 +368,12 @@
 }
 .hud-place {
   font-family: Georgia, "Palatino Linotype", serif;
-  font-size: 0.95rem;
+  font-size: 0.84rem;
   font-weight: 700;
   line-height: 1.1;
-  overflow-wrap: anywhere;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .hud-muted,
 .muted {
@@ -370,7 +387,7 @@
   font-family: Georgia, "Palatino Linotype", serif;
   font-style: italic;
   line-height: 1.1;
-  overflow-wrap: anywhere;
+  white-space: nowrap;
 }
 .hud-gold {
   color: #fff0cb;
@@ -384,14 +401,20 @@
   font-size: 0.85rem;
 }
 .hud-companion {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  flex-wrap: wrap;
-  gap: 0.2rem 0.35rem;
-  padding-top: 0.2rem;
-  border-top: 1px solid #a1844f88;
+  flex-wrap: nowrap;
+  gap: 0.25rem 0.35rem;
   line-height: 1.2;
-  overflow-wrap: anywhere;
+  white-space: nowrap;
+}
+.hud-companion-name {
+  display: inline-block;
+  max-width: 6.5rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: bottom;
 }
 .hud-companion-hp {
   font-variant-numeric: tabular-nums;
@@ -427,8 +450,9 @@
 }
 .hud-objective-slot {
   position: relative;
-  margin-top: 0.25rem;
+  flex: 1 1 8rem;
   min-width: 0;
+  order: 2;
 }
 .hud-objective-btn {
   pointer-events: auto;
@@ -437,11 +461,11 @@
   gap: 0.35rem;
   align-items: center;
   width: 100%;
-  min-height: 44px;
-  padding: 0.28rem 0.4rem;
+  min-height: 32px;
+  padding: 0.1rem 0.15rem;
   border-radius: var(--radius-sm);
-  border: 1px solid #a68959;
-  background: #171915d9;
+  border: 0;
+  background: transparent;
   color: var(--color-cream);
   text-align: left;
   font: inherit;
@@ -501,16 +525,16 @@
   text-underline-offset: 3px;
 }
 .hud-menu {
-  flex: 0 0 3.4rem;
+  flex: 0 0 auto;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
   justify-content: center;
-  gap: 0.1rem;
-  margin-left: auto;
+  gap: 0.25rem;
   pointer-events: auto;
   min-width: 44px;
-  padding: 0.3rem 0.2rem;
+  min-height: 44px;
+  padding: 0 0.55rem;
   border: 1px solid #c29760;
   border-radius: 7px;
   background: linear-gradient(155deg, #352b20f5, #191917f5);
@@ -525,33 +549,21 @@
   font-size: 1.1rem;
   line-height: 1;
 }
-/* A narrow phone needs the objective text more than a single clipped line.
-   Stack the label over the text and keep the disclosure affordance beside it. */
+/* A narrow phone keeps place and status on the first line and one objective line under them. */
 @container (max-width: 500px) {
-  .hud-objective-btn {
-    grid-template-columns: minmax(0, 1fr) auto;
-    gap: 0.1rem 0.3rem;
-  }
-  .hud-objective-label { grid-column: 1; }
+  .hud-stats { order: 2; }
+  .hud-objective-slot { order: 3; flex-basis: 100%; }
+  .hud-objective-btn { grid-template-columns: auto minmax(0, 1fr) auto; }
   .hud-objective-preview {
-    grid-column: 1;
-    display: -webkit-box;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 3;
-    white-space: normal;
-    overflow-wrap: anywhere;
-    line-height: 1.2;
+    white-space: nowrap;
+    display: block;
   }
-  .hud-objective-chevron { grid-column: 2; grid-row: 1 / 3; }
 }
 @container (max-width: 300px) {
   .hud-sigil { display: none; }
   .hud-objective-label { display: none; }
   .hud-objective-btn { grid-template-columns: 1fr auto; }
-  .hud-objective-preview { grid-row: 1; }
-  .hud-objective-chevron { grid-row: 1; }
-  .hud-chip-stats { min-width: 4.5rem; }
-  .hud-menu { flex-basis: 3rem; }
+  .hud-menu { padding-inline: 0.35rem; }
 }
 .hud button:focus-visible,
 .touch button:focus-visible {
@@ -1254,9 +1266,6 @@ button.cmd-party-row {
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
-.game-root.has-dialog-touch .stage {
-  padding-bottom: 88px;
-}
 .game-root.has-dialog-touch .touch {
   height: 88px;
   justify-content: center;
@@ -1267,9 +1276,6 @@ button.cmd-party-row {
 }
 .game-root.is-battle .touch {
   display: none;
-}
-.game-root.classic-touch.is-dialog.has-touch .stage {
-  padding-bottom: 132px;
 }
 .touch {
   display: none;
@@ -1385,6 +1391,13 @@ button.cmd-party-row {
   .game-root.has-touch .stage {
     align-items: flex-start;
     padding-top: 0.2rem;
+    padding-bottom: 132px;
+  }
+  /* The compact Next/Back row is 88px. Reserve that only where the row is shown. */
+  .game-root.has-dialog-touch .stage {
+    padding-bottom: 88px;
+  }
+  .game-root.classic-touch.is-dialog.has-touch .stage {
     padding-bottom: 132px;
   }
   .touch {
@@ -1642,25 +1655,58 @@ button:disabled {
   cursor: default;
 }
 
-/* Out of flow: as a flex sibling of .viewport it used to widen the stage row,
-   pushing the game off the left edge on phones and off-centre on desktop. */
+/* In the top stack, under the place line. Steady offline text stays mounted. */
 .app-status {
-  position: absolute;
-  left: 50%;
-  bottom: 0.35rem;
-  transform: translateX(-50%);
-  z-index: 13;
+  position: static;
+  z-index: 2;
   margin: 0;
-  max-width: min(28rem, calc(100% - 1rem));
+  max-width: min(28rem, 100%);
   text-align: center;
   font-size: 0.72rem;
   line-height: 1.25;
   color: var(--color-parchment-dim);
   pointer-events: none;
 }
-.game-root.has-touch .app-status {
-  /* Sits in the gap between the D-pad and A/B buttons. */
-  position: fixed;
-  bottom: calc(0.45rem + env(safe-area-inset-bottom));
-  max-width: 6.5rem;
+.name-prompt {
+  position: absolute;
+  left: 0.7rem;
+  right: 0.7rem;
+  bottom: 0.7rem;
+  max-width: 28rem;
+  margin: 0 auto;
+  z-index: 6;
+  pointer-events: auto;
+  display: grid;
+  gap: 0.6rem;
+  text-align: left;
+  background: var(--color-parchment);
+  color: var(--color-ink);
+  border-radius: var(--radius-lg);
+  padding: 1rem 1.1rem 1.1rem;
+  box-shadow: 0 12px 40px color-mix(in oklab, var(--color-ink) 50%, transparent);
+}
+.name-prompt p {
+  margin: 0;
+  line-height: 1.4;
+}
+.name-prompt label {
+  display: grid;
+  gap: 0.25rem;
+}
+.name-prompt input {
+  min-width: 0;
+  width: 100%;
+  padding: 0.5rem;
+  color: var(--color-ink);
+  background: var(--color-cream);
+  border: 1px solid var(--color-ink);
+}
+.name-prompt-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+.name-prompt .btn-ghost {
+  background: var(--color-ink);
+  color: var(--color-cream);
 }

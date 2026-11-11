@@ -122,6 +122,8 @@ export interface MapObj {
   interact?: string;
   /** Tile footprint (relative to x/y) that accepts A/interact; defaults to the full object bounds. */
   interactZone?: { x: number; y: number; w: number; h: number };
+  /** Walking into the interact zone uses its warp. Signs, hatches, and caves leave this unset. */
+  autoEnter?: boolean;
   /** Optional solid rectangles relative to x/y; defaults to the foot rows. */
   collision?: { x: number; y: number; w: number; h: number }[];
   /** Optional art geometry in tile units; gameplay uses x/y/w/h/foot above. */
@@ -317,6 +319,13 @@ export interface CardMenuView {
   actions: string[];
 }
 
+/** Naming card shown after a pact is already kept. Cancel leaves the species name. */
+export interface NamePromptView {
+  uid: string;
+  speciesName: string;
+  kind: "starter" | "tame";
+}
+
 export interface Snapshot {
   mode: Mode;
   loadProgress: number;
@@ -342,6 +351,7 @@ export interface Snapshot {
   menuIndex: number;
   battle: BattleState | null;
   toast: string | null;
+  namePrompt: NamePromptView | null;
   selectedUid: string | null;
   shopIndex: number;
   shopMode: "buy" | "sell";
@@ -358,6 +368,7 @@ export interface ReliquaryHandle {
   cancel: () => void;
   startNew: () => void;
   openMenu?: () => void;
+  canWriteSave?: () => boolean;
   /** Browser regression hooks (omitted from production bundles). */
   openShop?: () => void;
   getEconomy?: () => { gold: number; inventory: Record<string, number> };

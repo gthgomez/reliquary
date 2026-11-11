@@ -4,6 +4,7 @@ import {
   BattleHud,
   DialogBox,
   Hud,
+  NamePrompt,
   LoadingScreen,
   MenuPanel,
   ShopPanel,
@@ -17,6 +18,7 @@ import { battleSubmenuRootClass } from "./ui/battle-chrome.ts";
 import { observeUiSafeTop } from "./ui/ui-geometry.ts";
 import { isClassicTouchEnabled, isSoundMutedStored, isUiModalOpen, shouldShowDialogTouch, shouldShowExplorationTouch } from "./ui/ui-chrome.ts";
 import { registerReliquaryServiceWorker, setUpdateGuard } from "../pwa/register.ts";
+import type { ReliquaryHandle } from "./types.ts";
 import { setMuted } from "./audio.ts";
 import { acquireSaveSession } from "./save-session.ts";
 import { attachEconomyProbes } from "reliquary-economy-probes";
@@ -123,14 +125,14 @@ export function GameApp() {
     setUpdateGuard({
       canReloadNow: () => {
         const s = g.getSnapshot();
-        return (s.mode === "title" || s.mode === "world" || s.mode === "victory") && !s.dialog && !s.menu && !isUiModalOpen(s);
+        return (s.mode === "title" || s.mode === "world" || s.mode === "victory") && !s.dialog && !s.menu && !s.namePrompt && !isUiModalOpen(s);
       },
       canForceReload: () => {
         const s = g.getSnapshot();
         // Consequential context (a dialog whose final action commits a choice)
         // outlives the overdue/hidden path: a reload here would drop the offer
         // without its outcome. Pure-text pages may still force.
-        if (s.mode === "battle" || s.dialog?.commits) return false;
+        if (s.mode === "battle" || s.dialog?.commits || s.namePrompt) return false;
         return true;
       },
       beforeReload: () => {
@@ -143,11 +145,12 @@ export function GameApp() {
       },
     });
     if (!agesPreviewEnabled) void registerReliquaryServiceWorker();
-    const reliquaryHandle = {
+    const reliquaryHandle: ReliquaryHandle = {
       confirm: g.confirm,
       cancel: g.cancel,
       startNew: () => g.startNew(),
       openMenu: () => g.toggleMenu(),
+      ...(__RELIQUARY_BROWSER_TEST__ ? { canWriteSave: () => g.canWriteSave } : {}),
     };
     attachEconomyProbes(reliquaryHandle, g);
     attachBattleUiBrowserHooks(reliquaryHandle, g, __RELIQUARY_BROWSER_TEST__);
@@ -281,17 +284,18 @@ export function GameApp() {
                 onMenu={() => g.toggleMenu()}
               />
             ) : null}
+            <AppStatus />
             {snap.toast && !uiModal ? <Toast text={snap.toast} /> : null}
           </div>
           {snap.mode === "battle" ? <BattleHud game={g} snap={snap} /> : null}
           {snap.dialog ? <DialogBox snap={snap} onAdvance={() => g.confirm()} /> : null}
+          {snap.namePrompt ? <NamePrompt key={snap.namePrompt.uid} game={g} prompt={snap.namePrompt} /> : null}
           {snap.menu ? <MenuPanel game={g} snap={snap} onImportActivate={openImportPicker} /> : null}
           {snap.mode === "shop" ? <ShopPanel game={g} snap={snap} /> : null}
           {uiModal && snap.toast ? <Toast text={snap.toast} className="toast-modal" /> : null}
         </div>
         {snap.mode === "boot" ? <LoadingScreen progress={snap.loadProgress} /> : null}
         {snap.mode === "title" ? <TitleScreen game={g} snap={snap} /> : null}
-        <AppStatus />
         {snap.mode === "victory" ? <VictoryScreen game={g} /> : null}
         <input
           ref={fileRef}
