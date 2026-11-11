@@ -267,7 +267,7 @@
 .hud-row {
   display: flex;
   gap: 0.35rem;
-  align-items: center;
+  align-items: flex-start;
   width: 100%;
 }
 .hud-chip {
@@ -294,11 +294,29 @@
 .hud-stats {
   display: flex;
   flex: 0 0 auto;
-  align-items: baseline;
+  align-items: center;
   gap: 0.45rem;
   min-width: 0;
   margin-left: auto;
   order: 3;
+}
+.hud-companion-meter {
+  display: block;
+  width: 3.2rem;
+  height: 4px;
+  border-radius: 999px;
+  background: #1a1510;
+  border: 1px solid #6f5438;
+  overflow: hidden;
+}
+.hud-companion-meter > span {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, #6fb86f, #9fd49f);
+  min-width: 2px;
+}
+.hud-companion-critical .hud-companion-meter > span {
+  background: linear-gradient(90deg, #c45a42, #e88468);
 }
 .hud-location {
   display: flex;
@@ -383,9 +401,44 @@
   font-size: 0.85rem;
 }
 .hud-companion {
-  display: block;
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: 0.25rem 0.35rem;
   line-height: 1.2;
   white-space: nowrap;
+}
+.hud-companion-hp {
+  font-variant-numeric: tabular-nums;
+}
+.hud-companion-critical {
+  color: #ffc9a8;
+}
+.hud-companion-critical .hud-companion-hp {
+  color: #ffb088;
+  font-weight: 700;
+}
+.hud-companion-fainted .hud-companion-hp {
+  color: #b9a6a0;
+  font-weight: 700;
+}
+.hud-companion-fainted .hud-companion-meter > span {
+  background: #5a4a48;
+}
+.hud-companion-alert {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1rem;
+  min-height: 1rem;
+  padding: 0 0.2rem;
+  border-radius: 999px;
+  background: #8f2f24;
+  border: 1px solid #e8a07a;
+  color: #ffe8dc;
+  font-size: 0.62rem;
+  font-weight: 800;
+  line-height: 1;
 }
 .hud-objective-slot {
   position: relative;
@@ -1423,6 +1476,19 @@ button.cmd-party-row {
 }
 
 @media (max-height: 700px) and (max-width: 820px) {
+  .hud-objective-btn {
+    min-height: 40px;
+    padding: 0.22rem 0.35rem;
+  }
+  .hud-objective-preview {
+    font-size: 0.68rem;
+  }
+  .hud-region {
+    font-size: 0.68rem;
+  }
+  .hud-chip-stats {
+    min-width: 4.6rem;
+  }
   .game-root.has-touch .stage {
     padding-bottom: 116px;
   }

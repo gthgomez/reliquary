@@ -10,6 +10,7 @@ import { chromium } from "playwright";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { pathFor } from "./natural-journey-path.mjs";
+import { finishStarterPact } from "./finish-starter-pact.mjs";
 
 const url = process.argv[2] ?? "http://127.0.0.1:8083";
 const output = process.argv[3];
@@ -89,10 +90,7 @@ try {
     window.__controlsTest.setKeys([]);
   });
   await press("KeyZ");
-  for (let i = 0; i < 3; i++) await page.locator("button.dialog").click();
-  await page.getByRole("button", { name: "Keep Emberkit" }).click();
-  for (let i = 0; i < 2; i++) await page.locator("button.dialog").click();
-  await page.getByText(/Emberkit \d+\/\d+/).waitFor();
+  await finishStarterPact(page);
   await objectiveAt(/Wildwood/);
   report.events.push("Pact spoken with Emberkit; objective advanced to Thornkeep");
 
@@ -129,6 +127,25 @@ try {
 
   // Post-battle: HUD keeps a live objective and the party shows two beasts.
   await page.getByRole("button", { name: "Continue", exact: true }).click();
+
+  // Post-battle wild capture naming flow:
+  // 1. Observe the naming dialogue offer ("... accepts the compact. Give them a name, or leave ...")
+  await page.waitForSelector("button.dialog", { timeout: 5000 });
+  const offerText = await page.locator("button.dialog").innerText();
+  if (!/accepts the compact/.test(offerText)) {
+    throw new Error(`expected capture naming offer, got: ${offerText}`);
+  }
+  await page.locator("button.dialog").click();
+
+  // 2. The NamePrompt opens. Choose a nickname: "Glimmermote"
+  await page.waitForSelector(".name-prompt", { timeout: 5000 });
+  await page.screenshot({ path: join(output, "06b-name-prompt.png") });
+  const nameInput = page.locator(".name-prompt input");
+  await nameInput.fill("Glimmermote");
+  await page.getByRole("button", { name: "Call them this" }).click();
+  await page.waitForSelector(".name-prompt", { state: "detached", timeout: 5000 });
+  report.events.push("Named the captured beast Glimmermote at the capture prompt");
+
   const partyCards = page.locator(".party-grid .beast-card");
   // Party is reached only through the menu: keyboard path exclusively.
   await press("KeyM");
@@ -136,6 +153,12 @@ try {
   const cards = await partyCards.count();
   if (cards !== 2) throw new Error(`expected 2 party cards, saw ${cards}`);
   await page.screenshot({ path: join(output, "07-party.png") });
+
+  // Verify the captured beast reflects the assigned nickname
+  const partyNames = await page.locator(".party-grid .beast-name").allInnerTexts();
+  if (!partyNames.includes("Glimmermote")) {
+    throw new Error(`expected Glimmermote in party, found: ${partyNames.join(", ")}`);
+  }
 
   // Keyboard-only: select the bound beast's card, rename it through the form.
   await press("ArrowDown");

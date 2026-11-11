@@ -1039,3 +1039,151 @@ test("Cael telegraphs the trial, advises a weak party, and only begins on confir
     assert.match(game.getSnapshot().dialog!.text, /Iron\. Chapel\. Drake/);
   });
 });
+
+test("learned skills: replacing, declining, multiple pending offers, and party isolation", async () => {
+  await withGame((game) => {
+    game.mode = "world";
+    game.menu = "party";
+
+    const ember = makeBeast("emberkit", 17);
+    ember.skills = ["nip", "cinder", "scorch", "slash"];
+    ember.pendingSkills = ["flare", "heatwave"];
+
+    const mire = makeBeast("mirewhelp", 17);
+    mire.skills = ["nip", "torrent", "soak", "lickwounds"];
+    mire.pendingSkills = ["wardveil"];
+
+    game.party = [ember, mire];
+
+    // 1. Open learn menu for emberkit
+    game.openLearnMenu(ember.uid);
+    assert.equal(game.menu, "learn");
+    assert.equal(game.getSnapshot().menu, "learn");
+
+    // 2. Replace skill at index 1 ("cinder") with "flare"
+    game.chooseMenu(1);
+    assert.deepEqual(ember.skills, ["nip", "flare", "scorch", "slash"], "cinder replaced with flare");
+    assert.deepEqual(ember.pendingSkills, ["heatwave"], "first pending offer cleared, second queued");
+    // The second offer immediately becomes active
+    assert.equal(game.menu, "learn", "menu remains in learn mode for next offer");
+    assert.equal((game as unknown as { learnMenu: { skill: string } | null }).learnMenu?.skill, "heatwave");
+
+    // 3. Decline the second offer (index === skills.length, which is 4)
+    game.chooseMenu(4);
+    assert.deepEqual(ember.skills, ["nip", "flare", "scorch", "slash"], "skills untouched after decline");
+    assert.deepEqual(ember.pendingSkills, [], "all offers for emberkit cleared");
+    assert.equal(game.menu, "party", "returns to party menu when offers exhausted");
+
+    // 4. Verify mirewhelp's pending offers were completely untouched
+    assert.deepEqual(mire.skills, ["nip", "torrent", "soak", "lickwounds"], "mirewhelp skills untouched");
+    assert.deepEqual(mire.pendingSkills, ["wardveil"], "mirewhelp offer preserved");
+
+    // 5. Decline mirewhelp's offer
+    game.openLearnMenu(mire.uid);
+    assert.equal(game.menu, "learn");
+    game.chooseMenu(mire.skills.length);
+    assert.deepEqual(mire.pendingSkills, [], "mirewhelp offer cleared after decline");
+    assert.equal(game.menu, "party");
+  });
+});
+
+test("starter confirmation flow: inspect, cancel, confirm, naming, Elder Maren follow-up", async () => {
+  await withGame((game) => {
+    game.mode = "world";
+    const chooseStarter = (id: string) =>
+      (game as unknown as { chooseStarter(id: string): void }).chooseStarter(id);
+
+    const initialGold = game.gold;
+    const initialSigils = game.inventory.common_sigil ?? 0;
+
+    // 1. Inspecting a starter shows description and does not bind
+    chooseStarter("emberkit");
+    assert.ok(game.getSnapshot().dialog, "dialog open for starter description");
+    assert.match(game.getSnapshot().dialog!.text, /Emberkit/);
+    assert.equal(game.party.length, 0, "inspecting does not add to party");
+    assert.equal(game.flags.starter, undefined, "starter flag not set");
+
+    // 2. Cancelling leaves the player with no starter
+    game.cancel();
+    assert.equal(game.party.length, 0, "cancel leaves party empty");
+
+    // 3. Inspecting again and confirming advances to pact confirmation
+    chooseStarter("emberkit");
+    // Advance first dialog page to "Speak the pact" action
+    game.confirm();
+    assert.ok(game.getSnapshot().dialog, "advance to pact offer");
+    // Click "Speak the pact"
+    game.confirm();
+    assert.match(game.getSnapshot().dialog!.text, /Bind Emberkit as your first pact\?/);
+
+    // 4. Confirming the bind sets starter, party, and triggers NamePrompt
+    game.confirm();
+    assert.equal(game.party.length, 1, "exactly one starter bound");
+    assert.equal(game.flags.starter, true, "starter flag set");
+    assert.equal(game.gold, initialGold + 40, "starter crowns granted");
+    assert.equal(game.inventory.common_sigil, initialSigils + 3, "starter sigils granted");
+    assert.ok(game.namePrompt, "namePrompt active");
+    assert.equal(game.namePrompt?.kind, "starter");
+    assert.equal(game.namePrompt?.speciesName, "Emberkit");
+
+    // 5. Submit nickname "Ignis"
+    game.submitCreatureName("Ignis");
+    assert.equal(game.party[0].nickname, "Ignis", "nickname applied");
+    assert.equal(game.namePrompt, null, "namePrompt closed");
+    // Elder Maren speaks using the nickname
+    assert.ok(game.getSnapshot().dialog, "Elder Maren follow-up dialog opens");
+    assert.match(game.getSnapshot().dialog!.text, /So it is Ignis\. Keep the name\./);
+
+    // 6. Dismiss Elder Maren dialog
+    game.confirm();
+    game.confirm();
+    assert.equal(game.getSnapshot().dialog, null, "dialog closed");
+
+    // 7. Attempting to inspect another starter does not bind or duplicate
+    chooseStarter("mirewhelp");
+    assert.match(game.getSnapshot().dialog!.text, /The grove is quiet\. Your pact is already spoken\./);
+    assert.equal(game.party.length, 1, "party still contains only original starter");
+    assert.equal(game.party[0].nickname, "Ignis");
+  });
+});
+
+test("wild capture naming flow: capture offer, nickname submit, and cancel to keep default name", async () => {
+  await withGame((game) => {
+    game.mode = "world";
+    game.flags.starter = true;
+    game.party = [makeBeast("emberkit", 5)];
+
+    const wildMoth = makeBeast("mothwisp", 4);
+    game.party.push(wildMoth);
+
+    const offerCapturedName = (uid: string) =>
+      (game as unknown as { offerCapturedName(uid: string): void }).offerCapturedName(uid);
+
+    // 1. Offer naming for captured creature
+    offerCapturedName(wildMoth.uid);
+    assert.ok(game.getSnapshot().dialog, "naming offer dialog opened");
+    assert.match(game.getSnapshot().dialog!.text, /Mothwisp accepts the compact/);
+
+    // Advance dialogue to namePrompt
+    game.confirm();
+    assert.ok(game.namePrompt, "namePrompt active");
+    assert.equal(game.namePrompt?.kind, "tame");
+
+    // Submit nickname "Glimmer"
+    game.submitCreatureName("Glimmer");
+    assert.equal(game.namePrompt, null, "namePrompt closed");
+    assert.equal(game.party.find((b) => b.uid === wildMoth.uid)?.nickname, "Glimmer", "nickname applied to captured creature");
+
+    // 2. Test cancel/default name on another captured creature
+    const wildGale = makeBeast("galeskip", 4);
+    game.party.push(wildGale);
+    offerCapturedName(wildGale.uid);
+    game.confirm();
+    assert.ok(game.namePrompt);
+
+    // Submit null (keep default species name)
+    game.submitCreatureName(null);
+    assert.equal(game.namePrompt, null);
+    assert.equal(game.party.find((b) => b.uid === wildGale.uid)?.nickname, "Galeskip", "default name retained when naming declined");
+  });
+});

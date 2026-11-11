@@ -149,6 +149,7 @@ export function GameApp() {
       cancel: g.cancel,
       startNew: () => g.startNew(),
       openMenu: () => g.toggleMenu(),
+      canWriteSave: () => g.canWriteSave,
     };
     attachEconomyProbes(reliquaryHandle, g);
     attachBattleUiBrowserHooks(reliquaryHandle, g, __RELIQUARY_BROWSER_TEST__);
