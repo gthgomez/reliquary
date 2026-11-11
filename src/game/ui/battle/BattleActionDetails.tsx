@@ -2,7 +2,7 @@ import type { ActionDetails } from "./battle-action-details.ts";
 
 export function BattleActionDetails({ details }: { details: ActionDetails }) {
   return (
-    <article className="battle-details" aria-live="polite" aria-atomic="true">
+    <article className="battle-details" aria-label="Action details">
       <header className="battle-details-head">
         <h2 className="battle-details-title">{details.title}</h2>
         <span className="battle-details-rule" aria-hidden>

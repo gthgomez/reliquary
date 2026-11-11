@@ -149,12 +149,12 @@ try {
   await page.getByRole("button", { name: /Common Sigil/ }).click();
   await page.waitForFunction(
     () =>
-      document.querySelector(".battle-ui .cmd") ||
+      document.querySelector(".battle-ui .battle-action") ||
       document.querySelector(".battle-ui .btn-primary"),
     null,
     { timeout: 15000 },
   );
-  const text = await page.locator(".battle-log").innerText();
+  const text = await page.locator(".battle-log-text").innerText();
   if (!text.includes("breaks the sigil"))
     throw new Error(`Expected the failed binding result in the battle log: ${text}`);
   report.events.push(`Natural wild encounter and binding attempt: ${text}`);

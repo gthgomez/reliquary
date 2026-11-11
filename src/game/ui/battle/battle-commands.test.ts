@@ -55,7 +55,7 @@ test("a trial with neither Bind nor Flee keeps visual positions stable", () => {
   assert.match(slots[5]!.unavailableReason ?? "", /cannot be escaped/i);
 });
 
-test("spatial navigation follows the visible grid and skips disabled cells", () => {
+test("spatial navigation follows the visible grid, including disabled cells", () => {
   const slots = battleCommandSlots(wild);
   assert.equal(nextBattleCommand(slots, "Strike", "right"), "Skill");
   assert.equal(nextBattleCommand(slots, "Skill", "left"), "Strike");

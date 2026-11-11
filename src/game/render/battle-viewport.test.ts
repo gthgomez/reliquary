@@ -38,11 +38,13 @@ test("logical stage adapts to the usable box instead of letterboxing", () => {
   assert.deepEqual(battleViewportForStage("desktop", 1536, 864), { viewW: 16, viewH: 9 });
   assert.deepEqual(battleViewportForStage("desktop", 1440, 900), { viewW: 16, viewH: 10 });
   assert.deepEqual(battleViewportForStage("desktop", 1280, 800), { viewW: 16, viewH: 10 });
-  assert.deepEqual(battleViewportForStage("compact-landscape", 844, 390), { viewW: 19, viewH: 9 });
+  assert.deepEqual(battleViewportForStage("desktop", 1024, 768), { viewW: 16, viewH: 12 });
+  assert.deepEqual(battleViewportForStage("compact-landscape", 844, 390), { viewW: 22, viewH: 10 });
   assert.deepEqual(battleViewportForStage("compact-landscape", 640, 320), { viewW: 18, viewH: 9 });
   assert.deepEqual(battleViewportForStage("compact-landscape", 568, 320), { viewW: 16, viewH: 9 });
-  assert.deepEqual(battleViewportForStage("portrait", 390, 844), { viewW: 10, viewH: 22 });
+  assert.deepEqual(battleViewportForStage("portrait", 390, 844), { viewW: 12, viewH: 26 });
   assert.deepEqual(battleViewportForStage("portrait", 390, 667), { viewW: 10, viewH: 17 });
+  assert.deepEqual(battleViewportForStage("portrait", 768, 1024), { viewW: 9, viewH: 12 });
 });
 
 test("stage metrics keep the dock below the ground line in every family", () => {

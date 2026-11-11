@@ -131,31 +131,27 @@ try {
       for (const size of [2, 4, 6]) {
         await page.evaluate((n) => window.__reliquary?.seedForcedSwitch?.(n), size);
         await page.waitForSelector('.battle-controls[data-battle-phase="party"]', { timeout: 10_000 });
+        assert.equal(await page.locator(".battle-back").count(), 0, `party ${size} forced switch must not offer Back`);
         const scrollProbe = await page.evaluate(() => {
           const body = document.querySelector(".battle-controls-body");
-          const back = document.querySelector(".battle-back");
           const actions = document.querySelector(".battle-controls-actions");
-          if (!body || !back || !actions) return null;
-          const br = back.getBoundingClientRect();
+          if (!body || !actions) return null;
           const ar = actions.getBoundingClientRect();
           const clipped = [...body.querySelectorAll("button")].filter((btn) => {
             const r = btn.getBoundingClientRect();
             return r.bottom > body.getBoundingClientRect().bottom + 1 && r.top < body.getBoundingClientRect().bottom;
           });
           body.scrollTop = body.scrollHeight;
-          const br2 = back.getBoundingClientRect();
           return {
             bodyScrollable: body.scrollHeight > body.clientHeight + 4,
-            backPinned: Math.abs(br2.top - br.top) < 1,
-            backInActions: actions.contains(back),
+            backPresent: !!document.querySelector(".battle-back"),
             actionsBottom: ar.bottom,
             innerHeight: window.innerHeight,
             clippedMidScroll: clipped.length,
           };
         });
         assert.ok(scrollProbe, `party ${size} probe missing`);
-        assert.equal(scrollProbe.backInActions, true, `party ${size} Back not in action row`);
-        assert.equal(scrollProbe.backPinned, true, `party ${size} Back moved when body scrolled`);
+        assert.equal(scrollProbe.backPresent, false, `party ${size} forced switch must not offer Back`);
         assert.ok(scrollProbe.actionsBottom <= scrollProbe.innerHeight + 2, `party ${size} actions clipped`);
         if (size >= 4) assert.ok(scrollProbe.bodyScrollable, `party ${size} should scroll`);
         const logText = await page.locator(".battle-log-text").innerText();
@@ -165,7 +161,7 @@ try {
       await page.screenshot({ path: join(artifactDir, "battle-hud-forced-switch-320x568.png") });
     },
   );
-  console.log("[battle-hud-layout] ok forced-switch scroll + pinned Back");
+  console.log("[battle-hud-layout] ok forced-switch scroll, no cancel affordance");
 
   await withBrowser(
     async (page) => {

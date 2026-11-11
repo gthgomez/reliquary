@@ -23,7 +23,7 @@ export function battlePresentation(
   devicePortrait = false,
 ): BattlePresentation {
   if (stageW <= 0 || stageH <= 0) return "desktop";
-  const portrait = devicePortrait || (stageH > stageW * 1.05 && stageW < 920);
+  const portrait = devicePortrait || stageH > stageW * 1.05;
   if (portrait) return "portrait";
   // Phones held sideways have very little vertical room; the compact HUD needs
   // the same canvas ratio but a lower stable command boundary.
@@ -38,12 +38,31 @@ export function battleViewportSize(presentation: BattlePresentation): BattleView
 }
 
 /**
- * Fit the logical battle stage to the real usable stage box so the canvas
- * always fills it (no unexplained letterbox). The reference size 1536x864
- * yields exactly 16x9; 16:10 desktops gain a row, ultrawide compact phones
- * gain columns, and tall phones gain rows. Never stretches art: the renderer
- * cover-crops the plate into whatever logical aspect is chosen.
+ * Choose an integer logical grid whose aspect is closest to the usable stage.
+ * The score prefers the authored column count and falls back to the smaller
+ * grid on a tie, which keeps the backing store cheap while letting the canvas
+ * fill the stage (no letterbox bands) across phones, tablets and desktops.
  */
+function bestBattleGrid(
+  aspect: number,
+  columns: { min: number; max: number },
+  rows: { min: number; max: number },
+  preferredColumns: number,
+): BattleViewportSize {
+  let best = { cols: preferredColumns, rows: rows.min, score: Number.POSITIVE_INFINITY, area: Number.POSITIVE_INFINITY };
+  for (let cols = columns.min; cols <= columns.max; cols += 1) {
+    for (let r = rows.min; r <= rows.max; r += 1) {
+      const score = Math.abs(cols / r - aspect) + Math.abs(cols - preferredColumns) * 0.002;
+      const area = cols * r;
+      if (score < best.score - 1e-9 || (Math.abs(score - best.score) < 1e-9 && area < best.area)) {
+        best = { cols, rows: r, score, area };
+      }
+    }
+  }
+  return { viewW: best.cols, viewH: best.rows };
+}
+
+/** Fit the logical battle stage to the real usable stage box. */
 export function battleViewportForStage(
   presentation: BattlePresentation,
   stageW: number,
@@ -52,15 +71,12 @@ export function battleViewportForStage(
   if (stageW <= 0 || stageH <= 0) return battleViewportSize(presentation);
   const aspect = stageW / stageH;
   if (presentation === "portrait") {
-    const rows = Math.min(24, Math.max(16, Math.round(BATTLE_VIEW_W_PORTRAIT / aspect)));
-    return { viewW: BATTLE_VIEW_W_PORTRAIT, viewH: rows };
+    return bestBattleGrid(aspect, { min: 8, max: 12 }, { min: 12, max: 26 }, 10);
   }
   if (presentation === "compact-landscape") {
-    const cols = Math.min(21, Math.max(16, Math.round(BATTLE_VIEW_H * aspect)));
-    return { viewW: cols, viewH: BATTLE_VIEW_H };
+    return bestBattleGrid(aspect, { min: 14, max: 22 }, { min: 9, max: 11 }, 18);
   }
-  const rows = Math.min(12, Math.max(9, Math.round(BATTLE_VIEW_W / aspect)));
-  return { viewW: BATTLE_VIEW_W, viewH: rows };
+  return bestBattleGrid(aspect, { min: 14, max: 20 }, { min: 9, max: 12 }, 16);
 }
 
 export type BattleStageMetrics = {

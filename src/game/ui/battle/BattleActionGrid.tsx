@@ -33,7 +33,12 @@ export function BattleActionGrid({
             aria-disabled={inert}
             aria-label={slot.unavailableReason ? `${slot.label}. ${slot.unavailableReason}` : slot.label}
             tabIndex={isSelected ? 0 : -1}
-            onPointerEnter={() => onFocusCommand(slot.id)}
+            onPointerEnter={(event) => {
+              // A synthetic mouse hover after a touch can be reported at the
+              // last tap point; it must not silently retarget the command.
+              if (event.pointerType === "touch") return;
+              onFocusCommand(slot.id);
+            }}
             onFocus={() => onFocusCommand(slot.id)}
             onClick={() => {
               if (inert) return;

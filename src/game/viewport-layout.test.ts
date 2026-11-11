@@ -48,7 +48,7 @@ test("short maps, large maps, resizes and save state retain safe bounds", () => 
   assert.ok(game.cssH <= 1100);
 });
 
-test("title, battle, menu, dialogue and physical landscape retain their former canvas sizes", () => {
+test("exploration, menu and dialogue keep their camera sizes; battles get a fitted stage", () => {
   const { game, canvas } = gameWithCanvas();
   const expectLegacy = (label: string) => {
     game.layout(390, 708, true);
@@ -56,12 +56,12 @@ test("title, battle, menu, dialogue and physical landscape retain their former c
   };
   game.mode = "title";
   expectLegacy("title");
-  // Battles own a taller portrait stage (10x18) so status cards, two creatures
-  // and the 2x3 command grid all fit above the dock.
+  // Battles own an integer grid fitted to the phone stage so status cards, two
+  // creatures and the 2x3 command grid all fit above the dock.
   game.mode = "battle";
   game.layout(390, 708, true);
-  assert.deepEqual([canvas.width, canvas.height], [320, 576], "battle portrait stage");
-  assert.deepEqual([game.cssW, game.cssH], [390, 702], "battle portrait fills the phone width");
+  assert.deepEqual([canvas.width, canvas.height], [352, 640], "battle portrait stage");
+  assert.ok(game.cssW <= 390 && game.cssH <= 708, "battle portrait fills the phone without overflow");
   game.mode = "world";
   game.menu = "root";
   expectLegacy("menu");

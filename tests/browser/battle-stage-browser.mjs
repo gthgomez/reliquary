@@ -56,6 +56,8 @@ const VIEWPORTS = [
   { name: "390x844", width: 390, height: 844, family: "portrait" },
   { name: "390x667", width: 390, height: 667, family: "portrait" },
   { name: "320x568", width: 320, height: 568, family: "portrait" },
+  { name: "768x1024", width: 768, height: 1024, family: "portrait" },
+  { name: "834x1112", width: 834, height: 1112, family: "portrait" },
 ];
 
 const { server, baseUrl } = await startStaticServer(0);
@@ -83,6 +85,8 @@ async function enterReferenceBattle(page) {
   await page.waitForSelector(".battle-ui", { timeout: 20_000 });
   await page.mouse.move(2, 2);
   await page.waitForTimeout(250);
+  await page.locator('[data-command="Strike"]').focus();
+  await page.waitForTimeout(120);
 }
 
 try {
@@ -105,6 +109,7 @@ try {
         return {
           report,
           canvas: rect(".game-canvas"),
+          stage: rect(".game-root > .stage"),
           viewport: rect(".viewport"),
           controls: rect(".battle-controls"),
           playerCard: rect(".battler.me"),
@@ -122,11 +127,14 @@ try {
       });
       assert.ok(geometry.report, `${vp.name}: stage report missing`);
       assert.equal(geometry.report.presentation, vp.family, `${vp.name}: presentation`);
+      assert.ok(geometry.stage, `${vp.name}: stage metrics missing`);
       assert.ok(geometry.canvasCss, `${vp.name}: canvas metrics missing`);
+      // Compare to the stage, not .viewport: the viewport is sized *from* the
+      // canvas, so comparing them would be tautological.
       assert.ok(
-        Math.abs(geometry.canvasCss.w - geometry.canvasCss.vw) <= 2 &&
-          Math.abs(geometry.canvasCss.h - geometry.canvasCss.vh) <= 2,
-        `${vp.name}: canvas must fill the viewport, got ${JSON.stringify(geometry.canvasCss)}`,
+        Math.abs(geometry.canvas.w - geometry.stage.w) <= 12 &&
+          Math.abs(geometry.canvas.h - geometry.stage.h) <= 12,
+        `${vp.name}: canvas must fill its stage, got canvas ${JSON.stringify(geometry.canvas)} stage ${JSON.stringify(geometry.stage)}`,
       );
       assert.ok(
         Math.abs(geometry.canvasInternal.w / geometry.canvasInternal.h - geometry.canvasCss.w / geometry.canvasCss.h) < 0.01,

@@ -36,7 +36,7 @@ try {
   await page.waitForSelector(".hud-menu", { timeout: 20_000 });
   await page.evaluate(() => window.__controlsTest?.startWild?.());
   await page.waitForSelector(".battle-ui", { timeout: 20_000 });
-  await page.locator(".battle-controls button:text-is(\"Item\")").click();
+  await page.locator('.battle-controls button[data-command="Item"]').click();
   await page.waitForFunction(() => document.querySelector(".battle-controls")?.getAttribute("data-battle-phase") === "items", null, { timeout: 10_000 });
   const geo = await page.evaluate(() => {
     const box = (el) => {
@@ -50,8 +50,8 @@ try {
       body: box(document.querySelector(".battle-controls-body")),
       bodyScroll: (() => { const b = document.querySelector(".battle-controls-body"); return b ? { scrollHeight: b.scrollHeight, clientHeight: b.clientHeight, scrollTop: b.scrollTop } : null; })(),
       actions: box(document.querySelector(".battle-controls-actions")),
-      battler: box(document.querySelector(".battle-controls .battler.me")),
-      log: box(document.querySelector(".battle-log")),
+      battler: box(document.querySelector(".battle-ui .battler.me")),
+      log: box(document.querySelector(".battle-log-text")),
       rows: [...document.querySelectorAll(".battle-controls-body ul.cmd button")].map(box),
       row0Hit: (() => { const b = document.querySelector(".battle-controls-body ul.cmd button"); if (!b) return null; const r = b.getBoundingClientRect(); const el = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2); return el ? { tag: el.tagName, cls: String(el.className).slice(0, 50), label: el.closest("button")?.textContent?.slice(0, 30) ?? null } : null; })(),
     };

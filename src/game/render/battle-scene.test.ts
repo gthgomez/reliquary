@@ -133,7 +133,7 @@ const SQUARE_SOURCE = { naturalWidth: 64, naturalHeight: 64 } as unknown as Canv
  * The AGES preview paint callback must inherit that same fitted rect — drawing
  * it into the raw `layout.foe` box would stretch imported sprites.
  */
-test("preview paint for the foe uses the aspect-fit rect, not the raw box", () => {
+test("preview paint for the foe uses the ground-anchored local rect, not the raw box", () => {
   const { ctx, drawImage } = recordingContext();
   const paint: number[][] = [];
   drawBattleFoeSprite(ctx, SQUARE_SOURCE, SQUARE_LAYOUT, 0, {}, (_ctx, x, y, w, h) => {

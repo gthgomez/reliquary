@@ -34,7 +34,7 @@ const SAVE = {
     },
   ],
   box: [],
-  inventory: { tonic: 2, common_sigil: 2 },
+  inventory: { tonic: 2, etherdrop: 2, common_sigil: 2 },
   flags: { starter: true },
   seen: { briarling: true, galeskip: true },
   caught: { briarling: true },
@@ -132,6 +132,11 @@ try {
     await page.locator('[data-command="Bind"]').click({ force: true });
     await page.waitForTimeout(250);
     assert.equal(await phase(page), "command", "disabled Bind must not open a submenu or act");
+    // Z is a supported confirm key; while an inert slot owns the visible
+    // highlight it must not execute the last live engine index.
+    await page.keyboard.press("z");
+    await page.waitForTimeout(250);
+    assert.equal(await phase(page), "command", "Z must stay inert for a disabled visible selection");
     await page.locator('[data-command="Strike"]').focus();
     await page.keyboard.press("Enter");
     await page.waitForFunction(() => {
@@ -139,6 +144,33 @@ try {
       return p === "command" || p === "win" || p === "lose";
     }, null, { timeout: 15_000 });
     console.log("[battle-input-parity] ok keyboard grid, preview, disabled slots, details");
+  });
+
+  // Compact keyboard list navigation must scroll the focused row into view.
+  await withBrowser(async (page) => {
+    await page.setViewportSize({ width: 640, height: 320 });
+    await bootBattle(page);
+    await page.locator('[data-command="Item"]').click();
+    await page.waitForSelector(".battle-controls[data-battle-phase='items']");
+    await page.keyboard.press("ArrowDown");
+    await page.waitForTimeout(200);
+    const scrolled = await page.evaluate(() => {
+      const selected = document.querySelector(".battle-controls-body .active");
+      const body = document.querySelector(".battle-controls-body");
+      if (!selected || !body) return null;
+      const s = selected.getBoundingClientRect();
+      const b = body.getBoundingClientRect();
+      return {
+        text: selected.textContent,
+        scrollTop: body.scrollTop,
+        visible: s.top >= b.top - 1 && s.bottom <= b.bottom + 1,
+      };
+    });
+    assert.ok(scrolled, "compact item list probe missing");
+    assert.match(scrolled.text ?? "", /Etherdrop/);
+    assert.ok(scrolled.scrollTop > 0, "focused row must scroll the submenu body");
+    assert.equal(scrolled.visible, true, "focused row must be fully visible");
+    console.log("[battle-input-parity] ok submenu keyboard scroll");
   });
 
   // Touch family: tap targets actuate and the footer shows touch guidance.

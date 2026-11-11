@@ -8,15 +8,15 @@ unchanged; this work is rendering, layout and interface only.
 
 | Family | Selected when | Logical stage |
 | --- | --- | --- |
-| Desktop | usable stage wider than ~1.05:1 and taller than 520 CSS px | 16 columns, rows fitted to the stage (9 rows at 1536×864 = exact 16:9) |
-| Compact landscape | landscape stage at or below 520 CSS px tall | 9 rows, columns fitted to the stage (16–21) |
-| Portrait | phone/tablet portrait | 10 columns, rows fitted to the stage (16–24) |
+| Desktop | usable stage wider than ~1.05:1 and taller than 520 CSS px | integer grid near 16 columns (9–12 rows; exact 16×9 at 1536×864) |
+| Compact landscape | landscape stage at or below 520 CSS px tall | 9–11 rows, 14–22 columns fitted to the stage |
+| Portrait | portrait stage (phones and tablets up to 1100 CSS px wide) | integer grid fitted to the stage, roughly 9–12 columns |
 
 `battlePresentation()` and `battleViewportForStage()` live in
-`src/game/render/battle-viewport.ts`. The logical canvas is fitted into the
-usable stage box by `ReliquaryGame.layout()`, so the canvas fills its stage
-instead of leaving letterbox bars. Exploration keeps its existing 12×9 and
-10×16 views.
+`src/game/render/battle-viewport.ts`. `battleViewportForStage()` searches a
+small integer grid for the aspect closest to the usable stage, so the canvas
+fills its stage instead of leaving letterbox bands. Exploration keeps its
+existing 12×9 and 10×16 views.
 
 At the reference size (1536×864) the logical stage is exactly 16×9. The
 background is cover-cropped into the chosen aspect; it is never stretched.
@@ -63,9 +63,12 @@ explanation in the details panel, and cannot execute.
 `battle-action-details.ts` is a pure resolver over `SKILLS`, `ITEMS`,
 `SPECIES`, `currentStats`, inventory and party state. It never resolves a turn.
 
-`src/game/ui/battle/battle.css` is scoped under `.battle-hud`. All legacy battle
-rules were removed from `src/styles.css`; exploration, dialogue, inventory and
-party overlays are untouched.
+`src/game/ui/battle/battle.css` contains battle-only class names, with the
+stateful rules scoped under `.battle-hud`. All legacy battle rules were removed
+from `src/styles.css`; exploration, dialogue, inventory and party overlays are
+untouched. The dock's CSS top percentages are hand-synced with
+`BATTLE_STAGE_METRICS`; if one moves, move both and rerun
+`battle-stage-browser.mjs`.
 
 ## Engine/UI cooperation
 
@@ -117,7 +120,7 @@ npm run test:browser
 
 Viewport matrix used by `battle-stage-browser.mjs`:
 1536×864, 1440×900, 1280×800, 844×390, 640×320, 568×320, 390×844, 390×667,
-320×568.
+320×568, 768×1024, 834×1112.
 
 Screenshots and evidence are written to `artifacts/browser/` and
 `artifacts/qa-shots/` (gitignored).

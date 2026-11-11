@@ -1,5 +1,6 @@
-/* Battle-only presentation. Every rule is scoped under .battle-hud so
-   exploration, dialogue, inventory and party overlays keep their own chrome. */
+/* Battle-only presentation. Selectors use battle-only class names; stateful
+   rules are scoped under .battle-hud so exploration, dialogue, inventory and
+   party overlays keep their own chrome. */
 
 .battle-hud {
   --bq-navy: #092538;
@@ -246,6 +247,12 @@
 }
 .battle-status-card.is-low-health {
   border-color: rgba(255, 120, 110, 0.55);
+}
+/* The root hook is set while a submenu is open: keep the initiative context
+   visible but let the command list read first. */
+.game-root.is-battle-submenu .battle-status-card {
+  opacity: 0.9;
+  transition: opacity 160ms ease;
 }
 
 /* ---- Lower dock --------------------------------------------------------- */
@@ -953,7 +960,7 @@
 
 /* Portrait phones: two compact cards, a 2x3 command grid, and a one-line
    details strip so the action grid stays above device safe areas. */
-@media (orientation: portrait) and (max-width: 560px) {
+@media (orientation: portrait) and (max-width: 1100px) {
   .battle-status-zone {
     top: 2.2%;
     left: 2.8%;
@@ -1111,10 +1118,70 @@
   }
 }
 
+/* Portrait tablets share the same dock boundary/anchors as phones; scale the
+   card contents back up so they do not look like a phone stretched wide. */
+@media (orientation: portrait) and (min-width: 561px) and (max-width: 1100px) {
+  .battle-status-card {
+    grid-template-columns: 68px minmax(0, 1fr);
+    gap: 10px;
+    padding: 8px 12px 8px 8px;
+  }
+  .battle-portrait {
+    width: 68px;
+    height: 68px;
+    border-radius: 7px;
+  }
+  .battle-status-name {
+    font-size: 1.2rem;
+  }
+  .battle-status-level {
+    font-size: 0.82rem;
+  }
+  .battle-stat-row {
+    grid-template-columns: 16px 1.8em minmax(40px, 1fr) auto;
+    gap: 5px;
+    font-size: 0.82rem;
+  }
+  .battle-stat-icon,
+  .battle-stat-icon svg {
+    width: 16px;
+    height: 16px;
+  }
+  .battle-bar {
+    height: 8px;
+  }
+  .battle-action {
+    font-size: 0.95rem;
+    min-height: 52px;
+  }
+  .battle-action-icon svg {
+    width: 26px;
+    height: 26px;
+  }
+  .battle-details-panel {
+    max-height: 64px;
+    padding: 7px 14px;
+  }
+  .battle-details-title {
+    font-size: 1.2rem;
+  }
+  .battle-details-copy {
+    font-size: 0.84rem;
+  }
+  .battle-footer-message {
+    font-size: 0.82rem;
+  }
+  .battle-hud .cmd button {
+    font-size: 0.9rem;
+    min-height: 48px;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .battle-hud .battle-action,
   .battle-hud .battle-bar-fill,
-  .battle-hud .battle-status-zone {
+  .battle-hud .battle-status-zone,
+  .game-root.is-battle-submenu .battle-status-card {
     transition: none;
   }
 }

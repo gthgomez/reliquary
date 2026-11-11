@@ -45,6 +45,7 @@ export function BattleHud({ game, snap }: { game: ReliquaryGame; snap: Snapshot 
     [b?.canBind, b?.canFlee],
   );
   const rootRef = useRef<HTMLDivElement>(null);
+  const recapRef = useRef<HTMLElement>(null);
   const [focusCommand, setFocusCommand] = useState<BattleCommand>(
     () => firstAvailableCommand(slots) ?? "Strike",
   );
@@ -55,6 +56,13 @@ export function BattleHud({ game, snap }: { game: ReliquaryGame; snap: Snapshot 
     const coarse = typeof window.matchMedia === "function" && window.matchMedia("(pointer: coarse)").matches;
     setTouchInput(coarse || (typeof navigator !== "undefined" && navigator.maxTouchPoints > 0));
   }, []);
+
+  useEffect(() => {
+    if (!recapOpen) return;
+    const panel = recapRef.current;
+    const target = panel?.querySelector<HTMLElement>(".battle-recap") ?? panel;
+    target?.focus({ preventScroll: true });
+  }, [recapOpen]);
 
   const phase = b?.phase ?? "command";
   const submenu = SUBMENU_PHASES.has(phase);
@@ -90,6 +98,11 @@ export function BattleHud({ game, snap }: { game: ReliquaryGame; snap: Snapshot 
     const target = root.querySelector<HTMLElement>(selector);
     if (!target) return;
     target.focus({ preventScroll: true });
+    if (b && SUBMENU_PHASES.has(b.phase)) {
+      // Scrolling the focused row into view inside the dock's own scroller is
+      // required: the body is much shorter than the list on compact screens.
+      target.scrollIntoView({ block: "nearest" });
+    }
   }, [b?.phase, b?.menuIndex, focusCommand]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const selectCommand = useCallback((command: BattleCommand, sound: boolean) => {
@@ -146,6 +159,40 @@ export function BattleHud({ game, snap }: { game: ReliquaryGame; snap: Snapshot 
       arrowright: "right",
       d: "right",
     };
+    const inRecap = event.target instanceof HTMLElement && !!event.target.closest("#battle-recap-panel");
+    if (inRecap) {
+      // The log is a reading surface: let arrows scroll it and let Escape/H
+      // close it. Never move the hidden command grid underneath.
+      if (key === "escape" || key === "h") {
+        event.preventDefault();
+        event.stopPropagation();
+        setRecapOpen(false);
+      }
+      return;
+    }
+    if (recapOpen) {
+      if (key === "escape" || key === "h") {
+        event.preventDefault();
+        event.stopPropagation();
+        setRecapOpen(false);
+        return;
+      }
+      if (arrows[key]) {
+        event.preventDefault();
+        event.stopPropagation();
+        return;
+      }
+    }
+    // Z is a supported confirm key even though the footer advertises Enter.
+    // A disabled slot must never let Z execute the last live engine index.
+    if (key === "z" && b.phase === "command") {
+      const selectedSlot = slots.find((slot) => slot.id === focusCommand);
+      if (!selectedSlot?.available) {
+        event.preventDefault();
+        event.stopPropagation();
+        return;
+      }
+    }
     if (key === "h") {
       event.preventDefault();
       event.stopPropagation();
@@ -163,13 +210,6 @@ export function BattleHud({ game, snap }: { game: ReliquaryGame; snap: Snapshot 
       if (SUBMENU_PHASES.has(b.phase)) {
         moveList(arrows[key] === "up" || arrows[key] === "left" ? -1 : 1);
       }
-      return;
-    }
-    if (key === "escape" && recapOpen) {
-      // Let the engine keep ownership of Back; only close the reading panel.
-      event.preventDefault();
-      event.stopPropagation();
-      setRecapOpen(false);
     }
   }, [b, focusCommand, moveList, recapOpen, selectCommand, slots]);
 
@@ -202,7 +242,8 @@ export function BattleHud({ game, snap }: { game: ReliquaryGame; snap: Snapshot 
         itemEligible: (id) => game.battleItemHasEffect(id),
       });
 
-  const showBack = submenu;
+  const forcedSwitch = phase === "party" && !!me && me.hp <= 0;
+  const showBack = submenu && !forcedSwitch;
   const showContinue = phase === "win" || phase === "lose";
   const panelHeading = submenu ? battlePanelHeading(phase) : null;
   const recapVisibleInBody = showContinue && hasRecap;
@@ -286,6 +327,7 @@ export function BattleHud({ game, snap }: { game: ReliquaryGame; snap: Snapshot 
           message={message}
           recapOpen={recapOpen}
           hasRecap={hasRecap}
+          canGoBack={showBack}
           onToggleRecap={() => setRecapOpen((open) => !open)}
         />
       </div>
@@ -294,8 +336,10 @@ export function BattleHud({ game, snap }: { game: ReliquaryGame; snap: Snapshot 
         <section
           id="battle-recap-panel"
           className="battle-recap-panel"
-          role="dialog"
+          role="region"
           aria-label="Battle log"
+          ref={recapRef}
+          tabIndex={-1}
         >
           <header className="battle-recap-head">
             <h2>This battle</h2>
@@ -304,7 +348,7 @@ export function BattleHud({ game, snap }: { game: ReliquaryGame; snap: Snapshot 
             </button>
           </header>
           {hasRecap ? (
-            <ol className="battle-recap" aria-label="This battle so far">
+            <ol className="battle-recap" aria-label="This battle so far" tabIndex={0}>
               {b.recap.map((line, index) => (
                 <li key={`${index}-${line}`}>{line}</li>
               ))}
