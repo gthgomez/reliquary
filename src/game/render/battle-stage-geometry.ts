@@ -5,8 +5,8 @@ import { shouldPublishRenderGeometryReports } from "./render-report-gate.ts";
 export type BattleZoneRect = { x: number; y: number; w: number; h: number };
 
 export type BattleSpriteAnchors = {
-  player: { cx: number; cy: number };
-  foe: { x: number; y: number; w: number; h: number };
+  player: { cx: number; cy: number; feetY: number };
+  foe: { cx: number; cy: number; feetY: number };
 };
 
 export type BattleCosmeticOffset = { dx: number; dy: number };
@@ -19,6 +19,8 @@ export type BattleStageGeometry = {
   statusZoneFoe: BattleZoneRect;
   commandZoneTop: number;
   stableReserveTop: number;
+  groundY: number;
+  presentation: BattleLayout["presentation"];
   /** Layout anchors only — excludes idle/strike cosmetic motion. */
   spriteAnchors: BattleSpriteAnchors;
   /** Present on browser-test builds when publishing reports. */
@@ -27,57 +29,54 @@ export type BattleStageGeometry = {
   battlePhase: string | null;
 };
 
-const STATUS_H_FRAC = 0.11;
-const STATUS_W_FRAC = 0.42;
-
-function statusZone(cw: number, ch: number, side: "player" | "foe"): BattleZoneRect {
-  const h = Math.max(28, Math.round(ch * STATUS_H_FRAC));
-  const w = Math.max(96, Math.round(cw * STATUS_W_FRAC));
-  if (side === "foe") {
-    return { x: Math.round(cw * 0.04), y: Math.max(4, Math.round(ch * 0.02)), w, h };
-  }
-  return { x: Math.max(4, Math.round(cw - w - cw * 0.04)), y: Math.max(4, Math.round(ch * 0.02)), w, h };
-}
-
-/** Build corridor between inward-facing anchors, clipped below status bands. */
-export function battleAnimCorridor(cw: number, uiReserveTop: number, layout: BattleLayout): BattleZoneRect {
-  const foeStatus = statusZone(cw, uiReserveTop, "foe");
-  const playerStatus = statusZone(cw, uiReserveTop, "player");
-  const top = Math.max(foeStatus.y + foeStatus.h, playerStatus.y + playerStatus.h) + 6;
-  const bottom = uiReserveTop - 12;
-  const playerHalf = (layout.player.size * layout.player.scale) / 2;
-  const left = Math.round(layout.player.cx - playerHalf - 8);
-  const right = Math.round(layout.foe.x + layout.foe.w + 8);
+/** Build the strike corridor between inward-facing anchors and below the status bands. */
+export function battleAnimCorridor(cw: number, layout: BattleLayout): BattleZoneRect {
+  const top = Math.max(
+    layout.statusPlayer.y + layout.statusPlayer.h,
+    layout.statusFoe.y + layout.statusFoe.h,
+  ) + 6;
+  const bottom = layout.groundY - 6;
+  const halfW = Math.round(layout.player.targetHeight * 0.36);
+  const left = Math.round(layout.player.cx - halfW - 8);
+  const right = Math.round(layout.foe.cx + halfW + 8);
   return {
     x: Math.max(8, left),
-    y: top,
+    y: Math.max(4, top),
     w: Math.max(40, Math.min(cw - 16, right - left)),
     h: Math.max(24, bottom - top),
   };
 }
 
 export function battleSpriteAnchors(layout: BattleLayout): BattleSpriteAnchors {
-  const { x, y, w, h } = layout.foe;
   return {
-    player: { cx: layout.player.cx, cy: layout.player.cy },
-    foe: { x, y, w, h },
+    player: {
+      cx: layout.player.cx,
+      cy: layout.player.cy,
+      feetY: layout.player.feetY,
+    },
+    foe: {
+      cx: layout.foe.cx,
+      cy: layout.foe.cy,
+      feetY: layout.foe.feetY,
+    },
   };
 }
 
 export function computeBattleStageGeometry(
   cw: number,
-  ch: number,
+  _ch: number,
   layout: BattleLayout,
   battlePhase: string | null = null,
 ): BattleStageGeometry {
-  const corridor = battleAnimCorridor(cw, layout.uiReserveTop, layout);
   return {
     layout,
-    animCorridor: corridor,
-    statusZonePlayer: statusZone(cw, ch, "player"),
-    statusZoneFoe: statusZone(cw, ch, "foe"),
+    animCorridor: battleAnimCorridor(cw, layout),
+    statusZonePlayer: layout.statusPlayer,
+    statusZoneFoe: layout.statusFoe,
     commandZoneTop: layout.uiReserveTop,
     stableReserveTop: layout.uiReserveTop,
+    groundY: layout.groundY,
+    presentation: layout.presentation,
     spriteAnchors: battleSpriteAnchors(layout),
     battlePhase,
   };

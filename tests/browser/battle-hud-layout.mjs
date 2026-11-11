@@ -209,12 +209,12 @@ try {
       await assertDockStable(page, "200% party");
       await page.screenshot({ path: join(artifactDir, "battle-hud-200-percent-party.png") });
       const meter = await page.evaluate(() => {
-        const el = document.querySelector(".battle-controls .meter");
+        const el = document.querySelector('.battle-status-card [role="meter"]');
         if (!el) return null;
         const cs = getComputedStyle(el);
         return { label: el.getAttribute("aria-label"), fontSize: cs.fontSize };
       });
-      assert.ok(meter?.label?.match(/Health|Skill/i), "meter aria-label explains HP/MP");
+      assert.ok(meter?.label?.match(/Health|Mana/i), "meter aria-label explains HP/MP");
       writeFileSync(
         join(artifactDir, "battle-hud-meter-sample.json"),
         JSON.stringify({ meter, enlargedText }, null, 2),
@@ -235,7 +235,9 @@ try {
     assert.ok((await page.locator(".cmd-skills button.skill-unaffordable").count()) >= 1, "at least one skill marked unaffordable at 2 MP");
     const hint = await unaffordable.locator("em").innerText();
     assert.match(hint, /Need \d+ MP · have 2/);
-    await unaffordable.click();
+    // aria-disabled keeps the row inspectable and announced as unavailable;
+    // force the pointer activation to prove the handler does not spend MP.
+    await unaffordable.click({ force: true });
     await page.waitForTimeout(120);
     assert.equal(
       await page.locator('.battle-controls[data-battle-phase="skills"]').count(),

@@ -23,7 +23,7 @@ import { hasSave, cloneSave, loadSave, parseSave, SAVE_VERSION, serializeSave, W
 import { collectGameAssets, isElderhallCandidateBuild } from "./assets.ts";
 import type { BattlePreview } from "./preview/battle-preview.ts";
 import { mathRandom, type RandomSource } from "./rng.ts";
-import { battleCommands, encounterAt, rollEncounter } from "./world/encounters.ts";
+import { BATTLE_SIGILS, battleCommands, encounterAt, rollEncounter, type BattleCommand } from "./world/encounters.ts";
 import { isOccupied } from "./world/movement.ts";
 import { pickInteractObject } from "./world/interaction.ts";
 import { visibleObjects } from "./world/object-state.ts";
@@ -46,6 +46,11 @@ import {
   paintBattleBackdrop,
   stableBattleUiReserveTop,
 } from "./render/battle-scene.ts";
+import {
+  battlePresentation,
+  battleViewportForStage,
+} from "./render/battle-viewport.ts";
+import { measureSpriteAlphaBounds } from "./render/sprite-bounds.ts";
 import {
   battleAnimDurationMs,
   paintGustProjectile,
@@ -423,9 +428,16 @@ export class ReliquaryGame {
 		return this.viewH * TILE;
 	}
 	layout(stageW: number, stageH: number, devicePortrait = false): void {
-		const portrait = stageW > 0 && stageH > stageW * 1.05 && stageW < 920;
-		const vw = portrait ? VIEW_W_PORT : VIEW_W;
-		let vh = portrait ? VIEW_H_PORT : VIEW_H;
+		// Battles own their stage (16:9 at the reference size, fitted rows/columns
+		// for other aspect ratios) so the composition is not squeezed into the
+		// exploration camera. The overworld keeps its 12x9 / 10x16 behavior.
+		const inBattle = this.mode === "battle";
+		const presentation = inBattle ? battlePresentation(stageW, stageH, devicePortrait) : null;
+		const portrait = presentation === "portrait" ||
+			(!inBattle && stageW > 0 && stageH > stageW * 1.05 && stageW < 920);
+		const battleSize = presentation ? battleViewportForStage(presentation, stageW, stageH) : null;
+		const vw = battleSize?.viewW ?? (portrait ? VIEW_W_PORT : VIEW_W);
+		let vh = battleSize?.viewH ?? (portrait ? VIEW_H_PORT : VIEW_H);
 		if (portrait && devicePortrait && this.mode === "world" && !this.menu && !this.dialog) {
 			const map = this.map();
 			if ((map.ground[0]?.length ?? 0) >= VIEW_W_PORT) {
@@ -893,9 +905,41 @@ export class ReliquaryGame {
 		this.confirm();
 	}
 
-	/** Highlight a battle option without committing to it. */
+	/** Confirm a root command by identity; unavailable commands are inert. */
+	chooseBattleCommand(command: BattleCommand): void {
+		if (!this.battle || this.battle.phase !== "command") return;
+		const index = battleCommands(this.battle).indexOf(command);
+		if (index < 0) return;
+		this.chooseBattle(index);
+	}
+
+	/** Highlight a battle option without committing to it (emits so the HUD updates). */
 	previewBattle(i: number): void {
 		this.setMenuIndex(i);
+		this.emit();
+	}
+
+	/** Highlight a root command by identity without executing it. */
+	previewBattleCommand(command: BattleCommand): void {
+		if (!this.battle || this.battle.phase !== "command") return;
+		const index = battleCommands(this.battle).indexOf(command);
+		if (index < 0) return;
+		this.setMenuIndex(index);
+		this.emit();
+	}
+
+	/** Battle-item eligibility, shared with the HUD so it can explain greyed rows. */
+	battleItemHasEffect(id: string): boolean {
+		const battle = this.battle;
+		if (!battle) return false;
+		const active = this.party[battle.playerIndex];
+		if (!active) return false;
+		return this.itemHasEffect(id, active, true);
+	}
+
+	/** Presentation-only menu tick for pointer/keyboard selection changes. */
+	playMenuCue(): void {
+		sfxPlay.menu();
 	}
 
 	/** Shop tab switch from the UI. */
@@ -1096,11 +1140,7 @@ export class ReliquaryGame {
 		if (b.phase === "command") return battleCommands(b).length;
 		if (b.phase === "skills") return this.party[b.playerIndex]?.skills.length ?? 0;
 		if (b.phase === "items") return this.usableItems().length;
-		if (b.phase === "bind") return [
-			"common_sigil",
-			"thorn_sigil",
-			"relic_sigil"
-		].filter((s) => (this.inventory[s] ?? 0) > 0).length;
+		if (b.phase === "bind") return BATTLE_SIGILS.filter((s) => (this.inventory[s] ?? 0) > 0).length;
 		if (b.phase === "party") return this.party.length;
 		return 0;
 	}
@@ -1487,11 +1527,7 @@ export class ReliquaryGame {
 			return;
 		}
 		if (b.phase === "bind") {
-			const st = [
-				"common_sigil",
-				"thorn_sigil",
-				"relic_sigil"
-			].filter((s) => (this.inventory[s] ?? 0) > 0)[b.menuIndex];
+			const st = BATTLE_SIGILS.filter((s) => (this.inventory[s] ?? 0) > 0)[b.menuIndex];
 			if (!st) return;
 			this.playerAction({
 				type: "bind",
@@ -2377,15 +2413,13 @@ export class ReliquaryGame {
 			this.battleStableReserve = stableBattleUiReserveTop(cw, ch);
 			this.battleLayoutCanvasKey = canvasKey;
 		}
-		const layout = computeBattleLayout(cw, ch, this.battleStableReserve, { stableReserve: true });
+		const layout = computeBattleLayout(cw, ch, this.battleStableReserve, {
+			stableReserve: true,
+			presentation: battlePresentation(this.cssW, this.cssH),
+		});
 		const geometryBase = computeBattleStageGeometry(cw, ch, layout, b.phase);
 		const bg = this.images[`bg_${b.bg}`] || this.images.bg_grass;
-		if (bg) ctx.drawImage(bg, 0, 0, cw, ch);
-		else {
-			ctx.fillStyle = "#2c3d32";
-			ctx.fillRect(0, 0, cw, ch);
-		}
-		paintBattleBackdrop(ctx, cw, ch, layout, b.bg);
+		paintBattleBackdrop(ctx, cw, ch, layout, b.bg, bg ?? null);
 		const anchors = { player: layout.player, foe: { cx: layout.foe.cx, cy: layout.foe.cy } };
 		const motion = b.animCue
 			? sampleBattleAnim(b.animCue, b.animElapsedMs, geometryBase.animCorridor, anchors, {
@@ -2414,15 +2448,17 @@ export class ReliquaryGame {
 			const img = this.images[`sprite_${foe.speciesId}`];
 			const catchShake = b.phase === "catch" ? Math.sin(b.shake * 8) * 6 : 0;
 			const paint = preview?.sprite("foe", foe.speciesId);
+			const bounds = measureSpriteAlphaBounds(img) ?? undefined;
 			if (img || paint) {
-				drawBattleFoeSprite(ctx, img, layout, catchShake, foeCosmetic, paint);
+				drawBattleFoeSprite(ctx, img, layout, catchShake, foeCosmetic, paint, bounds);
 			}
 		}
 		const me = this.party[b.playerIndex]!;
 		if (me) {
 			const img = this.images[`sprite_${me.speciesId}`];
 			const paint = preview?.sprite("player", me.speciesId);
-			if (img || paint) drawBattlePlayerSprite(ctx, img, layout, playerCosmetic, paint);
+			const bounds = measureSpriteAlphaBounds(img) ?? undefined;
+			if (img || paint) drawBattlePlayerSprite(ctx, img, layout, playerCosmetic, paint, bounds);
 		}
 		if (motion.projectile) paintGustProjectile(ctx, motion.projectile);
 		preview?.overlay(ctx, layout);

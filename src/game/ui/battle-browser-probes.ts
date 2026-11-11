@@ -1,4 +1,4 @@
-import { makeBeast } from "../content.ts";
+import { makeBeast, SPECIES } from "../content.ts";
 import type { ReliquaryGame } from "../engine.ts";
 import type { BattleState, ReliquaryHandle } from "../types.ts";
 
@@ -6,6 +6,8 @@ type BattleUiBrowserHandle = ReliquaryHandle & {
   seedForcedSwitch?: (partySize?: number) => void;
   setBattlePhase?: (phase: BattleState["phase"]) => void;
   primeSkillMenu?: (mp?: number) => void;
+  setBattleRestrictions?: (options: { canBind?: boolean; canFlee?: boolean }) => void;
+  startBattleWith?: (playerSpeciesId?: string, foeSpeciesId?: string, levels?: [number, number]) => void;
 };
 
 /** Browser-regression hooks (stripped from production via __RELIQUARY_BROWSER_TEST__). */
@@ -46,6 +48,34 @@ export function attachBattleUiBrowserHooks(
     game.battle!.phase = "skills";
     game.battle!.menuIndex = 0;
     game.menuIndex = 0;
+    game.emitPublic();
+  };
+
+  battleHandle.setBattleRestrictions = ({ canBind, canFlee }) => {
+    if (!game.battle) return;
+    if (canBind != null) game.battle.canBind = canBind;
+    if (canFlee != null) game.battle.canFlee = canFlee;
+    game.battle.phase = "command";
+    game.battle.menuIndex = 0;
+    game.menuIndex = 0;
+    game.emitPublic();
+  };
+
+  battleHandle.startBattleWith = (
+    playerSpeciesId = "briarling",
+    foeSpeciesId = "galeskip",
+    levels: [number, number] = [5, 4],
+  ) => {
+    const [playerLevel, foeLevel] = levels;
+    const lead = makeBeast(playerSpeciesId, playerLevel, {
+      nickname: SPECIES[playerSpeciesId]?.name ?? playerSpeciesId,
+    });
+    game.party = [lead, ...game.party.slice(1)];
+    game.mode = "world";
+    (game as unknown as { startWildFrom(species: string, level: number): void }).startWildFrom(
+      foeSpeciesId,
+      foeLevel,
+    );
     game.emitPublic();
   };
 }

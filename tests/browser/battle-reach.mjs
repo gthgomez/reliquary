@@ -124,7 +124,7 @@ try {
         // All six battle commands (wild battle: canBind and canFlee are on).
         const commands = ["Strike", "Skill", "Item", "Bind", "Party", "Flee"];
         for (const cmd of commands) {
-          const ok = await assertReachable(`.battle-controls button:text-is("${cmd}")`, `command ${cmd}`, true);
+          const ok = await assertReachable(`.battle-controls button[data-command="${cmd}"]`, `command ${cmd}`, true);
           assert.ok(ok, `${vp.name}: command ${cmd} not reachable — ${rows.failures.join("; ")}`);
           await page.waitForTimeout(150);
           if (cmd === "Strike" || cmd === "Flee") {
@@ -159,7 +159,7 @@ try {
 
         // Item submenu entries are reachable where offered (tonic on a hurt
         // active beast qualifies; guard against the no-effect guard).
-        await page.locator(".battle-controls button:text-is(\"Item\")").click();
+        await page.locator('.battle-controls button[data-command="Item"]').click();
         await page.waitForFunction(
           () => document.querySelector(".battle-controls")?.getAttribute("data-battle-phase") === "items",
           null,
@@ -180,7 +180,7 @@ try {
         // Forced switch: open the Party submenu voluntarily (the 1-HP reserve
         // is a legal switch) and then keep sending enabled companions while
         // the phase demands it, asserting each demanded choice is reachable.
-        await page.locator(".battle-controls button:text-is(\"Party\")").click();
+        await page.locator('.battle-controls button[data-command="Party"]').click();
         await page.waitForFunction(
           () => document.querySelector(".battle-controls")?.getAttribute("data-battle-phase") === "party",
           null,

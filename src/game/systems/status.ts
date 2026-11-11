@@ -13,6 +13,16 @@ export const STATUS_ADJECTIVES: Record<StatusId, string> = {
   bless: "blessed",
 };
 
+/** Display nouns for status chips and action details. */
+export const STATUS_NAMES: Record<StatusId, string> = {
+  burn: "Burn",
+  soak: "Soak",
+  bind: "Bind",
+  daze: "Daze",
+  ward: "Ward",
+  bless: "Bless",
+};
+
 export function applyStatus(target: Beast, status: StatusId, turns = 3): void {
   target.status = status;
   target.statusTurns = turns;

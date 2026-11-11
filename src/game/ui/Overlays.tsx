@@ -12,7 +12,6 @@ import {
   SPECIES,
   TEMPERAMENTS,
 } from "../content";
-import { battleCommands } from "../world/encounters.ts";
 import type { ReliquaryGame } from "../engine";
 import { ROOT_MENU } from "../engine";
 import type { Beast, Snapshot } from "../types";
@@ -23,9 +22,7 @@ import {
   practiceActionHint,
   practiceEnabledHint,
 } from "./party-actions.ts";
-import { battlePanelHeading, isBattleSubmenuPhase } from "./battle-chrome.ts";
-import { shopBuyAffordability, skillMpAffordability, skillMpHint } from "./ui-chrome.ts";
-import { STATUS_ADJECTIVES } from "../systems/status.ts";
+import { shopBuyAffordability } from "./ui-chrome.ts";
 import { objectiveHint } from "../systems/objective.ts";
 import { clearTouchHolds, requestAccessibleStep, updateTouchHold, type HoldId } from "./touch-hold.ts";
 
@@ -712,195 +709,6 @@ export function Meter({
       </div>
       <div className="meter-track" aria-hidden>
         <div className={`meter-fill ${kind}`} style={{ width: `${pct}%` }} />
-      </div>
-    </div>
-  );
-}
-
-export function BattleHud({ game, snap }: { game: ReliquaryGame; snap: Snapshot }) {
-  const b = snap.battle;
-  if (!b) return null;
-  const me = snap.party[b.playerIndex];
-  const foe = b.foes[b.foeIndex];
-  const meS = me ? currentStats(me) : null;
-  const foS = foe ? currentStats(foe) : null;
-  const cmds = battleCommands(b);
-  const panelHeading = battlePanelHeading(b.phase);
-  const showBack = isBattleSubmenuPhase(b.phase);
-  const showRecap = (b.phase === "command" || b.phase === "win" || b.phase === "lose") && b.recap.length > 0;
-
-  const renderCmdList = (items: ReactNode, className = "cmd") => (
-    <ul className={className}>{items}</ul>
-  );
-
-  let scrollBody: ReactNode = null;
-  if (b.phase === "skills" && me) {
-    scrollBody = renderCmdList(
-      me.skills.map((sid, i) => {
-        const sk = SKILLS[sid];
-        const cost = sk?.mp ?? 0;
-        const afford = skillMpAffordability(me.mp, cost);
-        const hint = skillMpHint(me.mp, cost);
-        return (
-          <li key={sid}>
-            <button
-              type="button"
-              className={`${i === b.menuIndex ? "active" : ""} skill-${afford}`}
-              aria-describedby={afford === "unaffordable" ? `skill-mp-${sid}` : undefined}
-              onClick={() => {
-                if (afford === "unaffordable") {
-                  game.previewBattle(i);
-                  return;
-                }
-                game.chooseBattle(i);
-              }}
-            >
-              <span className="cmd-skill-main">
-                <span className="cmd-skill-name">{sk?.name}</span>
-                <em id={afford === "unaffordable" ? `skill-mp-${sid}` : undefined}>{hint}</em>
-              </span>
-            </button>
-          </li>
-        );
-      }),
-      "cmd cmd-scroll cmd-skills",
-    );
-  } else if (b.phase === "items") {
-    scrollBody = renderCmdList(
-      game.usableItems().map((id, i) => (
-        <li key={id}>
-          <button
-            type="button"
-            className={i === b.menuIndex ? "active" : ""}
-            onClick={() => game.chooseBattle(i)}
-          >
-            {ITEMS[id]?.name} <em>×{snap.inventory[id]}</em>
-          </button>
-        </li>
-      )),
-      "cmd cmd-scroll",
-    );
-  } else if (b.phase === "bind") {
-    scrollBody = renderCmdList(
-      ["common_sigil", "thorn_sigil", "relic_sigil"]
-        .filter((s) => (snap.inventory[s] ?? 0) > 0)
-        .map((id, i) => (
-          <li key={id}>
-            <button
-              type="button"
-              className={i === b.menuIndex ? "active" : ""}
-              onClick={() => game.chooseBattle(i)}
-            >
-              {ITEMS[id]?.name} <em>×{snap.inventory[id]}</em>
-            </button>
-          </li>
-        )),
-      "cmd cmd-scroll",
-    );
-  } else if (b.phase === "party") {
-    scrollBody = renderCmdList(
-      snap.party.map((p, i) => {
-        const pst = currentStats(p);
-        return (
-          <li key={p.uid}>
-            <button
-              type="button"
-              className={`cmd-party-row${i === b.menuIndex ? " active" : ""}`}
-              disabled={p.hp <= 0}
-              onClick={() => game.chooseBattle(i)}
-            >
-              <span className="cmd-party-name">{p.nickname}</span>
-              <span className="cmd-party-meta">
-                <em>
-                  {p.hp}/{pst.hp} hp
-                </em>
-              </span>
-            </button>
-          </li>
-        );
-      }),
-      "cmd cmd-scroll cmd-party",
-    );
-  }
-
-  return (
-    <div className="battle-ui">
-      <div className="battle-status-zone">
-        {foe && foS ? (
-          <div className="battler foe">
-            <strong>{SPECIES[foe.speciesId]?.name}</strong>
-            <span>Lv {foe.level}</span>
-            {foe.status ? (
-              <span className="battler-status">{STATUS_ADJECTIVES[foe.status]}</span>
-            ) : null}
-            <Meter label="HP" value={foe.hp} max={foS.hp} kind="hp" />
-          </div>
-        ) : null}
-      </div>
-      <div className="battle-controls" data-battle-phase={b.phase}>
-        {me && meS ? (
-          <div className="battler me">
-            <strong>{me.nickname}</strong>
-            <span>Lv {me.level}</span>
-            {me.status ? (
-              <span className="battler-status">{STATUS_ADJECTIVES[me.status]}</span>
-            ) : null}
-            <div className="meter-row">
-              <Meter label="HP" value={me.hp} max={meS.hp} kind="hp" />
-              <Meter label="MP" value={me.mp} max={meS.mp} kind="mp" />
-            </div>
-          </div>
-        ) : null}
-        <div className="battle-log" aria-live="polite">
-          <span className="battle-log-text">{b.log[b.log.length - 1]}</span>
-        </div>
-        <div className={`battle-controls-body${scrollBody || showRecap ? "" : " is-empty"}`}>
-          {panelHeading ? <p className="battle-panel-title">{panelHeading}</p> : null}
-          {/* Bounded turn/win recap (S06): the one-line log replaces each
-              event, so the ordered recap keeps the turn inspectable. Rendered
-              only where it cannot push commands out of reach. */}
-          {showRecap ? (
-            <div className="battle-recap-wrap">
-              {b.phase !== "command" ? <p className="battle-panel-title">How it ended</p> : null}
-              <ol
-                className="battle-recap"
-                aria-label={b.phase === "command" ? "This turn so far" : "How the battle ended"}
-              >
-                {b.recap.map((line, i) => (
-                  <li key={`${i}-${line}`}>{line}</li>
-                ))}
-              </ol>
-            </div>
-          ) : null}
-          {scrollBody}
-        </div>
-        <div className="battle-controls-actions">
-          {showBack && b.phase !== "win" && b.phase !== "lose" ? (
-            <button type="button" className="btn-ghost battle-back" onClick={() => game.cancel()}>
-              Back
-            </button>
-          ) : null}
-          {b.phase === "command"
-            ? renderCmdList(
-                cmds.map((c, i) => (
-                  <li key={c}>
-                    <button
-                      type="button"
-                      className={i === b.menuIndex ? "active" : ""}
-                      onClick={() => game.chooseBattle(i)}
-                    >
-                      {c}
-                    </button>
-                  </li>
-                )),
-              )
-            : null}
-          {b.phase === "win" || b.phase === "lose" ? (
-            <button type="button" className="btn-primary battle-continue" onClick={() => game.confirm()}>
-              {b.phase === "win" ? "Continue" : "Wake"}
-            </button>
-          ) : null}
-        </div>
       </div>
     </div>
   );

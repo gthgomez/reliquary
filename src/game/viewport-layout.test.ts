@@ -56,8 +56,12 @@ test("title, battle, menu, dialogue and physical landscape retain their former c
   };
   game.mode = "title";
   expectLegacy("title");
+  // Battles own a taller portrait stage (10x18) so status cards, two creatures
+  // and the 2x3 command grid all fit above the dock.
   game.mode = "battle";
-  expectLegacy("battle");
+  game.layout(390, 708, true);
+  assert.deepEqual([canvas.width, canvas.height], [320, 576], "battle portrait stage");
+  assert.deepEqual([game.cssW, game.cssH], [390, 702], "battle portrait fills the phone width");
   game.mode = "world";
   game.menu = "root";
   expectLegacy("menu");

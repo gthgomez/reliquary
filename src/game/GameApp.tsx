@@ -1,7 +1,6 @@
 import { lazy, Suspense, useEffect, useLayoutEffect, useRef, useSyncExternalStore } from "react";
 import { ReliquaryGame, TILE } from "./engine";
 import {
-  BattleHud,
   DialogBox,
   Hud,
   LoadingScreen,
@@ -12,6 +11,7 @@ import {
   TouchPad,
   VictoryScreen,
 } from "./ui/Overlays";
+import { BattleHud } from "./ui/battle/BattleHud.tsx";
 import { AppStatus } from "./ui/AppStatus";
 import { battleSubmenuRootClass } from "./ui/battle-chrome.ts";
 import { observeUiSafeTop } from "./ui/ui-geometry.ts";
