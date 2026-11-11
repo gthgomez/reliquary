@@ -18,6 +18,7 @@ import { battleSubmenuRootClass } from "./ui/battle-chrome.ts";
 import { observeUiSafeTop } from "./ui/ui-geometry.ts";
 import { isClassicTouchEnabled, isSoundMutedStored, isUiModalOpen, shouldShowDialogTouch, shouldShowExplorationTouch } from "./ui/ui-chrome.ts";
 import { registerReliquaryServiceWorker, setUpdateGuard } from "../pwa/register.ts";
+import type { ReliquaryHandle } from "./types.ts";
 import { setMuted } from "./audio.ts";
 import { acquireSaveSession } from "./save-session.ts";
 import { attachEconomyProbes } from "reliquary-economy-probes";
@@ -144,12 +145,12 @@ export function GameApp() {
       },
     });
     if (!agesPreviewEnabled) void registerReliquaryServiceWorker();
-    const reliquaryHandle = {
+    const reliquaryHandle: ReliquaryHandle = {
       confirm: g.confirm,
       cancel: g.cancel,
       startNew: () => g.startNew(),
       openMenu: () => g.toggleMenu(),
-      canWriteSave: () => g.canWriteSave,
+      ...(__RELIQUARY_BROWSER_TEST__ ? { canWriteSave: () => g.canWriteSave } : {}),
     };
     attachEconomyProbes(reliquaryHandle, g);
     attachBattleUiBrowserHooks(reliquaryHandle, g, __RELIQUARY_BROWSER_TEST__);

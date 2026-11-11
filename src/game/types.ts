@@ -368,6 +368,7 @@ export interface ReliquaryHandle {
   cancel: () => void;
   startNew: () => void;
   openMenu?: () => void;
+  canWriteSave?: () => boolean;
   /** Browser regression hooks (omitted from production bundles). */
   openShop?: () => void;
   getEconomy?: () => { gold: number; inventory: Record<string, number> };

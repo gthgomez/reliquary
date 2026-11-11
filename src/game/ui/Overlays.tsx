@@ -682,7 +682,7 @@ function BeastCard({ beast, children, selected }: { beast: Beast; children?: Rea
       <img src={`/game/sprites/${beast.speciesId}.png`} alt="" />
       <div>
         <h3>
-          {beast.nickname} <small>Lv {beast.level}</small>
+          <span className="beast-name">{beast.nickname}</span> <small>Lv {beast.level}</small>
         </h3>
         <p className="els">
           {sp.elements.map((e) => (

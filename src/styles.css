@@ -408,6 +408,14 @@
   line-height: 1.2;
   white-space: nowrap;
 }
+.hud-companion-name {
+  display: inline-block;
+  max-width: 6.5rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: bottom;
+}
 .hud-companion-hp {
   font-variant-numeric: tabular-nums;
 }
@@ -1664,6 +1672,8 @@ button:disabled {
   left: 0.7rem;
   right: 0.7rem;
   bottom: 0.7rem;
+  max-width: 28rem;
+  margin: 0 auto;
   z-index: 6;
   pointer-events: auto;
   display: grid;
