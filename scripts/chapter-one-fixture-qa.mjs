@@ -254,7 +254,8 @@ try {
         rounds++;
         extend();
         assert(rounds < 240, `trial did not conclude within ${rounds} rounds`);
-        const cmd = await page.locator(".battle-ui ul.cmd").count();
+        const phase = await page.locator(".battle-controls").getAttribute("data-battle-phase").catch(() => null);
+        const cmd = phase === "command" ? await page.locator(".battle-action").count() : 0;
         const wake = await page.getByRole("button", { name: "Wake", exact: true }).count();
         const cont = await page.getByRole("button", { name: "Continue", exact: true }).count();
         const dialog = await page.locator("button.dialog").count();
@@ -273,15 +274,13 @@ try {
         }
         if (rounds % 10 === 0) {
           const battleHud = await page.locator(".battle-ui").innerText().catch(() => "");
-          const phase = await page.locator(".battle-controls").getAttribute("data-battle-phase").catch(() => "?");
-          const rowTexts = await page.locator(".battle-ui ul.cmd button").allInnerTexts().catch(() => []);
+          const rowTexts = await page.locator(".battle-controls-body ul.cmd button").allInnerTexts().catch(() => []);
           console.log(`[warden-trial] round ${rounds}: cmd=${cmd} cont=${cont} dialog=${dialog} phase=${phase} rows=${JSON.stringify(rowTexts)} hud=${battleHud.slice(0, 80).replace(/\s+/g, " ")}`);
           if (rounds % 50 === 0) await page.screenshot({ path: join(output, `warden-trial-stuck-${rounds}.png`) });
         }
         // Forced-switch phase: the engine marks it data-battle-phase="party"
         // and DISABLES fainted rows (S22: enabled-row semantics, not an HP
         // substring). Send in an enabled beast and assert the switch happened.
-        const phase = await page.locator(".battle-controls").getAttribute("data-battle-phase").catch(() => null);
         if (phase === "party") {
           const enabled = page
             .locator(".battle-controls[data-battle-phase='party'] ul.cmd button:not([disabled])");
@@ -309,7 +308,7 @@ try {
         }
         const hud = await page.locator(".battle-ui").innerText();
         const meHud = await page.locator(".battle-ui .battler.me").innerText().catch(() => "");
-        const hp = /HP (\d+)\/(\d+)/.exec(meHud);
+        const hp = /HP\s*(\d+)\s*\/\s*(\d+)/.exec(meHud);
         const lowHp = hp && Number(hp[1]) < Number(hp[2]) * 0.6;
         if (lowHp && /Greater Tonic|Tonic/.test(hud)) {
           await page.getByRole("button", { name: "Item", exact: true }).click({ timeout: 4000 }).catch(() => {});

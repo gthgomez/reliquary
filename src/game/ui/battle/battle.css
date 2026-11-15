@@ -640,6 +640,7 @@
 
 .battle-footer {
   display: flex;
+  min-width: 0;
   align-items: center;
   gap: 10px;
   min-height: 44px;
