@@ -230,6 +230,9 @@ try {
         );
         await page.locator(".dialog").click();
         await page.locator(".dialog").click();
+        assert.match(await page.locator(".dialog-text").textContent(), /Bind Emberkit/);
+        await page.locator(".dialog").click();
+        await page.getByRole("button", { name: "Keep Emberkit" }).click();
         assert.equal(
           await page.locator(".dialog").getAttribute("data-portrait"),
           "elder-maren",

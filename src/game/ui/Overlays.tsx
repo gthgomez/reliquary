@@ -14,7 +14,7 @@ import {
 } from "../content";
 import type { ReliquaryGame } from "../engine";
 import { ROOT_MENU } from "../engine";
-import type { Beast, Snapshot } from "../types";
+import type { Beast, NamePromptView, Snapshot } from "../types";
 import { OverlayPanel } from "./OverlayPanel";
 import { DialogScene } from "./DialogScene";
 import {
@@ -203,6 +203,7 @@ export function Hud({
             </span>
             <div className="hud-location-copy">
               <span className="hud-place">{snap.mapName}</span>
+              <span className="hud-region-sep" aria-hidden="true">·</span>
               <span className="hud-muted hud-region">{snap.region}</span>
             </div>
           </div>
@@ -230,24 +231,24 @@ export function Hud({
               ) : null}
             </div>
           ) : null}
-        </div>
-        <div className="hud-chip hud-chip-stats">
-          <span className="hud-gold"><span className="hud-coin" aria-hidden="true">◉</span> {snap.gold} cr</span>
-          {lead && st ? (
-            <span
-              className={`hud-muted hud-companion${companionCritical ? " hud-companion-critical" : ""}${companionFainted ? " hud-companion-fainted" : ""}`}
-              aria-label={`Lead companion ${lead.nickname}, health ${lead.hp} of ${st.hp}${companionFainted ? ", fainted" : companionCritical ? ", critically wounded" : ""}`}
-            >
-              <span className="hud-companion-name">{lead.nickname}</span>
-              <span className="hud-companion-hp">{lead.hp}/{st.hp} HP</span>
-              {companionCritical ? <span className="hud-companion-alert" aria-hidden="true">!</span> : null}
-              <span className="hud-companion-meter" aria-hidden="true">
-                <span style={{ width: `${Math.round(hpRatio * 100)}%` }} />
+          <div className="hud-stats">
+            <span className="hud-gold"><span className="hud-coin" aria-hidden="true">◉</span> {snap.gold} cr</span>
+            {lead && st ? (
+              <span
+                className={`hud-muted hud-companion${companionCritical ? " hud-companion-critical" : ""}${companionFainted ? " hud-companion-fainted" : ""}`}
+                aria-label={`Lead companion ${lead.nickname}, health ${lead.hp} of ${st.hp}${companionFainted ? ", fainted" : companionCritical ? ", critically wounded" : ""}`}
+              >
+                <span className="hud-companion-name">{lead.nickname}</span>
+                <span className="hud-companion-hp">{lead.hp}/{st.hp} HP</span>
+                {companionCritical ? <span className="hud-companion-alert" aria-hidden="true">!</span> : null}
+                <span className="hud-companion-meter" aria-hidden="true">
+                  <span style={{ width: `${Math.round(hpRatio * 100)}%` }} />
+                </span>
               </span>
-            </span>
-          ) : (
-            <span className="hud-muted hud-companion">No pact yet</span>
-          )}
+            ) : (
+              <span className="hud-muted hud-companion">No pact yet</span>
+            )}
+          </div>
         </div>
         <button type="button" className="hud-menu" ref={menuButtonRef} onClick={onMenu}>
           <span className="hud-menu-icon" aria-hidden="true">☰</span><span>Menu</span>
@@ -260,6 +261,42 @@ export function Hud({
 export function DialogBox({ snap, onAdvance }: { snap: Snapshot; onAdvance: () => void }) {
   if (!snap.dialog) return null;
   return <DialogScene dialog={snap.dialog} onAdvance={onAdvance} />;
+}
+
+export function NamePrompt({ game, prompt }: { game: ReliquaryGame; prompt: NamePromptView }) {
+  const [name, setName] = useState(prompt.speciesName);
+  const promptText = prompt.kind === "starter" ? "What will you call your first pact?" : "What will you call them?";
+  return (
+    <form
+      className="name-prompt"
+      aria-label="Name your pact"
+      onSubmit={(event) => {
+        event.preventDefault();
+        if (!name.trim()) return;
+        game.submitCreatureName(name);
+      }}
+    >
+      <p>{promptText}</p>
+      <label>
+        Creature name
+        <input
+          aria-label="Creature name"
+          value={name}
+          maxLength={40}
+          autoFocus
+          onChange={(event) => setName(event.target.value)}
+        />
+      </label>
+      <div className="name-prompt-actions">
+        <button type="submit" className="btn-ghost" disabled={!name.trim()}>
+          Call them this
+        </button>
+        <button type="button" className="btn-ghost" onClick={() => game.submitCreatureName(null)}>
+          Keep {prompt.speciesName}
+        </button>
+      </div>
+    </form>
+  );
 }
 
 export function MenuPanel({ game, snap, onImportActivate }: { game: ReliquaryGame; snap: Snapshot; onImportActivate?: () => void }) {
@@ -642,7 +679,7 @@ function BeastCard({ beast, children, selected }: { beast: Beast; children?: Rea
       <img src={`/game/sprites/${beast.speciesId}.png`} alt="" />
       <div>
         <h3>
-          {beast.nickname} <small>Lv {beast.level}</small>
+          <span className="beast-name">{beast.nickname}</span> <small>Lv {beast.level}</small>
         </h3>
         <p className="els">
           {sp.elements.map((e) => (

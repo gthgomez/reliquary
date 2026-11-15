@@ -229,21 +229,41 @@ test("gateward warp warning carries the guard portrait", async () => {
 test("starter pact follow-up reopens as Elder Maren with her portrait", async () => {
   await withGame((game) => {
     game.mode = "world";
-    (game as unknown as { chooseStarter(id: string): void }).chooseStarter("emberkit");
+    const open = () => (game as unknown as { chooseStarter(id: string): void }).chooseStarter("emberkit");
+    open();
     const offer = game.getSnapshot().dialog;
     assert.ok(offer);
     assert.equal(offer!.speaker, "Emberkit", "creature offer stays text-only");
     assert.equal(offer!.portraitKey, null);
 
+    game.confirm(); // skills page
+    game.confirm(); // confirmation, not the pact
+    const confirmBind = game.getSnapshot().dialog;
+    assert.match(confirmBind?.text ?? "", /Bind Emberkit/);
+    assert.equal(game.flags.starter, undefined);
+    assert.equal(game.party.length, 0);
+    game.cancel();
+    assert.equal(game.getSnapshot().dialog, null);
+    assert.equal(game.flags.starter, undefined);
+
+    open();
+    game.confirm();
+    game.confirm();
     game.confirm(); // bind
-    game.confirm(); // close species pages, run onDone
+    const naming = game.getSnapshot();
+    assert.equal(naming.dialog, null);
+    assert.equal(naming.namePrompt?.kind, "starter");
+    assert.equal(naming.party[0]!.speciesId, "emberkit");
+    assert.equal(naming.party[0]!.nickname, "Emberkit");
+    game.submitCreatureName("Cinder");
     const after = game.getSnapshot().dialog;
-    assert.ok(after, "Maren speaks after the pact");
+    assert.ok(after, "Maren speaks after the name");
     assert.equal(after!.speaker, "Elder Maren");
     assert.equal(after!.npcId, "maren");
     assert.equal(after!.portraitKey, "elder-maren");
+    assert.match(after!.text, /Cinder/);
     assert.equal(game.flags.starter, true);
-    assert.equal(game.party[0]!.speciesId, "emberkit");
+    assert.equal(game.party[0]!.nickname, "Cinder");
   });
 });
 

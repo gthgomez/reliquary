@@ -116,8 +116,10 @@ try {
           clientWidth: el.clientWidth, scrollWidth: el.scrollWidth,
         }));
         assert.ok(objective.text.trim(), "the current objective is present");
-        assert.ok(objective.scrollHeight <= objective.clientHeight + 1 && objective.scrollWidth <= objective.clientWidth + 1,
-          `the opening objective is readable without clipping at ${viewport.width}x${viewport.height}: ${JSON.stringify(objective)}`);
+        assert.ok(objective.clientHeight > 0 && objective.clientHeight <= 24,
+          `the objective preview stays one line at ${viewport.width}x${viewport.height}: ${JSON.stringify(objective)}`);
+        assert.ok(objective.scrollHeight <= objective.clientHeight + 1,
+          `the one-line objective preview does not wrap into a clipped box at ${viewport.width}x${viewport.height}: ${JSON.stringify(objective)}`);
       }
       if (await page.locator(".touch-full").isVisible()) {
         assert.equal(await page.getByRole("button", { name: "A — Interact", exact: true }).count(), 1);

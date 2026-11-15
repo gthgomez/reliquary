@@ -66,6 +66,7 @@ async function withFixture(name, viewport, fixture, run) {
     await page.evaluate((value) => localStorage.setItem("reliquary.save.v3", JSON.stringify(value)), fixture);
     await page.reload({ waitUntil: "load" });
     await page.getByRole("button", { name: "Continue", exact: true }).click();
+    await page.waitForFunction(() => window.__reliquary?.canWriteSave?.() === true, null, { timeout: 10_000 }).catch(() => {});
     await run(page, extend);
     report.scenarios.push(`${name}: ok`);
   } catch (error) {
@@ -103,7 +104,14 @@ try {
     assert(/Flare/.test(sheet) && /Decline/.test(sheet), `learn sheet missing the offer: ${sheet}`);
     await page.screenshot({ path: join(output, "learn-choice.png") });
     await page.getByRole("button", { name: /Replace Cinder/ }).click();
-    await page.waitForTimeout(200);
+    await page.waitForFunction(() => {
+      try {
+        const s = JSON.parse(localStorage.getItem("reliquary.save.v3") || "null");
+        return s?.party?.[0]?.skills?.includes("flare");
+      } catch {
+        return false;
+      }
+    }, null, { timeout: 5000 });
     const saved = await page.evaluate(() => JSON.parse(localStorage.getItem("reliquary.save.v3")));
     assertEq(saved.party[0].skills, ["nip", "flare", "scorch", "slash"], "skills after replace");
     assertEq(saved.party[0].pendingSkills ?? [], [], "replace must clear the offer");
@@ -117,7 +125,14 @@ try {
     await page.keyboard.press("KeyZ");
     await page.getByRole("button", { name: "Learn a new skill" }).click();
     await page.getByRole("button", { name: /Decline/ }).click();
-    await page.waitForTimeout(200);
+    await page.waitForFunction(() => {
+      try {
+        const s = JSON.parse(localStorage.getItem("reliquary.save.v3") || "null");
+        return Array.isArray(s?.party?.[1]?.pendingSkills) && s.party[1].pendingSkills.length === 0;
+      } catch {
+        return false;
+      }
+    }, null, { timeout: 5000 });
     const saved2 = await page.evaluate(() => JSON.parse(localStorage.getItem("reliquary.save.v3")));
     assertEq(saved2.party[1].skills, ["nip", "torrent", "soak", "lickwounds"], "decline must not touch the list");
     assertEq(saved2.party[1].pendingSkills ?? [], [], "decline must clear the offer");

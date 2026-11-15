@@ -127,6 +127,25 @@ try {
 
   // Post-battle: HUD keeps a live objective and the party shows two beasts.
   await page.getByRole("button", { name: "Continue", exact: true }).click();
+
+  // Post-battle wild capture naming flow:
+  // 1. Observe the naming dialogue offer ("... accepts the compact. Give them a name, or leave ...")
+  await page.waitForSelector("button.dialog", { timeout: 5000 });
+  const offerText = await page.locator("button.dialog").innerText();
+  if (!/accepts the compact/.test(offerText)) {
+    throw new Error(`expected capture naming offer, got: ${offerText}`);
+  }
+  await page.locator("button.dialog").click();
+
+  // 2. The NamePrompt opens. Choose a nickname: "Glimmermote"
+  await page.waitForSelector(".name-prompt", { timeout: 5000 });
+  await page.screenshot({ path: join(output, "06b-name-prompt.png") });
+  const nameInput = page.locator(".name-prompt input");
+  await nameInput.fill("Glimmermote");
+  await page.getByRole("button", { name: "Call them this" }).click();
+  await page.waitForSelector(".name-prompt", { state: "detached", timeout: 5000 });
+  report.events.push("Named the captured beast Glimmermote at the capture prompt");
+
   const partyCards = page.locator(".party-grid .beast-card");
   // Party is reached only through the menu: keyboard path exclusively.
   await press("KeyM");
@@ -134,6 +153,12 @@ try {
   const cards = await partyCards.count();
   if (cards !== 2) throw new Error(`expected 2 party cards, saw ${cards}`);
   await page.screenshot({ path: join(output, "07-party.png") });
+
+  // Verify the captured beast reflects the assigned nickname
+  const partyNames = await page.locator(".party-grid .beast-name").allInnerTexts();
+  if (!partyNames.includes("Glimmermote")) {
+    throw new Error(`expected Glimmermote in party, found: ${partyNames.join(", ")}`);
+  }
 
   // Keyboard-only: select the bound beast's card, rename it through the form.
   await press("ArrowDown");
@@ -176,8 +201,8 @@ try {
   position = await travel("briar_road", { x: 10, y: 27 }, true);
   if (position.map !== "elderhall") throw new Error(`Briar Road exit failed, at ${position.map}`);
 
-  // Inn: decline first, then accept. Door interact tile is (17,4); stand on (17,5).
-  position = await travel("elderhall", { x: 17, y: 5 });
+  // Inn: decline first, then accept. The painted door is (16,4); stand on (16,5).
+  position = await travel("elderhall", { x: 16, y: 5 });
   await page.evaluate(() => window.__controlsTest.setKeys(["KeyW"]));
   await page.waitForTimeout(120);
   await page.evaluate(() => window.__controlsTest.setKeys([]));
