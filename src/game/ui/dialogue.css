@@ -93,9 +93,15 @@
 }
 /* Secondary chrome yields for a conversation, and returns immediately on
    close. AppStatus stays mounted so offline/update state is never reset. */
-.game-root.is-dialog .app-status {
+.game-root.is-dialog .app-status,
+.game-root.is-ui-modal .app-status {
   visibility: hidden;
   pointer-events: none;
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  overflow: hidden;
 }
 .game-root.is-dialog .hud {
   /* Dialogue owns the playfield. Remove the inactive HUD from layout so a

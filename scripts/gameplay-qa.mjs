@@ -180,8 +180,8 @@ try {
     await page.evaluate(() => window.__controlsTest.startWild());
     await page.getByRole("button", { name: "Strike", exact: true }).waitFor();
     const overlap = await page.evaluate(() => {
-      const log = document.querySelector(".battle-log").getBoundingClientRect();
-      const command = document.querySelector(".cmd").getBoundingClientRect();
+      const log = document.querySelector(".battle-log-text").getBoundingClientRect();
+      const command = document.querySelector(".battle-action-grid").getBoundingClientRect();
       return !(
         log.bottom <= command.top ||
         command.bottom <= log.top ||
@@ -192,7 +192,7 @@ try {
     assert(!overlap, "battle log overlaps commands");
     await page.screenshot({ path: join(output, `${viewport.width}-battle.png`) });
     await page.getByRole("button", { name: "Strike", exact: true }).click();
-    const battleText = await page.locator(".battle-log").innerText();
+    const battleText = await page.locator(".battle-log-text").innerText();
     assert(battleText.length > 0, "battle did not report an action");
     const { intervals: _, ...walkingSummary } = walking;
     console.log(

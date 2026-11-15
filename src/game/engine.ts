@@ -23,7 +23,7 @@ import { hasSave, cloneSave, loadSave, parseSave, SAVE_VERSION, serializeSave, W
 import { collectGameAssets, isElderhallCandidateBuild } from "./assets.ts";
 import type { BattlePreview } from "./preview/battle-preview.ts";
 import { mathRandom, type RandomSource } from "./rng.ts";
-import { battleCommands, encounterAt, rollEncounter } from "./world/encounters.ts";
+import { BATTLE_SIGILS, battleCommands, encounterAt, rollEncounter, type BattleCommand } from "./world/encounters.ts";
 import { isOccupied } from "./world/movement.ts";
 import { pickInteractObject } from "./world/interaction.ts";
 import { visibleObjects } from "./world/object-state.ts";
@@ -46,6 +46,11 @@ import {
   paintBattleBackdrop,
   stableBattleUiReserveTop,
 } from "./render/battle-scene.ts";
+import {
+  battlePresentation,
+  battleViewportForStage,
+} from "./render/battle-viewport.ts";
+import { measureSpriteAlphaBounds } from "./render/sprite-bounds.ts";
 import {
   battleAnimDurationMs,
   paintGustProjectile,
@@ -87,6 +92,7 @@ import type {
   MapDef,
   Mode,
   Skill,
+  NamePromptView,
   Snapshot,
 } from "./types.ts";
 
@@ -208,6 +214,12 @@ export class ReliquaryGame {
 	encounterLock = false;
 	hasSave = false;
 	private settledSteps = 0;
+	/** After a warp, doorway auto-entry waits until the movement keys are released. */
+	private autoEnterLatch = false;
+	/** Set once a pact is kept, before the player types a name. */
+	namePrompt: NamePromptView | null = null;
+	/** Wild compact waiting for the post-battle naming offer. */
+	private pendingCaptureNameUid: string | null = null;
 	private safeCheckpoint: GameSave | null = null;
 	private saveWriteAllowed = true;
 	private readonly readOnlySaveSource?: Pick<SaveStorage, "getItem">;
@@ -317,6 +329,7 @@ export class ReliquaryGame {
 			menuIndex: this.menuIndex,
 			battle: this.battle,
 			toast: this.toast,
+			namePrompt: this.namePrompt,
 			selectedUid: this.selectedUid,
 			shopIndex: this.shopIndex,
 			shopMode: this.shopMode,
@@ -423,10 +436,19 @@ export class ReliquaryGame {
 		return this.viewH * TILE;
 	}
 	layout(stageW: number, stageH: number, devicePortrait = false): void {
-		const portrait = stageW > 0 && stageH > stageW * 1.05 && stageW < 920;
-		const vw = portrait ? VIEW_W_PORT : VIEW_W;
-		let vh = portrait ? VIEW_H_PORT : VIEW_H;
-		if (portrait && devicePortrait && this.mode === "world" && !this.menu && !this.dialog) {
+		// Battles own their stage (16:9 at the reference size, fitted rows/columns
+		// for other aspect ratios) so the composition is not squeezed into the
+		// exploration camera. The overworld keeps its 12x9 / 10x16 behavior.
+		const inBattle = this.mode === "battle";
+		const presentation = inBattle ? battlePresentation(stageW, stageH, devicePortrait) : null;
+		const portrait = presentation === "portrait" ||
+			(!inBattle && stageW > 0 && stageH > stageW * 1.05 && stageW < 920);
+		const battleSize = presentation ? battleViewportForStage(presentation, stageW, stageH) : null;
+		const vw = battleSize?.viewW ?? (portrait ? VIEW_W_PORT : VIEW_W);
+		let vh = battleSize?.viewH ?? (portrait ? VIEW_H_PORT : VIEW_H);
+		// Dialogue stays on the exploration view. Snapping back to the short
+		// canvas made the playfield jump inward whenever a sign or conversation opened.
+		if (portrait && devicePortrait && this.mode === "world" && !this.menu) {
 			const map = this.map();
 			if ((map.ground[0]?.length ?? 0) >= VIEW_W_PORT) {
 				// Keep the authored 10-tile width and fit the height to the space
@@ -790,7 +812,7 @@ export class ReliquaryGame {
 			}
 		}
 		if (this.mode === "battle") this.battleIdlePhase += dt;
-		if (this.mode === "world" && (!this.dialog || this.injected) && !this.menu) this.tickMove(dt);
+		if (this.mode === "world" && (!this.dialog || this.injected) && !this.menu && !this.namePrompt) this.tickMove(dt);
 		this.draw();
 		this.raf = requestAnimationFrame(this.loop);
 	};
@@ -814,6 +836,7 @@ export class ReliquaryGame {
 		const d = this.wantDir();
 		if (d == null) {
 			this.walkFrame = 0;
+			this.autoEnterLatch = false;
 			return;
 		}
 		this.dir = d;
@@ -827,6 +850,13 @@ export class ReliquaryGame {
 			}
 			this.warp(warp.to, warp.tx, warp.ty, warp.dir ?? d);
 			return;
+		}
+		if (!this.autoEnterLatch) {
+			const door = this.doorAhead(nx, ny);
+			if (door) {
+				this.handleInteract(door);
+				return;
+			}
 		}
 		if (this.occupied(nx, ny)) return;
 		this.moving = true;
@@ -857,8 +887,15 @@ export class ReliquaryGame {
 	private resetWorldCameraRelief(): void {
 		resetWorldCamRelief(this.worldCamRelief);
 	}
+	/** Building door in front of the player, when walking into it should enter. */
+	private doorAhead(nx: number, ny: number): string | null {
+		const obj = pickInteractObject(visibleObjects(this.map().objects, this.flags), nx, ny);
+		if (!obj?.autoEnter || !obj.interact || !WARP_TABLE[obj.interact]) return null;
+		return obj.interact;
+	}
 	private warp(to: string, x: number, y: number, dir: Dir): void {
 		if (!MAPS[to]) return;
+		this.autoEnterLatch = true;
 		this.resetWorldCameraRelief();
 		this.mapId = to;
 		this.tx = x;
@@ -893,9 +930,41 @@ export class ReliquaryGame {
 		this.confirm();
 	}
 
-	/** Highlight a battle option without committing to it. */
+	/** Confirm a root command by identity; unavailable commands are inert. */
+	chooseBattleCommand(command: BattleCommand): void {
+		if (!this.battle || this.battle.phase !== "command") return;
+		const index = battleCommands(this.battle).indexOf(command);
+		if (index < 0) return;
+		this.chooseBattle(index);
+	}
+
+	/** Highlight a battle option without committing to it (emits so the HUD updates). */
 	previewBattle(i: number): void {
 		this.setMenuIndex(i);
+		this.emit();
+	}
+
+	/** Highlight a root command by identity without executing it. */
+	previewBattleCommand(command: BattleCommand): void {
+		if (!this.battle || this.battle.phase !== "command") return;
+		const index = battleCommands(this.battle).indexOf(command);
+		if (index < 0) return;
+		this.setMenuIndex(index);
+		this.emit();
+	}
+
+	/** Battle-item eligibility, shared with the HUD so it can explain greyed rows. */
+	battleItemHasEffect(id: string): boolean {
+		const battle = this.battle;
+		if (!battle) return false;
+		const active = this.party[battle.playerIndex];
+		if (!active) return false;
+		return this.itemHasEffect(id, active, true);
+	}
+
+	/** Presentation-only menu tick for pointer/keyboard selection changes. */
+	playMenuCue(): void {
+		sfxPlay.menu();
 	}
 
 	/** Shop tab switch from the UI. */
@@ -949,6 +1018,7 @@ export class ReliquaryGame {
 			this.emit();
 			return;
 		}
+		if (this.namePrompt) return;
 		if (this.battle) {
 			this.battleConfirm();
 			return;
@@ -964,6 +1034,10 @@ export class ReliquaryGame {
 		if (this.mode === "world") this.interact();
 	};
 	cancel = (): void => {
+		if (this.namePrompt && !this.dialog) {
+			this.submitCreatureName(null);
+			return;
+		}
 		if (this.dialog) {
 			if (this.dialog.onDone) {
 				this.dialog = null;
@@ -1011,7 +1085,7 @@ export class ReliquaryGame {
 		}
 	};
 	toggleMenu = (): void => {
-		if (this.mode !== "world" || this.dialog || this.battle) return;
+		if (this.mode !== "world" || this.dialog || this.battle || this.namePrompt) return;
 		if (this.menu) {
 			this.menu = null;
 			this.cardAction = null;
@@ -1031,6 +1105,37 @@ export class ReliquaryGame {
 		if (!party) return;
 		this.party = party;
 		this.persist();
+		this.emit();
+	}
+	/**
+	 * Settle the naming card. Empty, too long, or unchanged text keeps the
+	 * current nickname. The prompt still closes, and a first pact then hears
+	 * Elder Maren use whatever name was kept.
+	 */
+	submitCreatureName(value: string | null): void {
+		const prompt = this.namePrompt;
+		if (!prompt) return;
+		this.namePrompt = null;
+		const beast = this.party.concat(this.box).find((item) => item.uid === prompt.uid);
+		const renamed = beast && value != null ? renameCreature(beast, value) : null;
+		if (renamed) {
+			this.party = this.party.map((item) => item.uid === prompt.uid ? renamed : item);
+			this.box = this.box.map((item) => item.uid === prompt.uid ? renamed : item);
+		}
+		const nickname = renamed?.nickname ?? beast?.nickname ?? prompt.speciesName;
+		if (prompt.kind === "starter") {
+			this.persist();
+			this.openDialog("Elder Maren", [
+				`So it is ${nickname}. Keep the name.`,
+				"I have left sigils in your pack. The Briar Road will teach the rest.",
+			], undefined, { npcId: "maren", sprite: "elder" });
+			return;
+		}
+		if (renamed) {
+			this.persist();
+			this.toastMsg(`${renamed.nickname} it is.`);
+			return;
+		}
 		this.emit();
 	}
 	renamePartyCreature(uid: string, value: string): void {
@@ -1096,11 +1201,7 @@ export class ReliquaryGame {
 		if (b.phase === "command") return battleCommands(b).length;
 		if (b.phase === "skills") return this.party[b.playerIndex]?.skills.length ?? 0;
 		if (b.phase === "items") return this.usableItems().length;
-		if (b.phase === "bind") return [
-			"common_sigil",
-			"thorn_sigil",
-			"relic_sigil"
-		].filter((s) => (this.inventory[s] ?? 0) > 0).length;
+		if (b.phase === "bind") return BATTLE_SIGILS.filter((s) => (this.inventory[s] ?? 0) > 0).length;
 		if (b.phase === "party") return this.party.length;
 		return 0;
 	}
@@ -1248,18 +1349,34 @@ export class ReliquaryGame {
 		if (!sp) return;
 		const elements = sp.elements.map((element) => ELEMENTS[element].name).join(" / ");
 		const skills = skillsForLevel(sp, 5).map((skill) => SKILLS[skill]?.name ?? skill).join(", ");
-		this.openDialog(sp.name, [`${sp.name}, the ${sp.epithet}. ${sp.description}`, `${elements} · Starting skills: ${skills}. Speak the pact? (A bind · B wait and inspect another)`], () => {
-			const b = makeBeast(id, 5, { nickname: sp.name, random: this.random });
-			this.party = [b];
-			this.caught[id] = true;
-			this.seen[id] = true;
-			this.flags.starter = true;
-			this.give("common_sigil", 3);
-			this.gold += 40;
-			sfxPlay.catch();
-			this.openDialog("Elder Maren", [`So it is ${sp.name}. Keep the name.`, "I have left sigils in your pack. The Briar Road will teach the rest."], undefined, { npcId: "maren", sprite: "elder" });
-			this.persist();
+		this.openDialog(sp.name, [`${sp.name}, the ${sp.epithet}. ${sp.description}`, `${elements} · Starting skills: ${skills}. Speak the pact, or turn away and look at the others.`], () => {
+			this.openDialog(sp.name, [`Bind ${sp.name} as your first pact? The grove will keep the others.`], () => {
+				this.bindStarter(id);
+			}, undefined, `Bind ${sp.name}`);
 		}, undefined, "Speak the pact");
+	}
+	private bindStarter(id: string): void {
+		if (this.flags.starter && this.party.length > 0) return;
+		const sp = SPECIES[id];
+		if (!sp) return;
+		const beast = makeBeast(id, 5, { nickname: sp.name, random: this.random });
+		this.party = [beast];
+		this.caught[id] = true;
+		this.seen[id] = true;
+		this.flags.starter = true;
+		this.give("common_sigil", 3);
+		this.gold += 40;
+		sfxPlay.catch();
+		this.namePrompt = { uid: beast.uid, speciesName: sp.name, kind: "starter" };
+		this.persist();
+	}
+	private offerCapturedName(uid: string): void {
+		const beast = this.party.concat(this.box).find((item) => item.uid === uid);
+		if (!beast) return;
+		const speciesName = SPECIES[beast.speciesId]?.name ?? beast.nickname;
+		this.openDialog("", [`${beast.nickname} accepts the compact. Give them a name, or leave ${speciesName}.`], () => {
+			this.namePrompt = { uid, speciesName, kind: "tame" };
+		}, undefined, "Give a name");
 	}
 	private give(id: string, n: number): void {
 		this.inventory[id] = (this.inventory[id] ?? 0) + n;
@@ -1487,11 +1604,7 @@ export class ReliquaryGame {
 			return;
 		}
 		if (b.phase === "bind") {
-			const st = [
-				"common_sigil",
-				"thorn_sigil",
-				"relic_sigil"
-			].filter((s) => (this.inventory[s] ?? 0) > 0)[b.menuIndex];
+			const st = BATTLE_SIGILS.filter((s) => (this.inventory[s] ?? 0) > 0)[b.menuIndex];
 			if (!st) return;
 			this.playerAction({
 				type: "bind",
@@ -1789,6 +1902,7 @@ export class ReliquaryGame {
 				this.party = stored.party;
 				this.box = stored.box;
 				healFull(foe);
+				this.pendingCaptureNameUid = foe.uid;
 				this.logBattle(`${sp.name} accepts the compact.`);
 				this.battle.phase = "win";
 				sfxPlay.catch();
@@ -1856,6 +1970,8 @@ export class ReliquaryGame {
 	}
 	private endBattle(victory: boolean): void {
 		const wasTrial = this.battle?.kind === "trial";
+		const capturedUid = victory ? this.pendingCaptureNameUid : null;
+		this.pendingCaptureNameUid = null;
 		this.resetWorldCameraRelief();
 		this.battle = null;
 		this.battleStableReserve = null;
@@ -1863,6 +1979,7 @@ export class ReliquaryGame {
 		this.mode = wasTrial && victory && !this.flags.ending ? this.maybeVictory() : "world";
 		this.encounterLock = false;
 		this.persist();
+		if (capturedUid && this.mode === "world" && !this.dialog) this.offerCapturedName(capturedUid);
 		this.emit();
 	}
 	/**
@@ -1895,6 +2012,7 @@ export class ReliquaryGame {
 		return "world";
 	}
 	private whiteOut(): void {
+		this.pendingCaptureNameUid = null;
 		this.party.forEach(healFull);
 		this.gold = Math.max(0, Math.floor(this.gold * .85));
 		this.battle = null;
@@ -2377,15 +2495,13 @@ export class ReliquaryGame {
 			this.battleStableReserve = stableBattleUiReserveTop(cw, ch);
 			this.battleLayoutCanvasKey = canvasKey;
 		}
-		const layout = computeBattleLayout(cw, ch, this.battleStableReserve, { stableReserve: true });
+		const layout = computeBattleLayout(cw, ch, this.battleStableReserve, {
+			stableReserve: true,
+			presentation: battlePresentation(this.cssW, this.cssH),
+		});
 		const geometryBase = computeBattleStageGeometry(cw, ch, layout, b.phase);
 		const bg = this.images[`bg_${b.bg}`] || this.images.bg_grass;
-		if (bg) ctx.drawImage(bg, 0, 0, cw, ch);
-		else {
-			ctx.fillStyle = "#2c3d32";
-			ctx.fillRect(0, 0, cw, ch);
-		}
-		paintBattleBackdrop(ctx, cw, ch, layout, b.bg);
+		paintBattleBackdrop(ctx, cw, ch, layout, b.bg, bg ?? null);
 		const anchors = { player: layout.player, foe: { cx: layout.foe.cx, cy: layout.foe.cy } };
 		const motion = b.animCue
 			? sampleBattleAnim(b.animCue, b.animElapsedMs, geometryBase.animCorridor, anchors, {
@@ -2414,15 +2530,17 @@ export class ReliquaryGame {
 			const img = this.images[`sprite_${foe.speciesId}`];
 			const catchShake = b.phase === "catch" ? Math.sin(b.shake * 8) * 6 : 0;
 			const paint = preview?.sprite("foe", foe.speciesId);
+			const bounds = measureSpriteAlphaBounds(img) ?? undefined;
 			if (img || paint) {
-				drawBattleFoeSprite(ctx, img, layout, catchShake, foeCosmetic, paint);
+				drawBattleFoeSprite(ctx, img, layout, catchShake, foeCosmetic, paint, bounds);
 			}
 		}
 		const me = this.party[b.playerIndex]!;
 		if (me) {
 			const img = this.images[`sprite_${me.speciesId}`];
 			const paint = preview?.sprite("player", me.speciesId);
-			if (img || paint) drawBattlePlayerSprite(ctx, img, layout, playerCosmetic, paint);
+			const bounds = measureSpriteAlphaBounds(img) ?? undefined;
+			if (img || paint) drawBattlePlayerSprite(ctx, img, layout, playerCosmetic, paint, bounds);
 		}
 		if (motion.projectile) paintGustProjectile(ctx, motion.projectile);
 		preview?.overlay(ctx, layout);

@@ -66,6 +66,7 @@ async function withFixture(name, viewport, fixture, run) {
     await page.evaluate((value) => localStorage.setItem("reliquary.save.v3", JSON.stringify(value)), fixture);
     await page.reload({ waitUntil: "load" });
     await page.getByRole("button", { name: "Continue", exact: true }).click();
+    await page.waitForFunction(() => window.__reliquary?.canWriteSave?.() === true, null, { timeout: 10_000 }).catch(() => {});
     await run(page, extend);
     report.scenarios.push(`${name}: ok`);
   } catch (error) {
@@ -103,7 +104,14 @@ try {
     assert(/Flare/.test(sheet) && /Decline/.test(sheet), `learn sheet missing the offer: ${sheet}`);
     await page.screenshot({ path: join(output, "learn-choice.png") });
     await page.getByRole("button", { name: /Replace Cinder/ }).click();
-    await page.waitForTimeout(200);
+    await page.waitForFunction(() => {
+      try {
+        const s = JSON.parse(localStorage.getItem("reliquary.save.v3") || "null");
+        return s?.party?.[0]?.skills?.includes("flare");
+      } catch {
+        return false;
+      }
+    }, null, { timeout: 5000 });
     const saved = await page.evaluate(() => JSON.parse(localStorage.getItem("reliquary.save.v3")));
     assertEq(saved.party[0].skills, ["nip", "flare", "scorch", "slash"], "skills after replace");
     assertEq(saved.party[0].pendingSkills ?? [], [], "replace must clear the offer");
@@ -117,7 +125,14 @@ try {
     await page.keyboard.press("KeyZ");
     await page.getByRole("button", { name: "Learn a new skill" }).click();
     await page.getByRole("button", { name: /Decline/ }).click();
-    await page.waitForTimeout(200);
+    await page.waitForFunction(() => {
+      try {
+        const s = JSON.parse(localStorage.getItem("reliquary.save.v3") || "null");
+        return Array.isArray(s?.party?.[1]?.pendingSkills) && s.party[1].pendingSkills.length === 0;
+      } catch {
+        return false;
+      }
+    }, null, { timeout: 5000 });
     const saved2 = await page.evaluate(() => JSON.parse(localStorage.getItem("reliquary.save.v3")));
     assertEq(saved2.party[1].skills, ["nip", "torrent", "soak", "lickwounds"], "decline must not touch the list");
     assertEq(saved2.party[1].pendingSkills ?? [], [], "decline must clear the offer");
@@ -239,7 +254,8 @@ try {
         rounds++;
         extend();
         assert(rounds < 240, `trial did not conclude within ${rounds} rounds`);
-        const cmd = await page.locator(".battle-ui ul.cmd").count();
+        const phase = await page.locator(".battle-controls").getAttribute("data-battle-phase").catch(() => null);
+        const cmd = phase === "command" ? await page.locator(".battle-action").count() : 0;
         const wake = await page.getByRole("button", { name: "Wake", exact: true }).count();
         const cont = await page.getByRole("button", { name: "Continue", exact: true }).count();
         const dialog = await page.locator("button.dialog").count();
@@ -258,15 +274,13 @@ try {
         }
         if (rounds % 10 === 0) {
           const battleHud = await page.locator(".battle-ui").innerText().catch(() => "");
-          const phase = await page.locator(".battle-controls").getAttribute("data-battle-phase").catch(() => "?");
-          const rowTexts = await page.locator(".battle-ui ul.cmd button").allInnerTexts().catch(() => []);
+          const rowTexts = await page.locator(".battle-controls-body ul.cmd button").allInnerTexts().catch(() => []);
           console.log(`[warden-trial] round ${rounds}: cmd=${cmd} cont=${cont} dialog=${dialog} phase=${phase} rows=${JSON.stringify(rowTexts)} hud=${battleHud.slice(0, 80).replace(/\s+/g, " ")}`);
           if (rounds % 50 === 0) await page.screenshot({ path: join(output, `warden-trial-stuck-${rounds}.png`) });
         }
         // Forced-switch phase: the engine marks it data-battle-phase="party"
         // and DISABLES fainted rows (S22: enabled-row semantics, not an HP
         // substring). Send in an enabled beast and assert the switch happened.
-        const phase = await page.locator(".battle-controls").getAttribute("data-battle-phase").catch(() => null);
         if (phase === "party") {
           const enabled = page
             .locator(".battle-controls[data-battle-phase='party'] ul.cmd button:not([disabled])");
@@ -278,7 +292,7 @@ try {
               null,
               { timeout: 8000 },
             );
-            const active = await page.locator(".battle-ui .battler.me strong").innerText();
+            const active = await page.locator(".battle-ui .battler.me .battle-status-name").innerText();
             assertEq(active, chosen, "the chosen enabled row must become the active battler");
             await page.waitForTimeout(250);
             continue;
@@ -294,7 +308,7 @@ try {
         }
         const hud = await page.locator(".battle-ui").innerText();
         const meHud = await page.locator(".battle-ui .battler.me").innerText().catch(() => "");
-        const hp = /HP (\d+)\/(\d+)/.exec(meHud);
+        const hp = /HP\s*(\d+)\s*\/\s*(\d+)/.exec(meHud);
         const lowHp = hp && Number(hp[1]) < Number(hp[2]) * 0.6;
         if (lowHp && /Greater Tonic|Tonic/.test(hud)) {
           await page.getByRole("button", { name: "Item", exact: true }).click({ timeout: 4000 }).catch(() => {});

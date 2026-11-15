@@ -88,10 +88,10 @@ try {
   await page.waitForSelector("button.dialog", { state: "detached", timeout: 5000 });
   report.events.push("Spoke with Elder Maren beside the well");
   for (const building of [
-    { name: "home", front: { x: 5, y: 15 }, inside: "home", exit: { x: 5, y: 8 } },
-    { name: "guild", front: { x: 5, y: 9 }, inside: "guild_in", exit: { x: 6, y: 10 } },
-    { name: "inn", front: { x: 17, y: 5 }, inside: "inn_in", exit: { x: 6, y: 9 } },
-    { name: "shop", front: { x: 17, y: 9 }, inside: "shop_in", exit: { x: 5, y: 8 } },
+    { name: "home", front: { x: 4, y: 15 }, inside: "home", exit: { x: 5, y: 8 } },
+    { name: "guild", front: { x: 4, y: 9 }, inside: "guild_in", exit: { x: 6, y: 10 } },
+    { name: "inn", front: { x: 16, y: 5 }, inside: "inn_in", exit: { x: 6, y: 9 } },
+    { name: "shop", front: { x: 16, y: 9 }, inside: "shop_in", exit: { x: 5, y: 8 } },
   ]) {
     await travel("elderhall", building.front);
     await faceAndInteract("KeyW", Math.PI);
@@ -147,18 +147,45 @@ try {
   });
   await page.getByRole("button", { name: "Bind", exact: true }).click();
   await page.getByRole("button", { name: /Common Sigil/ }).click();
-  await page.waitForFunction(
-    () =>
-      document.querySelector(".battle-ui .cmd") ||
-      document.querySelector(".battle-ui .btn-primary"),
-    null,
-    { timeout: 15000 },
-  );
-  const text = await page.locator(".battle-log").innerText();
+  // The command grid is mounted throughout the battle, so wait for the
+  // resolved log line itself instead of treating a persistent control as a
+  // completion signal.
+  try {
+    await page.waitForFunction(
+      () => /breaks the sigil/.test(document.querySelector(".battle-ui .battle-log-text")?.textContent ?? ""),
+      null,
+      { timeout: 15000 },
+    );
+  } catch {
+    throw new Error(`Expected the failed binding result in the battle log: ${await page.locator(".battle-log-text").innerText()}`);
+  }
+  const text = await page.locator(".battle-log-text").innerText();
   if (!text.includes("breaks the sigil"))
     throw new Error(`Expected the failed binding result in the battle log: ${text}`);
   report.events.push(`Natural wild encounter and binding attempt: ${text}`);
   await page.screenshot({ path: join(output, "natural-encounter.png") });
+
+  // Failure/retry: the failed sigil leaves the fight in the command phase, so
+  // a second common sigil with a favorable seeded draw must succeed.
+  await page.evaluate(() => {
+    Math.random = () => 0.01;
+  });
+  await page.getByRole("button", { name: "Bind", exact: true }).click();
+  await page.getByRole("button", { name: /Common Sigil/ }).click();
+  try {
+    await page.waitForFunction(
+      () => /accepts the compact/.test(document.querySelector(".battle-ui .battle-log-text")?.textContent ?? ""),
+      null,
+      { timeout: 15000 },
+    );
+  } catch {
+    throw new Error(`retry after a failed sigil did not bind: ${await page.locator(".battle-log-text").innerText()}`);
+  }
+  const retryText = await page.locator(".battle-log-text").innerText();
+  if (!retryText.includes("accepts the compact"))
+    throw new Error(`retry after a failed sigil did not bind: ${retryText}`);
+  report.events.push(`Retried the failed sigil and bound the wild beast: ${retryText}`);
+  await page.screenshot({ path: join(output, "natural-encounter-retry.png") });
   console.log(JSON.stringify(report.events));
   await context.close();
 } catch (error) {

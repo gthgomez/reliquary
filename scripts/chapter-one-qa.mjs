@@ -114,12 +114,18 @@ try {
   // Bind with a seeded favorable draw: the natural enemy stays in the route.
   await page.getByRole("button", { name: "Bind", exact: true }).click();
   await page.getByRole("button", { name: /Common Sigil/ }).click();
-  await page.waitForFunction(
-    () => document.querySelector(".battle-ui .cmd") || document.querySelector(".battle-ui .btn-primary"),
-    null,
-    { timeout: 20000 },
-  );
-  const battleText = await page.locator(".battle-log").innerText();
+  // Wait for the resolved turn, not for a control that exists in every phase:
+  // the command grid is always mounted, so its presence proved nothing.
+  try {
+    await page.waitForFunction(
+      () => /accepts the compact/.test(document.querySelector(".battle-ui .battle-log-text")?.textContent ?? ""),
+      null,
+      { timeout: 20000 },
+    );
+  } catch {
+    throw new Error(`binding did not succeed: ${await page.locator(".battle-log-text").innerText()}`);
+  }
+  const battleText = await page.locator(".battle-log-text").innerText();
   if (!/accepts the compact/.test(battleText))
     throw new Error(`binding did not succeed: ${battleText}`);
   await page.screenshot({ path: join(output, "06-bind.png") });
@@ -127,6 +133,25 @@ try {
 
   // Post-battle: HUD keeps a live objective and the party shows two beasts.
   await page.getByRole("button", { name: "Continue", exact: true }).click();
+
+  // Post-battle wild capture naming flow:
+  // 1. Observe the naming dialogue offer ("... accepts the compact. Give them a name, or leave ...")
+  await page.waitForSelector("button.dialog", { timeout: 5000 });
+  const offerText = await page.locator("button.dialog").innerText();
+  if (!/accepts the compact/.test(offerText)) {
+    throw new Error(`expected capture naming offer, got: ${offerText}`);
+  }
+  await page.locator("button.dialog").click();
+
+  // 2. The NamePrompt opens. Choose a nickname: "Glimmermote"
+  await page.waitForSelector(".name-prompt", { timeout: 5000 });
+  await page.screenshot({ path: join(output, "06b-name-prompt.png") });
+  const nameInput = page.locator(".name-prompt input");
+  await nameInput.fill("Glimmermote");
+  await page.getByRole("button", { name: "Call them this" }).click();
+  await page.waitForSelector(".name-prompt", { state: "detached", timeout: 5000 });
+  report.events.push("Named the captured beast Glimmermote at the capture prompt");
+
   const partyCards = page.locator(".party-grid .beast-card");
   // Party is reached only through the menu: keyboard path exclusively.
   await press("KeyM");
@@ -134,6 +159,12 @@ try {
   const cards = await partyCards.count();
   if (cards !== 2) throw new Error(`expected 2 party cards, saw ${cards}`);
   await page.screenshot({ path: join(output, "07-party.png") });
+
+  // Verify the captured beast reflects the assigned nickname
+  const partyNames = await page.locator(".party-grid .beast-name").allInnerTexts();
+  if (!partyNames.includes("Glimmermote")) {
+    throw new Error(`expected Glimmermote in party, found: ${partyNames.join(", ")}`);
+  }
 
   // Keyboard-only: select the bound beast's card, rename it through the form.
   await press("ArrowDown");
@@ -172,12 +203,40 @@ try {
   await press("Escape");
   await press("Escape");
 
+  // Storage round trip: leave the renamed companion in the box before saving,
+  // then prove the saved box survives the reload below.
+  await press("KeyM");
+  await page.getByRole("button", { name: "Storage", exact: true }).click();
+  await page.locator(".sheet").waitFor();
+  const travelling = page.locator(".party-grid").nth(0).locator(".beast-card");
+  const stored = page.locator(".party-grid").nth(1).locator(".beast-card");
+  if ((await travelling.count()) !== 2) throw new Error("storage opened without both companions");
+  await press("ArrowDown");
+  await press("KeyZ");
+  const storageActions = await page.locator("ul.menu-list button").allInnerTexts();
+  const storeIndex = storageActions.findIndex((text) => /^Store/.test(text));
+  if (storeIndex < 0) throw new Error(`storage has no Store action: ${storageActions.join(" | ")}`);
+  await press("ArrowDown", storeIndex);
+  await press("KeyZ");
+  await page.waitForTimeout(250);
+  if ((await travelling.count()) !== 1 || (await stored.count()) !== 1)
+    throw new Error("storage did not move exactly one companion");
+  if (!(await stored.getByText("Fogmote").count()))
+    throw new Error("storage did not retain the companion nickname");
+  const storedSave = await page.evaluate(() => JSON.parse(localStorage.getItem("reliquary.save.v3")));
+  if (storedSave.party.length !== 1 || storedSave.box.length !== 1 || storedSave.box[0].nickname !== "Fogmote")
+    throw new Error(`saved storage state is wrong: ${JSON.stringify({ party: storedSave.party.length, box: storedSave.box.length })}`);
+  report.events.push("Stored Fogmote in the box; the saved party/box counts match the UI");
+  await page.screenshot({ path: join(output, "08b-storage.png") });
+  await press("Escape");
+  await press("Escape");
+
   // Walk Briar Road's south rib into Elderhall again; there the inns wait.
   position = await travel("briar_road", { x: 10, y: 27 }, true);
   if (position.map !== "elderhall") throw new Error(`Briar Road exit failed, at ${position.map}`);
 
-  // Inn: decline first, then accept. Door interact tile is (17,4); stand on (17,5).
-  position = await travel("elderhall", { x: 17, y: 5 });
+  // Inn: decline first, then accept. The painted door is (16,4); stand on (16,5).
+  position = await travel("elderhall", { x: 16, y: 5 });
   await page.evaluate(() => window.__controlsTest.setKeys(["KeyW"]));
   await page.waitForTimeout(120);
   await page.evaluate(() => window.__controlsTest.setKeys([]));
@@ -233,12 +292,37 @@ try {
   const partyCheck = await page.evaluate(() => window.__controlsTest.getPos());
   if (partyCheck.map !== "elderhall") throw new Error(`reload lost the position: ${partyCheck.map}`);
   await press("KeyM");
+  await page.getByRole("button", { name: "Storage", exact: true }).click();
+  await page.locator(".sheet").waitFor();
+  const reloadedTravelling = page.locator(".party-grid").nth(0).locator(".beast-card");
+  const reloadedStored = page.locator(".party-grid").nth(1).locator(".beast-card");
+  if ((await reloadedTravelling.count()) !== 1 || (await reloadedStored.count()) !== 1)
+    throw new Error("reload did not preserve the stored companion");
+  if (!(await reloadedStored.getByText("Fogmote").count()))
+    throw new Error("reload lost the stored companion's nickname");
+  report.events.push("Reload preserved the stored Fogmote and the one-companion party");
+  await page.screenshot({ path: join(output, "11a-storage-after-reload.png") });
+
+  // Retrieve the stored companion through the same keyboard action list.
+  await press("ArrowDown");
+  await press("KeyZ");
+  const boxActions = await page.locator("ul.menu-list button").allInnerTexts();
+  const addIndex = boxActions.findIndex((text) => /^Add Fogmote to the party/.test(text));
+  if (addIndex < 0) throw new Error(`storage has no add action: ${boxActions.join(" | ")}`);
+  await press("ArrowDown", addIndex);
+  await press("KeyZ");
+  await page.waitForTimeout(250);
+  if ((await reloadedTravelling.count()) !== 2 || (await reloadedStored.count()) !== 0)
+    throw new Error("storage did not return Fogmote to the party");
+  await press("Escape");
+  await press("Escape");
+  await press("KeyM");
   await page.getByRole("button", { name: "Party", exact: true }).click();
   const reloadedCards = await page.locator(".party-grid .beast-card").count();
   if (reloadedCards !== 2) throw new Error(`reload expected 2 party cards, saw ${reloadedCards}`);
   if (!(await page.getByText("Fogmote").count()))
     throw new Error("reload lost the renamed companion");
-  report.events.push("Saved and reloaded; renamed companion, gold and map survived");
+  report.events.push("Saved and reloaded; storage round trip, renamed companion, gold and map survived");
   await page.screenshot({ path: join(output, "11-after-reload.png") });
 
   // Portrait segment: every new menu must remain reachable by tapping.

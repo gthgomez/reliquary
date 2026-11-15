@@ -23,14 +23,16 @@ test("computeBattleLayout uses stable reserve when menus would shift DOM reserve
   assert.equal(spritesClearUiBand(shortMenu), true);
 });
 
-test("side-view anchors place player lower-left and foe upper-right", () => {
+test("side-view anchors place player lower-left and foe lower-right on one ground line", () => {
   const layout = computeBattleLayout(384, 512, stableBattleUiReserveTop(384, 512, 260), {
     stableReserve: true,
+    presentation: "portrait",
   });
   assert.ok(layout.player.cx < layout.foe.cx, "player left of foe");
-  assert.ok(layout.player.cy > layout.foe.cy, "player lower than foe");
-  const feet = spriteFeetY(layout);
-  assert.ok(feet.player > feet.foe, "player feet lower on stage");
+  assert.equal(layout.player.feetY, layout.groundY, "player feet touch the ground line");
+  assert.equal(layout.foe.feetY, layout.groundY, "foe feet touch the same ground line");
+  assert.ok(layout.groundY < layout.uiReserveTop, "creatures stand above the command dock");
+  assert.ok(layout.player.targetHeight >= layout.foe.targetHeight, "player silhouette carries the nearer weight");
 });
 
 test("sprites stay above reserve at peer-reported canvas sizes", () => {
@@ -115,10 +117,14 @@ function recordingContext(): {
 }
 
 const SQUARE_LAYOUT: BattleLayout = {
+  presentation: "desktop",
   uiReserveTop: 200,
   uiReserveSource: "estimate",
-  foe: { x: 100, y: 20, w: 100, h: 40, cx: 150, cy: 40 },
-  player: { cx: 80, cy: 300, size: 120, scale: 0.7 },
+  groundY: 173,
+  statusPlayer: { x: 8, y: 20, w: 120, h: 30 },
+  statusFoe: { x: 192, y: 20, w: 120, h: 30 },
+  foe: { x: 100, y: 20, w: 100, h: 40, cx: 150, cy: 40, feetY: 60, targetHeight: 40 },
+  player: { cx: 80, cy: 300, size: 120, scale: 0.7, feetY: 400, targetHeight: 120 },
 };
 const SQUARE_SOURCE = { naturalWidth: 64, naturalHeight: 64 } as unknown as CanvasImageSource;
 
@@ -127,14 +133,15 @@ const SQUARE_SOURCE = { naturalWidth: 64, naturalHeight: 64 } as unknown as Canv
  * The AGES preview paint callback must inherit that same fitted rect — drawing
  * it into the raw `layout.foe` box would stretch imported sprites.
  */
-test("preview paint for the foe uses the aspect-fit rect, not the raw box", () => {
+test("preview paint for the foe uses the ground-anchored local rect, not the raw box", () => {
   const { ctx, drawImage } = recordingContext();
   const paint: number[][] = [];
   drawBattleFoeSprite(ctx, SQUARE_SOURCE, SQUARE_LAYOUT, 0, {}, (_ctx, x, y, w, h) => {
     paint.push([x, y, w, h]);
   });
-  // 64x64 source fits a 100x40 box at 0.625 -> 40x40, centered on x.
-  assert.deepEqual(paint, [[130, 20, 40, 40]]);
+  // Without measured alpha bounds, the fitted local rect is centered on the
+  // ground anchor: target height 40, width 40, feet at local y=0.
+  assert.deepEqual(paint, [[-20, -40, 40, 40]]);
   assert.equal(drawImage.length, 0, "paint replaces the static image");
 });
 
@@ -151,5 +158,6 @@ test("preview paint for the player is placed in the mirrored local space", () =>
     paint.push([x, y, w, h]);
   });
   const half = SQUARE_LAYOUT.player.size / 2;
-  assert.deepEqual(paint, [[-half, -half, SQUARE_LAYOUT.player.size, SQUARE_LAYOUT.player.size]]);
+  // Feet sit at the local origin after the ground-anchored fit.
+  assert.deepEqual(paint, [[-half, -SQUARE_LAYOUT.player.targetHeight, SQUARE_LAYOUT.player.size, SQUARE_LAYOUT.player.size]]);
 });

@@ -114,7 +114,7 @@ async function attack(page, skill, random) {
   await page.getByRole("button", { name: "Continue", exact: true }).click();
   await page.evaluate(() => window.__controlsTest.startWild());
   await page.locator('.battle-controls[data-battle-phase="command"]').waitFor();
-  const foeHealth = page.locator(".battler.foe .meter");
+  const foeHealth = page.locator('.battler.foe [role="meter"]');
   const before = await foeHealth.getAttribute("aria-label");
   await page.getByRole("button", { name: "Skill", exact: true }).click();
   const skillButton = page.getByRole("button", { name: new RegExp(skill) });

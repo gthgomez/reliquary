@@ -43,16 +43,24 @@ try {
       await page.waitForFunction(() => ["command", "win", "lose"].includes(
         document.querySelector(".battle-controls")?.getAttribute("data-battle-phase"),
       ));
-      const recap = page.locator(".battle-recap");
+      const recap = page.locator(".battle-recap").first();
       const events = await recap.locator("li").allTextContents();
       assert.ok(events.length >= 2 && events.length <= 8, `resolved turn must keep a bounded ordered recap: ${JSON.stringify(events)}`);
-      // The real turn supplies the event contents; these fixtures exercise all
-      // three display phases without changing combat or granting rewards.
+      // The command HUD keeps the footer slim; the Details control exposes the
+      // retained recap without changing phase or combat state.
       for (const phase of ["command", "win", "lose"]) {
         await page.evaluate((value) => window.__reliquary.setBattlePhase(value), phase);
         await page.waitForFunction((value) => document.querySelector(".battle-controls")?.getAttribute("data-battle-phase") === value, phase);
-        assert.ok(await recap.isVisible(), `${viewport.width}x${viewport.height} ${phase}: the recap must be visible`);
-        const bodyHeight = await page.locator(".battle-controls-body").evaluate((el) => el.clientHeight);
+        let bodyHeight;
+        if (phase === "command") {
+          await page.locator(".battle-details-toggle").click();
+          await page.waitForSelector("#battle-recap-panel");
+          assert.ok(await page.locator("#battle-recap-panel .battle-recap").isVisible(), "Details must reveal the retained recap");
+          bodyHeight = await page.locator("#battle-recap-panel").evaluate((el) => el.clientHeight);
+        } else {
+          assert.ok(await recap.isVisible(), `${viewport.width}x${viewport.height} ${phase}: the recap must be visible`);
+          bodyHeight = await page.locator(".battle-controls-body").evaluate((el) => el.clientHeight);
+        }
         await page.screenshot({ path: join(artifactDir, `battle-recap-${viewport.width}x${viewport.height}-${phase}.png`) });
         assert.ok(bodyHeight >= 24, `${viewport.width}x${viewport.height} ${phase}: the recap needs a readable scrolling viewport, got ${bodyHeight}px`);
         const controls = page.locator(".battle-controls-actions button");
@@ -60,6 +68,7 @@ try {
           const visibility = await measureTargetVisibility(controls.nth(i));
           assert.ok(visibility.fullyVisible && visibility.hitOk, `${phase}: recap must not clip an action: ${JSON.stringify(visibility)}`);
         }
+        if (phase === "command") await page.locator(".battle-recap-close").click();
         report.push({ viewport, phase, bodyHeight, events });
       }
       assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), "recap layout must not overflow the page horizontally");

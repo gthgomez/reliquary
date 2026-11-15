@@ -22,6 +22,40 @@ export function measureBattleUiReserveCanvas(canvas: HTMLCanvasElement): number 
 
 export type SpriteClientRect = { left: number; top: number; right: number; bottom: number };
 
+/**
+ * Convert a browser/client point into canvas backing-store pixels. This is the
+ * authority for "DOM pixels to canvas coordinates": it accounts for the canvas
+ * CSS scale, the viewport offset and any responsive letterboxing in one place.
+ */
+export function clientPointToCanvas(
+  canvas: HTMLCanvasElement,
+  clientX: number,
+  clientY: number,
+): { x: number; y: number } | null {
+  const rect = canvas.getBoundingClientRect();
+  if (rect.width <= 0 || rect.height <= 0) return null;
+  return {
+    x: ((clientX - rect.left) / rect.width) * canvas.width,
+    y: ((clientY - rect.top) / rect.height) * canvas.height,
+  };
+}
+
+/** Map a canvas-space rectangle into client (CSS) pixels for overlap checks. */
+export function canvasRectToClient(
+  canvas: HTMLCanvasElement,
+  rect: { x: number; y: number; w: number; h: number },
+): SpriteClientRect {
+  const r = canvas.getBoundingClientRect();
+  const sx = r.width / Math.max(1, canvas.width);
+  const sy = r.height / Math.max(1, canvas.height);
+  return {
+    left: r.left + rect.x * sx,
+    top: r.top + rect.y * sy,
+    right: r.left + (rect.x + rect.w) * sx,
+    bottom: r.top + (rect.y + rect.h) * sy,
+  };
+}
+
 /** Canvas-space sprite footprints mapped to viewport/client pixels for overlap checks. */
 export function battleSpriteClientRects(
   canvas: HTMLCanvasElement,
@@ -30,16 +64,8 @@ export function battleSpriteClientRects(
     player: { cx: number; cy: number; size: number; scale: number };
   },
 ): { foe: SpriteClientRect; player: SpriteClientRect } {
-  const r = canvas.getBoundingClientRect();
-  const sx = r.width / canvas.width;
-  const sy = r.height / canvas.height;
-  const map = (x: number, y: number, w: number, h: number): SpriteClientRect => ({
-    left: r.left + x * sx,
-    top: r.top + y * sy,
-    right: r.left + (x + w) * sx,
-    bottom: r.top + (y + h) * sy,
-  });
-  const half = layout.player.size / 2;
+  const map = (x: number, y: number, w: number, h: number): SpriteClientRect =>
+    canvasRectToClient(canvas, { x, y, w, h });
   const ps = layout.player.size * layout.player.scale;
   const pl = layout.player.cx - ps / 2;
   const pt = layout.player.cy - ps / 2;
