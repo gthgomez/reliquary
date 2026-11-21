@@ -1,6 +1,7 @@
 // S02: New Game over a usable save requires informed replacement consent.
 // Cancel is the safe default; nothing changes until the player confirms.
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import { startStaticServer, waitForGameBoot, withBrowser } from "./helpers.mjs";
 
 const SAVE_KEY = "reliquary.save.v3";
@@ -129,6 +130,33 @@ try {
     const afterFirst = await slotsOf(page);
     assert.notEqual(JSON.parse(afterFirst.primary).gold, 137, "the new run is on disk");
     assert.equal(JSON.parse(afterFirst.backup).gold, 137, "the old run rotated to backup exactly as designed");
+  });
+  await withBrowser(async (page) => {
+    const newer = JSON.stringify({ ...oldRun, worldRevision: 6, gold: 999 });
+    await page.addInitScript(({ key, value }) => {
+      if (!localStorage.getItem(key)) localStorage.setItem(key, value);
+    }, { key: SAVE_KEY, value: newer });
+    await page.setViewportSize({ width: 320, height: 568 });
+    await page.goto(baseUrl);
+    await waitForGameBoot(page);
+    assert.equal(await page.getByRole("button", { name: "Continue", exact: true }).count(), 0);
+    assert.match(await page.getByText(/saved by a newer version/i).textContent({ timeout: 5000 }), /newer version/i);
+    const assertExactExport = async () => {
+      const downloadPromise = page.waitForEvent("download");
+      await page.getByRole("button", { name: "Export newer save" }).click();
+      const download = await downloadPromise;
+      assert.equal(await readFile(await download.path(), "utf8"), newer, "export preserves the exact newer bytes");
+    };
+    await assertExactExport();
+    assert.deepEqual(await slotsOf(page), { primary: newer, backup: null }, "checking and exporting does not touch saves");
+    await page.getByRole("button", { name: "Start", exact: true }).click();
+    for (let i = 0; i < 3; i += 1) await page.locator("button.dialog").click();
+    await page.getByRole("button", { name: "Menu", exact: true }).click();
+    await page.getByRole("button", { name: "Save", exact: true }).click();
+    await page.waitForFunction((previous) => localStorage.getItem("reliquary.save.forward") === previous, newer);
+    await page.reload({ waitUntil: "load" });
+    await page.getByRole("button", { name: "Continue", exact: true }).waitFor();
+    await assertExactExport();
   });
   console.log("[title-consent] New Game replacement consent passed");
 } finally {

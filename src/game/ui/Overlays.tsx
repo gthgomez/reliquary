@@ -28,6 +28,7 @@ import { clearTouchHolds, requestAccessibleStep, updateTouchHold, type HoldId } 
 
 export function TitleScreen({ game, snap }: { game: ReliquaryGame; snap: Snapshot }) {
   const [confirmingReplace, setConfirmingReplace] = useState(false);
+  const [exportFailed, setExportFailed] = useState(false);
   const newGameRef = useRef<HTMLButtonElement>(null);
   useEffect(() => {
     if (!confirmingReplace) newGameRef.current?.focus({ preventScroll: true });
@@ -106,6 +107,15 @@ export function TitleScreen({ game, snap }: { game: ReliquaryGame; snap: Snapsho
               ) : null}
             </div>
           )}
+          {game.hasNewerSave && !confirmingReplace ? (
+            <div className="title-save-recovery">
+              <p>A journey here was saved by a newer version. Export it here and import the file in that version.</p>
+              <button type="button" className="btn-ghost" onClick={() => setExportFailed(!game.exportNewerSave())}>
+                Export newer save
+              </button>
+              {exportFailed ? <p role="status">Could not export the save. Try again in the browser that holds it.</p> : null}
+            </div>
+          ) : null}
           <p className="title-hint">
             Arrows or WASD to walk · Z / Enter to speak · X / Esc back · M menu
           </p>

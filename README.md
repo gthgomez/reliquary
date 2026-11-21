@@ -51,17 +51,34 @@ opening session, not a complete playthrough or every evolution. There is no
 hosted playable demo linked yet. Gameplay uses local browser saves. Existing art
 source/authorship records remain unresolved; see [asset provenance](docs/ASSET_PROVENANCE.md).
 
+## Playing and saving
+
+Use the arrow keys or WASD to walk. Press Z or Enter to interact, X or Escape
+to go back, and M to open the Lantern menu. On touch screens, use the direction
+pad and the A and B buttons. Open the Objective button for directions from
+your current location.
+
+Progress is saved in this browser. The game saves as you explore, and Save in
+the Lantern menu writes a checkpoint on demand. Reopening during a battle
+resumes from the pre-battle checkpoint. Use Export to keep a copy or move it to
+another device, then use Import there. If the title identifies a save from a
+newer version, export it and import the file in the version that created it.
+
+On Android Chrome, open the browser menu and choose Install app or Add to Home
+screen when available. Open the game online first and wait for “Available
+offline” before disconnecting. Browser storage holds both the offline game and
+local saves. Export a copy before clearing site data.
+
 ## Development
 
 Requires Node.js 24 and npm 11 (see [.nvmrc](.nvmrc)).
 
 ```bash
-npm ci --legacy-peer-deps
+npm ci
 npm run dev
 ```
 
-The current lockfile needs `--legacy-peer-deps` with npm 11; plain `npm ci`
-can reject optional-peer entries. The capture uses that command without changing
+The committed npm configuration supplies the peer dependency mode required by
 the lockfile.
 
 Open http://localhost:8080/ in a browser. WASD or the on-screen pad walks; Z / A

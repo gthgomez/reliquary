@@ -18,6 +18,8 @@ export const LEGACY_SAVE_BACKUP = "reliquary.save.v2.bak";
 export const LEGACY_V1_KEY = "reliquary.save.v1";
 export const LEGACY_V1_BACKUP = "reliquary.save.v1.bak";
 
+const SAVE_SLOTS = [SAVE_KEY, SAVE_BACKUP, LEGACY_SAVE_KEY, LEGACY_SAVE_BACKUP, LEGACY_V1_KEY, LEGACY_V1_BACKUP];
+
 export interface SaveStorage {
   getItem(key: string): string | null;
   setItem(key: string, value: string): void;
@@ -151,7 +153,7 @@ export function serializeSave(save: GameSave): string | null {
 
 export function loadSave(source: ReadableSaveStorage | null = browserStorage()): GameSave | null {
   if (!source) return null;
-  for (const key of [SAVE_KEY, SAVE_BACKUP, LEGACY_SAVE_KEY, LEGACY_SAVE_BACKUP, LEGACY_V1_KEY, LEGACY_V1_BACKUP]) {
+  for (const key of SAVE_SLOTS) {
     try {
       const raw = source.getItem(key);
       if (!raw) continue;
@@ -176,6 +178,20 @@ function isForwardSave(raw: string): boolean {
     typeof parsed.version === "number" && parsed.version > SAVE_VERSION
     || typeof parsed.worldRevision === "number" && parsed.worldRevision > WORLD_REVISION
   ));
+}
+
+/** Return exact bytes for export, including a newer save preserved by a previous write. */
+export function findNewerSave(source: ReadableSaveStorage | null = browserStorage()): string | null {
+  if (!source) return null;
+  for (const key of [...SAVE_SLOTS, SAVE_FORWARD_KEY]) {
+    try {
+      const raw = source.getItem(key);
+      if (raw && isForwardSave(raw)) return raw;
+    } catch {
+      // An unavailable slot must not hide a newer record in another slot.
+    }
+  }
+  return null;
 }
 
 /**

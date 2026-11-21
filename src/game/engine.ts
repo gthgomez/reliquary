@@ -19,7 +19,7 @@ import { resolveNpcPortrait, type PortraitKey } from "./portraits.ts";
 import { FIXED_ENCOUNTERS } from "./encounters.ts";
 import { sfxPlay, startMusic, stopMusic, unlockAudio, isMuted, setMuted } from "./audio.ts";
 import { setSoundMutedStored } from "./ui/ui-chrome.ts";
-import { hasSave, cloneSave, loadSave, parseSave, SAVE_VERSION, serializeSave, WORLD_REVISION, writeSave, type SaveStorage } from "./save.ts";
+import { hasSave, cloneSave, findNewerSave, loadSave, parseSave, SAVE_VERSION, serializeSave, WORLD_REVISION, writeSave, type SaveStorage } from "./save.ts";
 import { collectGameAssets, isElderhallCandidateBuild } from "./assets.ts";
 import type { BattlePreview } from "./preview/battle-preview.ts";
 import { mathRandom, type RandomSource } from "./rng.ts";
@@ -223,6 +223,7 @@ export class ReliquaryGame {
 	private safeCheckpoint: GameSave | null = null;
 	private saveWriteAllowed = true;
 	private readonly readOnlySaveSource?: Pick<SaveStorage, "getItem">;
+	readonly hasNewerSave: boolean;
 	lifecycle: "constructed" | "booted" | "stopped" = "constructed";
 	private readonly random: RandomSource;
 	private bootToken = 0;
@@ -245,6 +246,7 @@ export class ReliquaryGame {
 	constructor(options: { random?: RandomSource; readOnlySaveSource?: Pick<SaveStorage, "getItem"> } = {}) {
 		this.random = options.random ?? mathRandom;
 		this.readOnlySaveSource = options.readOnlySaveSource;
+		this.hasNewerSave = findNewerSave(this.readOnlySaveSource) !== null;
 		this.saveWriteAllowed = !this.readOnlySaveSource;
 		this.snap = this.buildSnap();
 		this.hasSave = hasSave(this.readOnlySaveSource);
@@ -687,6 +689,11 @@ export class ReliquaryGame {
 		this.toastMsg(written ? "The lantern is copied to a file." : "The file could not be written.");
 		this.emit();
 		return written;
+	}
+	exportNewerSave(): boolean {
+		if (this.mode !== "title") return false;
+		const text = findNewerSave(this.readOnlySaveSource);
+		return text !== null && (this.exportFile?.("reliquary-newer-save.json", text) ?? false);
 	}
 	/** Ask the shell to open a file picker; the chosen text comes back to importGame. */
 	requestImport(): void {
