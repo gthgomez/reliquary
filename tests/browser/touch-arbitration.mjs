@@ -139,7 +139,7 @@ try {
     await page.waitForSelector(".hud-menu");
     // From home, step out to Elderhall so the Gateward intercept is reachable.
     await page.waitForFunction(() => window.__controlsTest?.getPos?.().map === "home", null, { timeout: 10_000 });
-    // Walk south through the cottage door into Elderhall (spawn 12,14) with a
+    // Walk south through the cottage door into Elderhall with a
     // real pointer hold (a synthetic event has no pointerId to capture).
     const downBtn = page.locator(".touch .d.down");
     const downBox = await downBtn.boundingBox();
@@ -148,29 +148,33 @@ try {
     await page.waitForFunction(() => window.__controlsTest?.getPos?.().map === "elderhall", null, { timeout: 20_000 });
     await page.mouse.up();
     await page.waitForTimeout(250);
-    // The cottage warp lands at (5,15); walk east to the gate column (x 10/11)
-    // the way a thumb would steer, then hold North into the gate.
+    // Line up on x=10. The guard occupies x=11 north of us, so letting the
+    // simulated hold cross another tile before releasing invalidates this setup.
     await page.evaluate(() => window.__controlsTest.setKeys(["KeyD"]));
-    await page.waitForFunction(() => window.__controlsTest?.getPos?.().x >= 10, null, { timeout: 20_000 });
-    await page.evaluate(() => window.__controlsTest.setKeys([]));
-    await page.waitForTimeout(250);
+    try {
+      await page.waitForFunction(() => {
+        const controls = window.__controlsTest;
+        if (controls.getPos().x < 10) return false;
+        controls.setKeys([]);
+        return true;
+      }, null, { timeout: 20_000 });
+    } finally {
+      await page.evaluate(() => window.__controlsTest.setKeys([]));
+    }
+    assert.equal(await page.evaluate(() => window.__controlsTest.getPos().x), 10, "aligned with the unoccupied gate approach");
     const north = page.locator(".touch .d.up");
     const box = await north.boundingBox();
     assert.ok(box, "north pad present");
     await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
     await page.mouse.down();
-    await page.waitForFunction(
-      () => {
-        const pos = window.__controlsTest?.getPos?.();
-        return pos && pos.y <= 1 && pos.dialog === false;
-      },
-      null,
-      { timeout: 25_000 },
-    ).catch(() => {});
-    await page.waitForSelector(".dialog", { timeout: 15_000 });
-    // The pad is unmounted while the finger is still down.
-    assert.equal(await page.locator(".touch .dpad").count(), 0, "exploration pad unmounted under the held pointer");
-    await page.mouse.up(); // release lands nowhere; cleanup must have already fired
+    try {
+      await page.waitForSelector(".dialog", { timeout: 15_000 });
+      assert.match(await page.locator(".dialog").innerText(), /Briar Road/);
+      // The pad is unmounted while the finger is still down.
+      assert.equal(await page.locator(".touch .dpad").count(), 0, "exploration pad unmounted under the held pointer");
+    } finally {
+      await page.mouse.up(); // release lands nowhere; cleanup must have already fired
+    }
     // Close the Gateward dialog the way a thumb does: tap the dialog itself.
     for (let i = 0; i < 6 && (await page.locator(".dialog").count()) > 0; i += 1) {
       await page.locator(".dialog").click({ delay: 30 }).catch(() => page.keyboard.press("Enter"));
