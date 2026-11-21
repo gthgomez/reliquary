@@ -279,20 +279,31 @@ try {
     }, { context: { serviceWorkers: viewport.width === 320 ? "allow" : "block" } });
     console.log(`[layout] ok ${viewport.width}x${viewport.height}`);
   }
-  await withBrowser(async (page) => {
-    await page.setViewportSize({ width: 568, height: 320 });
-    await page.goto(baseUrl);
-    await page.getByRole("button", { name: "Start", exact: true }).click();
-    await dismissIntro(page);
-    const objective = page.locator(".hud-objective-btn");
-    const box = await objective.boundingBox();
-    assert.ok(box && box.y >= 0 && box.y + box.height < 320, "enlarged objective fits short landscape");
-    await objective.click();
-    const panel = page.getByRole("region", { name: "Current objective" });
-    assert.match(await panel.innerText(), /Binding Grove/);
-    await panel.getByRole("button", { name: "Open in Lantern menu" }).click();
-    await page.locator(".overlay-panel").waitFor();
-  }, { textScale: 2, context: { hasTouch: true } });
+  for (const viewport of [{ width: 320, height: 568 }, { width: 568, height: 320 }, { width: 640, height: 320 }]) {
+    await withBrowser(async (page) => {
+      await page.setViewportSize(viewport);
+      await page.goto(baseUrl);
+      await page.getByRole("button", { name: "Start", exact: true }).click();
+      await dismissIntro(page);
+      const objective = page.locator(".hud-objective-btn");
+      const box = await objective.boundingBox();
+      assert.ok(box && box.width >= 44 && box.height >= 44 && box.height <= 88,
+        `objective target fits at 200% text, ${viewport.width}x${viewport.height}: ${JSON.stringify(box)}`);
+      assert.ok(await page.locator(".hud-chip").evaluate((el) => el.scrollWidth <= el.clientWidth + 1),
+        "enlarged location and status fit their HUD card");
+      await objective.tap();
+      const panel = page.getByRole("region", { name: "Current objective" });
+      assert.match(await panel.innerText(), /Binding Grove/);
+      const panelBox = await panel.boundingBox();
+      const touchBox = await page.locator(".touch-full").boundingBox();
+      const bottom = viewport.width < viewport.height ? touchBox?.y : viewport.height;
+      assert.ok(panelBox && bottom && panelBox.y + panelBox.height <= bottom + 1,
+        `expanded objective clears the controls at 200% text, ${viewport.width}x${viewport.height}`);
+      await panel.getByRole("button", { name: "Open in Lantern menu" }).tap();
+      await page.locator(".overlay-panel").waitFor();
+    }, { textScale: 2, context: { hasTouch: true } });
+    console.log(`[layout] ok ${viewport.width}x${viewport.height} at 200% text`);
+  }
 } finally {
   server.close();
 }

@@ -917,10 +917,10 @@ export function TouchPad({ game, variant = "full", dialogActive = variant === "d
             <span aria-hidden="true">▲</span>
           </button>
           <button type="button" className="d left" aria-label="West" {...dir("KeyA")}>
-            <span aria-hidden="true">◀</span>
+            <span aria-hidden="true">◀︎</span>
           </button>
           <button type="button" className="d right" aria-label="East" {...dir("KeyD")}>
-            <span aria-hidden="true">▶</span>
+            <span aria-hidden="true">▶︎</span>
           </button>
           <button type="button" className="d down" aria-label="South" {...dir("KeyS")}>
             <span aria-hidden="true">▼</span>

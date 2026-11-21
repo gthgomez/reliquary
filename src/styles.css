@@ -491,6 +491,7 @@
   top: calc(100% + 0.2rem);
   left: 0;
   right: 0;
+  max-width: 30rem;
   z-index: 12;
   padding: 0.45rem 0.5rem 0.5rem;
   border-radius: var(--radius-md);
@@ -557,10 +558,31 @@
   .hud-objective-btn { grid-template-columns: minmax(0, 1fr) auto; }
   .hud-menu { padding-inline: 0.35rem; }
 }
-/* The landscape control rail can leave very little room beside Menu. */
-@container (max-width: 220px) {
-  .hud-objective-label { display: block; }
+/* The landscape control rail and enlarged text can both limit line length. */
+@container (max-width: 13.75em) {
+  .hud-region,
+  .hud-region-sep,
   .hud-menu-label { display: none; }
+  .hud-stats {
+    flex: 1 1 auto;
+    flex-wrap: wrap;
+    gap: 0.1rem 0.35rem;
+    margin-left: 0;
+  }
+  .hud-gold { line-height: 1.2; }
+  .hud-companion {
+    min-width: 0;
+    flex-wrap: wrap;
+    white-space: normal;
+  }
+  .hud-companion-name { max-width: 100%; }
+  .hud-companion-hp { white-space: nowrap; }
+  .hud-objective-label {
+    display: block;
+    letter-spacing: normal;
+    overflow-wrap: anywhere;
+    text-transform: none;
+  }
   .hud-objective-preview {
     position: absolute;
     width: 1px;
@@ -1176,7 +1198,8 @@
   border: 2px solid #bd965e;
   box-shadow: inset 0 0 0 3px #221c17, inset 0 0 0 4px #9c7b48, 0 3px 5px #080a08a8;
   font-family: Georgia, "Palatino Linotype", serif;
-  font-size: 1.5rem;
+  font-size: min(1.5rem, 28px);
+  line-height: 1;
 }
 .a-btn {
   background: radial-gradient(circle at 35% 25%, #fff5d8, #d1b78c);
@@ -1330,6 +1353,18 @@
     top: 0;
     height: auto;
     background: none;
+  }
+  /* A pixel-snapped canvas can be narrower than the space between the pads. */
+  .game-root.has-explore-touch:not(.is-dialog):not(.is-ui-modal) .top-stack {
+    left: 50%;
+    right: auto;
+    width: max(calc(100% - 0.8rem), min(264px, calc(
+      100vw - 264px - env(safe-area-inset-left) - env(safe-area-inset-right)
+    )));
+    transform: translateX(-50%);
+  }
+  .game-root.has-explore-touch .hud-objective-popover {
+    max-height: min(30dvh, 150px);
   }
 }
 
