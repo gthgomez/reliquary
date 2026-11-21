@@ -2,7 +2,7 @@
 // Cancel is the safe default; nothing changes until the player confirms.
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
-import { startStaticServer, waitForGameBoot, withBrowser } from "./helpers.mjs";
+import { measureTargetVisibility, startStaticServer, waitForGameBoot, withBrowser } from "./helpers.mjs";
 
 const SAVE_KEY = "reliquary.save.v3";
 
@@ -48,6 +48,40 @@ const slotsOf = (page) =>
 const { server, baseUrl } = await startStaticServer(0);
 
 try {
+  await withBrowser(async (page, context) => {
+    await page.addInitScript(({ key, value }) => {
+      if (!localStorage.getItem(key)) localStorage.setItem(key, value);
+    }, { key: SAVE_KEY, value: JSON.stringify(oldRun) });
+    await page.goto(baseUrl);
+    await page.getByRole("button", { name: "New Game", exact: true }).tap();
+    const warning = page.locator("#new-game-confirm-detail");
+    assert.equal((await measureTargetVisibility(warning)).fullyVisible, true,
+      "short landscape shows the replacement warning at 200% text");
+    const screen = page.locator(".title-screen");
+    const sizing = await screen.evaluate((el) => ({
+      scrollHeight: el.scrollHeight, height: el.clientHeight,
+    }));
+    if (sizing.scrollHeight > sizing.height) {
+      const cdp = await context.newCDPSession(page);
+      await cdp.send("Input.dispatchTouchEvent", {
+        type: "touchStart", touchPoints: [{ x: 270, y: 240 }],
+      });
+      for (let y = 210; y >= 60; y -= 30) {
+        await cdp.send("Input.dispatchTouchEvent", {
+          type: "touchMove", touchPoints: [{ x: 270, y }],
+        });
+      }
+      await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+      await page.waitForFunction(() => document.querySelector(".title-screen").scrollTop > 0);
+      await cdp.detach();
+    }
+    const keep = page.getByRole("button", { name: "Keep current save", exact: true });
+    assert.equal((await measureTargetVisibility(keep)).hitOk, true,
+      "the safe action is reachable by touch after reading");
+    await keep.tap();
+    assert.deepEqual(await slotsOf(page), { primary: JSON.stringify(oldRun), backup: null });
+  }, { textScale: 2, context: { viewport: { width: 568, height: 320 }, isMobile: true, hasTouch: true } });
+
   await withBrowser(async (page) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto(baseUrl, { waitUntil: "load" });

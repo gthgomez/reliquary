@@ -1169,6 +1169,19 @@
   .battle-recap {
     font-size: 0.7rem;
   }
+  /* At narrow effective widths the resources read across the whole card. */
+  @container battle-hud (max-width: 18em) {
+    .battle-status-card {
+      grid-template-columns: minmax(0, 1fr);
+    }
+    .battle-stat-row {
+      grid-template-columns: auto minmax(0, 1fr) auto;
+    }
+    .battle-portrait,
+    .battle-stat-icon {
+      display: none;
+    }
+  }
 }
 
 /* Portrait tablets share the same dock boundary/anchors as phones; scale the

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { startStaticServer, withBrowser, waitForGameBoot } from "./helpers.mjs";
+import { measureTargetVisibility, startStaticServer, withBrowser, waitForGameBoot } from "./helpers.mjs";
 
 const captures = process.env.RELIQUARY_DIALOGUE_CAPTURES;
 if (captures) mkdirSync(captures, { recursive: true });
@@ -255,6 +255,20 @@ try {
         }
         const namingInput = page.getByRole("textbox", { name: "Creature name", exact: true });
         await namingInput.fill("Sparks");
+        if (v.width === 390 && v.height === 844 && !v.classic) {
+          await page.evaluate(() => document.documentElement.style.fontSize = "200%");
+          await page.setViewportSize({ width: 568, height: 320 });
+          await settle(page);
+          assert.equal((await measureTargetVisibility(namingInput)).fullyVisible, true,
+            "the focused name remains in the viewport after rotation at 200% text");
+          assert.equal(await page.getByRole("button", { name: "North", exact: true }).count(), 0,
+            "walking controls do not compete with the naming modal");
+          const submit = await measureTargetVisibility(page.getByRole("button", { name: "Call them this" }));
+          assert.equal(submit.hitOk, true, `the naming submit is reached in short landscape: ${JSON.stringify(submit)}`);
+          assert.equal(await namingInput.inputValue(), "Sparks", "rotation preserves the draft name");
+          await page.setViewportSize({ width: v.width, height: v.height });
+          await page.evaluate(() => document.documentElement.style.removeProperty("font-size"));
+        }
         await page.keyboard.press("Tab");
         assert.equal(await page.getByRole("button", { name: "Call them this" })
           .evaluate((button) => document.activeElement === button), true);

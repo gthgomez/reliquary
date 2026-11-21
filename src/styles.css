@@ -203,9 +203,41 @@
 .title-save-recovery button {
   min-height: 44px;
 }
-.title-screen:has(.title-save-recovery) {
+.title-screen:has(.title-save-recovery),
+.title-screen:has(.title-confirm) {
   align-items: safe flex-end;
   overflow-y: auto;
+  touch-action: pan-y;
+}
+@media (orientation: landscape) and (max-height: 420px) {
+  .title-copy:has(.title-confirm) {
+    width: min(36rem, 94%);
+    padding: 0.35rem 0;
+  }
+  .title-plaque:has(.title-confirm) {
+    padding: 0.4rem;
+  }
+  .title-plaque:has(.title-confirm) > :is(.title-kicker, .title-word, .title-tag, .title-hint) {
+    display: none;
+  }
+  .title-confirm {
+    margin: 0;
+    padding: 0.55rem;
+  }
+  .title-confirm .title-tag {
+    max-width: none;
+    margin-bottom: 0.35rem;
+  }
+  .title-confirm .title-hint {
+    margin-bottom: 0.5rem;
+    line-height: 1.35;
+  }
+  .title-confirm .title-actions {
+    gap: 0.35rem;
+  }
+  .title-confirm .title-actions > button {
+    padding: 0.35rem 0.65rem;
+  }
 }
 .boot .title-copy {
   margin: auto;
@@ -1512,6 +1544,7 @@ button:disabled {
   right: 0.7rem;
   bottom: 0.7rem;
   max-width: 28rem;
+  max-height: calc(100% - 1.4rem);
   margin: 0 auto;
   z-index: 6;
   pointer-events: auto;
@@ -1522,6 +1555,9 @@ button:disabled {
   color: var(--color-ink);
   border-radius: var(--radius-lg);
   padding: 1rem 1.1rem 1.1rem;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
   box-shadow: 0 12px 40px color-mix(in oklab, var(--color-ink) 50%, transparent);
 }
 .name-prompt p {
@@ -1548,4 +1584,34 @@ button:disabled {
 .name-prompt .btn-ghost {
   background: var(--color-ink);
   color: var(--color-cream);
+}
+@media (orientation: landscape) and (max-height: 420px) {
+  .name-prompt {
+    inset-inline: max(8px, 2vw);
+    bottom: 8px;
+    max-height: calc(100% - 16px);
+    padding: 0.4rem 0.55rem;
+    gap: 0.35rem;
+  }
+  .name-prompt p,
+  .name-prompt label,
+  .name-prompt .btn-ghost {
+    line-height: 1.15;
+  }
+  .name-prompt label {
+    gap: 0.15rem;
+  }
+  .name-prompt input {
+    min-height: 44px;
+    padding: 0.25rem 0.4rem;
+  }
+  .name-prompt-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.3rem;
+  }
+  .name-prompt .btn-ghost {
+    padding: 0.22rem 0.3rem;
+    overflow-wrap: anywhere;
+  }
 }

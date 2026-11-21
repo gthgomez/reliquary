@@ -281,6 +281,22 @@ async function checkWideSilhouettes() {
 }
 
 try {
+  for (const viewport of [{ width: 390, height: 844 }, { width: 320, height: 568 }]) {
+    await withBrowser(async (page) => {
+      await enterReferenceBattle(page);
+      const escaped = await page.locator(".battle-stat-numbers").evaluateAll((stats) => stats.flatMap((stat) => {
+        const range = document.createRange();
+        range.selectNodeContents(stat);
+        const text = range.getBoundingClientRect();
+        const card = stat.closest(".battle-status-card").getBoundingClientRect();
+        return text.left < card.left || text.right > card.right || text.right > innerWidth
+          ? [{ text: stat.textContent, right: text.right, cardRight: card.right }]
+          : [];
+      }));
+      assert.deepEqual(escaped, [], `${viewport.width}×${viewport.height} portrait HP and MP stay on their own cards at 200% text`);
+      await page.screenshot({ path: join(artifactDir, `battle-readouts-${viewport.width}x${viewport.height}-200.png`) });
+    }, { textScale: 2, context: { viewport, isMobile: true, hasTouch: true } });
+  }
   await checkWideSilhouettes();
   for (const vp of VIEWPORTS) {
     await withBrowser(async (page) => {

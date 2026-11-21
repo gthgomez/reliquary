@@ -201,15 +201,15 @@ export function GameApp() {
     !!snap.dialog ||
     !!snap.menu;
   const uiModal = isUiModalOpen(snap);
+  const naming = !!snap.namePrompt;
   const classicTouch = isClassicTouchEnabled();
   const showHudBar = playing && snap.mode !== "battle";
-  const showExplorationTouch = shouldShowExplorationTouch(snap, classicTouch);
-  const showDialogTouch = shouldShowDialogTouch(snap, classicTouch);
+  const showExplorationTouch = !naming && shouldShowExplorationTouch(snap, classicTouch);
+  const showDialogTouch = !naming && shouldShowDialogTouch(snap, classicTouch);
   const showTouch = showExplorationTouch || showDialogTouch;
   const mapId = g.mapId;
   const cottage = mapId === "home" && snap.mode === "world";
   const dialogActive = !!snap.dialog;
-  const naming = !!snap.namePrompt;
   const menuButtonRef = useRef<HTMLButtonElement>(null);
   const wasUiModal = useRef(false);
 
@@ -302,11 +302,11 @@ export function GameApp() {
           </div>
           {snap.mode === "battle" ? <BattleHud game={g} snap={snap} /> : null}
           {snap.dialog ? <DialogBox dialog={snap.dialog} game={g} /> : null}
-          {snap.namePrompt ? <NamePrompt key={snap.namePrompt.uid} game={g} prompt={snap.namePrompt} /> : null}
           {snap.menu ? <MenuPanel game={g} snap={snap} onImportActivate={openImportPicker} /> : null}
           {snap.mode === "shop" ? <ShopPanel game={g} snap={snap} /> : null}
           {uiModal && snap.toast ? <Toast text={snap.toast} className="toast-modal" /> : null}
         </div>
+        {snap.namePrompt ? <NamePrompt key={snap.namePrompt.uid} game={g} prompt={snap.namePrompt} /> : null}
         {snap.mode === "boot" ? <LoadingScreen progress={snap.loadProgress} /> : null}
         {snap.mode === "title" ? <TitleScreen game={g} snap={snap} /> : null}
         {snap.mode === "victory" ? <VictoryScreen game={g} /> : null}

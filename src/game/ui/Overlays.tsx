@@ -32,8 +32,10 @@ export function TitleScreen({ game, snap }: { game: ReliquaryGame; snap: Snapsho
   const [confirmingReplace, setConfirmingReplace] = useState(false);
   const [exportFailed, setExportFailed] = useState(false);
   const newGameRef = useRef<HTMLButtonElement>(null);
+  const keepSaveRef = useRef<HTMLButtonElement>(null);
   useEffect(() => {
-    if (!confirmingReplace) newGameRef.current?.focus({ preventScroll: true });
+    const safeAction = confirmingReplace ? keepSaveRef : newGameRef;
+    safeAction.current?.focus({ preventScroll: true });
   }, [confirmingReplace]);
   return (
     <div className="title-screen">
@@ -69,7 +71,7 @@ export function TitleScreen({ game, snap }: { game: ReliquaryGame; snap: Snapsho
                 <button
                   type="button"
                   className="btn-ghost"
-                  autoFocus
+                  ref={keepSaveRef}
                   onClick={() => setConfirmingReplace(false)}
                 >
                   Keep current save
