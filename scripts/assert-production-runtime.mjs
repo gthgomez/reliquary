@@ -30,6 +30,7 @@ const bundle = clientBundlePath();
 assert.ok(bundle, `[assert:prod-runtime] missing client bundle under ${staticDir}`);
 
 const bundleSource = readFileSync(bundle, "utf8");
+assert.equal(bundleSource.includes("__reliquaryJourneyRandom"), false, "production must exclude the journey random source");
 const deadStringPresent = {
   __battleStageReport: bundleSource.includes("__battleStageReport"),
   __worldCameraReport: bundleSource.includes("__worldCameraReport"),

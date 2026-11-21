@@ -23,9 +23,16 @@ import { setMuted } from "./audio.ts";
 import { acquireSaveSession } from "./save-session.ts";
 import { attachEconomyProbes } from "reliquary-economy-probes";
 import { attachBattleUiBrowserHooks } from "reliquary-battle-browser-probes";
+import type { RandomSource } from "./rng.ts";
 
 declare const __RELIQUARY_BROWSER_TEST__: boolean;
 declare const __RELIQUARY_AGES_PREVIEW__: boolean;
+
+declare global {
+  interface Window {
+    __reliquaryJourneyRandom?: RandomSource;
+  }
+}
 
 const AgesPreviewPanel = __RELIQUARY_AGES_PREVIEW__
   ? lazy(() => import("./preview/AgesPreviewPanel.tsx"))
@@ -48,7 +55,9 @@ export function GameApp() {
     (gameRef.current = new ReliquaryGame(
       agesPreviewEnabled
         ? { readOnlySaveSource: { getItem: (key) => localStorage.getItem(`ages-preview:${key}`) } }
-        : undefined,
+        : __RELIQUARY_BROWSER_TEST__ && typeof window !== "undefined" && window.__reliquaryJourneyRandom
+          ? { random: window.__reliquaryJourneyRandom }
+          : undefined,
     ));
   const snap = useSyncExternalStore(g.subscribe, g.getSnapshot, g.getSnapshot);
 

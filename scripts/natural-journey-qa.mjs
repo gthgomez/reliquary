@@ -4,6 +4,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { MAPS } from "../src/game/maps.ts";
 import { pathFor } from "./natural-journey-path.mjs";
+import { faceDirection, walkTo } from "./natural-journey-controls.mjs";
 import { finishStarterPact } from "./finish-starter-pact.mjs";
 
 const url = process.argv[2] ?? "http://127.0.0.1:8181";
@@ -25,34 +26,7 @@ try {
   await page.getByRole("button", { name: "Start", exact: true }).click();
   for (let i = 0; i < 3; i++) await page.locator("button.dialog").click();
 
-  async function travel(mapId, target, starterChosen = false) {
-    const start = await page.evaluate(() => window.__controlsTest.getPos());
-    if (start.map !== mapId) throw new Error(`Expected ${mapId}, got ${start.map}`);
-    for (const step of pathFor(MAPS[mapId], start, target, starterChosen)) {
-      // Real key events drive movement. The probe observes state only: release
-      // after a step starts so slow runners cannot enqueue an unintended step.
-      await page.keyboard.down(step.key);
-      try {
-        await page.waitForFunction((fromMap) => {
-          const pos = window.__controlsTest.getPos();
-          return pos.mode === "battle" || pos.map !== fromMap || window.__controlsTest.getSpeed() === 1;
-        }, mapId, { timeout: 5000 });
-      } finally {
-        await page.keyboard.up(step.key);
-      }
-      await page.waitForFunction(({ step, mapId }) => {
-        const pos = window.__controlsTest.getPos();
-        return pos.mode === "battle" || pos.map !== mapId || (pos.x === step.x && pos.y === step.y);
-      }, { step, mapId }, { timeout: 5000 });
-      await page.waitForFunction(() => window.__controlsTest.getSpeed() === 0, null, { timeout: 5000 });
-      const result = await page.evaluate(() => window.__controlsTest.getPos());
-      if (result.mode === "battle") return result;
-      if (result.map !== mapId && !step.warp) throw new Error(`Unexpected warp from ${mapId}`);
-      if (result.map === mapId && (result.x !== step.x || result.y !== step.y))
-        throw new Error(`Movement overshot ${step.x},${step.y}: ${result.x},${result.y}`);
-    }
-    return await page.evaluate(() => window.__controlsTest.getPos());
-  }
+  const travel = (mapId, target, starterChosen = false) => walkTo(page, MAPS[mapId], target, starterChosen);
 
   let position = await travel("home", { x: 5, y: 8 });
   if (position.map !== "elderhall") throw new Error("Home exit failed");
@@ -60,9 +34,7 @@ try {
   // Visit the elder and every starting-village building through normal input.
   // Only position and facing are read from the test probe.
   async function faceAndInteract(key, yaw) {
-    await page.keyboard.down(key);
-    await page.waitForFunction((expected) => window.__controlsTest.getYaw() === expected, yaw);
-    await page.keyboard.up(key);
+    await faceDirection(page, key, yaw);
     await page.keyboard.press("KeyZ");
   }
   const maren = MAPS.elderhall.npcs.find((npc) => npc.id === "maren");
