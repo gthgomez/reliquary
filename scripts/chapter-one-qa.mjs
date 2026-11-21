@@ -77,7 +77,9 @@ try {
 
   let position = await travel("home", { x: 5, y: 8 });
   if (position.map !== "elderhall") throw new Error("Home exit failed");
-  await travel("elderhall", { x: 7, y: 10 });
+  const maren = MAPS.elderhall.npcs.find((npc) => npc.id === "maren");
+  if (!maren) throw new Error("Elder Maren is missing from Elderhall");
+  await travel("elderhall", { x: maren.x, y: maren.y + 1 });
   await faceNorth();
   await press("KeyZ");
   await dialogue.getByText("Elder Maren", { exact: true }).waitFor();
