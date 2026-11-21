@@ -171,6 +171,14 @@ async function checkWideSilhouettes() {
           controls: rect(".battle-controls"),
           toast: rect(".toast"),
           toastRole: document.querySelector(".toast").getAttribute("role"),
+          clippedStats: [...document.querySelectorAll(".battle-stat-numbers")].flatMap((value) => {
+            const text = value.getBoundingClientRect();
+            const card = value.closest(".battle-status-card").getBoundingClientRect();
+            return text.left < card.left || text.right > card.right || text.bottom > card.bottom
+              ? [value.textContent] : [];
+          }),
+          clippedCommands: [...document.querySelectorAll(".battle-action-label")].flatMap((label) =>
+            label.scrollWidth > label.clientWidth + 1 ? [label.textContent] : []),
         };
       });
       await page.screenshot({ path: join(artifactDir, `battle-wide-${viewport}.png`) });
@@ -184,6 +192,10 @@ async function checkWideSilhouettes() {
       assert.ok(!rectsOverlap(toast, player) && !rectsOverlap(toast, foe),
         `${viewport}: toast does not cover silhouettes`);
       assert.equal(toastRole, "status", `${viewport}: save confirmation remains announced`);
+      if (textScale === 2) {
+        assert.deepEqual(geometry.clippedStats, [], `${viewport}: HP and MP values fit in their cards`);
+        assert.deepEqual(geometry.clippedCommands, [], `${viewport}: action labels are fully visible`);
+      }
       console.log(`[battle-stage-browser] wide pairing ok ${viewport}`);
     });
   }

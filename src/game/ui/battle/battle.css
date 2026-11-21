@@ -22,6 +22,7 @@
   position: absolute;
   inset: 0;
   z-index: 3;
+  container: battle-hud / inline-size;
   color: var(--bq-ivory);
   pointer-events: none;
   font-family: var(--font-sans);
@@ -970,6 +971,22 @@
     width: 52%;
     max-height: 52%;
     padding: 8px 10px;
+  }
+  @container battle-hud (max-width: 27em) {
+    .battle-status-card {
+      grid-template-columns: minmax(0, 1fr);
+    }
+    .battle-status-head {
+      gap: 4px;
+    }
+    .battle-stat-row {
+      grid-template-columns: auto minmax(0, 1fr) auto;
+    }
+    .battle-portrait,
+    .battle-stat-icon,
+    .battle-action-icon {
+      display: none;
+    }
   }
 }
 
