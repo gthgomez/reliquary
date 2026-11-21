@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { KeyboardEvent as ReactKeyboardEvent } from "react";
 import { currentStats } from "../../content.ts";
 import type { ReliquaryGame } from "../../engine.ts";
@@ -18,6 +18,7 @@ import {
 } from "./battle-commands.ts";
 import { resolveBattleActionDetails, type ActionDetails } from "./battle-action-details.ts";
 import { battlePanelHeading } from "../battle-chrome.ts";
+import { Toast } from "../Overlays.tsx";
 import "./battle.css";
 
 const SUBMENU_PHASES = new Set<BattleState["phase"]>(["skills", "items", "party", "bind"]);
@@ -45,12 +46,32 @@ export function BattleHud({ game, snap }: { game: ReliquaryGame; snap: Snapshot 
     [b?.canBind, b?.canFlee],
   );
   const rootRef = useRef<HTMLDivElement>(null);
+  const statusRef = useRef<HTMLDivElement>(null);
   const recapRef = useRef<HTMLElement>(null);
   const [focusCommand, setFocusCommand] = useState<BattleCommand>(
     () => firstAvailableCommand(slots) ?? "Strike",
   );
   const [recapOpen, setRecapOpen] = useState(false);
   const [touchInput, setTouchInput] = useState(false);
+
+  useLayoutEffect(() => {
+    const root = rootRef.current;
+    const status = statusRef.current;
+    if (!root || !status) return;
+    const measure = () => {
+      const frame = root.getBoundingClientRect();
+      const bottom = status.getBoundingClientRect().bottom;
+      game.setBattleStatusBottomRatio(frame.height > 0 ? (bottom - frame.top) / frame.height : null);
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(root);
+    observer.observe(status);
+    return () => {
+      observer.disconnect();
+      game.setBattleStatusBottomRatio(null);
+    };
+  }, [game]);
 
   useEffect(() => {
     const coarse = typeof window.matchMedia === "function" && window.matchMedia("(pointer: coarse)").matches;
@@ -250,9 +271,10 @@ export function BattleHud({ game, snap }: { game: ReliquaryGame; snap: Snapshot 
 
   return (
     <div className={`battle-ui battle-hud${touchInput ? " is-touch" : ""}`} ref={rootRef} onKeyDown={onKeyDown}>
-      <div className="battle-status-zone">
+      <div className="battle-status-zone" ref={statusRef}>
         {me && meStats ? <BattleStatusCard side="player" beast={me} stats={meStats} /> : null}
         {foe && foeStats ? <BattleStatusCard side="foe" beast={foe} stats={foeStats} showMana={false} /> : null}
+        {snap.toast ? <Toast text={snap.toast} className="battle-toast" /> : null}
       </div>
 
       <div className="battle-controls" data-battle-phase={b.phase}>

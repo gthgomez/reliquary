@@ -62,6 +62,13 @@
 .battle-status-card.foe {
   margin-left: auto;
 }
+.battle-status-zone > .battle-toast {
+  position: absolute;
+  top: calc(100% + 0.25rem);
+  left: 50%;
+  width: max-content;
+  transform: translateX(-50%);
+}
 @supports not (backdrop-filter: blur(2px)) {
   .battle-status-card,
   .battle-command-panel,
@@ -838,6 +845,13 @@
     top: 3.5%;
     left: 1.8%;
     right: 1.8%;
+  }
+  .battle-status-zone > .battle-toast {
+    top: 0;
+    max-width: calc(35% - 0.5rem);
+    padding: 4px 8px;
+    border-radius: 0.65rem;
+    line-height: 1.2;
   }
   .battle-status-card {
     width: 32.5%;

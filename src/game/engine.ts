@@ -238,6 +238,7 @@ export class ReliquaryGame {
 	};
 	private probe: NonNullable<Window["__controlsTest"]> | null = null;
 	private battleStableReserve: number | null = null;
+	private battleStatusBottomRatio: number | null = null;
 	private battleLayoutCanvasKey: string | null = null;
 	private battleIdlePhase = 0;
 	battlePreview: BattlePreview | null = null;
@@ -2489,6 +2490,9 @@ export class ReliquaryGame {
 		for (const s of list) s.draw();
 		if (panWorld) ctx.restore();
 	}
+	setBattleStatusBottomRatio(ratio: number | null): void {
+		this.battleStatusBottomRatio = ratio;
+	}
 	private drawBattle(ctx: CanvasRenderingContext2D): void {
 		const b = this.battle!;
 		if (!b) return;
@@ -2505,6 +2509,7 @@ export class ReliquaryGame {
 		const layout = computeBattleLayout(cw, ch, this.battleStableReserve, {
 			stableReserve: true,
 			presentation: battlePresentation(this.cssW, this.cssH),
+			statusBottom: this.battleStatusBottomRatio == null ? undefined : this.battleStatusBottomRatio * ch,
 		});
 		const geometryBase = computeBattleStageGeometry(cw, ch, layout, b.phase);
 		const bg = this.images[`bg_${b.bg}`] || this.images.bg_grass;

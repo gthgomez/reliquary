@@ -605,7 +605,8 @@
     clip-path: inset(50%);
   }
 }
-.top-stack:has(.hud-objective-expanded) .app-status {
+.top-stack:has(.hud-objective-expanded) .app-status,
+.game-root.is-battle:has(.battle-toast) .app-status {
   position: absolute;
   width: 1px;
   height: 1px;

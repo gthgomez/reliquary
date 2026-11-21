@@ -24,6 +24,8 @@ export type BattleLayout = {
   /** Status card bands, player upper-left, foe upper-right. */
   statusPlayer: BattleZoneRect;
   statusFoe: BattleZoneRect;
+  /** Room for opaque silhouettes at the idle anchors, in canvas pixels. */
+  spriteLimits?: { playerWidth: number; foeWidth: number; height: number };
   foe: {
     x: number;
     y: number;
@@ -46,6 +48,7 @@ export type BattleLayout = {
 };
 
 const SPRITE_UI_GAP = 10;
+const SPRITE_FRAME_GAP = 6;
 
 /**
  * Reserve line that ignores transient menu height changes (worst-case command band).
@@ -84,7 +87,7 @@ export function computeBattleLayout(
   cw: number,
   ch: number,
   measuredReserveTop?: number | null,
-  options?: { stableReserve?: boolean; presentation?: BattlePresentation },
+  options?: { stableReserve?: boolean; presentation?: BattlePresentation; statusBottom?: number },
 ): BattleLayout {
   const presentation = options?.presentation ?? battlePresentation(cw, ch);
   const metrics = battleStageMetrics(presentation);
@@ -105,14 +108,23 @@ export function computeBattleLayout(
   const playerCx = Math.round(cw * metrics.playerCx);
   const foeCx = Math.round(cw * metrics.foeCx);
   const foeW = Math.round(foeHeight * 1.15);
+  const statusPlayer = statusZone(cw, ch, presentation, "player");
+  const statusFoe = statusZone(cw, ch, presentation, "foe");
+  const statusBottom = options?.statusBottom ?? statusPlayer.y + statusPlayer.h;
+  const center = cw / 2;
 
   return {
     presentation,
     uiReserveTop,
     uiReserveSource,
     groundY,
-    statusPlayer: statusZone(cw, ch, presentation, "player"),
-    statusFoe: statusZone(cw, ch, presentation, "foe"),
+    statusPlayer,
+    statusFoe,
+    spriteLimits: {
+      playerWidth: Math.max(1, 2 * (Math.min(playerCx, center - playerCx) - SPRITE_FRAME_GAP)),
+      foeWidth: Math.max(1, 2 * (Math.min(cw - foeCx, foeCx - center) - SPRITE_FRAME_GAP)),
+      height: Math.max(1, groundY - statusBottom - SPRITE_FRAME_GAP),
+    },
     foe: {
       x: Math.round(foeCx - foeW / 2),
       y: groundY - foeHeight,
@@ -275,6 +287,18 @@ export type BattleSpritePaint = (
   ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number,
 ) => void;
 
+function fitBattleSpriteHeight(
+  height: number,
+  srcW: number,
+  srcH: number,
+  bounds: SpriteAlphaBounds,
+  maxWidth = Infinity,
+  maxHeight = Infinity,
+): number {
+  const aspect = (bounds.w * srcW) / Math.max(1, bounds.h * srcH);
+  return Math.min(height, maxHeight, maxWidth / aspect);
+}
+
 function paintGroundShadow(
   ctx: CanvasRenderingContext2D,
   cx: number,
@@ -314,17 +338,20 @@ export function drawBattleFoeSprite(
   const srcH = src?.naturalHeight || layout.foe.h;
   const anchorX = layout.foe.cx + shakeX + dx;
   const feetY = layout.foe.feetY + dy;
+  const targetHeight = fitBattleSpriteHeight(
+    layout.foe.targetHeight, srcW, srcH, opaque, layout.spriteLimits?.foeWidth, layout.spriteLimits?.height,
+  );
   const placement = placeSpriteOnGround({
     srcW,
     srcH,
     bounds: opaque,
     anchorX,
     feetY,
-    targetHeight: layout.foe.targetHeight,
+    targetHeight,
   });
   paintGroundShadow(ctx, placement.centerX, feetY, placement.width);
   if (paint) {
-    const local = fittedSpriteLocalRect(srcW, srcH, opaque, layout.foe.targetHeight);
+    const local = fittedSpriteLocalRect(srcW, srcH, opaque, targetHeight);
     ctx.save();
     ctx.translate(anchorX, feetY);
     paint(ctx, local.x, local.y, local.w, local.h);
@@ -350,17 +377,20 @@ export function drawBattlePlayerSprite(
   const srcH = src?.naturalHeight || layout.player.size;
   const anchorX = layout.player.cx + dx;
   const feetY = layout.player.feetY + dy;
+  const targetHeight = fitBattleSpriteHeight(
+    layout.player.targetHeight, srcW, srcH, opaque, layout.spriteLimits?.playerWidth, layout.spriteLimits?.height,
+  );
   const placement = placeSpriteOnGround({
     srcW,
     srcH,
     bounds: opaque,
     anchorX,
     feetY,
-    targetHeight: layout.player.targetHeight,
+    targetHeight,
     mirror: true,
   });
   paintGroundShadow(ctx, placement.centerX, feetY, placement.width);
-  const local = fittedSpriteLocalRect(srcW, srcH, opaque, layout.player.targetHeight);
+  const local = fittedSpriteLocalRect(srcW, srcH, opaque, targetHeight);
   ctx.save();
   ctx.translate(anchorX, feetY);
   ctx.scale(-1, 1);

@@ -294,7 +294,7 @@ export function GameApp() {
               />
             ) : null}
             <AppStatus />
-            {snap.toast && !uiModal ? <Toast text={snap.toast} /> : null}
+            {snap.toast && !uiModal && snap.mode !== "battle" ? <Toast text={snap.toast} /> : null}
           </div>
           {snap.mode === "battle" ? <BattleHud game={g} snap={snap} /> : null}
           {snap.dialog ? <DialogBox snap={snap} onAdvance={() => g.confirm()} /> : null}
