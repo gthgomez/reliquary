@@ -150,9 +150,12 @@ async function checkEnlargedSkillMenu(page, viewport) {
     document.querySelector(".battle-details-panel").scrollTop < position, bottom);
   assert.match(await details.locator(".battle-details-title").innerText(), /^Cinder$/,
     `${viewport}: scrolling details leaves the active skill unchanged`);
-  await details.hover();
-  await page.mouse.wheel(0, -500);
-  await page.waitForFunction(() => document.querySelector(".battle-details-panel").scrollTop === 0);
+  await page.keyboard.press("Home");
+  await page.waitForFunction(() => document.querySelector(".battle-details-panel").scrollTop <= 1);
+  assert.equal(await details.locator(".battle-details-copy").evaluate((copy) => {
+    const panel = copy.closest(".battle-details-panel").getBoundingClientRect();
+    return copy.getBoundingClientRect().top < panel.bottom;
+  }), true, `${viewport}: returning to the top reveals the skill description`);
   assert.equal(await details.evaluate((panel) => getComputedStyle(panel).touchAction), "pan-y");
   assert.match(await details.locator(".battle-details-copy").innerText(), /./);
   await page.keyboard.press("Escape");
