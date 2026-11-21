@@ -289,8 +289,8 @@ try {
     return Number(match[0]);
   };
   const goldBefore = await readGold();
-  await press("Shift");
-  await page.waitForTimeout(200);
+  await press("KeyX");
+  await innPrompt.waitFor({ state: "detached" });
   if ((await readGold()) !== goldBefore) throw new Error("inn declined but gold changed");
   report.events.push("Inn decline leaves crowns untouched");
   await faceNorth();

@@ -243,6 +243,7 @@ try {
         const starterSprite = page.locator(".dialog-species");
         for (const [primary, secondary] of [["Next", "Cancel"], ["Next", "Back"], ["Bind Emberkit", "Cancel"]]) {
           assert.equal(await starterSprite.getAttribute("src"), "/game/sprites/emberkit.png");
+          await starterSprite.evaluate((image) => image.decode());
           assert.ok(await starterSprite.evaluate((image) => image.complete && image.naturalWidth > 0), "shipped species sprite loads");
           assert.equal(await page.locator(".dialog-next").textContent(), primary);
           assert.equal(await page.locator(".dialog-back").textContent(), secondary);
@@ -252,6 +253,19 @@ try {
           }
           await page.locator(".dialog-next").click();
         }
+        const namingInput = page.getByRole("textbox", { name: "Creature name", exact: true });
+        await namingInput.fill("Sparks");
+        await page.keyboard.press("Tab");
+        assert.equal(await page.getByRole("button", { name: "Call them this" })
+          .evaluate((button) => document.activeElement === button), true);
+        await page.keyboard.press("Shift+Tab");
+        assert.equal(await namingInput.count(), 1, "reverse Tab does not dismiss naming");
+        assert.equal(await namingInput.evaluate((input) => document.activeElement === input), true,
+          "reverse Tab returns to the name field");
+        assert.equal(await namingInput.inputValue(), "Sparks", "reverse Tab preserves the unsent name");
+        await page.keyboard.press("Shift+Tab");
+        assert.equal(await page.getByRole("button", { name: "Keep Emberkit" })
+          .evaluate((button) => document.activeElement === button), true, "name focus wraps within its controls");
         await page.getByRole("button", { name: "Keep Emberkit" }).click();
         assert.equal(
           await page.locator(".dialog").getAttribute("data-portrait"),

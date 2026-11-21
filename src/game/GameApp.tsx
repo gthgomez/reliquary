@@ -209,6 +209,7 @@ export function GameApp() {
   const mapId = g.mapId;
   const cottage = mapId === "home" && snap.mode === "world";
   const dialogActive = !!snap.dialog;
+  const naming = !!snap.namePrompt;
   const menuButtonRef = useRef<HTMLButtonElement>(null);
   const wasUiModal = useRef(false);
 
@@ -216,7 +217,7 @@ export function GameApp() {
   // map, even when the stage's outer border box does not resize.
   useLayoutEffect(() => {
     applyLayoutRef.current?.();
-  }, [snap.mode, snap.menu, dialogActive, mapId]);
+  }, [snap.mode, snap.menu, dialogActive, naming, mapId]);
 
   useEffect(() => {
     if (uiModal) {
@@ -292,11 +293,11 @@ export function GameApp() {
                 snap={snap}
                 mapId={mapId}
                 menuButtonRef={menuButtonRef}
-                dormant={uiModal || !!snap.dialog}
+                dormant={uiModal || dialogActive || naming}
                 onMenu={() => g.toggleMenu()}
               />
             ) : null}
-            <AppStatus showReadyToast={snap.mode === "world" && !uiModal && !snap.dialog} />
+            <AppStatus showReadyToast={snap.mode === "world" && !uiModal && !dialogActive && !naming} />
             {snap.toast && !uiModal && snap.mode !== "battle" ? <Toast text={snap.toast} /> : null}
           </div>
           {snap.mode === "battle" ? <BattleHud game={g} snap={snap} /> : null}

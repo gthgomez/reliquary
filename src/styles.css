@@ -568,7 +568,7 @@
   line-height: 1;
 }
 /* On a narrow phone, give the objective its own row so directions can wrap. */
-@container (max-width: 500px) {
+@container (max-width: 540px) {
   .hud-stats { order: 2; }
   .hud-objective-slot { order: 3; flex-basis: 100%; }
 }
@@ -1165,6 +1165,15 @@
   display: grid;
   place-items: center;
 }
+.dpad .d span {
+  width: 0.62rem;
+  height: 0.62rem;
+  background: currentColor;
+  clip-path: polygon(50% 5%, 100% 95%, 0 95%);
+}
+.dpad .left span { transform: rotate(-90deg); }
+.dpad .right span { transform: rotate(90deg); }
+.dpad .down span { transform: rotate(180deg); }
 .dpad .d:active,
 .a-btn:active,
 .b-btn:active {

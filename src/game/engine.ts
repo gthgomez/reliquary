@@ -515,7 +515,7 @@ export class ReliquaryGame {
 		if (target instanceof HTMLElement && target.closest("input, textarea, select, [contenteditable='true']")) return;
 		// Shift+Tab must remain native inside dialogs. Treating its modifier as
 		// the legacy cancel shortcut closes the panel before Tab can wrap focus.
-		if (e.code === "ShiftLeft" && (this.dialog ||
+		if (e.code === "ShiftLeft" && (this.dialog || this.namePrompt ||
 			(target instanceof HTMLElement && target.closest("[role='dialog']")))) return;
 		if (target instanceof HTMLElement && target.closest("button") && (e.code === "Enter" || e.code === "Space")) {
 			if (e.repeat) e.preventDefault();

@@ -12,7 +12,7 @@ const matrix = [
 const artifacts = process.env.RELIQUARY_PHONE_EVIDENCE;
 const baseline = process.argv.includes("--baseline");
 const buildsCandidate = process.env.VITE_ELDERHALL_CANDIDATE === "1";
-const cases = artifacts ? matrix : [[320, 568], [390, 844], [568, 320], [1280, 800]];
+const cases = artifacts ? matrix : [[320, 568], [390, 844], [568, 320], [844, 390], [1280, 800]];
 const records = [];
 const { server, baseUrl } = await startStaticServer();
 
@@ -106,6 +106,14 @@ async function exercise(width, height, textScale = 1) {
     if (textScale === 1) {
       await walk(page, "home", { x: 5, y: 8 }, "elderhall");
       await page.locator(".hud-place").filter({ hasText: "Elderhall" }).waitFor();
+      if (!baseline && width === 844 && height === 390) {
+        const objective = await page.locator(".hud-objective-preview").evaluate((element) => {
+          const box = element.getBoundingClientRect();
+          return { width: box.width, lines: box.height / Number.parseFloat(getComputedStyle(element).lineHeight) };
+        });
+        assert.ok(objective.width >= 200 && objective.lines <= 3.1,
+          `landscape objective has room to read: ${JSON.stringify(objective)}`);
+      }
       await capture("03-elderhall");
 
       const maren = MAPS.elderhall.npcs.find((npc) => npc.id === "maren");
@@ -137,6 +145,7 @@ async function exercise(width, height, textScale = 1) {
         if (!baseline) {
           const sprite = page.locator(`.dialog img[src$="/${species}.png"]`);
           await sprite.waitFor();
+          await sprite.evaluate((img) => img.decode());
           assert.ok(await sprite.evaluate((img) => img.complete && img.naturalWidth > 0), `${species} sprite loaded`);
         }
         await capture(`05-starter-${species}`);

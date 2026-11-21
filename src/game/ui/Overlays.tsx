@@ -18,6 +18,7 @@ import type { Beast, DialogView, NamePromptView, Snapshot } from "../types";
 import { OverlayPanel } from "./OverlayPanel";
 import { DialogScene } from "./DialogScene";
 import { OfflineMenuStatus } from "./AppStatus";
+import { useOverlayFocusTrap } from "./useOverlayFocusTrap.ts";
 import {
   leadActionHint,
   practiceActionHint,
@@ -285,11 +286,16 @@ export function DialogBox({ dialog, game }: { dialog: DialogView; game: Reliquar
 
 export function NamePrompt({ game, prompt }: { game: ReliquaryGame; prompt: NamePromptView }) {
   const [name, setName] = useState(prompt.speciesName);
+  const formRef = useRef<HTMLFormElement>(null);
+  useOverlayFocusTrap(formRef, true);
   const promptText = prompt.kind === "starter" ? "What will you call your first pact?" : "What will you call them?";
   return (
     <form
+      ref={formRef}
       className="name-prompt"
-      aria-label="Name your pact"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Name your creature"
       onSubmit={(event) => {
         event.preventDefault();
         if (!name.trim()) return;
@@ -949,16 +955,16 @@ export function TouchPad({ game, variant = "full", dialog }: {
       {variant === "full" ? (
         <div className="dpad">
           <button type="button" className="d up" aria-label="North" {...dir("KeyW")}>
-            <span aria-hidden="true">▲</span>
+            <span aria-hidden="true" />
           </button>
           <button type="button" className="d left" aria-label="West" {...dir("KeyA")}>
-            <span aria-hidden="true">◀︎</span>
+            <span aria-hidden="true" />
           </button>
           <button type="button" className="d right" aria-label="East" {...dir("KeyD")}>
-            <span aria-hidden="true">▶︎</span>
+            <span aria-hidden="true" />
           </button>
           <button type="button" className="d down" aria-label="South" {...dir("KeyS")}>
-            <span aria-hidden="true">▼</span>
+            <span aria-hidden="true" />
           </button>
         </div>
       ) : (
