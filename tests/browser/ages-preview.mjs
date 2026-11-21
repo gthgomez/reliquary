@@ -119,7 +119,8 @@ async function attack(page, skill, random) {
   await page.getByRole("button", { name: "Skill", exact: true }).click();
   const skillButton = page.getByRole("button", { name: new RegExp(skill) });
   await skillButton.waitFor();
-  await page.clock.pauseAt((await page.evaluate(() => Date.now())) + 100);
+  // Allow time for the browser protocol round trip on busy CI workers.
+  await page.clock.pauseAt((await page.evaluate(() => Date.now())) + 2000);
   // The same DOM click handler as a player, while requestAnimationFrame is controlled.
   await skillButton.evaluate((button, value) => {
     Math.random = () => value;
