@@ -284,6 +284,9 @@ try {
   for (const viewport of [{ width: 390, height: 844 }, { width: 320, height: 568 }]) {
     await withBrowser(async (page) => {
       await enterReferenceBattle(page);
+      const restoredSave = page.getByRole("status").filter({ hasText: "The lantern remembers." });
+      assert.equal(await restoredSave.evaluate((notice) => getComputedStyle(notice).clipPath), "inset(50%)",
+        "the save-resume announcement stays available to assistive tech without painting over the creatures");
       const escaped = await page.locator(".battle-stat-numbers").evaluateAll((stats) => stats.flatMap((stat) => {
         const range = document.createRange();
         range.selectNodeContents(stat);

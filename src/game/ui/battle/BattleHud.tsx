@@ -2,6 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import type { KeyboardEvent as ReactKeyboardEvent } from "react";
 import { currentStats } from "../../content.ts";
 import type { ReliquaryGame } from "../../engine.ts";
+import { SAVE_RESUMED_MESSAGE } from "../../save.ts";
 import type { BattleState, Snapshot } from "../../types.ts";
 import { BATTLE_SIGILS } from "../../world/encounters.ts";
 import type { BattleCommand } from "../../world/encounters.ts";
@@ -279,7 +280,9 @@ export function BattleHud({ game, snap }: { game: ReliquaryGame; snap: Snapshot 
       <div className="battle-status-zone" ref={statusRef}>
         {me && meStats ? <BattleStatusCard side="player" beast={me} stats={meStats} /> : null}
         {foe && foeStats ? <BattleStatusCard side="foe" beast={foe} stats={foeStats} showMana={false} /> : null}
-        {snap.toast ? <Toast text={snap.toast} className="battle-toast" /> : null}
+        {snap.toast ? <Toast text={snap.toast} className={snap.toast === SAVE_RESUMED_MESSAGE
+          ? "battle-toast battle-toast-resumed"
+          : "battle-toast"} /> : null}
       </div>
 
       <div className="battle-controls" data-battle-phase={b.phase}>

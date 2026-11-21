@@ -1181,6 +1181,11 @@
     .battle-stat-icon {
       display: none;
     }
+    /* Continue already succeeded in the world. Keep that status available
+       without covering the creatures when walking straight into battle. */
+    .battle-status-zone > .battle-toast-resumed {
+      clip-path: inset(50%);
+    }
   }
 }
 
