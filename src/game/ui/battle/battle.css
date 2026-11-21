@@ -987,6 +987,27 @@
     .battle-action-icon {
       display: none;
     }
+    .battle-command-panel:has(.battle-back, .battle-continue) {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      grid-template-rows: minmax(0, 1fr);
+      gap: 4px;
+    }
+    .battle-controls-actions {
+      flex-direction: column;
+      justify-content: flex-end;
+    }
+    .battle-controls-actions :is(.battle-back, .battle-continue) {
+      min-width: 44px;
+      min-height: 44px;
+      margin: 0;
+      padding: 0 8px;
+      line-height: 1.15;
+    }
+    .battle-details-panel {
+      overflow-y: auto;
+      touch-action: pan-y;
+    }
   }
 }
 
@@ -1218,7 +1239,8 @@
   }
 }
 
-.battle-hud button:focus-visible {
+.battle-hud button:focus-visible,
+.battle-details-panel:focus-visible {
   outline: 2px solid var(--bq-cyan);
   outline-offset: 2px;
 }

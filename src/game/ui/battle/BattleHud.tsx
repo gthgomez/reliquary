@@ -170,6 +170,11 @@ export function BattleHud({ game, snap }: { game: ReliquaryGame; snap: Snapshot 
   const onKeyDown = useCallback((event: ReactKeyboardEvent<HTMLDivElement>) => {
     if (!b) return;
     const key = event.key.toLowerCase();
+    if (event.target instanceof HTMLElement && event.target.closest(".battle-details-panel")) {
+      // Leave reading keys to the native scroller and Escape to battle cancel.
+      if (key !== "escape") event.stopPropagation();
+      return;
+    }
     const arrows: Record<string, "up" | "down" | "left" | "right"> = {
       arrowup: "up",
       w: "up",
@@ -340,7 +345,7 @@ export function BattleHud({ game, snap }: { game: ReliquaryGame; snap: Snapshot 
             </div>
           </section>
 
-          <section className="battle-details-panel" aria-label="Action details">
+          <section className="battle-details-panel" aria-label="Action details" tabIndex={0}>
             <BattleActionDetails details={details} />
           </section>
         </div>

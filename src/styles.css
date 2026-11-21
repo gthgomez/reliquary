@@ -606,7 +606,7 @@
   }
 }
 .top-stack:has(.hud-objective-expanded) .app-status,
-.game-root.is-battle:has(.battle-toast) .app-status {
+.game-root.is-battle .app-status {
   position: absolute;
   width: 1px;
   height: 1px;

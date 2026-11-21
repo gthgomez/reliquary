@@ -90,6 +90,81 @@ async function enterReferenceBattle(page) {
   await page.waitForTimeout(120);
 }
 
+async function checkEnlargedSkillMenu(page, viewport) {
+  const skill = page.getByRole("button", { name: "Skill", exact: true });
+  const back = page.getByRole("button", { name: "Back", exact: true });
+  const controls = page.locator(".battle-controls");
+  const assertRow = async (name, cost) => {
+    const row = page.getByRole("button", { name: new RegExp(`^${name} ${cost} MP$`) });
+    await page.waitForFunction((label) =>
+      document.activeElement?.querySelector(".cmd-skill-name")?.textContent === label, name);
+    const geometry = await row.evaluate((button) => {
+      const row = button.getBoundingClientRect();
+      const body = button.closest(".battle-controls-body").getBoundingClientRect();
+      const label = button.querySelector(".cmd-skill-name");
+      const cost = button.querySelector("em").getBoundingClientRect();
+      const hit = document.elementFromPoint(row.left + row.width / 2, row.top + row.height / 2);
+      return { row: row.toJSON(), body: body.toJSON(), cost: cost.toJSON(),
+        labelFits: label.scrollWidth <= label.clientWidth + 1,
+        hit: button.contains(hit) };
+    });
+    assert.ok(geometry.row.top >= geometry.body.top - 1 &&
+      geometry.row.bottom <= geometry.body.bottom + 1 && geometry.row.height >= 44 &&
+      geometry.cost.right <= geometry.row.right && geometry.labelFits && geometry.hit,
+    `${viewport}: ${name} and mana cost fully fit the skill list: ${JSON.stringify(geometry)}`);
+  };
+  await skill.tap();
+  await page.screenshot({ path: join(artifactDir, `battle-wide-${viewport}-skill-menu.png`) });
+  await assertRow("Nip", 0);
+  const backBox = await back.boundingBox();
+  const dock = await controls.boundingBox();
+  assert.ok(backBox.height >= 44 && backBox.y >= dock.y &&
+    backBox.y + backBox.height <= dock.y + dock.height, `${viewport}: Back has a reachable touch target`);
+  await back.tap();
+  assert.equal(await controls.getAttribute("data-battle-phase"), "command");
+  await skill.press("Enter");
+  await assertRow("Nip", 0);
+  await page.keyboard.press("ArrowDown");
+  await assertRow("Cinder", 6);
+  await page.screenshot({ path: join(artifactDir, `battle-wide-${viewport}-cinder-reachable.png`) });
+  const details = page.getByRole("region", { name: "Action details", exact: true });
+  await details.focus();
+  assert.equal(await details.evaluate((panel) => panel === document.activeElement), true,
+    `${viewport}: action details are keyboard-focusable`);
+  await page.keyboard.press("End");
+  await page.waitForFunction(() => {
+    const panel = document.querySelector(".battle-details-panel");
+    return panel.scrollTop > 0 && panel.scrollTop + panel.clientHeight >= panel.scrollHeight - 1;
+  });
+  assert.equal(await controls.getAttribute("data-battle-phase"), "skills");
+  const detailsCost = details.getByText("6 MP", { exact: true });
+  assert.equal(await detailsCost.evaluate((cost) => {
+    const box = cost.getBoundingClientRect();
+    const panel = cost.closest(".battle-details-panel").getBoundingClientRect();
+    return box.top >= panel.top && box.bottom <= panel.bottom;
+  }), true, `${viewport}: keyboard scrolling reveals the skill cost`);
+  await page.screenshot({ path: join(artifactDir, `battle-wide-${viewport}-details-cost.png`) });
+  const bottom = await details.evaluate((panel) => panel.scrollTop);
+  await page.keyboard.press("ArrowUp");
+  await page.waitForFunction((position) =>
+    document.querySelector(".battle-details-panel").scrollTop < position, bottom);
+  assert.match(await details.locator(".battle-details-title").innerText(), /^Cinder$/,
+    `${viewport}: scrolling details leaves the active skill unchanged`);
+  await details.hover();
+  await page.mouse.wheel(0, -500);
+  await page.waitForFunction(() => document.querySelector(".battle-details-panel").scrollTop === 0);
+  assert.equal(await details.evaluate((panel) => getComputedStyle(panel).touchAction), "pan-y");
+  assert.match(await details.locator(".battle-details-copy").innerText(), /./);
+  await page.keyboard.press("Escape");
+  assert.equal(await controls.getAttribute("data-battle-phase"), "command");
+  await page.locator(".battle-toast").waitFor({ state: "detached" });
+  const status = page.locator(".app-status");
+  assert.equal(await status.getAttribute("role"), "status", "offline status remains a live region");
+  assert.equal(await status.evaluate((element) => getComputedStyle(element).clipPath), "inset(50%)",
+    "offline status stays clear of the cards after the toast expires");
+  await page.screenshot({ path: join(artifactDir, `battle-wide-${viewport}-status-after-toast.png`) });
+}
+
 async function checkWideSilhouettes() {
   for (const [width, height, textScale] of [[390, 844, 1], [568, 320, 1], [568, 320, 2]]) {
     await withBrowser(async (page) => {
@@ -195,9 +270,10 @@ async function checkWideSilhouettes() {
       if (textScale === 2) {
         assert.deepEqual(geometry.clippedStats, [], `${viewport}: HP and MP values fit in their cards`);
         assert.deepEqual(geometry.clippedCommands, [], `${viewport}: action labels are fully visible`);
+        await checkEnlargedSkillMenu(page, viewport);
       }
       console.log(`[battle-stage-browser] wide pairing ok ${viewport}`);
-    });
+    }, { context: { hasTouch: textScale === 2 } });
   }
 }
 
