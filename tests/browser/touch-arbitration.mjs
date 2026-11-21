@@ -21,11 +21,18 @@ try {
     assert.equal(dialogChrome.dpad, false, "N/W/E/S hidden while Next is shown");
     assert.equal(dialogChrome.ab, true, "A/B still available for dialogue");
     assert.equal(await page.getByRole("button", { name: "A — Next", exact: true }).count(), 1);
-    assert.equal(await page.getByRole("button", { name: "B — Back", exact: true }).count(), 1);
+    const firstPage = await page.locator(".dialog-text").innerText();
+    assert.ok(await page.getByRole("button", { name: "B — Back", exact: true }).isDisabled());
+    assert.ok(await page.locator(".dialog-back").isDisabled());
+    await page.keyboard.press("Escape");
+    assert.equal(await page.locator(".dialog-text").innerText(), firstPage);
+    await page.getByRole("button", { name: "A — Next", exact: true }).click();
+    await page.getByRole("button", { name: "B — Back", exact: true }).click();
+    assert.equal(await page.locator(".dialog-text").innerText(), firstPage);
 
     for (let i = 0; i < 16; i += 1) {
       if ((await page.locator(".dialog").count()) === 0) break;
-      await page.locator(".dialog").click().catch(() => page.keyboard.press("Enter"));
+      await page.locator(".dialog-next").click().catch(() => page.keyboard.press("Enter"));
       await page.waitForTimeout(80);
     }
     await page.waitForSelector(".hud-menu");
@@ -78,7 +85,7 @@ try {
 
     for (let i = 0; i < 16; i += 1) {
       if ((await page.locator(".dialog").count()) === 0) break;
-      await page.locator(".dialog").click().catch(() => page.keyboard.press("Enter"));
+      await page.locator(".dialog-next").click().catch(() => page.keyboard.press("Enter"));
       await page.waitForTimeout(80);
     }
     await page.waitForSelector(".hud-menu");
@@ -100,7 +107,7 @@ try {
     await page.mouse.down();
     try {
       await page.waitForSelector(".dialog", { timeout: 10_000 });
-      assert.equal(await page.getByRole("button", { name: "A — Next", exact: true }).count(), 1);
+      assert.equal(await page.getByRole("button", { name: "A — Close", exact: true }).count(), 1);
       await page.evaluate(() => window.__reliquary.confirm());
       await page.waitForFunction(() => !document.querySelector(".dialog"), null, { timeout: 10_000 });
       await page.waitForTimeout(500);
@@ -133,7 +140,7 @@ try {
     await waitForGameBoot(page);
     await page.click("text=Start");
     for (let i = 0; i < 16 && (await page.locator(".dialog").count()) > 0; i += 1) {
-      await page.locator(".dialog").click().catch(() => page.keyboard.press("Enter"));
+      await page.locator(".dialog-next").click().catch(() => page.keyboard.press("Enter"));
       await page.waitForTimeout(80);
     }
     await page.waitForSelector(".hud-menu");
@@ -177,7 +184,7 @@ try {
     }
     // Close the Gateward dialog the way a thumb does: tap the dialog itself.
     for (let i = 0; i < 6 && (await page.locator(".dialog").count()) > 0; i += 1) {
-      await page.locator(".dialog").click({ delay: 30 }).catch(() => page.keyboard.press("Enter"));
+      await page.locator(".dialog-next").click({ delay: 30 }).catch(() => page.keyboard.press("Enter"));
       await page.waitForTimeout(150);
     }
     await page.waitForFunction(() => document.querySelector(".dialog") == null, null, { timeout: 10_000 });

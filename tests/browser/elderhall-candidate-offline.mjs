@@ -56,8 +56,8 @@ try {
   assert.ok(report.offlineAssets.every((item) => item.status === 200 && item.width > 0 && item.height > 0),
     "every candidate image decodes while offline");
   await page.getByRole("button", { name: "Start", exact: true }).click();
-  for (let i = 0; i < 16 && await page.locator("button.dialog").count(); i += 1) {
-    await page.locator("button.dialog").click();
+  for (let i = 0; i < 16 && await page.locator(".dialog").count(); i += 1) {
+    await page.locator(".dialog-next").click();
     await page.waitForTimeout(80);
   }
   await page.waitForFunction(() => window.__controlsTest?.getPos?.().map === "home" && !window.__controlsTest.getPos().dialog,

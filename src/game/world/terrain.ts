@@ -66,17 +66,19 @@ export function bakeMapTerrain(ctx: TerrainBakeContext): void {
   const { map, tileSize: TILE } = ctx;
   const mh = map.ground.length;
   const mw = map.ground[0]?.length ?? 0;
+  const grove = map.id === "grove";
+  const cottage = map.id === "home";
   const overgrown = new Set((map.overgrownPaths ?? []).map(({ x, y }) => `${x},${y}`));
   for (let y = 0; y < mh; y++) {
     for (let x = 0; x < mw; x++) {
       const symbol = map.ground[y]![x]!;
       const name = tileName(symbol);
-      const variant = chooseTileVariant(map.id, x, y, name, 3);
+      const variant = grove ? 0 : chooseTileVariant(map.id, x, y, name, 3);
       const dx = x * TILE;
       const dy = y * TILE;
       const overgrownPath = symbol === "," && overgrown.has(`${x},${y}`);
       if (((symbol === "p" || symbol === "c") && map.terrainPathStyle === "soft") || overgrownPath) {
-        ctx.drawTile("grass", dx, dy, chooseTileVariant(map.id, x, y, "grass", 3));
+        ctx.drawTile("grass", dx, dy, grove ? 0 : chooseTileVariant(map.id, x, y, "grass", 3));
         ctx.drawTile(overgrownPath ? "dirt" : name, dx, dy, variant, pathNeighborMask(map.ground, x, y, overgrown),
           symbol === "p" ? stoneNeighborMask(map.ground, x, y) : 0);
       } else {
@@ -90,7 +92,7 @@ export function bakeMapTerrain(ctx: TerrainBakeContext): void {
       const mask = walkableEdgeMask(map.ground, x, y);
       // The village's stone edge replaces the rectangular boundary tint, which
       // otherwise makes isolated dark squares along the outdoor map boundary.
-      if (mask !== 0 && mask !== 15 && map.roadBorder !== "stone") {
+      if (mask !== 0 && mask !== 15 && !cottage && !grove && map.roadBorder !== "stone") {
         ctx.drawOverlay("edge", dx, dy, (15 - mask) / 15);
       }
       if ((symbol === "p" || symbol === "c") && map.terrainPathStyle !== "soft") {

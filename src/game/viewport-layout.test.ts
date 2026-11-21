@@ -48,6 +48,18 @@ test("short maps, large maps, resizes and save state retain safe bounds", () => 
   assert.ok(game.cssH <= 1100);
 });
 
+test("the portrait cottage frame shows the whole room without canvas padding", () => {
+  const { game, canvas } = gameWithCanvas();
+  game.mapId = "home";
+  const save = game.currentSave();
+
+  game.layout(390, 520, true, true);
+  assert.deepEqual([canvas.width, canvas.height, game.cssW, game.cssH], [352, 288, 390, 319]);
+  game.layout(320, 190, true, true);
+  assert.deepEqual([canvas.width, canvas.height, game.cssW, game.cssH], [352, 288, 232, 190]);
+  assert.deepEqual(game.currentSave(), save);
+});
+
 test("exploration, menu and dialogue keep their camera sizes; battles get a fitted stage", () => {
   const { game, canvas } = gameWithCanvas();
   const expectLegacy = (label: string) => {

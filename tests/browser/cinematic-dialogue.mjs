@@ -49,7 +49,7 @@ async function speak(page, map, x, y, key = "z", waitForAnimation = true) {
 
 async function closePages(page) {
   for (let count = 0; count < 12 && (await page.locator(".dialog").count()); count++) {
-    await page.locator(".dialog").click();
+    await page.locator(".dialog-next").click();
   }
   await page.waitForSelector(".dialog", { state: "detached" });
 }
@@ -134,7 +134,7 @@ async function checkLayout(page, label, shot = false) {
   );
   assert.ok(
     !overlaps(m.text, m.next) && !overlaps(m.name, m.text),
-    `${label}: text clears name and action`,
+    `${label}: text clears name and action: ${JSON.stringify(m)}`,
   );
   assert.ok(!overlaps(m.portrait, m.panel), `${label}: portrait has its own space`);
   assert.equal(m.statusVisible, false, `${label}: status yields during dialogue`);
@@ -204,15 +204,31 @@ try {
               .evaluate((el) => getComputedStyle(el).animationName),
             "none",
           );
+        assert.ok(await page.locator(".dialog-next").evaluate((button) => document.activeElement === button), "primary dialogue action receives focus");
         await page.keyboard.press("Enter");
         assert.match(
           await page.locator(".dialog-text").textContent(),
           /Walk west/,
           "one Enter advances exactly one page",
         );
+        await page.keyboard.press("Shift+Tab");
+        assert.match(await page.locator(".dialog-text").innerText(), /Walk west/,
+          "reverse tab navigation keeps the current page");
+        assert.equal(await page.locator(".dialog-back").evaluate((button) => document.activeElement === button), true,
+          "reverse tab reaches Back without activating it");
+        await page.keyboard.press("Tab");
         await checkLayout(page, `${prefix}-maren-page2`);
-        if (v.mobile) await page.getByRole("button", { name: "A — Next", exact: true }).tap();
-        else await page.keyboard.press("x");
+        if (v.mobile) {
+          await page.getByRole("button", { name: "B — Back", exact: true }).tap();
+          assert.match(await page.locator(".dialog-text").textContent(), /Crown cracked/);
+          await page.getByRole("button", { name: "A — Next", exact: true }).tap();
+          await page.getByRole("button", { name: "A — Close", exact: true }).tap();
+        } else {
+          await page.keyboard.press("x");
+          assert.match(await page.locator(".dialog-text").textContent(), /Crown cracked/);
+          await page.keyboard.press("Enter");
+          await page.keyboard.press("Enter");
+        }
         await page.waitForSelector(".dialog", { state: "detached" });
         assert.equal(await page.locator(".app-status").isVisible(), true);
         assert.equal(
@@ -223,15 +239,19 @@ try {
         assert.equal(await page.locator(".hud-menu").isVisible(), true);
 
         await speak(page, "grove", 4, 7);
-        assert.equal(
-          await page.locator(".dialog-portrait").count(),
-          0,
-          "starter creature is text-only",
-        );
-        await page.locator(".dialog").click();
-        await page.locator(".dialog").click();
-        assert.match(await page.locator(".dialog-text").textContent(), /Bind Emberkit/);
-        await page.locator(".dialog").click();
+        assert.equal(await page.locator(".dialog-portrait").count(), 0, "starter uses species art instead of an NPC portrait");
+        const starterSprite = page.locator(".dialog-species");
+        for (const [primary, secondary] of [["Next", "Cancel"], ["Next", "Back"], ["Bind Emberkit", "Cancel"]]) {
+          assert.equal(await starterSprite.getAttribute("src"), "/game/sprites/emberkit.png");
+          assert.ok(await starterSprite.evaluate((image) => image.complete && image.naturalWidth > 0), "shipped species sprite loads");
+          assert.equal(await page.locator(".dialog-next").textContent(), primary);
+          assert.equal(await page.locator(".dialog-back").textContent(), secondary);
+          if (v.mobile) {
+            assert.equal(await page.locator(".touch .a-btn").getAttribute("aria-label"), `A — ${primary}`);
+            assert.equal(await page.locator(".touch .b-btn").getAttribute("aria-label"), `B — ${secondary}`);
+          }
+          await page.locator(".dialog-next").click();
+        }
         await page.getByRole("button", { name: "Keep Emberkit" }).click();
         assert.equal(
           await page.locator(".dialog").getAttribute("data-portrait"),
@@ -242,7 +262,7 @@ try {
 
         await speak(page, "thornkeep", 11, 7);
         assert.equal(await page.locator(".dialog").getAttribute("data-portrait"), "warden-cael");
-        await page.locator(".dialog").click();
+        await page.locator(".dialog-next").click();
         const cael = await checkLayout(page, `${prefix}-cael-long`, true);
         assert.match(
           cael.textContent,
@@ -258,8 +278,14 @@ try {
         );
         await page.keyboard.up("ArrowRight");
         assert.deepEqual(await page.evaluate(() => window.__controlsTest.getPos()), before);
-        if (v.mobile) await page.getByRole("button", { name: "B — Back", exact: true }).tap();
-        else await page.keyboard.press("Escape");
+        if (v.mobile) {
+          await page.getByRole("button", { name: "B — Back", exact: true }).tap();
+          await page.getByRole("button", { name: "B — Cancel", exact: true }).tap();
+        } else {
+          await page.keyboard.press("Escape");
+          assert.match(await page.locator(".dialog-text").textContent(), /I keep Thornkeep/);
+          await page.keyboard.press("Escape");
+        }
         await page.waitForSelector(".dialog", { state: "detached" });
         assert.equal(
           (await page.evaluate(() => window.__controlsTest.getPos())).mode,
@@ -268,8 +294,8 @@ try {
         );
 
         await speak(page, "briar_road", 12, 17);
-        await page.locator(".dialog").click();
-        await page.locator(".dialog").click();
+        await page.locator(".dialog-next").click();
+        await page.locator(".dialog-next").click();
         assert.match(
           (await checkLayout(page, `${prefix}-wayfarer-long`)).textContent,
           /Know the signs/,
@@ -292,12 +318,17 @@ try {
           assert.equal(m.portraitKey, key);
           assert.equal(m.nameContent, name);
           if (key === "innkeep") {
-            await page.locator(".dialog").click();
+            await page.locator(".dialog-next").evaluate((button) => {
+              button.click();
+              button.click();
+            });
             assert.equal(
               await page.locator(".dialog-name").textContent(),
               "Innmother",
               "inn callback keeps placed speaker name",
             );
+            assert.match(await page.locator(".dialog-text").innerText(), /Sleep/,
+              "a queued offer click leaves the rest result on screen");
             await closePages(page);
           } else if (key === "warden-cael") {
             await page.keyboard.press("Escape");
@@ -337,6 +368,19 @@ try {
         await page.getByRole("button", { name: "Menu", exact: true }).click();
         await page.waitForSelector(".overlay-panel");
         await page.keyboard.press("Escape");
+        if (v.width === 390 && v.height === 844 && !v.classic) {
+          await speak(page, "thornkeep", 11, 7);
+          const begin = page.getByRole("button", { name: "Begin the trial", exact: true });
+          for (let i = 0; i < 6 && !(await begin.isVisible()); i += 1) {
+            await page.locator(".dialog-next").click();
+          }
+          await begin.evaluate((button) => {
+            button.click();
+            button.click();
+          });
+          assert.equal(await page.locator(".battle-controls").getAttribute("data-battle-phase"), "command",
+            "clicks queued on the trial offer cannot dispatch a battle command");
+        }
         assert.deepEqual(errors, [], "no browser errors");
         console.log(
           `[cinematic-dialogue] ${prefix}: identity, pagination, geometry, controls, callbacks and return to play passed`,

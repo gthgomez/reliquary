@@ -117,7 +117,7 @@ try {
     await page.waitForSelector(".dialog", { timeout: 20_000 });
     // Advance the opening conversation.
     for (let i = 0; i < 6 && (await page.locator(".dialog").count()) > 0; i += 1) {
-      await page.locator(".dialog").click({ delay: 30 });
+      await page.locator(".dialog-next").click({ delay: 30 });
       await page.waitForTimeout(100);
     }
     await page.waitForSelector(".hud-menu", { timeout: 20_000 });
@@ -150,7 +150,7 @@ try {
     await assertExactExport();
     assert.deepEqual(await slotsOf(page), { primary: newer, backup: null }, "checking and exporting does not touch saves");
     await page.getByRole("button", { name: "Start", exact: true }).click();
-    for (let i = 0; i < 3; i += 1) await page.locator("button.dialog").click();
+    for (let i = 0; i < 3; i += 1) await page.locator(".dialog-next").click();
     await page.getByRole("button", { name: "Menu", exact: true }).click();
     await page.getByRole("button", { name: "Save", exact: true }).click();
     await page.waitForFunction((previous) => localStorage.getItem("reliquary.save.forward") === previous, newer);

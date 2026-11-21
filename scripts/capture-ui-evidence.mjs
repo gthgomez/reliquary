@@ -16,7 +16,7 @@ mkdirSync(outDir, { recursive: true });
 async function dismissIntro(page) {
   for (let i = 0; i < 20; i += 1) {
     if ((await page.locator(".dialog").count()) === 0) break;
-    await page.locator(".dialog").click({ timeout: 2000 }).catch(() => page.keyboard.press("Enter"));
+    await page.locator(".dialog-next").click({ timeout: 2000 }).catch(() => page.keyboard.press("Enter"));
     await page.waitForTimeout(100);
   }
 }

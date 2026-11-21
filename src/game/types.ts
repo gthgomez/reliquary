@@ -276,6 +276,8 @@ export interface GameSave {
 }
 
 export interface DialogView {
+  /** Changes when the rendered page changes or the dialogue is replaced. */
+  revision: number;
   speaker: string;
   text: string;
   last: boolean;
@@ -288,6 +290,10 @@ export interface DialogView {
    * null keeps the generic "Close".
    */
   doneLabel: string | null;
+  primaryLabel: string;
+  secondaryLabel: "Back" | "Close" | "Cancel" | null;
+  /** The shipped sprite used when inspecting a companion. */
+  speciesId: string | null;
   /**
    * True when the final action commits a choice (starter pact, inn stay,
    * trial offer…). Used to defer forced reloads while the offer is open.

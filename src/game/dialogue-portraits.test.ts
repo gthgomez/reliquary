@@ -145,7 +145,7 @@ test("inn rest offer keeps the portrait through the onDone callback", async () =
     const d = game.getSnapshot().dialog;
     assert.ok(d);
     assert.equal(d!.portraitKey, "innkeep", "cohesive fallback for Innmother Cald");
-    assert.match(d!.text, /A rest · B not now/);
+    assert.match(d!.text, /Fifteen crowns for a clean bed/);
 
     game.confirm(); // accept: charges 15 and reopens as Innmother Cald
     assert.equal(game.gold, 85);
@@ -176,7 +176,7 @@ test("unlisted npc id falls back to the sprite kind; unknown identity is text-on
     talk(game, "guard", "Mystery Guard", { npcId: "mystery", sprite: "guard" });
     assert.equal(game.getSnapshot().dialog!.portraitKey, "guard");
     assert.equal(game.getSnapshot().dialog!.npcId, "mystery");
-    game.cancel(); // guard script has no onDone: cancel advances and closes
+    game.cancel(); // one-page guard information closes without confirming
 
     // Unknown sprite kind alongside an unknown id: never a guessed portrait.
     game.openDialog("Stranger", ["The road is quiet."], undefined, {
@@ -233,13 +233,14 @@ test("starter pact follow-up reopens as Elder Maren with her portrait", async ()
     open();
     const offer = game.getSnapshot().dialog;
     assert.ok(offer);
-    assert.equal(offer!.speaker, "Emberkit", "creature offer stays text-only");
+    assert.equal(offer!.speaker, "Emberkit");
+    assert.equal(offer!.speciesId, "emberkit", "creature offer uses its sprite");
     assert.equal(offer!.portraitKey, null);
 
     game.confirm(); // skills page
     game.confirm(); // confirmation, not the pact
     const confirmBind = game.getSnapshot().dialog;
-    assert.match(confirmBind?.text ?? "", /Bind Emberkit/);
+    assert.equal(confirmBind?.primaryLabel, "Bind Emberkit");
     assert.equal(game.flags.starter, undefined);
     assert.equal(game.party.length, 0);
     game.cancel();

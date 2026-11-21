@@ -163,7 +163,7 @@ try {
     assertEq(saved.mapId, "elderhall", "whiteout destination");
     const hud = await page.locator(".hud").innerText();
     assert(/Elderhall/.test(hud), hud);
-    const dialog = await page.locator("button.dialog").innerText();
+    const dialog = await page.locator(".dialog").innerText();
     assert(/You wake in Elderhall/.test(dialog), dialog);
   });
 
@@ -177,8 +177,8 @@ try {
       await page.keyboard.press("KeyZ");
       const lines = [];
       for (let i = 0; i < 3; i++) {
-        lines.push(await page.locator("button.dialog").innerText());
-        if (i < 2) await page.locator("button.dialog").click({ delay: 30 });
+        lines.push(await page.locator(".dialog").innerText());
+        if (i < 2) await page.locator(".dialog-next").click({ delay: 30 });
       }
       const all = lines.join(" | ");
       assert(/Below a dozen, my three run lighter/.test(all), `advisory missing: ${all}`);
@@ -258,12 +258,12 @@ try {
         const cmd = phase === "command" ? await page.locator(".battle-action").count() : 0;
         const wake = await page.getByRole("button", { name: "Wake", exact: true }).count();
         const cont = await page.getByRole("button", { name: "Continue", exact: true }).count();
-        const dialog = await page.locator("button.dialog").count();
+        const dialog = await page.locator(".dialog").count();
         const victory = await page.getByRole("button", { name: "Walk on", exact: true }).count();
         if (victory) break;
         if (wake) throw new Error("the prepared party lost the trial");
         if (dialog && !cont) {
-          await page.locator("button.dialog").click({ delay: 30 });
+          await page.locator(".dialog-next").click({ delay: 30 });
           await page.waitForTimeout(150);
           continue;
         }

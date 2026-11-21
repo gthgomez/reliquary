@@ -14,7 +14,7 @@ const artifactDir = process.env.RELIQUARY_BROWSER_ARTIFACTS
 async function dismissIntro(page) {
   for (let i = 0; i < 24; i += 1) {
     if ((await page.locator(".dialog").count()) === 0) break;
-    const btn = page.locator("button.dialog").first();
+    const btn = page.locator(".dialog-next").first();
     if (await btn.count()) await btn.click({ timeout: 2000 }).catch(() => page.keyboard.press("Enter"));
     else await page.keyboard.press("Enter");
     await page.waitForTimeout(100);

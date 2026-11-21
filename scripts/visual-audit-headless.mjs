@@ -114,7 +114,7 @@ async function runAudit() {
       await page.waitForSelector(".dialog", { timeout: 10_000 });
       const dialogBoxes = await getElementBoxes({
         dialogScene: ".dialog-scene",
-        dialogButton: "button.dialog",
+        dialogButton: ".dialog-next",
         dialogText: ".dialog-text",
         dialogNameplate: ".dialog-nameplate",
         dialogNext: ".dialog-next",
@@ -125,8 +125,8 @@ async function runAudit() {
 
       // Advance through intro dialogue (3 clicks)
       for (let i = 0; i < 3; i++) {
-        if ((await page.locator("button.dialog").count()) > 0) {
-          await page.locator("button.dialog").click();
+        if ((await page.locator(".dialog").count()) > 0) {
+          await page.locator(".dialog-next").click();
           await page.waitForTimeout(100);
         }
       }

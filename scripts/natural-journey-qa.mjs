@@ -24,7 +24,7 @@ try {
   page.on("pageerror", (error) => report.errors.push(error.message));
   await page.goto(url, { waitUntil: "load" });
   await page.getByRole("button", { name: "Start", exact: true }).click();
-  for (let i = 0; i < 3; i++) await page.locator("button.dialog").click();
+  for (let i = 0; i < 3; i++) await page.locator(".dialog-next").click();
 
   const travel = (mapId, target, starterChosen = false) => walkTo(page, MAPS[mapId], target, starterChosen);
 
@@ -53,11 +53,11 @@ try {
   if (!approach) throw new Error("No reachable approach to Elder Maren");
   await travel("elderhall", approach);
   await faceAndInteract(approach.key, approach.yaw);
-  await page.waitForSelector("button.dialog", { timeout: 5000 });
+  await page.waitForSelector(".dialog", { timeout: 5000 });
   const speaker = await page.locator(".dialog-name").textContent();
   if (speaker !== "Elder Maren") throw new Error(`Expected Elder Maren, got ${speaker}`);
-  for (let i = 0; i < 16 && await page.locator("button.dialog").count(); i++) await page.locator("button.dialog").click();
-  await page.waitForSelector("button.dialog", { state: "detached", timeout: 5000 });
+  for (let i = 0; i < 16 && await page.locator(".dialog").count(); i++) await page.locator(".dialog-next").click();
+  await page.waitForSelector(".dialog", { state: "detached", timeout: 5000 });
   report.events.push("Spoke with Elder Maren beside the well");
   for (const building of [
     { name: "home", front: { x: 4, y: 15 }, inside: "home", exit: { x: 5, y: 8 } },

@@ -173,7 +173,8 @@ export function GameApp() {
       const devicePortrait = typeof window.matchMedia === "function"
         ? window.matchMedia("(orientation: portrait)").matches
         : window.innerHeight >= window.innerWidth;
-      g.layout(Math.max(0, r.width - padX), Math.max(0, r.height - padY), devicePortrait);
+      const cottageFrame = cs.getPropertyValue("--fit-cottage").trim() === "1";
+      g.layout(Math.max(0, r.width - padX), Math.max(0, r.height - padY), devicePortrait, cottageFrame);
     };
     applyLayoutRef.current = apply;
     apply();
@@ -206,6 +207,7 @@ export function GameApp() {
   const showDialogTouch = shouldShowDialogTouch(snap, classicTouch);
   const showTouch = showExplorationTouch || showDialogTouch;
   const mapId = g.mapId;
+  const cottage = mapId === "home" && snap.mode === "world";
   const dialogActive = !!snap.dialog;
   const menuButtonRef = useRef<HTMLButtonElement>(null);
   const wasUiModal = useRef(false);
@@ -255,14 +257,14 @@ export function GameApp() {
 
   return (
     <div
-      className={`game-root${showTouch ? " has-touch" : ""}${showExplorationTouch ? " has-explore-touch" : ""}${showDialogTouch ? " has-dialog-touch" : ""}${classicTouch ? " classic-touch" : ""}${uiModal ? " is-ui-modal" : ""}${snap.dialog ? " is-dialog" : ""}${snap.dialog?.portraitKey ? " is-dialog-portrait" : ""}${snap.mode === "battle" ? " is-battle" : ""}${battleSubmenuRootClass(snap.battle?.phase)}`}
+      className={`game-root${showTouch ? " has-touch" : ""}${showExplorationTouch ? " has-explore-touch" : ""}${showDialogTouch ? " has-dialog-touch" : ""}${classicTouch ? " classic-touch" : ""}${cottage ? " is-cottage" : ""}${uiModal ? " is-ui-modal" : ""}${snap.dialog ? " is-dialog" : ""}${snap.dialog?.portraitKey ? " is-dialog-portrait" : ""}${snap.mode === "battle" ? " is-battle" : ""}${battleSubmenuRootClass(snap.battle?.phase)}`}
     >
       <div className="stage" ref={stageRef}>
         <div
           className="viewport"
           style={{
-            width: snap.cssW || snap.viewW * TILE,
-            height: snap.cssH || snap.viewH * TILE,
+            ["--scene-width" as string]: `${snap.cssW || snap.viewW * TILE}px`,
+            ["--scene-height" as string]: `${snap.cssH || snap.viewH * TILE}px`,
             ["--ar" as string]: String(snap.viewW / snap.viewH),
             ["--ui-safe-top-px" as string]: "0",
           }}
@@ -288,16 +290,17 @@ export function GameApp() {
             {showHudBar ? (
               <Hud
                 snap={snap}
+                mapId={mapId}
                 menuButtonRef={menuButtonRef}
                 dormant={uiModal || !!snap.dialog}
                 onMenu={() => g.toggleMenu()}
               />
             ) : null}
-            <AppStatus />
+            <AppStatus showReadyToast={snap.mode === "world" && !uiModal && !snap.dialog} />
             {snap.toast && !uiModal && snap.mode !== "battle" ? <Toast text={snap.toast} /> : null}
           </div>
           {snap.mode === "battle" ? <BattleHud game={g} snap={snap} /> : null}
-          {snap.dialog ? <DialogBox snap={snap} onAdvance={() => g.confirm()} /> : null}
+          {snap.dialog ? <DialogBox dialog={snap.dialog} game={g} /> : null}
           {snap.namePrompt ? <NamePrompt key={snap.namePrompt.uid} game={g} prompt={snap.namePrompt} /> : null}
           {snap.menu ? <MenuPanel game={g} snap={snap} onImportActivate={openImportPicker} /> : null}
           {snap.mode === "shop" ? <ShopPanel game={g} snap={snap} /> : null}
@@ -339,7 +342,7 @@ export function GameApp() {
           <AgesPreviewPanel game={g} inBattle={snap.mode === "battle"} />
         </Suspense>
       ) : null}
-      {showTouch ? <TouchPad game={g} variant={showDialogTouch && !showExplorationTouch ? "dialog" : "full"} dialogActive={!!snap.dialog} /> : null}
+      {showTouch ? <TouchPad game={g} variant={showDialogTouch && !showExplorationTouch ? "dialog" : "full"} dialog={snap.dialog} /> : null}
     </div>
   );
 }

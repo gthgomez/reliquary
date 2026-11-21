@@ -10,7 +10,7 @@ try {
     await page.click("text=Start");
     for (let i = 0; i < 16; i += 1) {
       if ((await page.locator(".dialog").count()) === 0) break;
-      await page.locator(".dialog").click({ timeout: 2000 }).catch(() => page.keyboard.press("Enter"));
+      await page.locator(".dialog-next").click({ timeout: 2000 }).catch(() => page.keyboard.press("Enter"));
       await page.waitForTimeout(120);
     }
     await page.waitForSelector(".hud-place", { timeout: 15_000 });

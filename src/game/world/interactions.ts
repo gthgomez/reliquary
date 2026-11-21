@@ -11,6 +11,8 @@
  * (dialogs, warps, encounters, saves) through the InteractionHost interface.
  */
 import { ITEMS } from "../content.ts";
+import { isElderhallCandidateBuild } from "../build-flags.ts";
+import { marenLandmark } from "../systems/objective.ts";
 import type { MapDef } from "../types.ts";
 
 /** A talk/interact context: world state the pages may read. */
@@ -166,7 +168,7 @@ export const NPC_DIALOGS: Record<string, NpcDialog> = {
 		pages: ({ flags }) => [
 			flags.starter
 				? "Road's open. If the grass sings, you already know what that means."
-				: "Not without a pact-beast. Maren's in the Chapter, or the Grove west of town.",
+				: `The road needs a pact-beast. Find Elder Maren ${marenLandmark(isElderhallCandidateBuild())}, or follow the path west to the Binding Grove.`,
 		],
 	},
 	lise: {

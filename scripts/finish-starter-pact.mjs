@@ -3,7 +3,7 @@
  *
  * Sequence:
  * 1. Starter inspect description.
- * 2. Starter pact offer ("Speak the pact").
+ * 2. Starter element and skills.
  * 3. Starter confirmation ("Bind <Species>").
  * 4. Naming prompt (nickname input or "Keep <Species>").
  * 5. Elder Maren conclusion dialogue.
@@ -16,7 +16,7 @@ export async function finishStarterPact(page, options = {}) {
   const nickname = options.nickname ?? null;
 
   while (Date.now() - start < timeout) {
-    const dialog = page.locator("button.dialog");
+    const dialog = page.locator(".dialog");
     const namePrompt = page.locator(".name-prompt");
 
     // 1. If neither dialog nor name prompt is visible, check if starter pact is settled
@@ -49,25 +49,17 @@ export async function finishStarterPact(page, options = {}) {
       continue;
     }
 
-    // 3. Check if starter confirmation button is visible ("Bind Emberkit", etc. - anchored regex to avoid hud-chip objective)
-    const bindBtn = page.getByRole("button", { name: new RegExp(`^Bind ${expectedSpecies}`) });
+    // 3. Check for the explicit pact commitment.
+    const bindBtn = dialog.getByRole("button", { name: `Bind ${expectedSpecies}`, exact: true });
     if (await bindBtn.isVisible()) {
       await bindBtn.click();
       await page.waitForTimeout(100);
       continue;
     }
 
-    // 4. Check if "Speak the pact" is visible
-    const pactBtn = page.getByRole("button", { name: /^Speak the pact$/i });
-    if (await pactBtn.isVisible()) {
-      await pactBtn.click();
-      await page.waitForTimeout(100);
-      continue;
-    }
-
-    // 5. Check if standard dialogue is visible
+    // 4. Check if another inspection or conclusion page is visible
     if (await dialog.isVisible()) {
-      await dialog.click();
+      await dialog.locator(".dialog-next").click();
       await page.waitForTimeout(100);
       continue;
     }

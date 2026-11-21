@@ -51,7 +51,7 @@ try {
   await page.goto(url, { waitUntil: "load" });
   await page.screenshot({ path: join(output, "01-title.png") });
   await page.getByRole("button", { name: "Start", exact: true }).click();
-  for (let i = 0; i < 3; i++) await page.locator("button.dialog").click();
+  for (let i = 0; i < 3; i++) await page.locator(".dialog-next").click();
   await page.screenshot({ path: join(output, "02-intro-world.png") });
 
   const objectiveAt = async (must) => {
@@ -59,7 +59,7 @@ try {
     if (!text.match(must)) throw new Error(`Objective expected /${must.source}/, got: ${text}`);
     return text;
   };
-  await objectiveAt(/Binding Grove/);
+  await objectiveAt(/doorway at the bottom/);
 
   async function press(code, times = 1) {
     for (let i = 0; i < times; i++) await page.keyboard.press(code);
@@ -73,19 +73,20 @@ try {
   const seedDraw = (value) => page.evaluate((next) => { window.__journeyDraw = () => next; }, value);
   const battleCommand = (name) => page.locator(".battle-controls[data-battle-phase='command']").getByRole("button", { name, exact: true });
   const battleRow = (name) => page.locator(".battle-controls-body ul.cmd").getByRole("button", { name });
-  const dialogue = page.locator("button.dialog");
+  const dialogue = page.locator(".dialog");
 
   let position = await travel("home", { x: 5, y: 8 });
   if (position.map !== "elderhall") throw new Error("Home exit failed");
+  await objectiveAt(/Binding Grove/);
   const maren = MAPS.elderhall.npcs.find((npc) => npc.id === "maren");
   if (!maren) throw new Error("Elder Maren is missing from Elderhall");
   await travel("elderhall", { x: maren.x, y: maren.y + 1 });
   await faceNorth();
   await press("KeyZ");
   await dialogue.getByText("Elder Maren", { exact: true }).waitFor();
-  await dialogue.click();
+  await dialogue.locator(".dialog-next").click();
   if (!/Walk west to the Binding Grove/.test(await dialogue.innerText())) throw new Error("Maren did not give the route to the Grove");
-  await dialogue.click();
+  await dialogue.locator(".dialog-next").click();
   report.events.push("Elder Maren gave directions west to the Binding Grove");
   position = await travel("elderhall", { x: 0, y: 10 });
   if (position.map !== "grove") throw new Error("Grove entrance failed");
@@ -166,12 +167,12 @@ try {
 
   // Post-battle wild capture naming flow:
   // 1. Observe the naming dialogue offer ("... accepts the compact. Give them a name, or leave ...")
-  await page.waitForSelector("button.dialog", { timeout: 5000 });
-  const offerText = await page.locator("button.dialog").innerText();
+  await page.waitForSelector(".dialog", { timeout: 5000 });
+  const offerText = await page.locator(".dialog").innerText();
   if (!/accepts the compact/.test(offerText)) {
     throw new Error(`expected capture naming offer, got: ${offerText}`);
   }
-  await page.locator("button.dialog").click();
+  await page.locator(".dialog-next").click();
 
   // 2. The NamePrompt opens. Choose a nickname: "Glimmermote"
   await page.waitForSelector(".name-prompt", { timeout: 5000 });
@@ -276,8 +277,9 @@ try {
   await travel("inn_in", { x: 4, y: 5 });
   await faceNorth();
   await press("KeyZ");
-  const innPrompt = await page.locator("button.dialog").innerText();
-  if (!innPrompt.includes("(A rest · B not now)")) throw new Error(`inn prompt lacks the A/B line: ${innPrompt}`);
+  const innPrompt = page.locator(".dialog");
+  await innPrompt.getByRole("button", { name: "Rest for 15 crowns", exact: true }).waitFor();
+  await innPrompt.getByRole("button", { name: "Cancel", exact: true }).waitFor();
   // Conversation chrome is hidden, but the mounted HUD still reflects state.
   // innerText omits visibility:hidden content and would turn this into NaN.
   const readGold = async () => {
@@ -385,7 +387,7 @@ try {
     await battleRow(/Common Sigil/).click();
     await page.locator(".battle-log-text").filter({ hasText: `${species} accepts the compact.` }).waitFor();
     await page.getByRole("button", { name: "Continue", exact: true }).click();
-    await dialogue.click();
+    await dialogue.locator(".dialog-next").click();
     await page.getByRole("button", { name: `Keep ${species}`, exact: true }).click();
     await page.locator(".name-prompt").waitFor({ state: "detached" });
     report.events.push(`Bound level ${level} ${species} during natural exploration of ${map}`);
@@ -448,9 +450,9 @@ try {
       };
     }, trialSeed);
   }
-  await dialogue.click();
-  await dialogue.click();
-  await dialogue.filter({ hasText: "Begin the trial" }).click();
+  await dialogue.locator(".dialog-next").click();
+  await dialogue.locator(".dialog-next").click();
+  await dialogue.getByRole("button", { name: "Begin the trial", exact: true }).click();
   report.events.push("Accepted Warden Cael's trial through the story dialogue");
 
   const battleControl = page.locator(".battle-controls");
@@ -509,7 +511,7 @@ try {
   if (JSON.stringify([...opponents.keys()]) !== JSON.stringify(["Ironnewt", "Chapelite", "Keepdrake"]))
     throw new Error(`Trial opponents did not play in the expected order: ${[...opponents.keys()]}`);
   await page.getByRole("button", { name: "Continue", exact: true }).click();
-  for (let i = 0; i < 3; i++) await dialogue.click();
+  for (let i = 0; i < 3; i++) await dialogue.locator(".dialog-next").click();
   await page.getByText("The Thorn Mark is yours", { exact: true }).waitFor();
   await page.screenshot({ path: join(output, "15-chapter-one-ending.png") });
 
@@ -531,10 +533,10 @@ try {
   if ((await positionAt()).map !== "thornkeep") throw new Error("The completed game did not reopen in Thornkeep");
   await faceNorth();
   await press("KeyZ");
-  const reopenedDialogue = page.locator("button.dialog");
+  const reopenedDialogue = page.locator(".dialog");
   if (!/already keep the Thorn Mark/.test(await reopenedDialogue.innerText()))
     throw new Error("Cael did not recognize the completed trial");
-  await reopenedDialogue.click();
+  await reopenedDialogue.locator(".dialog-next").click();
   const reopened = await readSave();
   if (!reopened.flags.ending_seen || reopened.gold !== finalSave.gold ||
       JSON.stringify(reopened.inventory) !== JSON.stringify(finalSave.inventory))

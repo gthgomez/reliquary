@@ -77,6 +77,7 @@ if (serveOnly) {
   const map = {
     all: [
       "layout.mjs",
+      "phone-playtest.mjs",
       "contrast.mjs",
       "modal-a11y.mjs",
       "modal-focus-trap.mjs",

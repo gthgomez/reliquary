@@ -1,5 +1,21 @@
 # Chapter One qualification record
 
+## Phone playtest follow-up
+
+Five portrait Android Chrome screenshots from the `72ccfa2` Elderhall preview covered the cottage opening and exploration, Elderhall, Maren, and Mirewhelp. The baseline and candidate comparison uses normal player input in `tests/browser/phone-playtest.mjs`. Set `RELIQUARY_PHONE_EVIDENCE` to capture all 11 viewport sizes and the candidate’s enlarged-text case. Set `RELIQUARY_QA_SHA` to the served artifact’s revision. Add `--baseline` for the original artifact. Candidate builds also require `VITE_ELDERHALL_CANDIDATE=1` when the runner imports map data.
+
+| ID | Observed problem | Repair and regression |
+| --- | --- | --- |
+| Phone-01 | **High.** Back advanced narration, and the dock called Close and other final actions Next. | The engine publishes the active labels and each input follows the same action. Engine and cinematic cases cover first, previous, final, and offer pages. |
+| Phone-02 | **High.** The cottage exit resembled a floor tile. The HUD sent new players to the Grove and the introduction gave the base-map landmark in the preview. | Mark the south threshold, show the immediate cottage task, and name the landmark for the active Elderhall build. The phone and Chapter One journeys walk through the existing exit and visit Maren. |
+| Phone-03 | **Medium.** Empty canvas separated the room and intro. The Maren portrait obscured the village landmarks. | Frame the full cottage and attach narration beneath it. Keep more of the village in Maren’s portrait scene. The phone comparison checks the camera, focusable actions, HUD, and portrait geometry. |
+| Phone-04 | **Medium.** Rowan obscured the inspected creature, and the Grove clearing had visibly square seams. | Show shipped starter sprites in the dialogue and round terrain joins within the original walkable map. The phone journey inspects all three starters, with separate engine checks for cancellation and single rewards. |
+| Phone-05 | **Medium.** A permanent readiness caption was hard to read against the world. A timed-out first install could keep reporting an incomplete cache after successful activation. | Put verified readiness in Lantern, briefly announce a fresh completion during play, and recheck on late controller activation. PWA cases exercise cached offline Continue, incomplete assets, late installation, and the update save veto. |
+| Phone-06 | **Medium.** Down sat close to the system gesture area. A floating right-edge icon appeared on all five screenshots. | Add portrait clearance and release holds on orientation and visibility changes. Browser checks cover target geometry and hold cleanup. Physical gesture behavior and identifying the icon remain in the device packet. |
+| Phone-07 | **High.** Independent browser review found reverse Tab navigation changed the story page. A second queued press on the Warden offer could strike immediately. | Preserve Shift+Tab and associate each rendered control with its current dialogue page. Cinematic cases verify reverse focus and queued inn and trial actions. |
+
+The revision 5 art remains in the protected preview scope. Installed Android, the right-edge icon, and owner asset sign-off are tracked in the [device validation packet](REVISION_MANUAL_VALIDATION.md) and [Elderhall candidate notes](../ELDERHALL_CANDIDATE.md).
+
 ## Production and baseline
 
 The November 21, 2026 inspection found no open PRs. GitHub main and the production alias both resolved to `20fb2551ebe951ae8bf117613a84018e2f5b63f1`. The deployment was READY. The production alias returned HTTP 404 for the scaffold auth health route and the Elderhall candidate manifest. [Production deployment](https://vercel.com/jonathan-gomez-aguilars-projects/reliquary/9W4LZLx29QFpwNAMAfrENNU8ttm2)

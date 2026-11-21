@@ -4,7 +4,7 @@ import { startStaticServer, withBrowser, waitForGameBoot } from "./helpers.mjs";
 async function dismissIntro(page) {
   for (let i = 0; i < 16; i += 1) {
     if ((await page.locator(".dialog").count()) === 0) break;
-    await page.locator(".dialog").click({ timeout: 2000 }).catch(() => page.keyboard.press("Enter"));
+    await page.locator(".dialog-next").click({ timeout: 2000 }).catch(() => page.keyboard.press("Enter"));
     await page.waitForTimeout(120);
   }
 }
@@ -91,10 +91,10 @@ try {
         }, previousReportTime);
         await page.evaluate(() => window.__controlsTest.warp("elderhall", 12, 12));
         if (viewport.height === 844) {
-          // A smaller map restores its old maximum, then a return to Elderhall
+          // The cottage fits the authored room, then a return to Elderhall
           // reapplies the map-sized view even without a window resize.
           await page.evaluate(() => window.__controlsTest.warp("home", 5, 6));
-          await page.waitForFunction(() => document.querySelector(".game-canvas")?.height === 512);
+          await page.waitForFunction(() => document.querySelector(".game-canvas")?.height === 288);
           await page.evaluate(() => window.__controlsTest.warp("elderhall", 12, 12));
           await page.waitForFunction(() => document.querySelector(".game-canvas")?.height === 576);
           // ResizeObserver must update and then restore the exploration view.
@@ -118,7 +118,9 @@ try {
         clientWidth: el.clientWidth, scrollWidth: el.scrollWidth,
         compact: getComputedStyle(el).clipPath !== "none",
       }));
-      assert.match(objective.text, /Binding Grove/, "the destination is named in the starting objective");
+      const inCottage = (await page.locator(".hud-place").innerText()).includes("Cottage");
+      assert.match(objective.text, inCottage ? /doorway at the bottom/ : /Binding Grove/,
+        "the starting objective gives a usable next step for the current map");
       assert.ok(
         objective.compact || (objective.clientHeight > 0 &&
           objective.scrollHeight <= objective.clientHeight + 1 &&
@@ -276,7 +278,7 @@ try {
         .boundingBox();
       assert.ok(backSticky, "collection back control present after scroll");
       assert.ok(backSticky.y + backSticky.height <= viewport.height + 2, "back stays on screen while grid scrolls");
-    }, { context: { serviceWorkers: viewport.width === 320 ? "allow" : "block" } });
+    });
     console.log(`[layout] ok ${viewport.width}x${viewport.height}`);
   }
   for (const viewport of [{ width: 320, height: 568 }, { width: 568, height: 320 }, { width: 640, height: 320 }]) {

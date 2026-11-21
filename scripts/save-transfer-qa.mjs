@@ -39,15 +39,15 @@ try {
   const hudGold = async () => Number((await page.locator(".hud-gold").innerText()).match(/\d+/)?.[0]);
   const dismissDialogs = async (limit = 12) => {
     for (let i = 0; i < limit; i++) {
-      if ((await page.locator("button.dialog").count()) === 0) return;
-      await page.locator("button.dialog").click();
+      if ((await page.locator(".dialog").count()) === 0) return;
+      await page.locator(".dialog-next").click();
       await page.waitForTimeout(140);
     }
   };
 
   await page.goto(url, { waitUntil: "load" });
   await page.getByRole("button", { name: "Start", exact: true }).click();
-  await page.locator("button.dialog").first().click();
+  await page.locator(".dialog-next").first().click();
   await dismissDialogs();
   await page.waitForTimeout(300);
 
@@ -124,7 +124,7 @@ try {
   await page.getByRole("button", { name: "Import", exact: true }).click();
   await page.setInputFiles("input.save-file-input", garbagePath);
   await page.waitForTimeout(400);
-  const refusal = await page.locator("button.dialog").innerText().catch(() => "");
+  const refusal = await page.locator(".dialog").innerText().catch(() => "");
   check(/not a readable/i.test(refusal), "an unreadable file is refused with an explanation");
   await page.screenshot({ path: join(output, "4-refused.png") });
   await dismissDialogs();

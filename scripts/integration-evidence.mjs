@@ -106,7 +106,7 @@ async function runCosmeticSkill(page, skillName, log, filePrefix) {
 async function dismissIntro(page) {
   for (let i = 0; i < 20; i += 1) {
     if ((await page.locator(".dialog").count()) === 0) break;
-    await page.locator(".dialog").click().catch(() => page.keyboard.press("Enter"));
+    await page.locator(".dialog-next").click().catch(() => page.keyboard.press("Enter"));
     await page.waitForTimeout(100);
   }
 }

@@ -55,8 +55,10 @@ source/authorship records remain unresolved; see [asset provenance](docs/ASSET_P
 
 Use the arrow keys or WASD to walk. Press Z or Enter to interact, X or Escape
 to go back, and M to open the Lantern menu. On touch screens, use the direction
-pad and the A and B buttons. Open the Objective button for directions from
-your current location.
+pad and the A and B buttons. In dialogue, use the displayed action to advance
+or confirm. Back returns to the preceding page and Cancel leaves an offer
+without accepting it. Open the Objective button for directions from your
+current location.
 
 Progress is saved in this browser. The game saves as you explore, and Save in
 the Lantern menu writes a checkpoint on demand. Reopening during a battle
@@ -65,9 +67,10 @@ another device, then use Import there. If the title identifies a save from a
 newer version, export it and import the file in the version that created it.
 
 On Android Chrome, open the browser menu and choose Install app or Add to Home
-screen when available. Open the game online first and wait for “Available
-offline” before disconnecting. Browser storage holds both the offline game and
-local saves. Export a copy before clearing site data.
+screen when available. Open the game online first. Check for “Available
+offline” in the Lantern menu before disconnecting. Browser storage holds both
+the offline game and local saves. Export a copy before clearing site data or
+moving to a preview at a different address.
 
 ## Development
 

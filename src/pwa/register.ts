@@ -1,4 +1,8 @@
+import { collectGameAssets } from "../game/assets.ts";
+import { PORTRAITS } from "../game/portraits.ts";
+
 export type PwaStatus =
+  | "checking"
   | "unsupported"
   | "downloading"
   | "ready"
@@ -6,7 +10,7 @@ export type PwaStatus =
   | "blocked"
   | "failed";
 
-let status: PwaStatus = "unsupported";
+let status: PwaStatus = "checking";
 const listeners = new Set<(value: PwaStatus) => void>();
 
 export function getPwaStatus(): PwaStatus {
@@ -20,6 +24,7 @@ export function subscribePwaStatus(listener: (value: PwaStatus) => void): () => 
 }
 
 function setStatus(next: PwaStatus): void {
+  if (next === status) return;
   status = next;
   listeners.forEach((fn) => fn(next));
 }
@@ -118,13 +123,59 @@ function onNewVersionActive(): void {
 
 async function verifyOfflineShell(): Promise<boolean> {
   if (typeof caches === "undefined") return false;
-  const names = await caches.keys();
-  const precache = names.find((name) => name.startsWith("workbox-precache"));
-  if (!precache) return false;
-  const cache = await caches.open(precache);
-  const index = await cache.match("/index.html", { ignoreSearch: true });
-  const manifest = await cache.match("/manifest.webmanifest", { ignoreSearch: true });
-  return Boolean(index && manifest);
+  try {
+    const scope = new URL("/", window.location.href);
+    const precache = `workbox-precache-v2-${scope.href}`;
+    if (!(await caches.has(precache))) return false;
+    const cache = await caches.open(precache);
+    // Workbox stores revisioned entries with a query string. Validate the
+    // actual URLs needed for this running shell, not any precache from the origin.
+    const cached = new Set((await cache.keys()).map((entry) => {
+      const url = new URL(entry.url);
+      return `${url.origin}${url.pathname}`;
+    }));
+    const modules = Array.from(document.querySelectorAll<HTMLScriptElement>('script[type="module"][src]'))
+      .map((script) => script.src).filter(isGameBundle);
+    const styles = Array.from(document.querySelectorAll<HTMLLinkElement>('link[rel="stylesheet"][href]'))
+      .map((link) => link.href).filter(isGameBundle);
+    const required = [
+      "/index.html",
+      "/manifest.webmanifest",
+      ...modules,
+      ...styles,
+      ...collectGameAssets().filter((entry) => entry.required).map((entry) => entry.url),
+      ...Object.values(PORTRAITS).map((entry) => entry.src),
+    ];
+    return modules.length > 0 && required.every((entry) => {
+      const url = new URL(entry, scope);
+      return cached.has(`${url.origin}${url.pathname}`);
+    });
+  } catch {
+    return false;
+  }
+
+  function isGameBundle(href: string) {
+    const url = new URL(href);
+    return url.origin === window.location.origin && url.pathname.startsWith("/assets/");
+  }
+}
+
+function waitForController(sw: ServiceWorkerContainer): Promise<void> {
+  if (sw.controller) return Promise.resolve();
+  return new Promise((resolve, reject) => {
+    const onControl = () => {
+      if (!sw.controller) return;
+      clearTimeout(timeout);
+      sw.removeEventListener("controllerchange", onControl);
+      resolve();
+    };
+    const timeout = setTimeout(() => {
+      sw.removeEventListener("controllerchange", onControl);
+      reject(new Error("service worker control timed out"));
+    }, SW_READY_MS);
+    sw.addEventListener("controllerchange", onControl);
+    onControl();
+  });
 }
 
 function activateWaiting(reg: ServiceWorkerRegistration): void {
@@ -138,14 +189,31 @@ export async function registerReliquaryServiceWorker(): Promise<void> {
     return;
   }
   const sw = navigator.serviceWorker;
+  const script = new URL("/sw.js", window.location.href).href;
+  const hasShellController = () => sw.controller?.scriptURL === script;
+  const refreshOfflineStatus = async () => {
+    if (updatePending) return;
+    const controller = sw.controller;
+    const shellOk = hasShellController() && await verifyOfflineShell();
+    if (!updatePending && sw.controller === controller) setStatus(shellOk ? "ready" : "failed");
+  };
   // Only a controller *change* (not the first install) means a new build took over.
   let hadController = Boolean(sw.controller);
   sw.addEventListener("controllerchange", () => {
+    if (!sw.controller) return;
     if (hadController) onNewVersionActive();
+    else void refreshOfflineStatus();
     hadController = true;
   });
+
+  // Check the installed build before touching the network. An already-cached
+  // page should not start a new installation announcement on every launch.
+  const cachedAtLaunch = await verifyOfflineShell();
+  if (!updatePending && status === "checking") {
+    if (hasShellController() && cachedAtLaunch) setStatus("ready");
+    else if (!sw.controller && !cachedAtLaunch) setStatus("downloading");
+  }
   try {
-    setStatus("downloading");
     const reg = await sw.register("/sw.js", { scope: "/", updateViaCache: "none" });
     const watchInstalling = (worker: ServiceWorker | null) => {
       if (!worker) return;
@@ -164,17 +232,11 @@ export async function registerReliquaryServiceWorker(): Promise<void> {
       tryApplyUpdate();
     });
     setInterval(check, UPDATE_CHECK_MS);
-    await Promise.race([
-      sw.ready,
-      new Promise<never>((_, reject) => {
-        setTimeout(() => reject(new Error("service worker ready timeout")), SW_READY_MS);
-      }),
-    ]);
-    if (sw.controller) check();
-    const shellOk = await verifyOfflineShell();
-    if (updatePending) return;
-    setStatus(shellOk ? "ready" : "failed");
+    await waitForController(sw);
+    check();
   } catch {
-    if (!updatePending) setStatus("failed");
+    // A cached launch can work normally while the registration call fails
+    // offline. Control and verified files, not registration, decide readiness.
   }
+  await refreshOfflineStatus();
 }

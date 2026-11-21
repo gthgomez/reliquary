@@ -39,7 +39,7 @@ try {
     });
     await page.goto(url, { waitUntil: "networkidle" });
     await page.getByRole("button", { name: "Start", exact: true }).click();
-    for (let i = 0; i < 3; i++) await page.locator("button.dialog").click();
+    for (let i = 0; i < 3; i++) await page.locator(".dialog-next").click();
     await page.waitForFunction(() => !window.__controlsTest?.getPos?.().dialog);
     await page.keyboard.down("ArrowLeft");
     await page.waitForFunction(() => window.__controlsTest?.getPos?.().x < 5);

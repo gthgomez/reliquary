@@ -19,7 +19,7 @@ const { server, baseUrl } = await startStaticServer(0);
 const bootWorld = async (page) => {
   await page.click("text=Start");
   for (let i = 0; i < 16 && (await page.locator(".dialog").count()) > 0; i += 1) {
-    await page.locator(".dialog").click().catch(() => page.keyboard.press("Enter"));
+    await page.locator(".dialog-next").click().catch(() => page.keyboard.press("Enter"));
     await page.waitForTimeout(80);
   }
   await page.waitForSelector(".hud-menu", { timeout: 15_000 });

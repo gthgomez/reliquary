@@ -17,6 +17,15 @@ export function currentObjective(flags: ObjectiveFlags): string | null {
   return "Rest. Bind who you wish. The Hollow Crown waits beyond the ash.";
 }
 
+export function objectivePreview(flags: ObjectiveFlags, mapId: string): string | null {
+  if (mapId === "home" && !flags.starter) return "Leave through the doorway at the bottom of the cottage.";
+  return currentObjective(flags);
+}
+
+export function marenLandmark(candidate: boolean): string {
+  return candidate ? "beside the village well" : "near the Chapter House";
+}
+
 /** Optional directions for the player's current surroundings, not saved state. */
 export function objectiveHint(flags: ObjectiveFlags, place: string): string | null {
   if (!flags.starter) {
