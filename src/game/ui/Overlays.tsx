@@ -250,8 +250,8 @@ export function Hud({
             )}
           </div>
         </div>
-        <button type="button" className="hud-menu" ref={menuButtonRef} onClick={onMenu}>
-          <span className="hud-menu-icon" aria-hidden="true">☰</span><span>Menu</span>
+        <button type="button" className="hud-menu" ref={menuButtonRef} onClick={onMenu} aria-label="Menu">
+          <span className="hud-menu-icon" aria-hidden="true">☰</span><span className="hud-menu-label">Menu</span>
         </button>
       </div>
     </div>

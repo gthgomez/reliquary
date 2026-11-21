@@ -31,13 +31,16 @@ async function waitForObjectiveSafeArea(page, checkPlayer) {
 
 const VIEWPORTS = [
   { width: 320, height: 568 },
-  { width: 360, height: 800 },
+  { width: 360, height: 740 },
   { width: 390, height: 667 },
   { width: 390, height: 844 },
   { width: 412, height: 915 },
+  { width: 568, height: 320 },
   { width: 640, height: 320 },
   { width: 844, height: 390 },
   { width: 1280, height: 800 },
+  { width: 1440, height: 900 },
+  { width: 1536, height: 864 },
 ];
 
 const { server, baseUrl } = await startStaticServer(0);
@@ -110,17 +113,20 @@ try {
       assert.equal((await page.locator(".hud-companion").textContent())?.trim(), "No pact yet", "fresh game has no fabricated companion");
       await page.evaluate(() => window.__reliquary.setGold(321));
       assert.match((await page.locator(".hud-gold").textContent()) ?? "", /321\s*cr/, "HUD follows current currency");
-      if ((viewport.width === 390 && viewport.height === 844) || (viewport.width === 412 && viewport.height === 915)) {
-        const objective = await page.locator(".hud-objective-preview").evaluate((el) => ({
-          text: el.textContent ?? "", clientHeight: el.clientHeight, scrollHeight: el.scrollHeight,
-          clientWidth: el.clientWidth, scrollWidth: el.scrollWidth,
-        }));
-        assert.ok(objective.text.trim(), "the current objective is present");
-        assert.ok(objective.clientHeight > 0 && objective.clientHeight <= 24,
-          `the objective preview stays one line at ${viewport.width}x${viewport.height}: ${JSON.stringify(objective)}`);
-        assert.ok(objective.scrollHeight <= objective.clientHeight + 1,
-          `the one-line objective preview does not wrap into a clipped box at ${viewport.width}x${viewport.height}: ${JSON.stringify(objective)}`);
-      }
+      const objective = await page.locator(".hud-objective-preview").evaluate((el) => ({
+        text: el.textContent ?? "", clientHeight: el.clientHeight, scrollHeight: el.scrollHeight,
+        clientWidth: el.clientWidth, scrollWidth: el.scrollWidth,
+        compact: getComputedStyle(el).clipPath !== "none",
+      }));
+      assert.match(objective.text, /Binding Grove/, "the destination is named in the starting objective");
+      assert.ok(
+        objective.compact || (objective.clientHeight > 0 &&
+          objective.scrollHeight <= objective.clientHeight + 1 &&
+          objective.scrollWidth <= objective.clientWidth + 1),
+        `the starting objective fits at ${viewport.width}x${viewport.height}: ${JSON.stringify(objective)}`,
+      );
+      const objectiveTarget = await page.locator(".hud-objective-btn").boundingBox();
+      assert.ok(objectiveTarget && objectiveTarget.height >= 44, "objective has a 44px touch target");
       if (await page.locator(".touch-full").isVisible()) {
         assert.equal(await page.getByRole("button", { name: "A — Interact", exact: true }).count(), 1);
         assert.equal(await page.getByRole("button", { name: "B — Cancel", exact: true }).count(), 1);
@@ -163,8 +169,15 @@ try {
         }
         const menuBoxBefore = await page.locator(".hud-menu").boundingBox();
         assert.ok(menuBoxBefore, "menu visible before objective expand");
+        const status = page.getByRole("status").and(page.locator(".app-status"));
+        if (viewport.width === 320) await status.waitFor();
         await page.locator(".hud-objective-btn").first().click();
         await page.waitForSelector(".hud-objective-popover", { timeout: 3000 });
+        assert.match(await page.locator(".hud-objective-popover").innerText(), /Binding Grove/);
+        if (viewport.width === 320) {
+          assert.equal(await status.evaluate((el) => getComputedStyle(el).clipPath), "inset(50%)",
+            "offline status remains announced and does not paint over the objective");
+        }
         await waitForObjectiveSafeArea(page, checkPlayer);
         if (checkPlayer) {
           const action = page.locator(".hud-objective-lantern");
@@ -204,6 +217,10 @@ try {
         });
         assert.equal(await page.locator(".hud-objective-btn").getAttribute("aria-expanded"), "false");
         assert.equal(await page.locator(".hud-objective-btn").evaluate((el) => el === document.activeElement), true, "dismissal restores objective focus");
+        if (viewport.width === 320) {
+          assert.equal(await status.evaluate((el) => getComputedStyle(el).clipPath), "none",
+            "offline status is visible again after dismissing the objective");
+        }
       }
       await page.evaluate(() => {
         window.__reliquary?.openMenu?.();
@@ -259,9 +276,23 @@ try {
         .boundingBox();
       assert.ok(backSticky, "collection back control present after scroll");
       assert.ok(backSticky.y + backSticky.height <= viewport.height + 2, "back stays on screen while grid scrolls");
-    });
+    }, { context: { serviceWorkers: viewport.width === 320 ? "allow" : "block" } });
     console.log(`[layout] ok ${viewport.width}x${viewport.height}`);
   }
+  await withBrowser(async (page) => {
+    await page.setViewportSize({ width: 568, height: 320 });
+    await page.goto(baseUrl);
+    await page.getByRole("button", { name: "Start", exact: true }).click();
+    await dismissIntro(page);
+    const objective = page.locator(".hud-objective-btn");
+    const box = await objective.boundingBox();
+    assert.ok(box && box.y >= 0 && box.y + box.height < 320, "enlarged objective fits short landscape");
+    await objective.click();
+    const panel = page.getByRole("region", { name: "Current objective" });
+    assert.match(await panel.innerText(), /Binding Grove/);
+    await panel.getByRole("button", { name: "Open in Lantern menu" }).click();
+    await page.locator(".overlay-panel").waitFor();
+  }, { textScale: 2, context: { hasTouch: true } });
 } finally {
   server.close();
 }
