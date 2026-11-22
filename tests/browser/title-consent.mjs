@@ -45,6 +45,30 @@ const slotsOf = (page) =>
     backup: localStorage.getItem("reliquary.save.v3.bak"),
   }));
 
+const openConsentWithDoubleClick = async (page) => {
+  const newGame = page.getByRole("button", { name: "New Game", exact: true });
+  const newGameBox = await newGame.boundingBox();
+  assert.ok(newGameBox);
+  await page.mouse.click(
+    newGameBox.x + newGameBox.width / 2,
+    newGameBox.y + newGameBox.height / 2,
+    { clickCount: 2, delay: 40 },
+  );
+  const confirm = page.getByRole("alertdialog");
+  await page.waitForTimeout(80);
+  assert.ok(await confirm.isVisible(), "a rapid second click at the original New Game point does not bypass the question");
+  const confirmationActionBoxes = await confirm.locator("button").evaluateAll((buttons) => buttons.map((button) => {
+    const rect = button.getBoundingClientRect();
+    return { left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom };
+  }));
+  assert.ok(confirmationActionBoxes.every((box) =>
+    box.right <= newGameBox.x || box.left >= newGameBox.x + newGameBox.width ||
+    box.bottom <= newGameBox.y || box.top >= newGameBox.y + newGameBox.height),
+  "confirmation actions stay outside the original New Game hit area");
+  assert.equal(await page.evaluate(() => document.activeElement?.textContent?.trim()), "Keep current save",
+    "the old New Game point does not move focus outside the confirmation");
+};
+
 const { server, baseUrl } = await startStaticServer(0);
 
 try {
@@ -131,13 +155,17 @@ try {
       "New Game stays reachable after rotating the title to landscape");
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth), 844,
       "the rotated title has no horizontal overflow");
+    await page.setViewportSize({ width: 568, height: 320 });
+    await openConsentWithDoubleClick(page);
+    await page.keyboard.press("Escape");
+    await page.waitForFunction(() => document.querySelector(".title-confirm") == null);
+    assert.equal(await page.evaluate(() => document.activeElement?.textContent?.trim()), "New Game",
+      "Escape returns focus after the short-landscape consent question");
+    assert.deepEqual(await slotsOf(page), { primary: JSON.stringify(oldRun), backup: null });
     await page.setViewportSize({ width: 390, height: 844 });
 
     // First activation only asks; repeated clicks stay on the question.
-    await page.getByRole("button", { name: "New Game", exact: true }).click();
-    const confirm = page.getByRole("alertdialog");
-    await confirm.waitFor();
-    await page.waitForFunction(() => document.activeElement?.textContent?.trim() === "Keep current save");
+    await openConsentWithDoubleClick(page);
     await page.keyboard.press("Tab");
     assert.equal(await page.evaluate(() => document.activeElement?.textContent?.trim()), "Begin new game",
       "Tab advances between the confirmation actions");
@@ -148,8 +176,6 @@ try {
     assert.equal(await page.evaluate(() => document.activeElement?.textContent?.trim()), "Begin new game",
       "Shift+Tab wraps from the first confirmation action to the last");
     assert.ok(await page.locator("#new-game-confirm-detail").isVisible(), "replacement consequences remain visible on mobile");
-    await page.getByRole("button", { name: "New Game", exact: true }).click().catch(() => {});
-    assert.ok(await confirm.isVisible(), "repeated clicks do not bypass the question");
 
     // Escape cancels: no state change.
     await page.keyboard.press("Escape");

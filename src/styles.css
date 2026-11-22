@@ -362,9 +362,13 @@
     margin: 0.2rem auto 0.8rem;
   }
   .title-opening:has(.title-confirm) .title-copy {
+    margin-block: 0;
     width: min(42rem, 100%);
     padding-block: 0;
     transform: none;
+  }
+  .title-opening:has(.title-confirm) {
+    align-items: flex-start;
   }
   .title-opening:has(.title-confirm) .title-word,
   .title-opening:has(.title-confirm) .title-tag {
@@ -405,9 +409,13 @@
     margin: 0.7rem auto 1.05rem;
   }
   .title-opening:has(.title-confirm) .title-copy {
+    margin-block: 0;
     width: min(42rem, 100%);
     padding-block: 0;
     transform: none;
+  }
+  .title-opening:has(.title-confirm) {
+    align-items: flex-start;
   }
   .title-opening:has(.title-confirm) .title-word,
   .title-opening:has(.title-confirm) .title-tag {

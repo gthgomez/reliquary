@@ -47,7 +47,15 @@ export function TitleScreen({ game, snap }: { game: ReliquaryGame; snap: Snapsho
     }
   }, [confirmingReplace]);
   return (
-    <div className="title-screen title-opening" ref={titleScreenRef}>
+    <div
+      className="title-screen title-opening"
+      ref={titleScreenRef}
+      onPointerDownCapture={(event) => {
+        if (!confirmingReplace || confirmationRef.current?.contains(event.target as Node)) return;
+        event.preventDefault();
+        keepSaveRef.current?.focus({ preventScroll: true });
+      }}
+    >
       <img src="/game/bg/title.jpg" alt="" className="title-bg" />
       <div className="title-veil" aria-hidden="true" />
       <div className="title-copy">
