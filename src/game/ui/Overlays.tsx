@@ -31,99 +31,108 @@ import { clearTouchHolds, requestAccessibleStep, updateTouchHold, type HoldId } 
 export function TitleScreen({ game, snap }: { game: ReliquaryGame; snap: Snapshot }) {
   const [confirmingReplace, setConfirmingReplace] = useState(false);
   const [exportFailed, setExportFailed] = useState(false);
+  const titleScreenRef = useRef<HTMLDivElement>(null);
   const newGameRef = useRef<HTMLButtonElement>(null);
   const keepSaveRef = useRef<HTMLButtonElement>(null);
+  const confirmationWasShown = useRef(false);
   useEffect(() => {
-    const safeAction = confirmingReplace ? keepSaveRef : newGameRef;
-    safeAction.current?.focus({ preventScroll: true });
+    if (confirmingReplace) {
+      confirmationWasShown.current = true;
+      if (titleScreenRef.current) titleScreenRef.current.scrollTop = 0;
+      keepSaveRef.current?.focus({ preventScroll: true });
+    } else if (confirmationWasShown.current) {
+      newGameRef.current?.focus();
+    }
   }, [confirmingReplace]);
   return (
-    <div className="title-screen">
+    <div className="title-screen title-opening" ref={titleScreenRef}>
       <img src="/game/bg/title.jpg" alt="" className="title-bg" />
-      <div className="title-veil" />
+      <div className="title-veil" aria-hidden="true" />
       <div className="title-copy">
-        <div className="title-plaque">
-          <p className="title-kicker">A beastbinding chronicle</p>
-          <h1 className="title-word">Reliquary</h1>
-          <p className="title-tag">Bind the wild. Keep the old roads.</p>
-          {snap.hasSave && confirmingReplace ? (
-            <div
-              className="title-confirm"
-              role="alertdialog"
-              aria-modal="true"
-              aria-labelledby="new-game-confirm-title"
-              aria-describedby="new-game-confirm-detail"
-              onKeyDown={(event) => {
-                if (event.key === "Escape" || event.key === "Backspace") {
-                  event.stopPropagation();
+        <h1 className="title-word">Reliquary</h1>
+        <p className="title-tag">Bind the wild. Keep the old roads.</p>
+        {snap.hasSave && confirmingReplace ? (
+          <div
+            className="title-confirm"
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="new-game-confirm-title"
+            aria-describedby="new-game-confirm-detail"
+            onKeyDown={(event) => {
+              if (event.key === "Escape" || event.key === "Backspace") {
+                event.stopPropagation();
+                setConfirmingReplace(false);
+              }
+            }}
+          >
+            <h2 className="title-confirm-heading" id="new-game-confirm-title">
+              Replace the saved journey?
+            </h2>
+            <p className="title-confirm-detail" id="new-game-confirm-detail">
+              A new game uses the one save slot. Your current journey stays safe until the new game
+              first saves; after that, it is replaced.
+            </p>
+            <div className="title-actions">
+              <button
+                type="button"
+                className="btn-ghost"
+                ref={keepSaveRef}
+                onClick={() => setConfirmingReplace(false)}
+              >
+                Keep current save
+              </button>
+              <button
+                type="button"
+                className="btn-primary"
+                onClick={() => {
                   setConfirmingReplace(false);
-                }
-              }}
-            >
-              <p className="title-tag" id="new-game-confirm-title">
-                Replace the saved journey?
-              </p>
-              <p className="title-hint" id="new-game-confirm-detail">
-                A new game takes the one save slot. The old lantern is kept until the new journey
-                first writes over it — after that it is gone.
-              </p>
-              <div className="title-actions">
+                  game.startNew();
+                }}
+              >
+                Begin new game
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="title-actions">
+            {snap.hasSave ? (
+              <>
+                <button
+                  type="button"
+                  className="btn-primary"
+                  onClick={() => game.continueGame()}
+                >
+                  Continue
+                </button>
                 <button
                   type="button"
                   className="btn-ghost"
-                  ref={keepSaveRef}
-                  onClick={() => setConfirmingReplace(false)}
-                >
-                  Keep current save
-                </button>
-                <button
-                  type="button"
-                  className="btn-primary"
-                  onClick={() => {
-                    setConfirmingReplace(false);
-                    game.startNew();
-                  }}
-                >
-                  Begin new game
-                </button>
-              </div>
-            </div>
-          ) : (
-            <div className="title-actions">
-              {snap.hasSave ? (
-                <button
-                  type="button"
-                  className="btn-primary"
                   ref={newGameRef}
                   onClick={() => setConfirmingReplace(true)}
                 >
                   New Game
                 </button>
-              ) : (
-                <button type="button" className="btn-primary" onClick={() => game.startNew()}>
-                  Start
-                </button>
-              )}
-              {snap.hasSave ? (
-                <button type="button" className="btn-ghost" onClick={() => game.continueGame()}>
-                  Continue
-                </button>
-              ) : null}
-            </div>
-          )}
-          {game.hasNewerSave && !confirmingReplace ? (
-            <div className="title-save-recovery">
-              <p>A journey here was saved by a newer version. Export it here and import the file in that version.</p>
-              <button type="button" className="btn-ghost" onClick={() => setExportFailed(!game.exportNewerSave())}>
-                Export newer save
+              </>
+            ) : (
+              <button
+                type="button"
+                className="btn-primary"
+                onClick={() => game.startNew()}
+              >
+                Start
               </button>
-              {exportFailed ? <p role="status">Could not export the save. Try again in the browser that holds it.</p> : null}
-            </div>
-          ) : null}
-          <p className="title-hint">
-            Arrows or WASD to walk · Z / Enter to speak · X / Esc back · M menu
-          </p>
-        </div>
+            )}
+          </div>
+        )}
+        {game.hasNewerSave && !confirmingReplace ? (
+          <div className="title-save-recovery">
+            <p>A journey here was saved by a newer version. Export it here and import the file in that version.</p>
+            <button type="button" className="btn-ghost" onClick={() => setExportFailed(!game.exportNewerSave())}>
+              Export newer save
+            </button>
+            {exportFailed ? <p role="status">Could not export the save. Try again in the browser that holds it.</p> : null}
+          </div>
+        ) : null}
       </div>
     </div>
   );

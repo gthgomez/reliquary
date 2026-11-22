@@ -51,6 +51,7 @@ async function bootBattle(page) {
   await page.getByRole("button", { name: "Continue", exact: true }).click();
   await page.waitForSelector(".hud-menu", { timeout: 20_000 });
   await page.waitForFunction(() => typeof window.__reliquary?.startBattleWith === "function");
+  await page.mouse.move(0, 0); // keep Continue's pointer position from previewing a battle slot
   await page.evaluate(() => window.__reliquary.startBattleWith("briarling", "galeskip", [5, 4]));
   await page.waitForSelector(".battle-controls[data-battle-phase='command']");
   await page.waitForTimeout(120);

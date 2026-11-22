@@ -53,10 +53,18 @@ try {
       if (!localStorage.getItem(key)) localStorage.setItem(key, value);
     }, { key: SAVE_KEY, value: JSON.stringify(oldRun) });
     await page.goto(baseUrl);
+    await waitForGameBoot(page);
     await page.getByRole("button", { name: "New Game", exact: true }).tap();
+    await page.waitForFunction(() => document.querySelector(".title-screen")?.scrollTop === 0);
     const warning = page.locator("#new-game-confirm-detail");
     assert.equal((await measureTargetVisibility(warning)).fullyVisible, true,
       "short landscape shows the replacement warning at 200% text");
+    await page.setViewportSize({ width: 390, height: 844 });
+    assert.equal((await measureTargetVisibility(warning)).fullyVisible, true,
+      "the open confirmation remains readable after rotating to portrait");
+    await page.setViewportSize({ width: 568, height: 320 });
+    assert.equal((await measureTargetVisibility(warning)).fullyVisible, true,
+      "the warning returns fully into view after rotating to short landscape");
     const screen = page.locator(".title-screen");
     const sizing = await screen.evaluate((el) => ({
       scrollHeight: el.scrollHeight, height: el.clientHeight,
@@ -77,8 +85,11 @@ try {
     }
     const keep = page.getByRole("button", { name: "Keep current save", exact: true });
     assert.equal((await measureTargetVisibility(keep)).hitOk, true,
-      "the safe action is reachable by touch after reading");
-    await keep.tap();
+      "the safe action is reachable after touch scrolling");
+    await keep.click();
+    await page.getByRole("button", { name: "New Game", exact: true }).waitFor();
+    assert.equal(await page.evaluate(() => document.activeElement?.textContent?.trim()), "New Game",
+      "Keep current save returns focus to the action that opened the question");
     assert.deepEqual(await slotsOf(page), { primary: JSON.stringify(oldRun), backup: null });
   }, { textScale: 2, context: { viewport: { width: 568, height: 320 }, isMobile: true, hasTouch: true } });
 
@@ -89,14 +100,42 @@ try {
     await page.reload({ waitUntil: "load" });
     await waitForGameBoot(page);
 
-    // A returning player sees New Game, with Continue still prominent.
+    // Continue is the safe default, and New Game remains a quieter option.
     await page.getByRole("button", { name: "New Game", exact: true }).waitFor();
-    assert.ok(await page.getByRole("button", { name: "Continue", exact: true }).isVisible());
+    const continueButton = page.getByRole("button", { name: "Continue", exact: true });
+    assert.ok(await continueButton.isVisible());
+    const actions = await page.locator(".title-actions > button").evaluateAll((buttons) =>
+      buttons.map((button) => {
+        const rect = button.getBoundingClientRect();
+        return { label: button.textContent.trim(), className: button.className, width: rect.width, height: rect.height };
+      }));
+    assert.equal(actions[0]?.label, "Continue");
+    assert.match(actions[0]?.className ?? "", /btn-primary/);
+    assert.equal(actions[1]?.label, "New Game");
+    assert.match(actions[1]?.className ?? "", /btn-ghost/);
+    assert.ok(actions.every((action) => action.width >= 44 && action.height >= 44),
+      "both title actions meet the 44px touch target");
+    await page.keyboard.press("Tab");
+    assert.equal(await page.evaluate(() => document.activeElement?.textContent?.trim()), "Continue",
+      "keyboard focus begins on the safe Continue action");
+    assert.equal(await continueButton.evaluate((button) => button.matches(":focus-visible")), true,
+      "keyboard focus has a visible ring");
+
+    // The title remains usable when the device rotates to landscape and back.
+    await page.setViewportSize({ width: 844, height: 390 });
+    assert.equal((await measureTargetVisibility(continueButton)).fullyVisible, true,
+      "Continue stays reachable after rotating the title to landscape");
+    assert.equal((await measureTargetVisibility(page.getByRole("button", { name: "New Game", exact: true }))).fullyVisible, true,
+      "New Game stays reachable after rotating the title to landscape");
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth), 844,
+      "the rotated title has no horizontal overflow");
+    await page.setViewportSize({ width: 390, height: 844 });
 
     // First activation only asks; repeated clicks stay on the question.
     await page.getByRole("button", { name: "New Game", exact: true }).click();
     const confirm = page.getByRole("alertdialog");
     await confirm.waitFor();
+    await page.waitForFunction(() => document.activeElement?.textContent?.trim() === "Keep current save");
     assert.ok(await page.locator("#new-game-confirm-detail").isVisible(), "replacement consequences remain visible on mobile");
     await page.getByRole("button", { name: "New Game", exact: true }).click().catch(() => {});
     assert.ok(await confirm.isVisible(), "repeated clicks do not bypass the question");
@@ -105,11 +144,16 @@ try {
     await page.keyboard.press("Escape");
     await page.waitForFunction(() => document.querySelector(".title-confirm") == null);
     assert.deepEqual(await slotsOf(page), { primary: JSON.stringify(oldRun), backup: null });
+    assert.equal(await page.evaluate(() => document.activeElement?.textContent?.trim()), "New Game",
+      "Escape returns focus to the action that opened the question");
 
     // The Keep button cancels too; reload+Continue restores the old run.
     await page.getByRole("button", { name: "New Game", exact: true }).click();
-    await page.getByRole("button", { name: "Keep current save" }).click();
+    await page.waitForFunction(() => document.activeElement?.textContent?.trim() === "Keep current save");
+    await page.getByRole("button", { name: "Keep current save" }).tap();
     await page.waitForFunction(() => document.querySelector(".title-confirm") == null);
+    assert.equal(await page.evaluate(() => document.activeElement?.textContent?.trim()), "New Game",
+      "Keep current save returns focus to the action that opened the question");
     await page.reload({ waitUntil: "load" });
     await waitForGameBoot(page);
     await page.getByRole("button", { name: "Continue", exact: true }).click();
@@ -164,6 +208,30 @@ try {
     const afterFirst = await slotsOf(page);
     assert.notEqual(JSON.parse(afterFirst.primary).gold, 137, "the new run is on disk");
     assert.equal(JSON.parse(afterFirst.backup).gold, 137, "the old run rotated to backup exactly as designed");
+  }, { context: { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true } });
+  await withBrowser(async (page) => {
+    await page.goto(baseUrl);
+    await waitForGameBoot(page);
+    assert.equal(await page.getByRole("button", { name: "Start", exact: true }).count(), 1,
+      "a fresh profile sees Start");
+    assert.equal(await page.getByRole("button", { name: "Continue", exact: true }).count(), 0,
+      "a fresh profile has no Continue action");
+    await page.keyboard.press("Tab");
+    assert.equal(await page.evaluate(() => document.activeElement?.textContent?.trim()), "Start",
+      "keyboard focus reaches Start on a fresh profile");
+    await page.keyboard.press("Enter");
+    await page.locator(".dialog").waitFor();
+    assert.match(await page.locator(".dialog").innerText(), /A lantern ticks on the sill/,
+      "Start enters the cottage opening");
+    assert.match(await page.locator(".game-root").getAttribute("class"), /is-cottage/,
+      "the fresh opening uses the playable cottage layout");
+    for (let i = 0; i < 3; i += 1) {
+      await page.locator(".dialog-next").click();
+      await page.waitForTimeout(100);
+    }
+    await page.waitForSelector(".hud-menu", { timeout: 20_000 });
+    assert.match(await page.locator(".game-root").getAttribute("class"), /is-cottage/,
+      "the player can move into the cottage after the opening dialogue");
   });
   await withBrowser(async (page) => {
     const newer = JSON.stringify({ ...oldRun, worldRevision: 6, gold: 999 });
