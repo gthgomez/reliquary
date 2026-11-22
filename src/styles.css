@@ -404,6 +404,28 @@
     max-width: 31ch;
     margin: 0.7rem auto 1.05rem;
   }
+  .title-opening:has(.title-confirm) .title-copy {
+    width: min(42rem, 100%);
+    padding-block: 0;
+    transform: none;
+  }
+  .title-opening:has(.title-confirm) .title-word,
+  .title-opening:has(.title-confirm) .title-tag {
+    display: none;
+  }
+  .title-opening:has(.title-confirm) .title-confirm {
+    width: min(42rem, 100%);
+    margin: 0 auto;
+  }
+  .title-opening:has(.title-confirm) .title-confirm .title-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .title-opening:has(.title-confirm) .title-confirm .title-actions > button {
+    flex: 0 1 auto;
+    min-width: 0;
+    width: 100%;
+  }
 }
 @media (min-aspect-ratio: 4 / 3) and (min-height: 600px) {
   .title-opening .title-copy {

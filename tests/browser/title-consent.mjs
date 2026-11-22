@@ -62,6 +62,8 @@ try {
     await page.setViewportSize({ width: 390, height: 844 });
     assert.equal((await measureTargetVisibility(warning)).fullyVisible, true,
       "the open confirmation remains readable after rotating to portrait");
+    assert.equal(await page.locator('.title-confirm').evaluate((panel) => panel.scrollWidth <= panel.clientWidth), true,
+      '200% confirmation actions stay within the portrait panel');
     await page.setViewportSize({ width: 568, height: 320 });
     assert.equal((await measureTargetVisibility(warning)).fullyVisible, true,
       "the warning returns fully into view after rotating to short landscape");
