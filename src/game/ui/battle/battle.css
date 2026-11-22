@@ -22,6 +22,7 @@
   position: absolute;
   inset: 0;
   z-index: 3;
+  container: battle-hud / inline-size;
   color: var(--bq-ivory);
   pointer-events: none;
   font-family: var(--font-sans);
@@ -61,6 +62,13 @@
 }
 .battle-status-card.foe {
   margin-left: auto;
+}
+.battle-status-zone > .battle-toast {
+  position: absolute;
+  top: calc(100% + 0.25rem);
+  left: 50%;
+  width: max-content;
+  transform: translateX(-50%);
 }
 @supports not (backdrop-filter: blur(2px)) {
   .battle-status-card,
@@ -839,6 +847,13 @@
     left: 1.8%;
     right: 1.8%;
   }
+  .battle-status-zone > .battle-toast {
+    top: 0;
+    max-width: calc(35% - 0.5rem);
+    padding: 4px 8px;
+    border-radius: 0.65rem;
+    line-height: 1.2;
+  }
   .battle-status-card {
     width: 32.5%;
     grid-template-columns: 52px minmax(0, 1fr);
@@ -956,6 +971,43 @@
     width: 52%;
     max-height: 52%;
     padding: 8px 10px;
+  }
+  @container battle-hud (max-width: 27em) {
+    .battle-status-card {
+      grid-template-columns: minmax(0, 1fr);
+    }
+    .battle-status-head {
+      gap: 4px;
+    }
+    .battle-stat-row {
+      grid-template-columns: auto minmax(0, 1fr) auto;
+    }
+    .battle-portrait,
+    .battle-stat-icon,
+    .battle-action-icon {
+      display: none;
+    }
+    .battle-command-panel:has(.battle-back, .battle-continue) {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      grid-template-rows: minmax(0, 1fr);
+      gap: 4px;
+    }
+    .battle-controls-actions {
+      flex-direction: column;
+      justify-content: flex-end;
+    }
+    .battle-controls-actions :is(.battle-back, .battle-continue) {
+      min-width: 44px;
+      min-height: 44px;
+      margin: 0;
+      padding: 0 8px;
+      line-height: 1.15;
+    }
+    .battle-details-panel {
+      overflow-y: auto;
+      touch-action: pan-y;
+    }
   }
 }
 
@@ -1117,6 +1169,24 @@
   .battle-recap {
     font-size: 0.7rem;
   }
+  /* At narrow effective widths the resources read across the whole card. */
+  @container battle-hud (max-width: 18em) {
+    .battle-status-card {
+      grid-template-columns: minmax(0, 1fr);
+    }
+    .battle-stat-row {
+      grid-template-columns: auto minmax(0, 1fr) auto;
+    }
+    .battle-portrait,
+    .battle-stat-icon {
+      display: none;
+    }
+    /* Continue already succeeded in the world. Keep that status available
+       without covering the creatures when walking straight into battle. */
+    .battle-status-zone > .battle-toast-resumed {
+      clip-path: inset(50%);
+    }
+  }
 }
 
 /* Portrait tablets share the same dock boundary/anchors as phones; scale the
@@ -1187,7 +1257,8 @@
   }
 }
 
-.battle-hud button:focus-visible {
+.battle-hud button:focus-visible,
+.battle-details-panel:focus-visible {
   outline: 2px solid var(--bq-cyan);
   outline-offset: 2px;
 }

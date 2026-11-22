@@ -14,102 +14,143 @@ import {
 } from "../content";
 import type { ReliquaryGame } from "../engine";
 import { ROOT_MENU } from "../engine";
-import type { Beast, NamePromptView, Snapshot } from "../types";
+import type { Beast, DialogView, NamePromptView, Snapshot } from "../types";
 import { OverlayPanel } from "./OverlayPanel";
 import { DialogScene } from "./DialogScene";
+import { OfflineMenuStatus } from "./AppStatus";
+import { useOverlayFocusTrap } from "./useOverlayFocusTrap.ts";
 import {
   leadActionHint,
   practiceActionHint,
   practiceEnabledHint,
 } from "./party-actions.ts";
 import { shopBuyAffordability } from "./ui-chrome.ts";
-import { objectiveHint } from "../systems/objective.ts";
+import { objectiveHint, objectivePreview } from "../systems/objective.ts";
 import { clearTouchHolds, requestAccessibleStep, updateTouchHold, type HoldId } from "./touch-hold.ts";
 
 export function TitleScreen({ game, snap }: { game: ReliquaryGame; snap: Snapshot }) {
   const [confirmingReplace, setConfirmingReplace] = useState(false);
+  const [exportFailed, setExportFailed] = useState(false);
+  const titleScreenRef = useRef<HTMLDivElement>(null);
   const newGameRef = useRef<HTMLButtonElement>(null);
+  const keepSaveRef = useRef<HTMLButtonElement>(null);
+  const confirmationRef = useRef<HTMLDivElement>(null);
+  const confirmationWasShown = useRef(false);
+  useOverlayFocusTrap(confirmationRef, confirmingReplace);
   useEffect(() => {
-    if (!confirmingReplace) newGameRef.current?.focus({ preventScroll: true });
+    if (confirmingReplace) {
+      confirmationWasShown.current = true;
+      if (titleScreenRef.current) titleScreenRef.current.scrollTop = 0;
+      keepSaveRef.current?.focus({ preventScroll: true });
+    } else if (confirmationWasShown.current) {
+      newGameRef.current?.focus();
+    }
   }, [confirmingReplace]);
   return (
-    <div className="title-screen">
+    <div
+      className="title-screen title-opening"
+      ref={titleScreenRef}
+      onPointerDownCapture={(event) => {
+        if (!confirmingReplace || confirmationRef.current?.contains(event.target as Node)) return;
+        event.preventDefault();
+        keepSaveRef.current?.focus({ preventScroll: true });
+      }}
+    >
       <img src="/game/bg/title.jpg" alt="" className="title-bg" />
-      <div className="title-veil" />
+      <div className="title-veil" aria-hidden="true" />
       <div className="title-copy">
-        <div className="title-plaque">
-          <p className="title-kicker">A beastbinding chronicle</p>
-          <h1 className="title-word">Reliquary</h1>
-          <p className="title-tag">Bind the wild. Keep the old roads.</p>
-          {snap.hasSave && confirmingReplace ? (
-            <div
-              className="title-confirm"
-              role="alertdialog"
-              aria-modal="true"
-              aria-labelledby="new-game-confirm-title"
-              aria-describedby="new-game-confirm-detail"
-              onKeyDown={(event) => {
-                if (event.key === "Escape" || event.key === "Backspace") {
-                  event.stopPropagation();
+        <h1 className="title-word">Reliquary</h1>
+        <p className="title-tag">Bind the wild. Keep the old roads.</p>
+        {snap.hasSave && confirmingReplace ? (
+          <div
+            className="title-confirm"
+            ref={confirmationRef}
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="new-game-confirm-title"
+            aria-describedby="new-game-confirm-detail"
+            onKeyDown={(event) => {
+              if (event.key === "Escape" || event.key === "Backspace") {
+                event.stopPropagation();
+                setConfirmingReplace(false);
+              }
+            }}
+          >
+            <h2 className="title-confirm-heading" id="new-game-confirm-title">
+              Replace the saved journey?
+            </h2>
+            <p className="title-confirm-detail" id="new-game-confirm-detail">
+              A new game uses the one save slot. Your current journey stays safe until the new game
+              first saves; after that, it is replaced.
+            </p>
+            <div className="title-actions">
+              <button
+                type="button"
+                className="btn-ghost"
+                ref={keepSaveRef}
+                onClick={() => setConfirmingReplace(false)}
+              >
+                Keep current save
+              </button>
+              <button
+                type="button"
+                className="btn-primary"
+                onClick={(event) => {
+                  // A rapid second activation can land on this button after the
+                  // first one opened the question beneath the same pointer.
+                  if (event.detail > 1) {
+                    event.preventDefault();
+                    keepSaveRef.current?.focus({ preventScroll: true });
+                    return;
+                  }
                   setConfirmingReplace(false);
-                }
-              }}
-            >
-              <p className="title-tag" id="new-game-confirm-title">
-                Replace the saved journey?
-              </p>
-              <p className="title-hint" id="new-game-confirm-detail">
-                A new game takes the one save slot. The old lantern is kept until the new journey
-                first writes over it — after that it is gone.
-              </p>
-              <div className="title-actions">
+                  game.startNew();
+                }}
+              >
+                Begin new game
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="title-actions">
+            {snap.hasSave ? (
+              <>
+                <button
+                  type="button"
+                  className="btn-primary"
+                  onClick={() => game.continueGame()}
+                >
+                  Continue
+                </button>
                 <button
                   type="button"
                   className="btn-ghost"
-                  autoFocus
-                  onClick={() => setConfirmingReplace(false)}
-                >
-                  Keep current save
-                </button>
-                <button
-                  type="button"
-                  className="btn-primary"
-                  onClick={() => {
-                    setConfirmingReplace(false);
-                    game.startNew();
-                  }}
-                >
-                  Begin new game
-                </button>
-              </div>
-            </div>
-          ) : (
-            <div className="title-actions">
-              {snap.hasSave ? (
-                <button
-                  type="button"
-                  className="btn-primary"
                   ref={newGameRef}
                   onClick={() => setConfirmingReplace(true)}
                 >
                   New Game
                 </button>
-              ) : (
-                <button type="button" className="btn-primary" onClick={() => game.startNew()}>
-                  Start
-                </button>
-              )}
-              {snap.hasSave ? (
-                <button type="button" className="btn-ghost" onClick={() => game.continueGame()}>
-                  Continue
-                </button>
-              ) : null}
-            </div>
-          )}
-          <p className="title-hint">
-            Arrows or WASD to walk · Z / Enter to speak · X / Esc back · M menu
-          </p>
-        </div>
+              </>
+            ) : (
+              <button
+                type="button"
+                className="btn-primary"
+                onClick={() => game.startNew()}
+              >
+                Start
+              </button>
+            )}
+          </div>
+        )}
+        {game.hasNewerSave && !confirmingReplace ? (
+          <div className="title-save-recovery">
+            <p>A journey here was saved by a newer version. Export it here and import the file in that version.</p>
+            <button type="button" className="btn-ghost" onClick={() => setExportFailed(!game.exportNewerSave())}>
+              Export newer save
+            </button>
+            {exportFailed ? <p role="status">Could not export the save. Try again in the browser that holds it.</p> : null}
+          </div>
+        ) : null}
       </div>
     </div>
   );
@@ -158,11 +199,13 @@ export function VictoryScreen({ game }: { game: ReliquaryGame }) {
 
 export function Hud({
   snap,
+  mapId,
   onMenu,
   menuButtonRef,
   dormant = false,
 }: {
   snap: Snapshot;
+  mapId: string;
   onMenu: () => void;
   menuButtonRef?: RefObject<HTMLButtonElement | null>;
   dormant?: boolean;
@@ -175,6 +218,7 @@ export function Hud({
   const [objectiveOpen, setObjectiveOpen] = useState(false);
   const objectiveButtonRef = useRef<HTMLButtonElement>(null);
   const hint = objectiveHint(snap.flags, snap.mapName);
+  const preview = objectivePreview(snap.flags, mapId);
   useEffect(() => {
     if (dormant) setObjectiveOpen(false);
   }, [dormant]);
@@ -214,14 +258,17 @@ export function Hud({
                 className="hud-objective-btn"
                 ref={objectiveButtonRef}
                 aria-expanded={objectiveOpen}
+                aria-controls={objectiveOpen ? "current-objective" : undefined}
                 onClick={() => setObjectiveOpen((open) => !open)}
               >
                 <span className="hud-objective-label">Objective</span>
-                <span className="hud-objective-preview">{snap.objective}</span>
-                <span className="hud-objective-chevron">{objectiveOpen ? "▾" : "▸"}</span>
+                <span className="hud-objective-preview">{preview}</span>
+                <svg className="hud-objective-chevron" viewBox="0 0 16 16" aria-hidden="true">
+                  <path d="m4 6 4 4 4-4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
               </button>
               {objectiveOpen ? (
-                <div className="hud-objective-popover" role="region" aria-label="Current objective">
+                <div id="current-objective" className="hud-objective-popover" role="region" aria-label="Current objective">
                   <p className="hud-objective-full">{snap.objective}</p>
                   {hint ? <p className="hud-objective-full">{hint}</p> : null}
                   <button type="button" className="hud-objective-lantern" onClick={onMenu}>
@@ -250,26 +297,34 @@ export function Hud({
             )}
           </div>
         </div>
-        <button type="button" className="hud-menu" ref={menuButtonRef} onClick={onMenu}>
-          <span className="hud-menu-icon" aria-hidden="true">☰</span><span>Menu</span>
+        <button type="button" className="hud-menu" ref={menuButtonRef} onClick={onMenu} aria-label="Menu">
+          <span className="hud-menu-icon" aria-hidden="true">☰</span><span className="hud-menu-label">Menu</span>
         </button>
       </div>
     </div>
   );
 }
 
-export function DialogBox({ snap, onAdvance }: { snap: Snapshot; onAdvance: () => void }) {
-  if (!snap.dialog) return null;
-  return <DialogScene dialog={snap.dialog} onAdvance={onAdvance} />;
+export function DialogBox({ dialog, game }: { dialog: DialogView; game: ReliquaryGame }) {
+  return <DialogScene
+    dialog={dialog}
+    onAdvance={() => game.activateDialogueAction(dialog.revision, "confirm")}
+    onBack={() => game.activateDialogueAction(dialog.revision, "cancel")}
+  />;
 }
 
 export function NamePrompt({ game, prompt }: { game: ReliquaryGame; prompt: NamePromptView }) {
   const [name, setName] = useState(prompt.speciesName);
+  const formRef = useRef<HTMLFormElement>(null);
+  useOverlayFocusTrap(formRef, true);
   const promptText = prompt.kind === "starter" ? "What will you call your first pact?" : "What will you call them?";
   return (
     <form
+      ref={formRef}
       className="name-prompt"
-      aria-label="Name your pact"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Name your creature"
       onSubmit={(event) => {
         event.preventDefault();
         if (!name.trim()) return;
@@ -339,6 +394,7 @@ export function MenuPanel({ game, snap, onImportActivate }: { game: ReliquaryGam
         onClose={() => game.chooseMenu(ROOT_MENU.length - 1)}
         onCloseFocus={() => { game.setMenuIndex(ROOT_MENU.length - 1); game.emitPublic(); }}
       >
+        <OfflineMenuStatus />
         <ul className="menu-list">
           {ROOT_MENU.slice(0, -1).map((it, i) => (
             <li key={it}>
@@ -847,11 +903,12 @@ export function ShopPanel({ game, snap }: { game: ReliquaryGame; snap: Snapshot 
   );
 }
 
-export function TouchPad({ game, variant = "full", dialogActive = variant === "dialog" }: {
+export function TouchPad({ game, variant = "full", dialog }: {
   game: ReliquaryGame;
   variant?: "full" | "dialog";
-  dialogActive?: boolean;
+  dialog: DialogView | null;
 }) {
+  const dialogActive = Boolean(dialog);
   const heldRef = useRef<Map<string, Set<HoldId>>>(new Map());
   const accessibleStops = useRef(new Set<() => void>());
   const accessibleSequence = useRef(0);
@@ -866,10 +923,23 @@ export function TouchPad({ game, variant = "full", dialogActive = variant === "d
   useEffect(() => {
     const held = heldRef.current;
     const stops = accessibleStops.current;
-    return () => {
+    const release = () => {
       for (const stop of stops) stop();
       stops.clear();
       for (const code of clearTouchHolds(held)) game.holdKey(code, false);
+    };
+    const orientation = window.matchMedia("(orientation: portrait)");
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "hidden") release();
+    };
+    orientation.addEventListener("change", release);
+    window.addEventListener("blur", release);
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    return () => {
+      orientation.removeEventListener("change", release);
+      window.removeEventListener("blur", release);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+      release();
     };
   }, [game, variant, dialogActive]);
   const dir = (code: string) => ({
@@ -914,26 +984,30 @@ export function TouchPad({ game, variant = "full", dialogActive = variant === "d
       {variant === "full" ? (
         <div className="dpad">
           <button type="button" className="d up" aria-label="North" {...dir("KeyW")}>
-            <span aria-hidden="true">▲</span>
+            <span aria-hidden="true" />
           </button>
           <button type="button" className="d left" aria-label="West" {...dir("KeyA")}>
-            <span aria-hidden="true">◀</span>
+            <span aria-hidden="true" />
           </button>
           <button type="button" className="d right" aria-label="East" {...dir("KeyD")}>
-            <span aria-hidden="true">▶</span>
+            <span aria-hidden="true" />
           </button>
           <button type="button" className="d down" aria-label="South" {...dir("KeyS")}>
-            <span aria-hidden="true">▼</span>
+            <span aria-hidden="true" />
           </button>
         </div>
       ) : (
-        <p className="touch-dialog-hint">A · Next · B · Back</p>
+        <p className="touch-dialog-hint">
+          A · {dialog?.primaryLabel}{dialog?.secondaryLabel ? ` · B · ${dialog.secondaryLabel}` : ""}
+        </p>
       )}
       <div className="ab">
-        <button type="button" className="b-btn" aria-label={dialogActive ? "B — Back" : "B — Cancel"} onClick={() => game.cancel()}>
+        <button type="button" className="b-btn" aria-label={`B — ${dialog ? dialog.secondaryLabel ?? "Back" : "Cancel"}`}
+          disabled={dialogActive && !dialog?.secondaryLabel} onClick={() => game.activateDialogueAction(dialog?.revision ?? null, "cancel")}>
           B
         </button>
-        <button type="button" className="a-btn" aria-label={dialogActive ? "A — Next" : "A — Interact"} onClick={() => game.confirm()}>
+        <button type="button" className="a-btn" aria-label={`A — ${dialog?.primaryLabel ?? "Interact"}`}
+          onClick={() => game.activateDialogueAction(dialog?.revision ?? null, "confirm")}>
           A
         </button>
       </div>

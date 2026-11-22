@@ -23,9 +23,16 @@ import { setMuted } from "./audio.ts";
 import { acquireSaveSession } from "./save-session.ts";
 import { attachEconomyProbes } from "reliquary-economy-probes";
 import { attachBattleUiBrowserHooks } from "reliquary-battle-browser-probes";
+import type { RandomSource } from "./rng.ts";
 
 declare const __RELIQUARY_BROWSER_TEST__: boolean;
 declare const __RELIQUARY_AGES_PREVIEW__: boolean;
+
+declare global {
+  interface Window {
+    __reliquaryJourneyRandom?: RandomSource;
+  }
+}
 
 const AgesPreviewPanel = __RELIQUARY_AGES_PREVIEW__
   ? lazy(() => import("./preview/AgesPreviewPanel.tsx"))
@@ -48,7 +55,9 @@ export function GameApp() {
     (gameRef.current = new ReliquaryGame(
       agesPreviewEnabled
         ? { readOnlySaveSource: { getItem: (key) => localStorage.getItem(`ages-preview:${key}`) } }
-        : undefined,
+        : __RELIQUARY_BROWSER_TEST__ && typeof window !== "undefined" && window.__reliquaryJourneyRandom
+          ? { random: window.__reliquaryJourneyRandom }
+          : undefined,
     ));
   const snap = useSyncExternalStore(g.subscribe, g.getSnapshot, g.getSnapshot);
 
@@ -164,7 +173,8 @@ export function GameApp() {
       const devicePortrait = typeof window.matchMedia === "function"
         ? window.matchMedia("(orientation: portrait)").matches
         : window.innerHeight >= window.innerWidth;
-      g.layout(Math.max(0, r.width - padX), Math.max(0, r.height - padY), devicePortrait);
+      const cottageFrame = cs.getPropertyValue("--fit-cottage").trim() === "1";
+      g.layout(Math.max(0, r.width - padX), Math.max(0, r.height - padY), devicePortrait, cottageFrame);
     };
     applyLayoutRef.current = apply;
     apply();
@@ -191,12 +201,14 @@ export function GameApp() {
     !!snap.dialog ||
     !!snap.menu;
   const uiModal = isUiModalOpen(snap);
+  const naming = !!snap.namePrompt;
   const classicTouch = isClassicTouchEnabled();
   const showHudBar = playing && snap.mode !== "battle";
-  const showExplorationTouch = shouldShowExplorationTouch(snap, classicTouch);
-  const showDialogTouch = shouldShowDialogTouch(snap, classicTouch);
+  const showExplorationTouch = !naming && shouldShowExplorationTouch(snap, classicTouch);
+  const showDialogTouch = !naming && shouldShowDialogTouch(snap, classicTouch);
   const showTouch = showExplorationTouch || showDialogTouch;
   const mapId = g.mapId;
+  const cottage = mapId === "home" && snap.mode === "world";
   const dialogActive = !!snap.dialog;
   const menuButtonRef = useRef<HTMLButtonElement>(null);
   const wasUiModal = useRef(false);
@@ -205,7 +217,7 @@ export function GameApp() {
   // map, even when the stage's outer border box does not resize.
   useLayoutEffect(() => {
     applyLayoutRef.current?.();
-  }, [snap.mode, snap.menu, dialogActive, mapId]);
+  }, [snap.mode, snap.menu, dialogActive, naming, mapId]);
 
   useEffect(() => {
     if (uiModal) {
@@ -246,14 +258,14 @@ export function GameApp() {
 
   return (
     <div
-      className={`game-root${showTouch ? " has-touch" : ""}${showExplorationTouch ? " has-explore-touch" : ""}${showDialogTouch ? " has-dialog-touch" : ""}${classicTouch ? " classic-touch" : ""}${uiModal ? " is-ui-modal" : ""}${snap.dialog ? " is-dialog" : ""}${snap.dialog?.portraitKey ? " is-dialog-portrait" : ""}${snap.mode === "battle" ? " is-battle" : ""}${battleSubmenuRootClass(snap.battle?.phase)}`}
+      className={`game-root${showTouch ? " has-touch" : ""}${showExplorationTouch ? " has-explore-touch" : ""}${showDialogTouch ? " has-dialog-touch" : ""}${classicTouch ? " classic-touch" : ""}${cottage ? " is-cottage" : ""}${uiModal ? " is-ui-modal" : ""}${snap.dialog ? " is-dialog" : ""}${snap.dialog?.portraitKey ? " is-dialog-portrait" : ""}${snap.mode === "battle" ? " is-battle" : ""}${battleSubmenuRootClass(snap.battle?.phase)}`}
     >
       <div className="stage" ref={stageRef}>
         <div
           className="viewport"
           style={{
-            width: snap.cssW || snap.viewW * TILE,
-            height: snap.cssH || snap.viewH * TILE,
+            ["--scene-width" as string]: `${snap.cssW || snap.viewW * TILE}px`,
+            ["--scene-height" as string]: `${snap.cssH || snap.viewH * TILE}px`,
             ["--ar" as string]: String(snap.viewW / snap.viewH),
             ["--ui-safe-top-px" as string]: "0",
           }}
@@ -279,21 +291,22 @@ export function GameApp() {
             {showHudBar ? (
               <Hud
                 snap={snap}
+                mapId={mapId}
                 menuButtonRef={menuButtonRef}
-                dormant={uiModal || !!snap.dialog}
+                dormant={uiModal || dialogActive || naming}
                 onMenu={() => g.toggleMenu()}
               />
             ) : null}
-            <AppStatus />
-            {snap.toast && !uiModal ? <Toast text={snap.toast} /> : null}
+            <AppStatus showReadyToast={snap.mode === "world" && !uiModal && !dialogActive && !naming} />
+            {snap.toast && !uiModal && snap.mode !== "battle" ? <Toast text={snap.toast} /> : null}
           </div>
           {snap.mode === "battle" ? <BattleHud game={g} snap={snap} /> : null}
-          {snap.dialog ? <DialogBox snap={snap} onAdvance={() => g.confirm()} /> : null}
-          {snap.namePrompt ? <NamePrompt key={snap.namePrompt.uid} game={g} prompt={snap.namePrompt} /> : null}
+          {snap.dialog ? <DialogBox dialog={snap.dialog} game={g} /> : null}
           {snap.menu ? <MenuPanel game={g} snap={snap} onImportActivate={openImportPicker} /> : null}
           {snap.mode === "shop" ? <ShopPanel game={g} snap={snap} /> : null}
           {uiModal && snap.toast ? <Toast text={snap.toast} className="toast-modal" /> : null}
         </div>
+        {snap.namePrompt ? <NamePrompt key={snap.namePrompt.uid} game={g} prompt={snap.namePrompt} /> : null}
         {snap.mode === "boot" ? <LoadingScreen progress={snap.loadProgress} /> : null}
         {snap.mode === "title" ? <TitleScreen game={g} snap={snap} /> : null}
         {snap.mode === "victory" ? <VictoryScreen game={g} /> : null}
@@ -330,7 +343,7 @@ export function GameApp() {
           <AgesPreviewPanel game={g} inBattle={snap.mode === "battle"} />
         </Suspense>
       ) : null}
-      {showTouch ? <TouchPad game={g} variant={showDialogTouch && !showExplorationTouch ? "dialog" : "full"} dialogActive={!!snap.dialog} /> : null}
+      {showTouch ? <TouchPad game={g} variant={showDialogTouch && !showExplorationTouch ? "dialog" : "full"} dialog={snap.dialog} /> : null}
     </div>
   );
 }

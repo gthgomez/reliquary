@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { KeyboardEvent as ReactKeyboardEvent } from "react";
 import { currentStats } from "../../content.ts";
 import type { ReliquaryGame } from "../../engine.ts";
+import { SAVE_RESUMED_MESSAGE } from "../../save.ts";
 import type { BattleState, Snapshot } from "../../types.ts";
 import { BATTLE_SIGILS } from "../../world/encounters.ts";
 import type { BattleCommand } from "../../world/encounters.ts";
@@ -18,6 +19,7 @@ import {
 } from "./battle-commands.ts";
 import { resolveBattleActionDetails, type ActionDetails } from "./battle-action-details.ts";
 import { battlePanelHeading } from "../battle-chrome.ts";
+import { Toast } from "../Overlays.tsx";
 import "./battle.css";
 
 const SUBMENU_PHASES = new Set<BattleState["phase"]>(["skills", "items", "party", "bind"]);
@@ -45,12 +47,32 @@ export function BattleHud({ game, snap }: { game: ReliquaryGame; snap: Snapshot 
     [b?.canBind, b?.canFlee],
   );
   const rootRef = useRef<HTMLDivElement>(null);
+  const statusRef = useRef<HTMLDivElement>(null);
   const recapRef = useRef<HTMLElement>(null);
   const [focusCommand, setFocusCommand] = useState<BattleCommand>(
     () => firstAvailableCommand(slots) ?? "Strike",
   );
   const [recapOpen, setRecapOpen] = useState(false);
   const [touchInput, setTouchInput] = useState(false);
+
+  useLayoutEffect(() => {
+    const root = rootRef.current;
+    const status = statusRef.current;
+    if (!root || !status) return;
+    const measure = () => {
+      const frame = root.getBoundingClientRect();
+      const bottom = status.getBoundingClientRect().bottom;
+      game.setBattleStatusBottomRatio(frame.height > 0 ? (bottom - frame.top) / frame.height : null);
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(root);
+    observer.observe(status);
+    return () => {
+      observer.disconnect();
+      game.setBattleStatusBottomRatio(null);
+    };
+  }, [game]);
 
   useEffect(() => {
     const coarse = typeof window.matchMedia === "function" && window.matchMedia("(pointer: coarse)").matches;
@@ -149,6 +171,11 @@ export function BattleHud({ game, snap }: { game: ReliquaryGame; snap: Snapshot 
   const onKeyDown = useCallback((event: ReactKeyboardEvent<HTMLDivElement>) => {
     if (!b) return;
     const key = event.key.toLowerCase();
+    if (event.target instanceof HTMLElement && event.target.closest(".battle-details-panel")) {
+      // Leave reading keys to the native scroller and Escape to battle cancel.
+      if (key !== "escape") event.stopPropagation();
+      return;
+    }
     const arrows: Record<string, "up" | "down" | "left" | "right"> = {
       arrowup: "up",
       w: "up",
@@ -250,9 +277,12 @@ export function BattleHud({ game, snap }: { game: ReliquaryGame; snap: Snapshot 
 
   return (
     <div className={`battle-ui battle-hud${touchInput ? " is-touch" : ""}`} ref={rootRef} onKeyDown={onKeyDown}>
-      <div className="battle-status-zone">
+      <div className="battle-status-zone" ref={statusRef}>
         {me && meStats ? <BattleStatusCard side="player" beast={me} stats={meStats} /> : null}
         {foe && foeStats ? <BattleStatusCard side="foe" beast={foe} stats={foeStats} showMana={false} /> : null}
+        {snap.toast ? <Toast text={snap.toast} className={snap.toast === SAVE_RESUMED_MESSAGE
+          ? "battle-toast battle-toast-resumed"
+          : "battle-toast"} /> : null}
       </div>
 
       <div className="battle-controls" data-battle-phase={b.phase}>
@@ -318,7 +348,7 @@ export function BattleHud({ game, snap }: { game: ReliquaryGame; snap: Snapshot 
             </div>
           </section>
 
-          <section className="battle-details-panel" aria-label="Action details">
+          <section className="battle-details-panel" aria-label="Action details" tabIndex={0}>
             <BattleActionDetails details={details} />
           </section>
         </div>

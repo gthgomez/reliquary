@@ -37,7 +37,7 @@ try {
     });
     await page.goto(url, { waitUntil: "load" });
     await page.getByRole("button", { name: "Start", exact: true }).click();
-    for (let i = 0; i < 3; i++) await page.locator("button.dialog").click();
+    for (let i = 0; i < 3; i++) await page.locator(".dialog-next").click();
     await page.keyboard.down("ArrowLeft");
     await page.waitForFunction(() => window.__controlsTest?.getPos?.().x < 5);
     await page.keyboard.up("ArrowLeft");

@@ -78,7 +78,7 @@ try {
     // Baseline durable state through the real UI.
     await page.click("text=Start");
     for (let i = 0; i < 8 && (await page.locator(".dialog").count()) > 0; i += 1) {
-      await page.locator(".dialog").click({ delay: 30 });
+      await page.locator(".dialog-next").click({ delay: 30 });
       await page.waitForTimeout(100);
     }
     await page.waitForSelector(".hud-menu", { timeout: 20_000 });

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { currentObjective, objectiveHint } from "./systems/objective.ts";
+import { currentObjective, marenLandmark, objectiveHint, objectivePreview } from "./systems/objective.ts";
 
 test("before a pact, the objective points at the Binding Grove", () => {
   assert.equal(
@@ -30,4 +30,16 @@ test("optional directions change with place and progression", () => {
   assert.match(objectiveHint({ starter: true }, "Elderhall")!, /north.*Briar Road/);
   assert.match(objectiveHint({ starter: true }, "Briar Road")!, /north.*Wildwood/);
   assert.equal(objectiveHint({ starter: true, trial: true }, "Elderhall"), null);
+});
+
+test("the cottage directs a new player to the actual exit before the larger objective", () => {
+  assert.match(objectivePreview({}, "home")!, /doorway at the bottom of the cottage/);
+  assert.match(currentObjective({})!, /Binding Grove/);
+  assert.match(objectivePreview({}, "elderhall")!, /Binding Grove.*west/);
+  assert.match(objectivePreview({ starter: true }, "home")!, /Thornkeep/);
+});
+
+test("Maren's first meeting clue names the landmark next to her in each world", () => {
+  assert.equal(marenLandmark(false), "near the Chapter House");
+  assert.equal(marenLandmark(true), "beside the village well");
 });

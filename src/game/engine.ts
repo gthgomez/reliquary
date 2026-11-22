@@ -19,7 +19,7 @@ import { resolveNpcPortrait, type PortraitKey } from "./portraits.ts";
 import { FIXED_ENCOUNTERS } from "./encounters.ts";
 import { sfxPlay, startMusic, stopMusic, unlockAudio, isMuted, setMuted } from "./audio.ts";
 import { setSoundMutedStored } from "./ui/ui-chrome.ts";
-import { hasSave, cloneSave, loadSave, parseSave, SAVE_VERSION, serializeSave, WORLD_REVISION, writeSave, type SaveStorage } from "./save.ts";
+import { hasSave, cloneSave, findNewerSave, loadSave, parseSave, SAVE_RESUMED_MESSAGE, SAVE_VERSION, serializeSave, WORLD_REVISION, writeSave, type SaveStorage } from "./save.ts";
 import { collectGameAssets, isElderhallCandidateBuild } from "./assets.ts";
 import type { BattlePreview } from "./preview/battle-preview.ts";
 import { mathRandom, type RandomSource } from "./rng.ts";
@@ -72,7 +72,8 @@ import {
   resetWorldCamRelief,
   type WorldCamReliefState,
 } from "./render/world-camera-safe.ts";
-import { clipSoftPath, clipStoneTransition, drawAtlasTile, paintStoneRoadBorder, paintTileAccent, tileAtlasQuadrant } from "./render/tile-surface.ts";
+import { clipSoftPath, clipStoneTransition, drawAtlasTile, paintCottageFloor, paintStoneRoadBorder, paintTileAccent, tileAtlasQuadrant } from "./render/tile-surface.ts";
+import { paintDirtPathJunctions } from "./render/road-junctions.ts";
 import { paintPropWithLocalFade, paintWorldActorShadow, paintWorldPropShadow, resolveWorldPropLayout, shouldFadePropForPlayer, worldPropCullBounds } from "./render/world-actors.ts";
 import { elderhallCandidateObject, elderhallTerrainAtlas, paintCandidateGateFallback, paintCandidateBenchFallback, paintElderhallRoadJunctions } from "./render/elderhall-visual.ts";
 import { captureChance, captureSucceeds, storeCapturedBeast } from "./systems/capture.ts";
@@ -82,7 +83,7 @@ import { applySkillEvents, resolveSkillUse } from "./systems/battle-engine.ts";
 import { purchaseItem, sellItem } from "./systems/economy.ts";
 import { awardExperience } from "./systems/progression.ts";
 import { moveToLead, renameCreature, transferBeast } from "./systems/party.ts";
-import { currentObjective } from "./systems/objective.ts";
+import { currentObjective, marenLandmark } from "./systems/objective.ts";
 import { STATUS_ADJECTIVES, applyStatus, dazeFumbles, tickStatus as tickBeastStatus } from "./systems/status.ts";
 import type {
   BattleState,
@@ -112,7 +113,15 @@ type Dialog = {
 	doneLabel?: string;
 	npcId: string | null;
 	portraitKey: PortraitKey | null;
+	speciesId?: string;
 };
+
+function dialogSecondaryLabel(dialog: Dialog): "Back" | "Close" | "Cancel" | null {
+	const last = dialog.index === dialog.pages.length - 1;
+	if (dialog.onDone && (dialog.index === 0 || last)) return "Cancel";
+	if (dialog.pages.length === 1) return "Close";
+	return dialog.index > 0 ? "Back" : null;
+}
 
 /** Placed-NPC identity threaded from the map into dialog state (stable id, never the display name). */
 type DialogSpeaker = {
@@ -180,6 +189,7 @@ export class ReliquaryGame {
 	seen: Record<string, boolean> = {};
 	caught: Record<string, boolean> = {};
 	dialog: Dialog | null = null;
+	private dialogRevision = 0;
 	menu: string | null = null;
 	learnMenu: { uid: string; skill: string } | null = null;
 	packTarget: { item: string; uids: string[] } | null = null;
@@ -223,6 +233,7 @@ export class ReliquaryGame {
 	private safeCheckpoint: GameSave | null = null;
 	private saveWriteAllowed = true;
 	private readonly readOnlySaveSource?: Pick<SaveStorage, "getItem">;
+	readonly hasNewerSave: boolean;
 	lifecycle: "constructed" | "booted" | "stopped" = "constructed";
 	private readonly random: RandomSource;
 	private bootToken = 0;
@@ -237,6 +248,7 @@ export class ReliquaryGame {
 	};
 	private probe: NonNullable<Window["__controlsTest"]> | null = null;
 	private battleStableReserve: number | null = null;
+	private battleStatusBottomRatio: number | null = null;
 	private battleLayoutCanvasKey: string | null = null;
 	private battleIdlePhase = 0;
 	battlePreview: BattlePreview | null = null;
@@ -245,6 +257,7 @@ export class ReliquaryGame {
 	constructor(options: { random?: RandomSource; readOnlySaveSource?: Pick<SaveStorage, "getItem"> } = {}) {
 		this.random = options.random ?? mathRandom;
 		this.readOnlySaveSource = options.readOnlySaveSource;
+		this.hasNewerSave = findNewerSave(this.readOnlySaveSource) !== null;
 		this.saveWriteAllowed = !this.readOnlySaveSource;
 		this.snap = this.buildSnap();
 		this.hasSave = hasSave(this.readOnlySaveSource);
@@ -277,12 +290,16 @@ export class ReliquaryGame {
 			seen: this.seen,
 			caught: this.caught,
 			dialog: this.dialog ? {
+				revision: this.dialogRevision,
 				speaker: this.dialog.speaker,
 				text: this.dialog.pages[this.dialog.index] ?? "",
 				last: this.dialog.index >= this.dialog.pages.length - 1,
 				npcId: this.dialog.npcId,
 				portraitKey: this.dialog.portraitKey,
 				doneLabel: this.dialog.doneLabel ?? null,
+				primaryLabel: this.dialog.index < this.dialog.pages.length - 1 ? "Next" : this.dialog.doneLabel ?? "Close",
+				secondaryLabel: dialogSecondaryLabel(this.dialog),
+				speciesId: this.dialog.speciesId ?? null,
 				commits: Boolean(this.dialog.onDone),
 			} : null,
 			learnMenu:
@@ -435,7 +452,7 @@ export class ReliquaryGame {
 	ch(): number {
 		return this.viewH * TILE;
 	}
-	layout(stageW: number, stageH: number, devicePortrait = false): void {
+	layout(stageW: number, stageH: number, devicePortrait = false, frameCottage = false): void {
 		// Battles own their stage (16:9 at the reference size, fitted rows/columns
 		// for other aspect ratios) so the composition is not squeezed into the
 		// exploration camera. The overworld keeps its 12x9 / 10x16 behavior.
@@ -444,11 +461,12 @@ export class ReliquaryGame {
 		const portrait = presentation === "portrait" ||
 			(!inBattle && stageW > 0 && stageH > stageW * 1.05 && stageW < 920);
 		const battleSize = presentation ? battleViewportForStage(presentation, stageW, stageH) : null;
-		const vw = battleSize?.viewW ?? (portrait ? VIEW_W_PORT : VIEW_W);
-		let vh = battleSize?.viewH ?? (portrait ? VIEW_H_PORT : VIEW_H);
+		const cottage = frameCottage && this.mode === "world" && this.mapId === "home" ? this.map() : null;
+		const vw = cottage?.ground[0]?.length ?? battleSize?.viewW ?? (portrait ? VIEW_W_PORT : VIEW_W);
+		let vh = cottage?.ground.length ?? battleSize?.viewH ?? (portrait ? VIEW_H_PORT : VIEW_H);
 		// Dialogue stays on the exploration view. Snapping back to the short
 		// canvas made the playfield jump inward whenever a sign or conversation opened.
-		if (portrait && devicePortrait && this.mode === "world" && !this.menu) {
+		if (!cottage && portrait && devicePortrait && this.mode === "world" && !this.menu) {
 			const map = this.map();
 			if ((map.ground[0]?.length ?? 0) >= VIEW_W_PORT) {
 				// Keep the authored 10-tile width and fit the height to the space
@@ -497,7 +515,8 @@ export class ReliquaryGame {
 		if (target instanceof HTMLElement && target.closest("input, textarea, select, [contenteditable='true']")) return;
 		// Shift+Tab must remain native inside dialogs. Treating its modifier as
 		// the legacy cancel shortcut closes the panel before Tab can wrap focus.
-		if (e.code === "ShiftLeft" && target instanceof HTMLElement && target.closest("[role='dialog']")) return;
+		if (e.code === "ShiftLeft" && (this.dialog || this.namePrompt ||
+			(target instanceof HTMLElement && target.closest("[role='dialog']")))) return;
 		if (target instanceof HTMLElement && target.closest("button") && (e.code === "Enter" || e.code === "Space")) {
 			if (e.repeat) e.preventDefault();
 			return;
@@ -608,11 +627,11 @@ export class ReliquaryGame {
 		this.moving = false;
 		this.encounterLock = false;
 		this.mode = "world";
-		this.openDialog("???", [
+		this.openDialog("", [
 			...(notice ? [notice] : []),
 			"A lantern ticks on the sill. Morning in Elderhall smells of peat and bread.",
 			"You are Rowan, newly sworn Pactwarden. The Crown of Binding cracked a generation ago — beasts walk feral on the old roads.",
-			"Elder Maren is waiting at the Chapter house. Take the lantern. Walk."
+			`Step through the doorway at the bottom of the cottage. Look for Elder Maren ${marenLandmark(isElderhallCandidateBuild())}.`
 		]);
 	}
 	continueGame(): void {
@@ -628,7 +647,7 @@ export class ReliquaryGame {
 		}
 		this.applySave(s);
 		this.mode = "world";
-		this.toastMsg("The lantern remembers.");
+		this.toastMsg(SAVE_RESUMED_MESSAGE);
 		this.replayEndingIfOwed();
 		this.emit();
 	}
@@ -687,6 +706,11 @@ export class ReliquaryGame {
 		this.toastMsg(written ? "The lantern is copied to a file." : "The file could not be written.");
 		this.emit();
 		return written;
+	}
+	exportNewerSave(): boolean {
+		if (this.mode !== "title") return false;
+		const text = findNewerSave(this.readOnlySaveSource);
+		return text !== null && (this.exportFile?.("reliquary-newer-save.json", text) ?? false);
 	}
 	/** Ask the shell to open a file picker; the chosen text comes back to importGame. */
 	requestImport(): void {
@@ -1003,10 +1027,17 @@ export class ReliquaryGame {
 		else this.keys.delete(code);
 	}
 
+	/** A queued click belongs to the page whose action was rendered under it. */
+	activateDialogueAction = (revision: number | null, action: "confirm" | "cancel"): void => {
+		const current = this.dialog ? this.dialogRevision : null;
+		if (revision === current) this[action]();
+	};
+
 	confirm = (): void => {
 		unlockAudio();
 		if (this.mode === "title") return;
 		if (this.dialog) {
+			this.dialogRevision += 1;
 			sfxPlay.confirm();
 			if (this.dialog.index < this.dialog.pages.length - 1) this.dialog.index += 1;
 			else {
@@ -1039,13 +1070,16 @@ export class ReliquaryGame {
 			return;
 		}
 		if (this.dialog) {
-			if (this.dialog.onDone) {
+			const secondary = dialogSecondaryLabel(this.dialog);
+			if (!secondary) return;
+			this.dialogRevision += 1;
+			if (secondary === "Back") this.dialog.index -= 1;
+			else {
 				this.dialog = null;
-				sfxPlay.cancel();
-				this.emit();
-				return;
+				if (this.mode === "dialog") this.mode = "world";
 			}
-			this.confirm();
+			sfxPlay.cancel();
+			this.emit();
 			return;
 		}
 		if (this.battle) {
@@ -1305,7 +1339,7 @@ export class ReliquaryGame {
 		if (!dialog) return;
 		if (dialog.kind === "action") {
 			if (dialog.action === "inn") {
-				this.openDialog(name, ["Fifteen crowns for a clean bed and a whole lantern. (A rest · B not now)"], () => this.offerInn(name, npc), npc, "Rest for 15 crowns");
+				this.openDialog(name, ["Fifteen crowns for a clean bed and a whole lantern."], () => this.offerInn(name, npc), npc, "Rest for 15 crowns");
 			} else if (dialog.action === "shop") {
 				this.mode = "shop";
 				this.shopMode = "buy";
@@ -1349,11 +1383,11 @@ export class ReliquaryGame {
 		if (!sp) return;
 		const elements = sp.elements.map((element) => ELEMENTS[element].name).join(" / ");
 		const skills = skillsForLevel(sp, 5).map((skill) => SKILLS[skill]?.name ?? skill).join(", ");
-		this.openDialog(sp.name, [`${sp.name}, the ${sp.epithet}. ${sp.description}`, `${elements} · Starting skills: ${skills}. Speak the pact, or turn away and look at the others.`], () => {
-			this.openDialog(sp.name, [`Bind ${sp.name} as your first pact? The grove will keep the others.`], () => {
-				this.bindStarter(id);
-			}, undefined, `Bind ${sp.name}`);
-		}, undefined, "Speak the pact");
+		this.openDialog(sp.name, [
+			sp.description,
+			`${elements} · Starting skills: ${skills}.`,
+			"Make this your first pact? The other creatures will stay in the grove.",
+		], () => this.bindStarter(id), null, `Bind ${sp.name}`, id);
 	}
 	private bindStarter(id: string): void {
 		if (this.flags.starter && this.party.length > 0) return;
@@ -1381,13 +1415,15 @@ export class ReliquaryGame {
 	private give(id: string, n: number): void {
 		this.inventory[id] = (this.inventory[id] ?? 0) + n;
 	}
-	openDialog(speaker: string, pages: string[], onDone?: () => void, npc?: DialogSpeaker | null, doneLabel?: string): void {
+	openDialog(speaker: string, pages: string[], onDone?: () => void, npc?: DialogSpeaker | null, doneLabel?: string, speciesId?: string): void {
+		this.dialogRevision += 1;
 		this.dialog = {
 			speaker,
 			pages,
 			index: 0,
 			onDone,
 			doneLabel,
+			speciesId,
 			npcId: npc?.npcId ?? null,
 			portraitKey: npc ? resolveNpcPortrait(npc.npcId, npc.sprite) : null
 		};
@@ -2313,11 +2349,22 @@ export class ReliquaryGame {
 			ground.imageSmoothingEnabled = false;
 			const candidateDirtAtlas = this.images["tile_elderhall-dirt-atlas"];
 			const candidateGrassAtlas = this.images["tile_elderhall-grass-atlas"];
+			const groveDirt = m.id === "grove" ? this.images.tile_dirt : undefined;
+			const cottageExit = m.id === "home" ? m.warps.find((warp) => warp.to === "elderhall") : undefined;
+			let finishFloor: (() => void) | undefined;
+			if (elderhallCandidate && m.id === "elderhall" && candidateDirtAtlas && candidateGrassAtlas) {
+				finishFloor = () => paintElderhallRoadJunctions(ground, m, TILE, candidateDirtAtlas);
+			} else if (groveDirt) {
+				finishFloor = () => paintDirtPathJunctions(ground, m, TILE, (x, y) => {
+					ground.drawImage(groveDirt, x * TILE, y * TILE, TILE, TILE);
+				});
+			} else if (cottageExit) {
+				finishFloor = () => paintCottageFloor(ground, TILE, mw, mh, cottageExit.x);
+			}
 			bakeMapTerrain({
 				map: m,
 				tileSize: TILE,
-				drawJunctions: elderhallCandidate && m.id === "elderhall" && candidateDirtAtlas && candidateGrassAtlas
-					? () => paintElderhallRoadJunctions(ground, m, TILE, candidateDirtAtlas) : undefined,
+				drawJunctions: finishFloor,
 				drawTile: (name, dx, dy, variant, pathMask, stoneMask) => {
 					const tx = dx / TILE;
 					const ty = dy / TILE;
@@ -2482,6 +2529,9 @@ export class ReliquaryGame {
 		for (const s of list) s.draw();
 		if (panWorld) ctx.restore();
 	}
+	setBattleStatusBottomRatio(ratio: number | null): void {
+		this.battleStatusBottomRatio = ratio;
+	}
 	private drawBattle(ctx: CanvasRenderingContext2D): void {
 		const b = this.battle!;
 		if (!b) return;
@@ -2498,6 +2548,7 @@ export class ReliquaryGame {
 		const layout = computeBattleLayout(cw, ch, this.battleStableReserve, {
 			stableReserve: true,
 			presentation: battlePresentation(this.cssW, this.cssH),
+			statusBottom: this.battleStatusBottomRatio == null ? undefined : this.battleStatusBottomRatio * ch,
 		});
 		const geometryBase = computeBattleStageGeometry(cw, ch, layout, b.phase);
 		const bg = this.images[`bg_${b.bg}`] || this.images.bg_grass;

@@ -59,9 +59,9 @@ async function prepareWorld(page, observations) {
   assert.equal(observations.decodedAssets.length, CANDIDATE_URLS.length, "all selected candidate images decode");
   await page.getByRole("button", { name: "Start", exact: true }).click();
   for (let i = 0; i < 16; i += 1) {
-    const dialog = page.locator("button.dialog");
+    const dialog = page.locator(".dialog");
     if (!(await dialog.count())) break;
-    await dialog.click();
+    await dialog.locator(".dialog-next").click();
     await page.waitForTimeout(80);
   }
   await page.waitForFunction(() => window.__controlsTest?.getPos?.().map === "home" && !window.__controlsTest.getPos().dialog,
@@ -178,7 +178,7 @@ async function verifyClassicDialogue(browser, report) {
     report.classicDialogue = { file: name, sha256: createHash("sha256").update(readFileSync(path)).digest("hex"),
       viewport: { width: 360, height: 740, mobileEmulation: true }, method: "fresh-start classic dialogue; no probe warp" };
     for (let i = 0; i < 16 && await page.locator(".dialog").count(); i += 1) {
-      await page.getByRole("button", { name: "A — Next", exact: true }).click();
+      await page.locator(".touch .a-btn").click();
       await page.waitForTimeout(80);
     }
     await page.waitForFunction(() => !document.querySelector(".dialog"), null, { timeout: 10_000 });

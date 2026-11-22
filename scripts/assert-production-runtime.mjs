@@ -30,6 +30,7 @@ const bundle = clientBundlePath();
 assert.ok(bundle, `[assert:prod-runtime] missing client bundle under ${staticDir}`);
 
 const bundleSource = readFileSync(bundle, "utf8");
+assert.equal(bundleSource.includes("__reliquaryJourneyRandom"), false, "production must exclude the journey random source");
 const deadStringPresent = {
   __battleStageReport: bundleSource.includes("__battleStageReport"),
   __worldCameraReport: bundleSource.includes("__worldCameraReport"),
@@ -39,7 +40,7 @@ const deadStringPresent = {
 async function dismissIntro(page) {
   for (let i = 0; i < 24; i += 1) {
     if ((await page.locator(".dialog").count()) === 0) break;
-    await page.locator(".dialog").click().catch(() => page.keyboard.press("Enter"));
+    await page.locator(".dialog-next").click().catch(() => page.keyboard.press("Enter"));
     await page.waitForTimeout(80);
   }
 }

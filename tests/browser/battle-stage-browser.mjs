@@ -8,6 +8,7 @@ import assert from "node:assert/strict";
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { rectsOverlap } from "../../src/game/render/battle-layout-dom.ts";
 import { startStaticServer, waitForGameBoot, withBrowser } from "./helpers.mjs";
 
 const artifactDir = process.env.RELIQUARY_BROWSER_ARTIFACTS
@@ -89,7 +90,217 @@ async function enterReferenceBattle(page) {
   await page.waitForTimeout(120);
 }
 
+async function checkEnlargedSkillMenu(page, viewport) {
+  const skill = page.getByRole("button", { name: "Skill", exact: true });
+  const back = page.getByRole("button", { name: "Back", exact: true });
+  const controls = page.locator(".battle-controls");
+  const assertRow = async (name, cost) => {
+    const row = page.getByRole("button", { name: new RegExp(`^${name} ${cost} MP$`) });
+    await page.waitForFunction((label) =>
+      document.activeElement?.querySelector(".cmd-skill-name")?.textContent === label, name);
+    const geometry = await row.evaluate((button) => {
+      const row = button.getBoundingClientRect();
+      const body = button.closest(".battle-controls-body").getBoundingClientRect();
+      const label = button.querySelector(".cmd-skill-name");
+      const cost = button.querySelector("em").getBoundingClientRect();
+      const hit = document.elementFromPoint(row.left + row.width / 2, row.top + row.height / 2);
+      return { row: row.toJSON(), body: body.toJSON(), cost: cost.toJSON(),
+        labelFits: label.scrollWidth <= label.clientWidth + 1,
+        hit: button.contains(hit) };
+    });
+    assert.ok(geometry.row.top >= geometry.body.top - 1 &&
+      geometry.row.bottom <= geometry.body.bottom + 1 && geometry.row.height >= 44 &&
+      geometry.cost.right <= geometry.row.right && geometry.labelFits && geometry.hit,
+    `${viewport}: ${name} and mana cost fully fit the skill list: ${JSON.stringify(geometry)}`);
+  };
+  await skill.tap();
+  await page.screenshot({ path: join(artifactDir, `battle-wide-${viewport}-skill-menu.png`) });
+  await assertRow("Nip", 0);
+  const backBox = await back.boundingBox();
+  const dock = await controls.boundingBox();
+  assert.ok(backBox.height >= 44 && backBox.y >= dock.y &&
+    backBox.y + backBox.height <= dock.y + dock.height, `${viewport}: Back has a reachable touch target`);
+  await back.tap();
+  assert.equal(await controls.getAttribute("data-battle-phase"), "command");
+  await skill.press("Enter");
+  await assertRow("Nip", 0);
+  await page.keyboard.press("ArrowDown");
+  await assertRow("Cinder", 6);
+  await page.screenshot({ path: join(artifactDir, `battle-wide-${viewport}-cinder-reachable.png`) });
+  const details = page.getByRole("region", { name: "Action details", exact: true });
+  await details.focus();
+  assert.equal(await details.evaluate((panel) => panel === document.activeElement), true,
+    `${viewport}: action details are keyboard-focusable`);
+  await page.keyboard.press("End");
+  await page.waitForFunction(() => {
+    const panel = document.querySelector(".battle-details-panel");
+    return panel.scrollTop > 0 && panel.scrollTop + panel.clientHeight >= panel.scrollHeight - 1;
+  });
+  assert.equal(await controls.getAttribute("data-battle-phase"), "skills");
+  const detailsCost = details.getByText("6 MP", { exact: true });
+  assert.equal(await detailsCost.evaluate((cost) => {
+    const box = cost.getBoundingClientRect();
+    const panel = cost.closest(".battle-details-panel").getBoundingClientRect();
+    return box.top >= panel.top && box.bottom <= panel.bottom;
+  }), true, `${viewport}: keyboard scrolling reveals the skill cost`);
+  await page.screenshot({ path: join(artifactDir, `battle-wide-${viewport}-details-cost.png`) });
+  const bottom = await details.evaluate((panel) => panel.scrollTop);
+  await page.keyboard.press("ArrowUp");
+  await page.waitForFunction((position) =>
+    document.querySelector(".battle-details-panel").scrollTop < position, bottom);
+  assert.match(await details.locator(".battle-details-title").innerText(), /^Cinder$/,
+    `${viewport}: scrolling details leaves the active skill unchanged`);
+  await page.keyboard.press("Home");
+  await page.waitForFunction(() => document.querySelector(".battle-details-panel").scrollTop <= 1);
+  assert.equal(await details.locator(".battle-details-copy").evaluate((copy) => {
+    const panel = copy.closest(".battle-details-panel").getBoundingClientRect();
+    return copy.getBoundingClientRect().top < panel.bottom;
+  }), true, `${viewport}: returning to the top reveals the skill description`);
+  assert.equal(await details.evaluate((panel) => getComputedStyle(panel).touchAction), "pan-y");
+  assert.match(await details.locator(".battle-details-copy").innerText(), /./);
+  await page.keyboard.press("Escape");
+  assert.equal(await controls.getAttribute("data-battle-phase"), "command");
+  await page.locator(".battle-toast").waitFor({ state: "detached" });
+  const status = page.locator(".app-status");
+  assert.equal(await status.getAttribute("role"), "status", "offline status remains a live region");
+  assert.equal(await status.evaluate((element) => getComputedStyle(element).clipPath), "inset(50%)",
+    "offline status stays clear of the cards after the toast expires");
+  await page.screenshot({ path: join(artifactDir, `battle-wide-${viewport}-status-after-toast.png`) });
+}
+
+async function checkWideSilhouettes() {
+  for (const [width, height, textScale] of [[390, 844, 1], [568, 320, 1], [568, 320, 2]]) {
+    await withBrowser(async (page) => {
+      const viewport = `${width}x${height}${textScale === 2 ? "-200pct" : ""}`;
+      await page.setViewportSize({ width, height });
+      await page.emulateMedia({ reducedMotion: "reduce" });
+      // Observe actual game-canvas draw calls. Include the player mirror and
+      // position transform, and use source alpha rather than padded sheets.
+      await page.addInitScript(() => {
+        const drawImage = CanvasRenderingContext2D.prototype.drawImage;
+        const sprites = new Map();
+        const alphaBounds = new WeakMap();
+        window.wideBattleSprites = sprites;
+        CanvasRenderingContext2D.prototype.drawImage = function (image, ...args) {
+          const species = /\/(emberkit|pebblet)\.png$/.exec(image?.src ?? "")?.[1];
+          if (species && args.length === 4 && this.canvas.classList.contains("game-canvas")) {
+            let bounds = alphaBounds.get(image);
+            if (!bounds) {
+              const canvas = document.createElement("canvas");
+              canvas.width = image.naturalWidth;
+              canvas.height = image.naturalHeight;
+              const ctx = canvas.getContext("2d", { willReadFrequently: true });
+              drawImage.call(ctx, image, 0, 0);
+              const { data } = ctx.getImageData(0, 0, canvas.width, canvas.height);
+              let left = canvas.width;
+              let top = canvas.height;
+              let right = 0;
+              let bottom = 0;
+              for (let y = 0; y < canvas.height; y++) {
+                for (let x = 0; x < canvas.width; x++) {
+                  if (data[(y * canvas.width + x) * 4 + 3] <= 12) continue;
+                  left = Math.min(left, x);
+                  top = Math.min(top, y);
+                  right = Math.max(right, x + 1);
+                  bottom = Math.max(bottom, y + 1);
+                }
+              }
+              bounds = [left / canvas.width, top / canvas.height, right / canvas.width, bottom / canvas.height];
+              alphaBounds.set(image, bounds);
+            }
+            const [x, y, w, h] = args;
+            const [left, top, right, bottom] = bounds;
+            const transform = this.getTransform();
+            const a = transform.transformPoint({ x: x + left * w, y: y + top * h });
+            const b = transform.transformPoint({ x: x + right * w, y: y + bottom * h });
+            const box = this.canvas.getBoundingClientRect();
+            sprites.set(species, {
+              left: box.left + Math.min(a.x, b.x) * box.width / this.canvas.width,
+              right: box.left + Math.max(a.x, b.x) * box.width / this.canvas.width,
+              top: box.top + Math.min(a.y, b.y) * box.height / this.canvas.height,
+              bottom: box.top + Math.max(a.y, b.y) * box.height / this.canvas.height,
+            });
+          }
+          return drawImage.call(this, image, ...args);
+        };
+      });
+      await page.goto(baseUrl);
+      await waitForGameBoot(page);
+      await page.evaluate((save) => localStorage.setItem("reliquary.save.v3", JSON.stringify(save)), SAVE);
+      await page.reload();
+      await page.getByRole("button", { name: "Continue", exact: true }).click();
+      await dismissIntro(page);
+      await page.getByRole("button", { name: "Menu", exact: true }).click();
+      await page.getByRole("button", { name: "Save", exact: true }).click();
+      if (textScale === 2) {
+        await page.evaluate(() => document.documentElement.style.setProperty("font-size", "200%", "important"));
+      }
+      await page.evaluate(() => window.__reliquary.startBattleWith("emberkit", "pebblet", [5, 5]));
+      await page.waitForFunction(() => window.wideBattleSprites.size === 2);
+      const geometry = await page.evaluate(() => {
+        const rect = (selector) => document.querySelector(selector).getBoundingClientRect().toJSON();
+        return {
+          player: window.wideBattleSprites.get("emberkit"),
+          foe: window.wideBattleSprites.get("pebblet"),
+          canvas: rect(".game-canvas"),
+          cards: rect(".battle-status-zone"),
+          playerCard: rect(".battler.me"),
+          foeCard: rect(".battler.foe"),
+          controls: rect(".battle-controls"),
+          toast: rect(".toast"),
+          toastRole: document.querySelector(".toast").getAttribute("role"),
+          clippedStats: [...document.querySelectorAll(".battle-stat-numbers")].flatMap((value) => {
+            const text = value.getBoundingClientRect();
+            const card = value.closest(".battle-status-card").getBoundingClientRect();
+            return text.left < card.left || text.right > card.right || text.bottom > card.bottom
+              ? [value.textContent] : [];
+          }),
+          clippedCommands: [...document.querySelectorAll(".battle-action-label")].flatMap((label) =>
+            label.scrollWidth > label.clientWidth + 1 ? [label.textContent] : []),
+        };
+      });
+      await page.screenshot({ path: join(artifactDir, `battle-wide-${viewport}.png`) });
+      const { player, foe, canvas, cards, controls, playerCard, foeCard, toast, toastRole } = geometry;
+      assert.ok(player.right + 2 <= foe.left, `${viewport}: silhouettes should separate ${JSON.stringify(geometry)}`);
+      assert.ok(player.left >= canvas.left && foe.right <= canvas.right, `${viewport}: silhouettes fit canvas`);
+      assert.ok(Math.min(player.top, foe.top) > cards.bottom, `${viewport}: sprites clear the status cards`);
+      assert.ok(Math.max(player.bottom, foe.bottom) < controls.top, `${viewport}: sprites clear commands`);
+      assert.ok(!rectsOverlap(toast, playerCard) && !rectsOverlap(toast, foeCard),
+        `${viewport}: toast does not cover status cards`);
+      assert.ok(!rectsOverlap(toast, player) && !rectsOverlap(toast, foe),
+        `${viewport}: toast does not cover silhouettes`);
+      assert.equal(toastRole, "status", `${viewport}: save confirmation remains announced`);
+      if (textScale === 2) {
+        assert.deepEqual(geometry.clippedStats, [], `${viewport}: HP and MP values fit in their cards`);
+        assert.deepEqual(geometry.clippedCommands, [], `${viewport}: action labels are fully visible`);
+        await checkEnlargedSkillMenu(page, viewport);
+      }
+      console.log(`[battle-stage-browser] wide pairing ok ${viewport}`);
+    }, { context: { hasTouch: textScale === 2 } });
+  }
+}
+
 try {
+  for (const viewport of [{ width: 390, height: 844 }, { width: 320, height: 568 }]) {
+    await withBrowser(async (page) => {
+      await enterReferenceBattle(page);
+      const restoredSave = page.getByRole("status").filter({ hasText: "The lantern remembers." });
+      assert.equal(await restoredSave.evaluate((notice) => getComputedStyle(notice).clipPath), "inset(50%)",
+        "the save-resume announcement stays available to assistive tech without painting over the creatures");
+      const escaped = await page.locator(".battle-stat-numbers").evaluateAll((stats) => stats.flatMap((stat) => {
+        const range = document.createRange();
+        range.selectNodeContents(stat);
+        const text = range.getBoundingClientRect();
+        const card = stat.closest(".battle-status-card").getBoundingClientRect();
+        return text.left < card.left || text.right > card.right || text.right > innerWidth
+          ? [{ text: stat.textContent, right: text.right, cardRight: card.right }]
+          : [];
+      }));
+      assert.deepEqual(escaped, [], `${viewport.width}×${viewport.height} portrait HP and MP stay on their own cards at 200% text`);
+      await page.screenshot({ path: join(artifactDir, `battle-readouts-${viewport.width}x${viewport.height}-200.png`) });
+    }, { textScale: 2, context: { viewport, isMobile: true, hasTouch: true } });
+  }
+  await checkWideSilhouettes();
   for (const vp of VIEWPORTS) {
     await withBrowser(async (page) => {
       await page.setViewportSize({ width: vp.width, height: vp.height });

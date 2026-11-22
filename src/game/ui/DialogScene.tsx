@@ -1,42 +1,78 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useId, useRef } from "react";
 import type { DialogView } from "../types.ts";
 import { PORTRAITS } from "../portraits.ts";
 import "./dialogue.css";
 
-/** One button owns advance. Native Enter/Space and the engine's Z/X/A/B
- * arbitration stay intact; no extra key handlers or delayed exit targets. */
-export function DialogScene({ dialog, onAdvance }: { dialog: DialogView; onAdvance: () => void }) {
-  const button = useRef<HTMLButtonElement>(null);
+export function DialogScene({ dialog, onAdvance, onBack }: {
+  dialog: DialogView;
+  onAdvance: () => void;
+  onBack: () => void;
+}) {
+  const textId = useId();
+  const primary = useRef<HTMLButtonElement>(null);
+  const secondary = useRef<HTMLButtonElement>(null);
+  const content = useRef<HTMLDivElement>(null);
   const portrait = dialog.portraitKey ? PORTRAITS[dialog.portraitKey] : null;
   useEffect(() => {
-    button.current?.focus({ preventScroll: true });
+    const previousFocus = document.activeElement;
+    primary.current?.focus({ preventScroll: true });
+    return () => {
+      if (previousFocus instanceof HTMLElement && previousFocus.isConnected && document.activeElement === document.body) {
+        previousFocus.focus({ preventScroll: true });
+      }
+    };
   }, []);
+  useEffect(() => {
+    if (content.current) content.current.scrollTop = 0;
+  }, [dialog.text]);
+  const back = () => {
+    onBack();
+    // After Back reaches a page where the secondary action is disabled,
+    // the still-mounted primary action keeps keyboard users in the dialogue.
+    if (secondary.current === document.activeElement) primary.current?.focus({ preventScroll: true });
+  };
+
   return (
     <div
       className={`dialog-scene${portrait ? " dialog-scene-npc" : ""}`}
       data-npc-id={dialog.npcId ?? undefined}
+      role="dialog"
+      aria-label={dialog.speaker || "Story"}
     >
       {portrait ? (
         <div className="dialog-portrait" aria-hidden="true">
           <img src={portrait.src} alt="" draggable={false} />
         </div>
       ) : null}
-      <button
-        ref={button}
-        type="button"
-        className={`dialog${portrait ? " dialog-panel" : ""}`}
-        onClick={onAdvance}
-        data-portrait={dialog.portraitKey ?? "none"}
-      >
-        <span className="dialog-nameplate">
-          {portrait ? <span className="dialog-role">{portrait.role}</span> : null}
-          {dialog.speaker ? <span className="dialog-name">{dialog.speaker}</span> : null}
-        </span>
-        <span className="dialog-text" aria-live="polite" aria-atomic="true">
-          {dialog.text}
-        </span>
-        <span className="dialog-next">{dialog.last ? (dialog.doneLabel ?? "Close") : "Next"}</span>
-      </button>
+      <div className={`dialog${portrait ? " dialog-panel" : ""}`} data-portrait={dialog.portraitKey ?? "none"}>
+        <div
+          className="dialog-content"
+          ref={content}
+          tabIndex={0}
+          onKeyDown={(event) => {
+            if (["ArrowUp", "ArrowDown", "PageUp", "PageDown", "Home", "End", " "].includes(event.key)) event.stopPropagation();
+          }}
+        >
+          {dialog.speciesId ? <img className="dialog-species" src={`/game/sprites/${dialog.speciesId}.png`} alt="" draggable={false} /> : null}
+          <div className="dialog-copy">
+            {portrait || dialog.speaker ? (
+              <div className="dialog-nameplate">
+                {portrait ? <span className="dialog-role">{portrait.role}</span> : null}
+                {dialog.speaker ? <span className="dialog-name">{dialog.speaker}</span> : null}
+              </div>
+            ) : null}
+            <p className="dialog-text" id={textId} aria-live="polite" aria-atomic="true">{dialog.text}</p>
+          </div>
+        </div>
+        <div className="dialog-actions">
+          <button type="button" className="dialog-back" ref={secondary} disabled={!dialog.secondaryLabel} onClick={back}>
+            {dialog.secondaryLabel ?? "Back"}
+          </button>
+          <button type="button" className="dialog-next" aria-describedby={textId} ref={primary} onClick={onAdvance}>
+            {dialog.primaryLabel}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

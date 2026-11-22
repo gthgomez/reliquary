@@ -984,14 +984,16 @@ test("the objective follows the chapter's flags in the snapshot", async () => {
   });
 });
 
-test("the inn names the A/B choice, charges on confirm, and skips on cancel", async () => {
+test("the inn labels its offer, charges on confirm, and skips on cancel", async () => {
   await withGame((game) => {
     game.mode = "world";
     const talk = (id: string, name: string) =>
       (game as unknown as { talk(id: string, name: string): void }).talk(id, name);
     game.gold = 100;
     talk("innkeep", "Innmother Cald");
-    assert.match(game.getSnapshot().dialog!.text, /A rest · B not now/);
+    assert.match(game.getSnapshot().dialog!.text, /Fifteen crowns for a clean bed/);
+    assert.equal(game.getSnapshot().dialog!.primaryLabel, "Rest for 15 crowns");
+    assert.equal(game.getSnapshot().dialog!.secondaryLabel, "Cancel");
     game.confirm();
     assert.equal(game.gold, 85);
     game.party.forEach((beast) => {
@@ -1022,6 +1024,8 @@ test("Cael telegraphs the trial, advises a weak party, and only begins on confir
     assert.match(game.getSnapshot().dialog!.text, /Below a dozen, my three run lighter/);
     assert.match(game.getSnapshot().dialog!.text, /at a dozen they meet you at full strength/);
     assert.match(game.getSnapshot().dialog!.text, /Iron\. Chapel\. Drake/);
+    game.cancel();
+    assert.match(game.getSnapshot().dialog!.text, /I keep Thornkeep/);
     game.cancel();
     assert.equal(game.getSnapshot().dialog, null);
     assert.equal(game.battle, null);
@@ -1087,6 +1091,46 @@ test("learned skills: replacing, declining, multiple pending offers, and party i
   });
 });
 
+test("dialogue cancel navigates backwards or dismisses without confirming", async () => {
+  await withGame((game) => {
+    game.mode = "world";
+    game.openDialog("Sign", ["First", "Second", "Third"]);
+    game.cancel();
+    assert.equal(game.getSnapshot().dialog?.text, "First", "B is inert on the first information page");
+    game.confirm();
+    assert.equal(game.getSnapshot().dialog?.text, "Second");
+    game.cancel();
+    assert.equal(game.getSnapshot().dialog?.text, "First", "B navigates ordinary dialogue backwards");
+    game.confirm();
+    game.confirm();
+    game.cancel();
+    assert.equal(game.getSnapshot().dialog?.text, "Second", "B goes backwards on final information page");
+    game.openDialog("Sign", ["One page"]);
+    game.cancel();
+    assert.equal(game.getSnapshot().dialog, null, "B closes a one-page sign");
+
+    let commits = 0;
+    const offer = () => game.openDialog("Offer", ["Intro", "Details", "Commit?"], () => { commits++; }, null, "Accept");
+    offer();
+    game.cancel();
+    assert.equal(game.getSnapshot().dialog, null, "first offer page cancels");
+    offer();
+    game.confirm();
+    game.cancel();
+    assert.equal(game.getSnapshot().dialog?.text, "Intro", "middle offer page goes back");
+    game.confirm();
+    game.confirm();
+    game.cancel();
+    assert.equal(game.getSnapshot().dialog, null, "final offer page cancels");
+    assert.equal(commits, 0, "B never commits");
+    offer();
+    game.confirm();
+    game.confirm();
+    game.confirm();
+    assert.equal(commits, 1, "only primary confirm commits");
+  });
+});
+
 test("starter confirmation flow: inspect, cancel, confirm, naming, Elder Maren follow-up", async () => {
   await withGame((game) => {
     game.mode = "world";
@@ -1099,7 +1143,10 @@ test("starter confirmation flow: inspect, cancel, confirm, naming, Elder Maren f
     // 1. Inspecting a starter shows description and does not bind
     chooseStarter("emberkit");
     assert.ok(game.getSnapshot().dialog, "dialog open for starter description");
-    assert.match(game.getSnapshot().dialog!.text, /Emberkit/);
+    assert.equal(game.getSnapshot().dialog!.speaker, "Emberkit");
+    assert.equal(game.getSnapshot().dialog!.speciesId, "emberkit");
+    assert.equal(game.getSnapshot().dialog!.primaryLabel, "Next");
+    assert.equal(game.getSnapshot().dialog!.secondaryLabel, "Cancel");
     assert.equal(game.party.length, 0, "inspecting does not add to party");
     assert.equal(game.flags.starter, undefined, "starter flag not set");
 
@@ -1109,12 +1156,25 @@ test("starter confirmation flow: inspect, cancel, confirm, naming, Elder Maren f
 
     // 3. Inspecting again and confirming advances to pact confirmation
     chooseStarter("emberkit");
-    // Advance first dialog page to "Speak the pact" action
     game.confirm();
-    assert.ok(game.getSnapshot().dialog, "advance to pact offer");
-    // Click "Speak the pact"
+    assert.match(game.getSnapshot().dialog!.text, /Starting skills/);
+    assert.equal(game.getSnapshot().dialog!.speciesId, "emberkit");
+    assert.equal(game.getSnapshot().dialog!.secondaryLabel, "Back");
+    game.cancel();
+    assert.doesNotMatch(game.getSnapshot().dialog!.text, /Starting skills/);
     game.confirm();
-    assert.match(game.getSnapshot().dialog!.text, /Bind Emberkit as your first pact\?/);
+    game.confirm();
+    assert.equal(game.getSnapshot().dialog!.speciesId, "emberkit");
+    assert.equal(game.getSnapshot().dialog!.primaryLabel, "Bind Emberkit");
+    assert.equal(game.getSnapshot().dialog!.secondaryLabel, "Cancel");
+    game.cancel();
+    assert.equal(game.getSnapshot().dialog, null);
+    assert.equal(game.gold, initialGold);
+    assert.equal(game.inventory.common_sigil, initialSigils);
+    assert.equal(game.party.length, 0);
+    chooseStarter("emberkit");
+    game.confirm();
+    game.confirm();
 
     // 4. Confirming the bind sets starter, party, and triggers NamePrompt
     game.confirm();

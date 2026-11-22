@@ -49,8 +49,8 @@ function startServer(dir) {
 async function dismissIntro(page) {
   for (let i = 0; i < 24; i += 1) {
     if ((await page.locator(".dialog").count()) === 0) break;
-    const dialog = page.locator("button.dialog").first();
-    if (await dialog.count()) await dialog.click({ timeout: 2000 });
+    const dialog = page.locator(".dialog").first();
+    if (await dialog.count()) await dialog.locator(".dialog-next").click({ timeout: 2000 });
     else await page.keyboard.press("Enter");
     await page.waitForTimeout(100);
   }

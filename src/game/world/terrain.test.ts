@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { MAPS } from "../maps.ts";
+import * as junctions from "../render/road-junctions.ts";
 import { bakeMapTerrain, chooseTileVariant, walkableEdgeMask } from "./terrain.ts";
 
 test("chooseTileVariant is stable and independent of Math.random", () => {
@@ -41,4 +42,27 @@ test("bakeMapTerrain invokes decoration callbacks", () => {
   assert.ok(tiles > 0);
   assert.ok(deco > 0, "decorations and tallgrass should draw");
   assert.ok(accents > 0, "ground accents should scatter on walkable tiles");
+});
+
+test("the Grove bakes one continuous grass surface and leaves its open edges untinted", () => {
+  const grassVariants = new Set<number>();
+  let edgeBlocks = 0;
+  bakeMapTerrain({
+    map: MAPS.grove!,
+    tileSize: 32,
+    drawTile: (name, _x, _y, variant) => {
+      if (name === "grass") grassVariants.add(variant);
+    },
+    drawOverlay: () => { edgeBlocks += 1; },
+    drawDecoration: () => {},
+  });
+  assert.deepEqual([...grassVariants], [0]);
+  assert.equal(edgeBlocks, 0);
+});
+
+test("the Grove's rounded joins stay inside the walkable clearing and clear of starters", () => {
+  assert.deepEqual(junctions.dirtPathJunctions(MAPS.grove!), [
+    { x: 13, y: 6, dx: 1, dy: 1 },
+    { x: 5, y: 8, dx: 1, dy: -1 },
+  ]);
 });

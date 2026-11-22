@@ -110,7 +110,8 @@ async function beginBattle(page) {
   await page.getByRole("button", { name: "Continue", exact: true }).click();
   await page.evaluate(() => window.__controlsTest.startWild());
   await page.locator('.battle-controls[data-battle-phase="command"]').waitFor();
-  await page.clock.pauseAt((await page.evaluate(() => Date.now())) + 50);
+  // Allow time for the browser protocol round trip on busy CI workers.
+  await page.clock.pauseAt((await page.evaluate(() => Date.now())) + 2000);
 }
 
 async function performSkill(page, skill, random) {

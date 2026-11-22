@@ -95,6 +95,35 @@ export function clipStoneTransition(ctx: CanvasRenderingContext2D, dx: number, d
   ctx.clip();
 }
 
+/** Frame the floor and mark the walk-through threshold on the authored warp tile. */
+export function paintCottageFloor(
+  ctx: CanvasRenderingContext2D, size: number, width: number, height: number, exitX: number,
+): void {
+  const bottom = (height - 1) * size;
+  const door = exitX * size;
+  ctx.save();
+  ctx.fillStyle = "#392a20";
+  ctx.fillRect(0, size - 3, width * size, 4);
+  ctx.fillRect(0, size, 5, bottom - size);
+  ctx.fillRect(width * size - 5, size, 5, bottom - size);
+  ctx.fillRect(0, bottom + 6, door, size - 6);
+  ctx.fillRect(door + size, bottom + 6, (width - exitX - 1) * size, size - 6);
+  ctx.fillStyle = "#786049";
+  ctx.fillRect(0, bottom + 5, door, 2);
+  ctx.fillRect(door + size, bottom + 5, (width - exitX - 1) * size, 2);
+  ctx.fillStyle = "#271e17";
+  ctx.fillRect(door + 1, bottom + 2, size - 2, size - 2);
+  ctx.fillStyle = "#936741";
+  ctx.fillRect(door + 5, bottom + 3, size - 10, size - 3);
+  ctx.fillStyle = "#d8ae71";
+  ctx.fillRect(door + 5, bottom + 3, size - 10, 2);
+  ctx.fillRect(door + 4, bottom + size - 5, size - 8, 2);
+  ctx.fillStyle = "#694c32";
+  ctx.fillRect(door + 5, bottom + 12, size - 10, 2);
+  ctx.fillRect(door + 5, bottom + 22, size - 10, 2);
+  ctx.restore();
+}
+
 export function chooseTileAccent(
   mapId: string,
   x: number,

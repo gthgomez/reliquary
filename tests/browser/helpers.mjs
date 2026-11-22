@@ -26,7 +26,7 @@ export function startStaticServer(port = 0, options = {}) {
   if (!existsSync(join(getRoot(), "index.html"))) {
     throw new Error("Run npm run build:web before browser tests");
   }
-  const server = createServer((req, res) => {
+  const server = createServer(async (req, res) => {
     const path = (req.url ?? "/").split("?", 1)[0] ?? "/";
     const rel = path === "/" ? "index.html" : path.replace(/^\//, "");
     const base = getRoot();
@@ -36,6 +36,7 @@ export function startStaticServer(port = 0, options = {}) {
       res.end("not found");
       return;
     }
+    if (options.beforeResponse) await options.beforeResponse(path);
     const body = readFileSync(filePath);
     res.writeHead(200, { "content-type": MIME[extname(filePath)] ?? "application/octet-stream" });
     res.end(body);
