@@ -89,7 +89,7 @@ export function assertElderhallArtifact(staticDir, revision, sourcePack) {
   // source map still records the correct TypeScript.
   const inlineGeometry = bundle.match(/function assetMetadata\(id\) \{\s*const asset = (\{[\s\S]*?\})\[id\];/)?.[1];
   assert.ok(inlineGeometry, "Missing bundled Elderhall visual geometry");
-  const geometry = JSON.parse(inlineGeometry.replace(/([\[,\s])(-?)\.(\d+)/g, (_match, prefix, sign, digits) =>
+  const geometry = JSON.parse(inlineGeometry.replace(/([[,\s])(-?)\.(\d+)/g, (_match, prefix, sign, digits) =>
     `${prefix}${sign}0.${digits}`));
   assert.deepEqual(geometry, elderhallVisualGeometry(source), "Bundled Elderhall visual geometry differs from the pack");
   const selected = source.assets.filter((asset) => CANDIDATE_IDS.includes(asset.id.slice("elderhall.".length)));
