@@ -58,6 +58,14 @@ jobs:
         run: npm run verify:pwa && npm run test:pwa
       - name: Browser regressions
         run: npm run test:browser -- --suite=all
+      - name: Build revision 5 without browser-test probes
+        run: npm run build:web
+        env:
+          RELIQUARY_ELDERHALL_CANDIDATE: '1'
+      - name: Verify revision 5 package, save migration and offline entry
+        run: npm run verify:web:runtime && node tests/browser/elderhall-candidate-offline.mjs
+        env:
+          RELIQUARY_QA_CHANNEL: ${{ matrix.os == 'ubuntu-latest' && 'chrome' || 'msedge' }}
 
   journeys:
     name: Deep chapter journeys (${{ matrix.os }})

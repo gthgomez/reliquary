@@ -1,8 +1,8 @@
 import type { MapDef, MapObj } from "../types.ts";
-import { elderhallCandidateBench, elderhallCandidateGate } from "../render/elderhall-visual.ts";
+import { elderhallCandidateBench, elderhallCandidateGate, type VisualMetadata } from "../render/elderhall-visual.ts";
 
 /** Preview-only composition; the production map and its save coordinates remain untouched. */
-export function makeElderhallCandidate(base: MapDef): MapDef {
+export function makeElderhallCandidate(base: MapDef, geometry?: Record<string, VisualMetadata>): MapDef {
   const ground = base.ground.map((row) => row.split(""));
   // A short westward connector removes the dogleg before the main crossroads.
   for (const x of [8, 9]) ground[10]![x] = "p";
@@ -13,7 +13,7 @@ export function makeElderhallCandidate(base: MapDef): MapDef {
     lantern1: { x: 14, y: 4 },
   };
   const existing = base.objects.filter((object) => !["north_gate_candidate", "green_bench_candidate"].includes(object.id));
-  const objects: MapObj[] = [elderhallCandidateGate(), elderhallCandidateBench(),
+  const objects: MapObj[] = [elderhallCandidateGate(geometry?.["gate-reference"]), elderhallCandidateBench(geometry?.bench),
     ...existing.map((object) => moved[object.id] ? { ...object, ...moved[object.id] } : object)];
   return {
     ...base,

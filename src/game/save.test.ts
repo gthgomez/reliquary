@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { makeBeast } from "./content.ts";
-import { LEGACY_SAVE_BACKUP, LEGACY_SAVE_KEY, LEGACY_V1_BACKUP, LEGACY_V1_KEY, SAVE_BACKUP, SAVE_FORWARD_KEY, SAVE_KEY, SAVE_VERSION, WORLD_REVISION, loadSave, parseSave, serializeSave, writeSave, type SaveStorage } from "./save.ts";
+import { LEGACY_SAVE_BACKUP, LEGACY_SAVE_KEY, LEGACY_V1_BACKUP, LEGACY_V1_KEY, SAVE_BACKUP, SAVE_FORWARD_KEY, SAVE_KEY, SAVE_VERSION, WORLD_REVISION, findArchivedSave, loadSave, parseSave, serializeSave, writeSave, type SaveStorage } from "./save.ts";
 import { MAPS } from "./maps.ts";
 import { isOccupied } from "./world/movement.ts";
 
@@ -466,3 +466,13 @@ for (const version of [1, 2]) {
     assert.equal(loadSave(store)?.gold, 77);
   });
 }
+
+test("a compatible rollback archive is exportable without replacing a different active run", () => {
+  const store = new MemoryStorage();
+  const archive = JSON.stringify({ ...validSave(), gold: 808 }, null, 2);
+  store.data.set(SAVE_KEY, JSON.stringify({ ...validSave(), gold: 42 }));
+  store.data.set(SAVE_FORWARD_KEY, archive);
+  assert.equal(loadSave(store)?.gold, 42);
+  assert.equal(findArchivedSave(store), archive);
+  assert.equal(store.data.get(SAVE_FORWARD_KEY), archive);
+});

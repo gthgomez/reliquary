@@ -1,14 +1,21 @@
-import { copyFileSync, mkdirSync, existsSync, readdirSync, rmSync, statSync } from "node:fs";
+import { copyFileSync, mkdirSync, existsSync, readFileSync, readdirSync, rmSync, statSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
 import { copyElderhallCandidate } from "./elderhall-pack.mjs";
+import { assertApprovedElderhall, assertElderhallArtifact, selectElderhallWorld } from "./elderhall-release.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
-// Candidate assets are reviewable on preview builds and must never ship on a
-// production Vercel build, even if a local override was accidentally set.
-const candidateBuild = process.env.VERCEL_ENV !== "production" &&
-  (process.env.VERCEL_ENV === "preview" || process.env.RELIQUARY_ELDERHALL_CANDIDATE === "1");
+const release = JSON.parse(readFileSync(join(root, "scripts/elderhall-release.json"), "utf8"));
+const worldRevision = selectElderhallWorld(release, process.env);
+const candidateBuild = worldRevision === 5;
+const sourcePack = join(root, "assets/elderhall-candidate");
+if (process.env.VERCEL_ENV === "production" && process.env.VITE_RELIQUARY_BROWSER_TEST === "1") {
+  throw new Error("Production cannot enable browser-test controls");
+}
+if (release.revision === 5) {
+  await assertApprovedElderhall(sourcePack, release.approval);
+}
 
 function run(cmd, args, env = {}) {
   const result = spawnSync(cmd, args, {
@@ -62,8 +69,8 @@ if (!existsSync(gameShell)) {
 copyFileSync(gameShell, indexShell);
 
 if (candidateBuild) {
-  copyElderhallCandidate(join(root, "assets/elderhall-candidate"), join(staticDir, "game/elderhall"));
-  console.log("[elderhall] unapproved candidate assets included in preview only");
+  copyElderhallCandidate(sourcePack, join(staticDir, "game/elderhall"));
+  console.log(`[elderhall] revision 5 assets included (${release.revision === 5 ? "approved release" : "qualification"})`);
 }
 
 run(process.execPath, [join(root, "scripts/build-pwa.mjs")]);
@@ -73,4 +80,5 @@ if (!existsSync(indexShell)) {
   process.exit(1);
 }
 
-console.log("[build:web] complete");
+assertElderhallArtifact(staticDir, worldRevision, sourcePack);
+console.log(`[build:web] complete (Elderhall revision ${worldRevision})`);

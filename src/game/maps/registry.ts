@@ -3,7 +3,7 @@ import { house, prop, tree } from "./helpers.ts";
 import { isElderhallCandidateBuild } from "../build-flags.ts";
 import { makeElderhallCandidate } from "./elderhall-candidate.ts";
 
-const elderhallBase: MapDef = {
+export const elderhallBase: MapDef = {
   id: "elderhall",
   name: "Elderhall",
   region: "Hollowmere",

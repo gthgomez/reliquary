@@ -60,16 +60,20 @@ try {
     await page.locator(".dialog-next").click();
     await page.waitForTimeout(80);
   }
-  await page.waitForFunction(() => window.__controlsTest?.getPos?.().map === "home" && !window.__controlsTest.getPos().dialog,
-    null, { timeout: 15_000 });
+  await page.getByText("Rowan's Cottage", { exact: true }).waitFor({ timeout: 15_000 });
   await page.keyboard.down("ArrowDown");
   try {
-    await page.waitForFunction(() => window.__controlsTest?.getPos?.().map === "elderhall", null, { timeout: 15_000 });
+    await page.getByText("Elderhall", { exact: true }).waitFor({ timeout: 15_000 });
   } finally {
     await page.keyboard.up("ArrowDown");
   }
-  report.naturalEntry = await page.evaluate(() => window.__controlsTest.getPos());
-  assert.equal(report.naturalEntry.map, "elderhall", "a fresh offline game can walk out to Elderhall");
+  await page.getByRole("button", { name: "Menu", exact: true }).click();
+  await page.getByRole("button", { name: "Save", exact: true }).click();
+  report.naturalEntry = await page.evaluate(() => {
+    const { mapId, worldRevision } = JSON.parse(localStorage.getItem("reliquary.save.v3"));
+    return { mapId, worldRevision };
+  });
+  assert.deepEqual(report.naturalEntry, { mapId: "elderhall", worldRevision: 5 });
   await page.screenshot({ path: join(output, "offline-entry.png") });
   assert.deepEqual(report.errors, [], "no uncaught page errors");
 } catch (error) {

@@ -23,8 +23,12 @@ review are still required before production promotion.
 
 * A Vercel preview build includes the candidates. Locally, run
   `RELIQUARY_ELDERHALL_CANDIDATE=1 npm run build:web`.
-* A Vercel production build never includes the candidate files, even if the
-  local override is set. A normal `npm run build:web` also omits them.
+* The public release revision is pinned in `scripts/elderhall-release.json`.
+  Production ignores the preview override. The checked-in release remains at
+  revision 2 pending the documented approvals.
+* The static build checks the emitted map and renderer modules, bundled save
+  revision, exported asset hashes, and Workbox entries. CI runs the static
+  runtime gate and offline entry on a revision 5 build without test controls.
 * `node --test scripts/elderhall-pack.test.mjs` verifies hashes, decodability,
   manifest identity, provenance field structure, selected export paths and
   the actual atlas cell edges. It does not verify the underlying rights claims.
@@ -65,3 +69,32 @@ invisible blockers. The generated gate and candidate artwork still need
 human review at multiple camera positions and device sizes. The pack
 does not certify reference fidelity, gameplay, accessibility, licensing or
 commercial readiness merely because its structural checks pass.
+
+## Promotion and rollback
+
+Record the owner's approval of the supplied reference and the exact shipped
+art, and record visual acceptance of the protected build. Update
+`scripts/elderhall-release.json` to revision 5 with an `approval` object
+containing the evidence link or record ID, `manifestSha256`, and
+`worldSha256`. The release builder checks those digests against the pack
+manifest bytes and the serialized revision 5 Elderhall map and prop layouts, respectively.
+Produce the digests from the accepted checkout with Node:
+
+```sh
+node --input-type=module -e '
+  import { approvedElderhallDigests } from "./scripts/elderhall-release.mjs";
+  console.log(await approvedElderhallDigests("assets/elderhall-candidate"));
+'
+```
+
+Run `VERCEL_ENV=production npm run build:web`, then
+`npm run verify:web:runtime`, and qualify that exact commit before an
+authorized promotion. Keep a known-good revision 5 artifact available to
+roll forward if the release fails. If service must fall back to revision 2,
+tell players with revision 5 saves to export the exact record from the title
+screen and retain it until revision 5 returns. Leave browser storage intact.
+The older build can restore service for compatible saves while revision 5
+progress remains available for recovery in a compatible build. If a revision
+2 write archived the revision 5 record, the restored revision 5 title offers
+**Export archived save**. Export it and use **Import** from the Lantern menu
+to resume it. The active run remains selected until the player imports.

@@ -56,10 +56,13 @@ export function adjustCamYForHudInset(
   playerHeadCanvasY: number,
   hudInsetBottom: number,
   state: WorldCamReliefState,
-  bounds?: { viewportHeight: number; playerHeight: number },
+  bounds?: { viewportHeight: number; playerHeight: number; landmarkTop?: number },
 ): { camY: number; relief: number; contentPanY: number; effectiveHeadCanvasY: number; headAfterCamRelief: number } {
   const maxPan = bounds ? Math.max(0, bounds.viewportHeight - bounds.playerHeight - playerHeadCanvasY) : MAX_CONTENT_PAN;
-  const { targetRelief, targetPanY } = computeWorldCamReliefTargets(camY, playerHeadCanvasY, hudInsetBottom, state, maxPan);
+  const landmarkOffset = bounds?.landmarkTop === undefined ? 0 : Math.max(0, playerHeadCanvasY - bounds.landmarkTop);
+  const { targetRelief, targetPanY } = computeWorldCamReliefTargets(
+    camY, playerHeadCanvasY, hudInsetBottom + landmarkOffset, state, maxPan,
+  );
 
   // Never ease into the HUD: follow an approaching player immediately, and
   // ease only the return once the world is safely clear again.

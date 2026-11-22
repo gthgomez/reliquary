@@ -64,7 +64,7 @@ export function shouldFadePropForPlayer(prop: DrawFootprint, player: DrawFootpri
 }
 
 /** Keep the gate opaque except where its foreground overlaps the player's body. */
-export function paintPropWithLocalFade(ctx: CanvasRenderingContext2D, image: CanvasImageSource, prop: DrawRect, player: DrawRect): void {
+export function paintPropWithLocalFade(ctx: CanvasRenderingContext2D, image: CanvasImageSource, prop: DrawRect, player: DrawRect, overlapAlpha: number): void {
   ctx.save();
   ctx.beginPath();
   ctx.rect(prop.x, prop.y, prop.width, prop.height);
@@ -77,7 +77,7 @@ export function paintPropWithLocalFade(ctx: CanvasRenderingContext2D, image: Can
   ctx.beginPath();
   ctx.rect(player.x, player.y, player.width, player.height);
   ctx.clip();
-  ctx.globalAlpha *= 0.35;
+  ctx.globalAlpha *= overlapAlpha;
   ctx.drawImage(image, prop.x, prop.y, prop.width, prop.height);
   ctx.restore();
 }

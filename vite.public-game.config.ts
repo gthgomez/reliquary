@@ -5,6 +5,7 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { assertNoAgesPreviewAssets } from "./scripts/ages-production-assets.mjs";
 import { validateElderhallPack } from "./scripts/elderhall-pack.mjs";
+import { elderhallVisualGeometry } from "./scripts/elderhall-release.mjs";
 
 const root = dirname(fileURLToPath(import.meta.url));
 const browserTestBuild = process.env.VITE_RELIQUARY_BROWSER_TEST === "1";
@@ -13,14 +14,15 @@ const browserTestBuild = process.env.VITE_RELIQUARY_BROWSER_TEST === "1";
 export default defineConfig(({ command, mode }) => {
   const agesPreview = browserTestBuild && mode === "ages-preview";
   const candidate = process.env.VITE_ELDERHALL_CANDIDATE === "1";
-  const geometry = candidate ? Object.fromEntries(validateElderhallPack(resolve(root, "assets/elderhall-candidate")).assets
-    .filter((entry: { id: string }) => ["elderhall.well-reference", "elderhall.tree-reference", "elderhall.cottage-reference", "elderhall.guild-reference", "elderhall.shop-reference", "elderhall.gate-reference", "elderhall.bench"].includes(entry.id))
-    .map((entry: { id: string; dimensions: number[]; anchor: number[]; render_size_tiles: number[] }) => [entry.id.slice("elderhall.".length), { dimensions: entry.dimensions, anchor: entry.anchor, render_size_tiles: entry.render_size_tiles }])) : {};
+  const geometry = candidate
+    ? elderhallVisualGeometry(validateElderhallPack(resolve(root, "assets/elderhall-candidate")))
+    : {};
   if (command === "build") assertNoAgesPreviewAssets(resolve(root, "public"));
   return {
     define: {
       __RELIQUARY_BROWSER_TEST__: JSON.stringify(browserTestBuild),
       __RELIQUARY_AGES_PREVIEW__: JSON.stringify(agesPreview),
+      __PUBLIC_ELDERHALL_WORLD_REVISION__: JSON.stringify(candidate ? 5 : 2),
       __ELDERHALL_GEOMETRY__: JSON.stringify(geometry),
     },
     publicDir: "public",

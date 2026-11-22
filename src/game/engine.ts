@@ -19,7 +19,7 @@ import { resolveNpcPortrait, type PortraitKey } from "./portraits.ts";
 import { FIXED_ENCOUNTERS } from "./encounters.ts";
 import { sfxPlay, startMusic, stopMusic, unlockAudio, isMuted, setMuted } from "./audio.ts";
 import { setSoundMutedStored } from "./ui/ui-chrome.ts";
-import { hasSave, cloneSave, findNewerSave, loadSave, parseSave, SAVE_RESUMED_MESSAGE, SAVE_VERSION, serializeSave, WORLD_REVISION, writeSave, type SaveStorage } from "./save.ts";
+import { hasSave, cloneSave, findArchivedSave, findNewerSave, loadSave, parseSave, SAVE_RESUMED_MESSAGE, SAVE_VERSION, serializeSave, WORLD_REVISION, writeSave, type SaveStorage } from "./save.ts";
 import { collectGameAssets, isElderhallCandidateBuild } from "./assets.ts";
 import type { BattlePreview } from "./preview/battle-preview.ts";
 import { mathRandom, type RandomSource } from "./rng.ts";
@@ -234,6 +234,7 @@ export class ReliquaryGame {
 	private saveWriteAllowed = true;
 	private readonly readOnlySaveSource?: Pick<SaveStorage, "getItem">;
 	readonly hasNewerSave: boolean;
+	readonly hasArchivedSave: boolean;
 	lifecycle: "constructed" | "booted" | "stopped" = "constructed";
 	private readonly random: RandomSource;
 	private bootToken = 0;
@@ -258,6 +259,7 @@ export class ReliquaryGame {
 		this.random = options.random ?? mathRandom;
 		this.readOnlySaveSource = options.readOnlySaveSource;
 		this.hasNewerSave = findNewerSave(this.readOnlySaveSource) !== null;
+		this.hasArchivedSave = findArchivedSave(this.readOnlySaveSource) !== null;
 		this.saveWriteAllowed = !this.readOnlySaveSource;
 		this.snap = this.buildSnap();
 		this.hasSave = hasSave(this.readOnlySaveSource);
@@ -707,10 +709,10 @@ export class ReliquaryGame {
 		this.emit();
 		return written;
 	}
-	exportNewerSave(): boolean {
+	exportRecoverySave(archived = false): boolean {
 		if (this.mode !== "title") return false;
-		const text = findNewerSave(this.readOnlySaveSource);
-		return text !== null && (this.exportFile?.("reliquary-newer-save.json", text) ?? false);
+		const text = archived ? findArchivedSave(this.readOnlySaveSource) : findNewerSave(this.readOnlySaveSource);
+		return text !== null && (this.exportFile?.(archived ? "reliquary-archived-save.json" : "reliquary-newer-save.json", text) ?? false);
 	}
 	/** Ask the shell to open a file picker; the chosen text comes back to importGame. */
 	requestImport(): void {
@@ -2317,8 +2319,20 @@ export class ReliquaryGame {
 		if (canvas && typeof document !== "undefined" && this.mode === "world" && !this.menu && !this.dialog) {
 			const { insetCanvas, source } = readUiSafeTopCanvas(canvas);
 			if (source) {
+				const gate = elderhallCandidate && m.id === "elderhall"
+					? m.objects.find((object) => object.id === "north_gate_candidate")
+					: undefined;
+				let landmarkTop: number | undefined;
+				if (gate) {
+					const gateLayout = resolveWorldPropLayout(gate, TILE);
+					// Frame the arch on approach without pulling the camera toward it
+					// from the village or overriding the player's viewport limits.
+					const verticalDistance = Math.max(0, this.py - gateLayout.baseline - 2 * TILE);
+					const horizontalDistance = Math.max(0, gate.x * TILE - this.px - TILE, this.px - (gate.x + gate.w) * TILE);
+					landmarkTop = gateLayout.y - camY + 3 * Math.max(verticalDistance, horizontalDistance);
+				}
 				const adjusted = adjustCamYForHudInset(camY, playerHeadCanvasY, insetCanvas, this.worldCamRelief,
-					{ viewportHeight: this.ch(), playerHeight: TILE * 1.5 });
+					{ viewportHeight: this.ch(), playerHeight: TILE * 1.5, landmarkTop });
 				camY = adjusted.camY;
 				this.worldCamRelief.relief = adjusted.relief;
 				this.worldCamRelief.contentPanY = adjusted.contentPanY;
@@ -2452,7 +2466,8 @@ export class ReliquaryGame {
 						if (tallCandidateFade) {
 							paintWorldPropShadow(ctx, art.sprite, dx, dy, dw, dh);
 							paintPropWithLocalFade(ctx, img, { x: dx, y: dy, width: dw, height: dh },
-								{ x: this.px - camX, y: this.py - TILE * 0.5 - camY, width: TILE, height: TILE * 1.5 });
+								{ x: this.px - camX, y: this.py - TILE * 0.5 - camY, width: TILE, height: TILE * 1.5 },
+								art.id === "north_gate_candidate" ? 0.12 : 0.35);
 						} else {
 							if (faded) { ctx.save(); ctx.globalAlpha = 0.35; }
 							paintWorldPropShadow(ctx, art.sprite, dx, dy, dw, dh);

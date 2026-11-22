@@ -150,3 +150,17 @@ test("an expanded HUD can use available canvas space without clipping the player
   const staleRelief = adjustCamYForHudInset(100, 450, 90, { relief: 96, contentPanY: 0 }, { viewportHeight: 512, playerHeight: 48 });
   assert.ok(staleRelief.effectiveHeadCanvasY + 48 <= 512, "old camera relief cannot push feet below the viewport");
 });
+
+test("a nearby landmark clears the HUD while the player stays in the viewport", () => {
+  const state = { relief: 0, contentPanY: 0 };
+  const adjusted = adjustCamYForHudInset(64, 176, 70, state, {
+    viewportHeight: 288, playerHeight: 48, landmarkTop: 12,
+  });
+  assert.equal(12 + 64 - adjusted.camY + adjusted.contentPanY, 74);
+  assert.ok(adjusted.effectiveHeadCanvasY + 48 <= 288);
+
+  const short = adjustCamYForHudInset(0, 100, 70, { relief: 0, contentPanY: 0 }, {
+    viewportHeight: 192, playerHeight: 48, landmarkTop: 0,
+  });
+  assert.equal(short.effectiveHeadCanvasY + 48, 192);
+});

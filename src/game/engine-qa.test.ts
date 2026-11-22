@@ -959,7 +959,7 @@ test("a player behind the candidate gate dims only the overlapping area of the a
       game.mapId = "elderhall"; game.mode = "world";
       game.tx = 11; game.ty = 4; game.px = 11 * TILE; game.py = 4 * TILE;
       frame(16);
-      assert.deepEqual(gateDraws.map((draw) => draw.alpha), [1, 0.35], "the arch stays opaque outside the locally faded player area");
+      assert.deepEqual(gateDraws.map((draw) => draw.alpha), [1, 0.12], "the arch stays opaque outside the locally faded player area");
       assert.equal(gateDraws[0]!.clip?.rule, "evenodd", "the opaque pass excludes the player rectangle");
       assert.equal(gateDraws[0]!.clip?.rects.length, 2);
       assert.equal(gateDraws[1]!.clip?.rects.length, 1, "only the player rectangle is translucent");

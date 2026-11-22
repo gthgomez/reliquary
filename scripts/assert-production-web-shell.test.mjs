@@ -1,10 +1,11 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
+import { assertElderhallArtifact } from "./elderhall-release.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -117,7 +118,7 @@ test("production rebuild discards the previous browser-test bundle and cache ent
   assert.equal(serviceWorker.includes(basename(browserTestBundle)), false, "previous browser-test bundle remains precached");
 });
 
-test("production rebuild excludes the candidate map implementation and artwork", () => {
+test("production rebuild honors the release record and rejects incomplete Elderhall artifacts", () => {
   const staticDir = join(root, ".vercel/output/static");
   const build = (env) => spawnSync(process.execPath, [join(root, "scripts/build-web.mjs")], {
     cwd: root, encoding: "utf8", timeout: 180_000,
@@ -130,15 +131,25 @@ test("production rebuild excludes the candidate map implementation and artwork",
   assert.ok(candidateMap.sources.some((name) => name.endsWith("/maps/elderhall-candidate.ts")), "candidate build contains its map implementation");
   assert.ok(existsSync(join(staticDir, "game/elderhall/assets/elderhall.well-reference.png")), "candidate contains review artwork");
 
-  // A production build wins over an accidentally inherited candidate override.
+  const sourcePack = join(root, "assets/elderhall-candidate");
+  const asset = join(staticDir, "game/elderhall/assets/elderhall.well-reference.png");
+  const bytes = readFileSync(asset);
+  rmSync(asset);
+  assert.throws(() => assertElderhallArtifact(staticDir, 5, sourcePack), /elderhall.well-reference.png/);
+  writeFileSync(asset, bytes);
+
+  const workerPath = join(staticDir, "sw.js");
+  const worker = readFileSync(workerPath, "utf8");
+  writeFileSync(workerPath, worker.replace("game/elderhall/assets/elderhall.well-reference.png", "unexpected.png"));
+  assert.throws(() => assertElderhallArtifact(staticDir, 5, sourcePack), /precache is missing/);
+  writeFileSync(workerPath, worker);
+  assert.throws(() => assertElderhallArtifact(staticDir, 2, sourcePack), /Unexpected Elderhall implementation/);
+
+  // The release record wins over an accidentally inherited preview override.
   const production = build({ VERCEL_ENV: "production", RELIQUARY_ELDERHALL_CANDIDATE: "1" });
   assert.equal(production.status, 0, `${production.stdout}\n${production.stderr}`);
   const after = bundlePath();
-  const productionMap = JSON.parse(readFileSync(`${after}.map`, "utf8"));
-  assert.equal(productionMap.sources.some((name) => name.endsWith("/maps/elderhall-candidate.ts")), false,
-    "candidate coordinates and implementation are absent from the production source map");
-  assert.equal(existsSync(join(staticDir, "game/elderhall")), false, "candidate images are absent from production");
-  assert.equal(readFileSync(join(staticDir, "sw.js"), "utf8").includes("game/elderhall/"), false,
-    "candidate images are absent from the production offline cache");
+  const release = JSON.parse(readFileSync(join(root, "scripts/elderhall-release.json"), "utf8"));
+  assertElderhallArtifact(staticDir, release.revision, sourcePack);
   if (before !== after) assert.equal(existsSync(before), false, "old candidate bundle was removed");
 });

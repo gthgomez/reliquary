@@ -4,13 +4,13 @@ import { MAPS } from "./maps.ts";
 import type { GameSave } from "./types.ts";
 import { isOccupied } from "./world/movement.ts";
 import { isLegacyCoordinateValid, resolveSafeSpawn } from "./world/reachability.ts";
-import { isElderhallCandidateBuild } from "./build-flags.ts";
+import { ELDERHALL_WORLD_REVISION } from "./build-flags.ts";
 
 export const SAVE_VERSION = 3;
 export const SAVE_RESUMED_MESSAGE = "The lantern remembers.";
 // Preview gate posts change collision; a preview save must not be silently
 // mistaken for a compatible production-world save.
-export const WORLD_REVISION = isElderhallCandidateBuild() ? 5 : 2;
+export const WORLD_REVISION = ELDERHALL_WORLD_REVISION;
 export const SAVE_KEY = "reliquary.save.v3";
 export const SAVE_BACKUP = "reliquary.save.v3.bak";
 export const SAVE_FORWARD_KEY = "reliquary.save.forward";
@@ -193,6 +193,16 @@ export function findNewerSave(source: ReadableSaveStorage | null = browserStorag
     }
   }
   return null;
+}
+
+/** A rollback can archive a record that the restored build can now import. */
+export function findArchivedSave(source: ReadableSaveStorage | null = browserStorage()): string | null {
+  try {
+    const raw = source?.getItem(SAVE_FORWARD_KEY);
+    return raw && parseSave(raw) ? raw : null;
+  } catch {
+    return null;
+  }
 }
 
 /**

@@ -142,12 +142,20 @@ export function TitleScreen({ game, snap }: { game: ReliquaryGame; snap: Snapsho
             )}
           </div>
         )}
-        {game.hasNewerSave && !confirmingReplace ? (
+        {(game.hasNewerSave || game.hasArchivedSave) && !confirmingReplace ? (
           <div className="title-save-recovery">
-            <p>A journey here was saved by a newer version. Export it here and import the file in that version.</p>
-            <button type="button" className="btn-ghost" onClick={() => setExportFailed(!game.exportNewerSave())}>
-              Export newer save
-            </button>
+            {game.hasNewerSave ? <>
+              <p>A journey here was saved by a newer version. Export it here and import the file in that version.</p>
+              <button type="button" className="btn-ghost" onClick={() => setExportFailed(!game.exportRecoverySave())}>
+                Export newer save
+              </button>
+            </> : null}
+            {game.hasArchivedSave ? <>
+              <p>A previous version archived a journey. Export it here, then use Import from the Lantern menu to resume it.</p>
+              <button type="button" className="btn-ghost" onClick={() => setExportFailed(!game.exportRecoverySave(true))}>
+                Export archived save
+              </button>
+            </> : null}
             {exportFailed ? <p role="status">Could not export the save. Try again in the browser that holds it.</p> : null}
           </div>
         ) : null}

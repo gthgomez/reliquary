@@ -2,7 +2,7 @@ import type { MapDef, MapObj } from "../types.ts";
 import { chooseTileVariant } from "../world/terrain.ts";
 import { drawAtlasTile, tileAtlasQuadrant } from "./tile-surface.ts";
 import { dirtPathJunctions, paintDirtPathJunctions } from "./road-junctions.ts";
-type VisualMetadata = { dimensions: number[]; anchor: number[]; render_size_tiles: number[] };
+export type VisualMetadata = { dimensions: number[]; anchor: number[]; render_size_tiles: number[] };
 declare const __ELDERHALL_GEOMETRY__: Record<string, VisualMetadata> | undefined;
 
 // Node-only fixture for deterministic tests without Vite's build-time define.
@@ -32,15 +32,15 @@ export function candidateVisualFromMetadata(obj: MapObj, metadata: VisualMetadat
 }
 
 /** The open arch has two solid posts and a walkable two-tile center. */
-export function elderhallCandidateGate(): MapObj {
+export function elderhallCandidateGate(metadata = assetMetadata("gate-reference")): MapObj {
   const gate: MapObj = { id: "north_gate_candidate", sprite: "elderhall-gate-reference", x: 9, y: 3, w: 4, h: 4, foot: 1, solid: true,
     collision: [{ x: 0, y: 3, w: 1, h: 1 }, { x: 3, y: 3, w: 1, h: 1 }] };
-  return { ...gate, visual: { ...candidateVisualFromMetadata(gate, assetMetadata("gate-reference"), 1.5), groundY: 3.25 } };
+  return { ...gate, visual: { ...candidateVisualFromMetadata(gate, metadata, 1.5), groundY: 3.25 } };
 }
 
-export function elderhallCandidateBench(): MapObj {
+export function elderhallCandidateBench(metadata = assetMetadata("bench")): MapObj {
   const bench: MapObj = { id: "green_bench_candidate", sprite: "elderhall-bench", x: 8, y: 14, w: 1, h: 1, foot: 1, solid: true };
-  return { ...bench, visual: candidateVisualFromMetadata(bench, assetMetadata("bench")) };
+  return { ...bench, visual: candidateVisualFromMetadata(bench, metadata) };
 }
 
 /** If the candidate PNG fails to load, show the post collision instead of invisible walls. */
@@ -55,13 +55,13 @@ export function paintCandidateBenchFallback(ctx: CanvasRenderingContext2D, bench
 }
 
 /** Preview-only mapping from stable gameplay objects to candidate IDs. */
-export function elderhallCandidateObject(mapId: string, obj: MapObj, enabled: boolean): MapObj {
+export function elderhallCandidateObject(mapId: string, obj: MapObj, enabled: boolean, geometry?: Record<string, VisualMetadata>): MapObj {
   if (!enabled || mapId !== "elderhall") return obj;
-  if (obj.id === "well") return { ...obj, sprite: "elderhall-well-reference", visual: candidateVisualFromMetadata(obj, assetMetadata("well-reference"), 0.75) };
-  if (obj.id === "green_tree") return { ...obj, sprite: "elderhall-tree-reference", visual: candidateVisualFromMetadata(obj, assetMetadata("tree-reference"), 14 / 15) };
-  if (obj.id === "h_guild") return { ...obj, sprite: "elderhall-guild-reference", visual: candidateVisualFromMetadata(obj, assetMetadata("guild-reference")) };
-  if (obj.id === "h_shop") return { ...obj, sprite: "elderhall-shop-reference", visual: candidateVisualFromMetadata(obj, assetMetadata("shop-reference")) };
-  if (obj.sprite === "cottage") return { ...obj, sprite: "elderhall-cottage-reference", visual: candidateVisualFromMetadata(obj, assetMetadata("cottage-reference")) };
+  if (obj.id === "well") return { ...obj, sprite: "elderhall-well-reference", visual: candidateVisualFromMetadata(obj, geometry?.["well-reference"] ?? assetMetadata("well-reference"), 0.75) };
+  if (obj.id === "green_tree") return { ...obj, sprite: "elderhall-tree-reference", visual: candidateVisualFromMetadata(obj, geometry?.["tree-reference"] ?? assetMetadata("tree-reference"), 14 / 15) };
+  if (obj.id === "h_guild") return { ...obj, sprite: "elderhall-guild-reference", visual: candidateVisualFromMetadata(obj, geometry?.["guild-reference"] ?? assetMetadata("guild-reference")) };
+  if (obj.id === "h_shop") return { ...obj, sprite: "elderhall-shop-reference", visual: candidateVisualFromMetadata(obj, geometry?.["shop-reference"] ?? assetMetadata("shop-reference")) };
+  if (obj.sprite === "cottage") return { ...obj, sprite: "elderhall-cottage-reference", visual: candidateVisualFromMetadata(obj, geometry?.["cottage-reference"] ?? assetMetadata("cottage-reference")) };
   return obj;
 }
 
