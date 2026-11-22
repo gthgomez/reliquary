@@ -34,7 +34,9 @@ export function TitleScreen({ game, snap }: { game: ReliquaryGame; snap: Snapsho
   const titleScreenRef = useRef<HTMLDivElement>(null);
   const newGameRef = useRef<HTMLButtonElement>(null);
   const keepSaveRef = useRef<HTMLButtonElement>(null);
+  const confirmationRef = useRef<HTMLDivElement>(null);
   const confirmationWasShown = useRef(false);
+  useOverlayFocusTrap(confirmationRef, confirmingReplace);
   useEffect(() => {
     if (confirmingReplace) {
       confirmationWasShown.current = true;
@@ -54,6 +56,7 @@ export function TitleScreen({ game, snap }: { game: ReliquaryGame; snap: Snapsho
         {snap.hasSave && confirmingReplace ? (
           <div
             className="title-confirm"
+            ref={confirmationRef}
             role="alertdialog"
             aria-modal="true"
             aria-labelledby="new-game-confirm-title"

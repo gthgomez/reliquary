@@ -138,6 +138,15 @@ try {
     const confirm = page.getByRole("alertdialog");
     await confirm.waitFor();
     await page.waitForFunction(() => document.activeElement?.textContent?.trim() === "Keep current save");
+    await page.keyboard.press("Tab");
+    assert.equal(await page.evaluate(() => document.activeElement?.textContent?.trim()), "Begin new game",
+      "Tab advances between the confirmation actions");
+    await page.keyboard.press("Tab");
+    assert.equal(await page.evaluate(() => document.activeElement?.textContent?.trim()), "Keep current save",
+      "Tab wraps from the last confirmation action to the first");
+    await page.keyboard.press("Shift+Tab");
+    assert.equal(await page.evaluate(() => document.activeElement?.textContent?.trim()), "Begin new game",
+      "Shift+Tab wraps from the first confirmation action to the last");
     assert.ok(await page.locator("#new-game-confirm-detail").isVisible(), "replacement consequences remain visible on mobile");
     await page.getByRole("button", { name: "New Game", exact: true }).click().catch(() => {});
     assert.ok(await confirm.isVisible(), "repeated clicks do not bypass the question");
