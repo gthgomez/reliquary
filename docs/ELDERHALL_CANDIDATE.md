@@ -77,7 +77,7 @@ art, and record visual acceptance of the protected build. Update
 `scripts/elderhall-release.json` to revision 5 with an `approval` object
 containing the evidence link or record ID, `manifestSha256`, and
 `worldSha256`. The release builder checks those digests against the pack
-manifest bytes and the serialized revision 5 Elderhall map and prop layouts, respectively.
+manifest bytes and the serialized revision 5 map, prop layouts, and walkability, respectively.
 Produce the digests from the accepted checkout with Node:
 
 ```sh

@@ -34,9 +34,11 @@ export async function approvedElderhallDigests(sourcePack) {
   const { elderhallBase } = await import("../src/game/maps/registry.ts");
   const { makeElderhallCandidate } = await import("../src/game/maps/elderhall-candidate.ts");
   const { elderhallCandidateObject } = await import("../src/game/render/elderhall-visual.ts");
+  const { isOccupied } = await import("../src/game/world/movement.ts");
   const world = makeElderhallCandidate(elderhallBase, geometry);
   const visuals = world.objects.map((object) => elderhallCandidateObject(world.id, object, true, geometry));
-  return { manifestSha256: sha256(manifest), worldSha256: sha256(JSON.stringify({ world, visuals })) };
+  const collision = world.ground.map((row, y) => [...row].map((_, x) => isOccupied(world, {}, x, y)));
+  return { manifestSha256: sha256(manifest), worldSha256: sha256(JSON.stringify({ world, visuals, collision })) };
 }
 
 export async function assertApprovedElderhall(sourcePack, approval) {
@@ -61,7 +63,7 @@ export function assertElderhallArtifact(staticDir, revision, sourcePack) {
   const variant = candidate ? "" : ".stub";
   for (const file of [
     "maps/registry.ts", "maps/helpers.ts", `maps/elderhall-candidate${variant}.ts`,
-    `render/elderhall-visual${variant}.ts`, "world/movement.ts", "world/object-state.ts", "save.ts",
+    `render/elderhall-visual${variant}.ts`, "world/movement.ts", "world/object-state.ts", "world/tiles.ts", "save.ts",
   ]) {
     const source = sourceMap.sources.findIndex((path) => path.endsWith(`/src/game/${file}`));
     assert.ok(sourceMap.sourcesContent[source]?.replace(/\r\n/g, "\n") ===
@@ -82,6 +84,14 @@ export function assertElderhallArtifact(staticDir, revision, sourcePack) {
 
   const manifest = validateElderhallPack(pack);
   const source = JSON.parse(readFileSync(join(sourcePack, "manifest.json"), "utf8"));
+  // The public build intentionally emits readable JavaScript. Read the actual
+  // inlined metadata object and reject a changed replacement even if its
+  // source map still records the correct TypeScript.
+  const inlineGeometry = bundle.match(/function assetMetadata\(id\) \{\s*const asset = (\{[\s\S]*?\})\[id\];/)?.[1];
+  assert.ok(inlineGeometry, "Missing bundled Elderhall visual geometry");
+  const geometry = JSON.parse(inlineGeometry.replace(/([\[,\s])(-?)\.(\d+)/g, (_match, prefix, sign, digits) =>
+    `${prefix}${sign}0.${digits}`));
+  assert.deepEqual(geometry, elderhallVisualGeometry(source), "Bundled Elderhall visual geometry differs from the pack");
   const selected = source.assets.filter((asset) => CANDIDATE_IDS.includes(asset.id.slice("elderhall.".length)));
   assert.deepEqual(manifest, { ...source, assets: selected }, "Bundled Elderhall manifest differs from the selected pack");
   const urls = new Set([...worker.matchAll(/url"?\s*:\s*"\/?([^"]+)"/g)].map((match) => match[1]));

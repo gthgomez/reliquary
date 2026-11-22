@@ -132,6 +132,10 @@ test("production rebuild honors the release record and rejects incomplete Elderh
   assert.ok(existsSync(join(staticDir, "game/elderhall/assets/elderhall.well-reference.png")), "candidate contains review artwork");
 
   const sourcePack = join(root, "assets/elderhall-candidate");
+  const bundle = readFileSync(before, "utf8");
+  writeFileSync(before, bundle.replace(/("gate-reference": \{\s*"dimensions": \[)160/, (_, prefix) => prefix + "99"));
+  assert.throws(() => assertElderhallArtifact(staticDir, 5, sourcePack), /geometry differs/);
+  writeFileSync(before, bundle);
   const asset = join(staticDir, "game/elderhall/assets/elderhall.well-reference.png");
   const bytes = readFileSync(asset);
   rmSync(asset);
