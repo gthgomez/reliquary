@@ -45,28 +45,45 @@ const slotsOf = (page) =>
     backup: localStorage.getItem("reliquary.save.v3.bak"),
   }));
 
-const openConsentWithDoubleClick = async (page) => {
+const openConsentWithRepeatedActivation = async (page) => {
   const newGame = page.getByRole("button", { name: "New Game", exact: true });
   const newGameBox = await newGame.boundingBox();
   assert.ok(newGameBox);
-  await page.mouse.click(
-    newGameBox.x + newGameBox.width / 2,
-    newGameBox.y + newGameBox.height / 2,
-    { clickCount: 2, delay: 40 },
-  );
   const confirm = page.getByRole("alertdialog");
-  await page.waitForTimeout(80);
-  assert.ok(await confirm.isVisible(), "a rapid second click at the original New Game point does not bypass the question");
-  const confirmationActionBoxes = await confirm.locator("button").evaluateAll((buttons) => buttons.map((button) => {
-    const rect = button.getBoundingClientRect();
-    return { left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom };
-  }));
-  assert.ok(confirmationActionBoxes.every((box) =>
-    box.right <= newGameBox.x || box.left >= newGameBox.x + newGameBox.width ||
-    box.bottom <= newGameBox.y || box.top >= newGameBox.y + newGameBox.height),
-  "confirmation actions stay outside the original New Game hit area");
+  await newGame.click();
+  await confirm.waitFor({ state: "visible" });
+  const begin = await confirm.getByRole("button", { name: "Begin new game", exact: true }).boundingBox();
+  assert.ok(begin);
+  const overlap = {
+    left: Math.max(newGameBox.x, begin.x),
+    right: Math.min(newGameBox.x + newGameBox.width, begin.x + begin.width),
+    top: Math.max(newGameBox.y, begin.y),
+    bottom: Math.min(newGameBox.y + newGameBox.height, begin.y + begin.height),
+  };
+  // Probe the actual overlap when platform font metrics place the destructive
+  // action there; otherwise probe the original button center.
+  const point = overlap.left < overlap.right && overlap.top < overlap.bottom
+    ? { x: (overlap.left + overlap.right) / 2, y: (overlap.top + overlap.bottom) / 2 }
+    : { x: newGameBox.x + newGameBox.width / 2, y: newGameBox.y + newGameBox.height / 2 };
+  await page.keyboard.press("Escape");
+  await page.waitForFunction(() => document.querySelector(".title-confirm") == null);
+
+  await page.mouse.click(point.x, point.y, { clickCount: 2, delay: 40 });
+  await confirm.waitFor({ state: "visible" });
+  assert.deepEqual(await slotsOf(page), { primary: JSON.stringify(oldRun), backup: null },
+    "a repeated mouse activation at New Game cannot replace the saved journey");
   assert.equal(await page.evaluate(() => document.activeElement?.textContent?.trim()), "Keep current save",
-    "the old New Game point does not move focus outside the confirmation");
+    "a repeated mouse activation leaves focus on the safe action");
+
+  await page.keyboard.press("Escape");
+  await page.waitForFunction(() => document.querySelector(".title-confirm") == null);
+  await page.touchscreen.tap(point.x, point.y);
+  await page.touchscreen.tap(point.x, point.y);
+  await confirm.waitFor({ state: "visible" });
+  assert.deepEqual(await slotsOf(page), { primary: JSON.stringify(oldRun), backup: null },
+    "a repeated touch activation at New Game cannot replace the saved journey");
+  assert.equal(await page.evaluate(() => document.activeElement?.textContent?.trim()), "Keep current save",
+    "a repeated touch activation leaves focus on the safe action");
 };
 
 const { server, baseUrl } = await startStaticServer(0);
@@ -156,7 +173,7 @@ try {
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth), 844,
       "the rotated title has no horizontal overflow");
     await page.setViewportSize({ width: 568, height: 320 });
-    await openConsentWithDoubleClick(page);
+    await openConsentWithRepeatedActivation(page);
     await page.keyboard.press("Escape");
     await page.waitForFunction(() => document.querySelector(".title-confirm") == null);
     assert.equal(await page.evaluate(() => document.activeElement?.textContent?.trim()), "New Game",
@@ -165,7 +182,7 @@ try {
     await page.setViewportSize({ width: 390, height: 844 });
 
     // First activation only asks; repeated clicks stay on the question.
-    await openConsentWithDoubleClick(page);
+    await openConsentWithRepeatedActivation(page);
     await page.keyboard.press("Tab");
     assert.equal(await page.evaluate(() => document.activeElement?.textContent?.trim()), "Begin new game",
       "Tab advances between the confirmation actions");

@@ -95,7 +95,14 @@ export function TitleScreen({ game, snap }: { game: ReliquaryGame; snap: Snapsho
               <button
                 type="button"
                 className="btn-primary"
-                onClick={() => {
+                onClick={(event) => {
+                  // A rapid second activation can land on this button after the
+                  // first one opened the question beneath the same pointer.
+                  if (event.detail > 1) {
+                    event.preventDefault();
+                    keepSaveRef.current?.focus({ preventScroll: true });
+                    return;
+                  }
                   setConfirmingReplace(false);
                   game.startNew();
                 }}
