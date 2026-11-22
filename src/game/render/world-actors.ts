@@ -51,6 +51,23 @@ export function resolveWorldPropLayout(obj: MapObj, tileSize: number): {
 type DrawFootprint = { x: number; y: number; width: number; height: number; baseline: number };
 type DrawRect = { x: number; y: number; width: number; height: number };
 
+export function compareWorldDepth(a: { y: number; priority: number; id: string }, b: { y: number; priority: number; id: string }): number {
+  return a.y - b.y || a.priority - b.priority || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
+}
+
+/** Grounded walls, trunks and low props stay opaque; only their overhang can reveal an actor. */
+const OVERHANG_BOTTOM: Record<string, number> = {
+  "elderhall-tree-reference": 0.8, "elderhall-well-reference": 0.48,
+  "elderhall-cottage-reference": 0.56, "elderhall-guild-reference": 0.56,
+  "elderhall-shop-reference": 0.56, tree: 0.62, well: 0.48,
+  cottage: 0.56, inn: 0.56, shop: 0.56,
+};
+
+export function worldPropOverhang(sprite: string, visual: DrawFootprint): DrawFootprint | null {
+  const fraction = OVERHANG_BOTTOM[sprite];
+  return fraction === undefined ? null : { ...visual, height: visual.height * fraction };
+}
+
 /** Keep both visible artwork and logical fallback footprints within culling bounds. */
 export function worldPropCullBounds(obj: MapObj, visual: DrawFootprint, tileSize: number): { left: number; top: number; right: number; bottom: number } {
   return { left: Math.min(visual.x, obj.x * tileSize), top: Math.min(visual.y, obj.y * tileSize),
@@ -63,23 +80,103 @@ export function shouldFadePropForPlayer(prop: DrawFootprint, player: DrawFootpri
     prop.y < player.y + player.height && prop.y + prop.height > player.y;
 }
 
-/** Keep the gate opaque except where its foreground overlaps the player's body. */
-export function paintPropWithLocalFade(ctx: CanvasRenderingContext2D, image: CanvasImageSource, prop: DrawRect, player: DrawRect, overlapAlpha: number): void {
-  ctx.save();
-  ctx.beginPath();
-  ctx.rect(prop.x, prop.y, prop.width, prop.height);
-  ctx.rect(player.x, player.y, player.width, player.height);
-  ctx.clip("evenodd");
-  ctx.drawImage(image, prop.x, prop.y, prop.width, prop.height);
-  ctx.restore();
+const fadeBuffers = new WeakMap<HTMLCanvasElement, HTMLCanvasElement>();
 
+/** Tint only the actor pixels actually hidden by a post; leave its base opaque. */
+export function paintActorBehindPost(
+  ctx: CanvasRenderingContext2D, image: CanvasImageSource, postImage: CanvasImageSource,
+  post: DrawRect, player: DrawRect, revealBottom: number, source: DrawRect,
+): void {
+  let buffer = fadeBuffers.get(ctx.canvas);
+  if (!buffer) {
+    buffer = ctx.canvas.ownerDocument.createElement("canvas");
+    fadeBuffers.set(ctx.canvas, buffer);
+  }
+  const width = Math.max(1, Math.ceil(post.width));
+  const height = Math.max(1, Math.ceil(post.height));
+  if (buffer.width !== width) buffer.width = width;
+  if (buffer.height !== height) buffer.height = height;
+  const mask = buffer.getContext("2d");
+  if (!mask) return;
+  const scaleX = width / post.width;
+  const scaleY = height / post.height;
+  mask.clearRect(0, 0, width, height);
+  mask.save();
+  mask.imageSmoothingEnabled = false;
+  mask.beginPath();
+  mask.rect(0, 0, width, Math.max(0, (revealBottom - post.y) * scaleY));
+  mask.clip();
+  mask.drawImage(image, (player.x - post.x) * scaleX, (player.y - post.y) * scaleY,
+    player.width * scaleX, player.height * scaleY);
+  mask.globalCompositeOperation = "destination-in";
+  mask.drawImage(postImage, source.x, source.y, source.width, source.height, 0, 0, width, height);
+  mask.globalCompositeOperation = "source-atop";
+  mask.fillStyle = "rgba(255, 244, 198, 0.65)";
+  mask.fillRect(0, 0, width, height);
+  mask.restore();
   ctx.save();
-  ctx.beginPath();
-  ctx.rect(player.x, player.y, player.width, player.height);
-  ctx.clip();
-  ctx.globalAlpha *= overlapAlpha;
-  ctx.drawImage(image, prop.x, prop.y, prop.width, prop.height);
+  ctx.globalAlpha *= 0.85;
+  ctx.drawImage(buffer, post.x, post.y, post.width, post.height);
   ctx.restore();
+}
+
+/** Feather a small reveal in the overhang only, leaving the feet and ground contact opaque. */
+export function paintPropWithLocalFade(
+  ctx: CanvasRenderingContext2D, image: CanvasImageSource, prop: DrawRect, player: DrawRect,
+  overlapAlpha: number, fadeBottom: number, source?: DrawRect, canopy?: "elderhall-tree",
+): void {
+  let buffer = fadeBuffers.get(ctx.canvas);
+  if (!buffer) {
+    buffer = ctx.canvas.ownerDocument.createElement("canvas");
+    fadeBuffers.set(ctx.canvas, buffer);
+  }
+  const width = Math.max(1, Math.ceil(prop.width));
+  const height = Math.max(1, Math.ceil(prop.height));
+  if (buffer.width !== width) buffer.width = width;
+  if (buffer.height !== height) buffer.height = height;
+  const mask = buffer.getContext("2d");
+  if (!mask) {
+    if (source) ctx.drawImage(image, source.x, source.y, source.width, source.height, prop.x, prop.y, prop.width, prop.height);
+    else ctx.drawImage(image, prop.x, prop.y, prop.width, prop.height);
+    return;
+  }
+  mask.clearRect(0, 0, buffer.width, buffer.height);
+  mask.imageSmoothingEnabled = false;
+  if (source) mask.drawImage(image, source.x, source.y, source.width, source.height, 0, 0, buffer.width, buffer.height);
+  else mask.drawImage(image, 0, 0, buffer.width, buffer.height);
+  const scaleX = buffer.width / prop.width;
+  const scaleY = buffer.height / prop.height;
+  const bottom = Math.min(fadeBottom, player.y + player.height - 6);
+  mask.save();
+  mask.beginPath();
+  mask.rect(0, 0, buffer.width, Math.max(0, (bottom - prop.y) * scaleY));
+  mask.clip();
+  if (canopy === "elderhall-tree") {
+    // The outer leaves extend lower than the center of the canopy. Exclude
+    // the central trunk as the reveal follows those leaves downward.
+    mask.beginPath();
+    mask.moveTo(0, 0);
+    mask.lineTo(buffer.width, 0);
+    mask.lineTo(buffer.width, buffer.height * 0.8);
+    mask.lineTo(buffer.width * 0.72, buffer.height * 0.8);
+    mask.lineTo(buffer.width * 0.68, buffer.height * 0.62);
+    mask.lineTo(buffer.width * 0.32, buffer.height * 0.62);
+    mask.lineTo(buffer.width * 0.28, buffer.height * 0.8);
+    mask.lineTo(0, buffer.height * 0.8);
+    mask.closePath();
+    mask.clip();
+  }
+  mask.globalCompositeOperation = "destination-out";
+  mask.translate((player.x + player.width / 2 - prop.x) * scaleX, (player.y + player.height * 0.43 - prop.y) * scaleY);
+  mask.scale(player.width * 0.8 * scaleX, player.height * 0.58 * scaleY);
+  const feather = mask.createRadialGradient(0, 0, 0.15, 0, 0, 1);
+  feather.addColorStop(0, `rgba(0,0,0,${1 - overlapAlpha})`);
+  feather.addColorStop(0.45, `rgba(0,0,0,${1 - overlapAlpha})`);
+  feather.addColorStop(1, "rgba(0,0,0,0)");
+  mask.fillStyle = feather;
+  mask.fillRect(-1, -1, 2, 2);
+  mask.restore();
+  ctx.drawImage(buffer, prop.x, prop.y, prop.width, prop.height);
 }
 
 export function paintWorldPropShadow(

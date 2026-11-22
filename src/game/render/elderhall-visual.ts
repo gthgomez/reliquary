@@ -38,6 +38,17 @@ export function elderhallCandidateGate(metadata = assetMetadata("gate-reference"
   return { ...gate, visual: { ...candidateVisualFromMetadata(gate, metadata, 1.5), groundY: 3.25 } };
 }
 
+/** Source-image slices retain the original artwork and keep the post bases solid. */
+export function elderhallGateRenderRegions(visual: { baseline: number }): {
+  kind: "left-post" | "overhang" | "right-post"; left: number; right: number; baseline: number; revealBottom: number;
+}[] {
+  return [
+    { kind: "left-post", left: 0, right: 38 / 160, baseline: visual.baseline, revealBottom: 0.88 },
+    { kind: "overhang", left: 38 / 160, right: 122 / 160, baseline: visual.baseline, revealBottom: 1 },
+    { kind: "right-post", left: 122 / 160, right: 1, baseline: visual.baseline, revealBottom: 0.88 },
+  ];
+}
+
 export function elderhallCandidateBench(metadata = assetMetadata("bench")): MapObj {
   const bench: MapObj = { id: "green_bench_candidate", sprite: "elderhall-bench", x: 8, y: 14, w: 1, h: 1, foot: 1, solid: true };
   return { ...bench, visual: candidateVisualFromMetadata(bench, metadata) };

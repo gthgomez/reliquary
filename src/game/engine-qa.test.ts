@@ -8,6 +8,7 @@ import { MAPS } from "./maps.ts";
 import { makeElderhallCandidate } from "./maps/elderhall-candidate.ts";
 import { chooseTileVariant } from "./world/terrain.ts";
 import { tileAtlasQuadrant } from "./render/tile-surface.ts";
+import { resolveWorldPropLayout } from "./render/world-actors.ts";
 import type { Beast } from "./types.ts";
 
 async function withGame(
@@ -870,6 +871,93 @@ test("terrain is reused between frames and rebuilt when the map changes", async 
   });
 });
 
+test("fractional camera offsets keep terrain, actors and props aligned", async () => {
+  await withGame((game, frame) => {
+    const ground = { drawImage() {}, fillRect() {}, save() {}, restore() {}, beginPath() {}, moveTo() {}, lineTo() {},
+      quadraticCurveTo() {}, closePath() {}, rect() {}, clip() {} };
+    const terrain = { getContext: () => ground, width: 0, height: 0 };
+    Object.assign(document, { createElement: () => terrain });
+    const draws: unknown[][] = [];
+    const screen = { drawImage(...args: unknown[]) { draws.push(args); }, fillRect() {} };
+    game.canvas = { getContext: () => screen } as unknown as HTMLCanvasElement;
+    const player = {} as HTMLImageElement;
+    const well = {} as HTMLImageElement;
+    game.images = { player_down0: player, prop_well: well };
+    game.mapId = "elderhall"; game.mode = "world";
+    for (const [index, fraction] of [0.05, 0.25, 0.5, 0.9].entries()) {
+      game.px = 11 * TILE + fraction;
+      game.py = 10 * TILE + fraction;
+      draws.length = 0;
+      frame(16 * (index + 1));
+      const groundDraw = draws.find((args) => args[0] === terrain)!;
+      const playerDraw = draws.find((args) => args[0] === player)!;
+      const wellDraw = draws.find((args) => args[0] === well)!;
+      assert.ok(groundDraw && playerDraw && wellDraw);
+      const camX = groundDraw[1] as number;
+      const camY = groundDraw[2] as number;
+      assert.equal(camX, Math.round(camX), "terrain uses the shared integer camera sample on X");
+      assert.equal(camY, Math.round(camY), "terrain uses the shared integer camera sample on Y");
+      assert.ok(Math.abs((playerDraw[1] as number) + camX - game.px) < 1e-9);
+      assert.ok(Math.abs((playerDraw[2] as number) + camY - (game.py - TILE * 0.5)) < 1e-9);
+      const prop = MAPS.elderhall!.objects.find((object) => object.id === "well")!;
+      const visual = resolveWorldPropLayout(prop, TILE);
+      assert.ok(Math.abs((wellDraw[1] as number) + camX - visual.x) < 1e-9);
+      assert.ok(Math.abs((wellDraw[2] as number) + camY - visual.y) < 1e-9);
+    }
+  });
+});
+
+test("HUD pan preserves the terrain transform and extends only the map edge", async () => {
+  const globals = globalThis as Record<string, unknown>;
+  const previousStyle = globals.getComputedStyle;
+  let inset = 230;
+  globals.getComputedStyle = () => ({ getPropertyValue: () => String(inset) });
+  try {
+    await withGame((game, frame) => {
+      const ground = { drawImage() {}, fillRect() {}, save() {}, restore() {}, beginPath() {}, moveTo() {}, lineTo() {},
+        quadraticCurveTo() {}, closePath() {}, rect() {}, clip() {} };
+      const terrain = { getContext: () => ground, width: 0, height: 0 };
+      Object.assign(document, { createElement: () => terrain });
+      const draws: unknown[][] = [];
+      const screen = { drawImage(...args: unknown[]) { draws.push(args); }, fillRect() {}, save() {}, restore() {} };
+      const parent = { getBoundingClientRect: () => ({ top: 0 }) };
+      game.canvas = { getContext: () => screen, parentElement: parent, height: game.ch(), width: game.cw(),
+        getBoundingClientRect: () => ({ top: 0, height: game.ch() }) } as unknown as HTMLCanvasElement;
+      const player = {} as HTMLImageElement;
+      game.images = { player_down0: player };
+      game.mapId = "elderhall"; game.mode = "world"; game.px = 11 * TILE;
+      for (const [index, py] of [64, (game.viewH / 2 - 0.5) * TILE + 146].entries()) {
+        (game as unknown as { resetWorldCameraRelief(): void }).resetWorldCameraRelief();
+        draws.length = 0; game.py = py;
+        frame(16 * (index + 1));
+        const groundDraws = draws.filter((args) => args[0] === terrain);
+        const main = groundDraws.at(-1)!;
+        const actor = draws.find((args) => args[0] === player)!;
+        const adjustedCamY = py - TILE * 0.5 - (actor[2] as number);
+        const pan = (game as unknown as { worldCamRelief: { contentPanY: number } }).worldCamRelief.contentPanY;
+        assert.ok(pan > 0, "the fixture must exercise HUD pan");
+        assert.equal(adjustedCamY, Math.round(adjustedCamY), "the shared render camera is pixel aligned");
+        assert.equal(main[4], main[8], "visible terrain is not vertically compressed");
+        assert.ok(Math.abs((main[2] as number) - (main[6] as number) - adjustedCamY) < 1e-9,
+          "terrain and player use the same camera position");
+        if (adjustedCamY < 0) {
+          assert.equal(groundDraws.length, 2);
+          assert.equal(groundDraws[0]![4], 1, "only one map-edge row is extended");
+          assert.equal(groundDraws[0]![8], -adjustedCamY);
+        } else assert.equal(groundDraws.length, 1, "available terrain above the camera needs no edge fill");
+      }
+      (game as unknown as { resetWorldCameraRelief(): void }).resetWorldCameraRelief();
+      game.py = 64; inset = 80; frame(48);
+      draws.length = 0; game.py = 60; inset = 200; frame(64);
+      const head = Math.round(draws.find((args) => args[0] === player)![2] as number);
+      assert.ok(head >= 204 && head + 48 <= game.ch(), "an expanding HUD overrides the motion limiter without clipping the feet");
+    });
+  } finally {
+    if (previousStyle === undefined) delete globals.getComputedStyle;
+    else globals.getComputedStyle = previousStyle;
+  }
+});
+
 /** Capture the real terrain bake for a dirt tile immediately west of stone. */
 async function stoneTransitionDraws(options: { candidate: boolean; atlas: boolean; mapId?: "elderhall" | "grove" }) {
   const mapId = options.mapId ?? "elderhall";
@@ -929,41 +1017,67 @@ test("stone transitions fall back to the legacy tile in normal, missing-atlas, a
   }
 });
 
-test("a player behind the candidate gate dims only the overlapping area of the arch", async () => {
+test("gate reveals stay local while posts and ground contact retain depth", async () => {
   const originalMap = MAPS.elderhall!;
   const originalFlag = process.env.VITE_ELDERHALL_CANDIDATE;
   process.env.VITE_ELDERHALL_CANDIDATE = "1";
   MAPS.elderhall = makeElderhallCandidate(originalMap);
   try {
     await withGame((game, frame) => {
-      const gateImage = {} as HTMLImageElement;
-      let alpha = 1;
-      let rects: number[][] = [];
-      type Clip = { rule: string; rects: number[][] } | null;
-      let activeClip: Clip = null;
-      const saved: { alpha: number; clip: Clip }[] = [];
-      const gateDraws: { alpha: number; clip: Clip }[] = [];
-      const screen = {
-        get globalAlpha() { return alpha; }, set globalAlpha(value: number) { alpha = value; },
-        save() { saved.push({ alpha, clip: activeClip }); },
-        restore() { const previous = saved.pop(); if (previous) { alpha = previous.alpha; activeClip = previous.clip; } },
-        beginPath() { rects = []; }, rect(...args: number[]) { rects.push(args); },
-        clip(rule?: CanvasFillRule) { activeClip = { rule: rule ?? "nonzero", rects: rects.map((rect) => [...rect]) }; },
-        drawImage(image: unknown) { if (image === gateImage) gateDraws.push({ alpha, clip: activeClip }); }, fillRect() {},
+      const gateImage = { naturalWidth: 160, naturalHeight: 112 } as HTMLImageElement;
+      const playerImage = {} as HTMLImageElement;
+      const draws: unknown[][] = [];
+      const masks: { rect: number[]; stops: [number, string][]; images: { image: unknown; mode: string }[]; fills: string[] }[] = [];
+      let currentMask: (typeof masks)[number];
+      const mask = {
+        globalCompositeOperation: "source-over",
+        drawImage(image: unknown) { currentMask.images.push({ image, mode: this.globalCompositeOperation }); },
+        save() {}, restore() { this.globalCompositeOperation = "source-over"; }, beginPath() {}, clip() {}, translate() {}, scale() {},
+        fillRect() { currentMask.fills.push(this.globalCompositeOperation); },
+        clearRect() { currentMask = { rect: [], stops: [], images: [], fills: [] }; masks.push(currentMask); },
+        rect(...args: number[]) { currentMask.rect = args; },
+        createRadialGradient() { return { addColorStop(offset: number, color: string) { currentMask.stops.push([offset, color]); } }; },
       };
+      const buffer = { width: 0, height: 0, getContext: () => mask };
+      const reveals: { alpha: number; index: number }[] = [];
+      const screen = { canvas: { ownerDocument: { createElement: () => buffer } }, globalAlpha: 1,
+        save() {}, restore() { this.globalAlpha = 1; }, beginPath() {}, rect() {}, clip() {},
+        drawImage(...args: unknown[]) { draws.push(args); if (args[0] === buffer && this.globalAlpha < 1) reveals.push({ alpha: this.globalAlpha, index: draws.length - 1 }); }, fillRect() {} };
       const ground = { drawImage() {}, fillRect() {}, save() {}, restore() {}, beginPath() {}, moveTo() {}, lineTo() {},
         quadraticCurveTo() {}, closePath() {}, rect() {}, clip() {} };
       Object.assign(document, { createElement: () => ({ getContext: () => ground, width: 0, height: 0 }) });
       game.canvas = { getContext: () => screen } as unknown as HTMLCanvasElement;
-      game.images = { "prop_elderhall-gate-reference": gateImage };
+      game.images = { "prop_elderhall-gate-reference": gateImage, player_down0: playerImage };
       game.mapId = "elderhall"; game.mode = "world";
       game.tx = 11; game.ty = 4; game.px = 11 * TILE; game.py = 4 * TILE;
       frame(16);
-      assert.deepEqual(gateDraws.map((draw) => draw.alpha), [1, 0.12], "the arch stays opaque outside the locally faded player area");
-      assert.equal(gateDraws[0]!.clip?.rule, "evenodd", "the opaque pass excludes the player rectangle");
-      assert.equal(gateDraws[0]!.clip?.rects.length, 2);
-      assert.equal(gateDraws[1]!.clip?.rects.length, 1, "only the player rectangle is translucent");
-      assert.equal(alpha, 1, "canvas opacity is restored for subsequent actors");
+      assert.ok(draws.findIndex((args) => args[0] === playerImage) < draws.findIndex((args) => args[0] === buffer),
+        "the player is drawn behind the foreground arch");
+      assert.equal(draws.filter((args) => args[0] === gateImage).length, 2, "both post slices stay opaque");
+      assert.equal(masks.length, 1, "only the overlapping arch slice gets a reveal");
+      assert.ok(masks[0]!.rect[3]! < buffer.height, "the reveal does not reach the player's feet");
+      assert.deepEqual(masks[0]!.stops.at(-1), [1, "rgba(0,0,0,0)"], "the reveal feathers to no change");
+
+      for (const [index, x] of [9 * TILE, 12 * TILE].entries()) {
+        draws.length = 0; masks.length = 0; reveals.length = 0;
+        game.px = x; game.py = 5 * TILE;
+        frame(32 + index * 16);
+        const postMask = masks.find((entry) => entry.images.some((item) => item.image === playerImage));
+        assert.ok(postMask, "each post can reveal a player behind it");
+        assert.ok(postMask.rect[3]! < buffer.height, "the post base is outside the reveal");
+        assert.ok(postMask.images.some((item) => item.image === gateImage && item.mode === "destination-in"),
+          "the silhouette is restricted to opaque post artwork");
+        assert.ok(postMask.fills.includes("source-atop"), "only the occluded actor pixels are tinted");
+        assert.ok(reveals.some((reveal) => reveal.alpha === 0.85 &&
+          draws.slice(0, reveal.index).some((args) => args[0] === gateImage)), "the opaque post is drawn before the cue");
+      }
+
+      draws.length = 0; masks.length = 0; reveals.length = 0;
+      game.px = 12 * TILE; game.py = 7 * TILE;
+      frame(64);
+      assert.equal(masks.length, 0, "a player in front does not fade the gate");
+      assert.equal(reveals.length, 0, "a player in front receives no silhouette");
+      assert.equal(draws.filter((args) => args[0] === gateImage).length, 3, "all three gate slices draw normally");
     });
   } finally {
     MAPS.elderhall = originalMap;

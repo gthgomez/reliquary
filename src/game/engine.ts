@@ -74,8 +74,9 @@ import {
 } from "./render/world-camera-safe.ts";
 import { clipSoftPath, clipStoneTransition, drawAtlasTile, paintCottageFloor, paintStoneRoadBorder, paintTileAccent, tileAtlasQuadrant } from "./render/tile-surface.ts";
 import { paintDirtPathJunctions } from "./render/road-junctions.ts";
-import { paintPropWithLocalFade, paintWorldActorShadow, paintWorldPropShadow, resolveWorldPropLayout, shouldFadePropForPlayer, worldPropCullBounds } from "./render/world-actors.ts";
-import { elderhallCandidateObject, elderhallTerrainAtlas, paintCandidateGateFallback, paintCandidateBenchFallback, paintElderhallRoadJunctions } from "./render/elderhall-visual.ts";
+import { snapWorldCameraForPlayer, type WorldCameraSnapState } from "./render/world-transform.ts";
+import { compareWorldDepth, paintActorBehindPost, paintPropWithLocalFade, paintWorldActorShadow, paintWorldPropShadow, resolveWorldPropLayout, shouldFadePropForPlayer, worldPropCullBounds, worldPropOverhang } from "./render/world-actors.ts";
+import { elderhallCandidateObject, elderhallGateRenderRegions, elderhallTerrainAtlas, paintCandidateGateFallback, paintCandidateBenchFallback, paintElderhallRoadJunctions } from "./render/elderhall-visual.ts";
 import { captureChance, captureSucceeds, storeCapturedBeast } from "./systems/capture.ts";
 import { healBeast, playerActsFirst, spendSkillMp } from "./systems/combat.ts";
 import { applySkillEvents, resolveSkillUse } from "./systems/battle-engine.ts";
@@ -255,6 +256,7 @@ export class ReliquaryGame {
 	battlePreview: BattlePreview | null = null;
 	private reducedMotion = false;
 	private worldCamRelief: WorldCamReliefState = { relief: 0, contentPanY: 0 };
+	private worldCameraSnap: { x: WorldCameraSnapState; y: WorldCameraSnapState } = { x: {}, y: {} };
 	constructor(options: { random?: RandomSource; readOnlySaveSource?: Pick<SaveStorage, "getItem"> } = {}) {
 		this.random = options.random ?? mathRandom;
 		this.readOnlySaveSource = options.readOnlySaveSource;
@@ -496,7 +498,7 @@ export class ReliquaryGame {
 		this.viewH = vh;
 		this.cssW = cssW;
 		this.cssH = cssH;
-		resetWorldCamRelief(this.worldCamRelief);
+		this.resetWorldCameraRelief();
 		canvas.width = vw * TILE;
 		canvas.height = vh * TILE;
 		if (this.mode === "battle") {
@@ -839,7 +841,7 @@ export class ReliquaryGame {
 		}
 		if (this.mode === "battle") this.battleIdlePhase += dt;
 		if (this.mode === "world" && (!this.dialog || this.injected) && !this.menu && !this.namePrompt) this.tickMove(dt);
-		this.draw();
+		this.draw(dt);
 		this.raf = requestAnimationFrame(this.loop);
 	};
 	private tickMove(dt: number): void {
@@ -912,6 +914,7 @@ export class ReliquaryGame {
 	}
 	private resetWorldCameraRelief(): void {
 		resetWorldCamRelief(this.worldCamRelief);
+		this.worldCameraSnap = { x: {}, y: {} };
 	}
 	/** Building door in front of the player, when walking into it should enter. */
 	private doorAhead(nx: number, ny: number): string | null {
@@ -2292,7 +2295,7 @@ export class ReliquaryGame {
 			return;
 		}
 	}
-	private draw(): void {
+	private draw(dt: number): void {
 		const canvas = this.canvas;
 		if (!canvas) return;
 		const ctx = canvas.getContext("2d");
@@ -2305,9 +2308,9 @@ export class ReliquaryGame {
 			this.drawBattle(ctx);
 			return;
 		}
-		this.drawWorld(ctx);
+		this.drawWorld(ctx, dt);
 	}
-	private drawWorld(ctx: CanvasRenderingContext2D): void {
+	private drawWorld(ctx: CanvasRenderingContext2D, dt: number): void {
 		const m = this.map();
 		const elderhallCandidate = isElderhallCandidateBuild();
 		const mw = m.ground[0]?.length ?? 0;
@@ -2316,6 +2319,7 @@ export class ReliquaryGame {
 		let camY = Math.max(0, Math.min(this.py - (this.viewH / 2 - 0.5) * TILE, Math.max(0, mh * TILE - this.ch())));
 		const canvas = this.canvas;
 		const playerHeadCanvasY = this.py + TILE - TILE * 1.5 - camY;
+		let cameraReport: Parameters<typeof reportWorldCameraGeometry>[2] | null = null;
 		if (canvas && typeof document !== "undefined" && this.mode === "world" && !this.menu && !this.dialog) {
 			const { insetCanvas, source } = readUiSafeTopCanvas(canvas);
 			if (source) {
@@ -2332,28 +2336,38 @@ export class ReliquaryGame {
 					landmarkTop = gateLayout.y - camY + 3 * Math.max(verticalDistance, horizontalDistance);
 				}
 				const adjusted = adjustCamYForHudInset(camY, playerHeadCanvasY, insetCanvas, this.worldCamRelief,
-					{ viewportHeight: this.ch(), playerHeight: TILE * 1.5, landmarkTop });
+					{ viewportHeight: this.ch(), playerHeight: TILE * 1.5, landmarkTop: this.reducedMotion ? undefined : landmarkTop, dtSeconds: dt });
 				camY = adjusted.camY;
-				this.worldCamRelief.relief = adjusted.relief;
-				this.worldCamRelief.contentPanY = adjusted.contentPanY;
-				reportWorldCameraGeometry(this.cw(), this.ch(), {
+				cameraReport = {
 					hudInsetBottom: insetCanvas,
 					hudInsetSource: source,
 					camRelief: adjusted.relief,
 					contentPanY: adjusted.contentPanY,
 					headAfterCamRelief: adjusted.headAfterCamRelief,
-					effectivePlayerHeadCanvasY: adjusted.effectiveHeadCanvasY,
 					playerHeadCanvasY: adjusted.headAfterCamRelief,
-				});
+				};
 			} else {
 				this.resetWorldCameraRelief();
 			}
 		} else if (canvas && typeof document !== "undefined") {
 			this.resetWorldCameraRelief();
 		}
+		// Choose one integer world-to-screen offset for every layer. Limit its
+		// rounding against both player travel and the camera's own direction.
 		const worldPanY = this.worldCamRelief.contentPanY;
-		const panWorld = worldPanY > 0;
-		if (panWorld) ctx.save();
+		const renderCamX = snapWorldCameraForPlayer(this.px, camX, this.worldCameraSnap.x);
+		let renderCamY = snapWorldCameraForPlayer(this.py, camY - worldPanY, this.worldCameraSnap.y);
+		if (cameraReport) {
+			// A newly expanded HUD takes priority over the motion limiter.
+			const safeHead = Math.min(cameraReport.hudInsetBottom + 4, this.ch() - TILE * 1.5);
+			const maxCameraY = Math.floor(Math.round(this.py) - TILE * 0.5 - safeHead);
+			if (renderCamY > maxCameraY) {
+				renderCamY = maxCameraY;
+				this.worldCameraSnap.y.camera = renderCamY;
+			}
+			reportWorldCameraGeometry(this.cw(), this.ch(), { ...cameraReport,
+				effectivePlayerHeadCanvasY: Math.round(this.py) - TILE * 0.5 - renderCamY });
+		}
 		if (this.terrain?.map !== m) {
 			const canvas = document.createElement("canvas");
 			canvas.width = mw * TILE;
@@ -2432,17 +2446,18 @@ export class ReliquaryGame {
 			});
 			this.terrain = { map: m, canvas };
 		}
-		if (panWorld) {
-			const bleed = Math.ceil(worldPanY);
-			const srcY = Math.ceil(camY);
-			const srcH = Math.min(bleed + TILE, mh * TILE - srcY);
-			if (srcH > 0) {
-				ctx.drawImage(this.terrain.canvas, Math.ceil(camX), srcY, this.cw(), srcH, 0, 0, this.cw(), bleed);
-			}
-			ctx.translate(0, worldPanY);
-		}
-		ctx.drawImage(this.terrain.canvas, Math.ceil(camX), Math.ceil(camY), this.cw(), this.ch(), 0, 0, this.cw(), this.ch());
-		const list: { y: number; draw: () => void }[] = [];
+		// Extend only beyond the map. Available terrain uses the same integer
+		// camera sample as the actor and prop destinations.
+		const edgeFill = Math.max(0, -renderCamY);
+		if (edgeFill > 0 && mh > 0) ctx.drawImage(this.terrain.canvas, renderCamX, 0, this.cw(), 1, 0, 0, this.cw(), edgeFill);
+		const visibleTop = Math.max(0, renderCamY);
+		const visibleBottom = Math.min(mh * TILE, renderCamY + this.ch());
+		if (visibleBottom > visibleTop) ctx.drawImage(this.terrain.canvas, renderCamX, visibleTop, this.cw(), visibleBottom - visibleTop,
+			0, visibleTop - renderCamY, this.cw(), visibleBottom - visibleTop);
+		const list: { y: number; priority: number; id: string; draw: () => void }[] = [];
+		const playerFoot = { x: this.px, y: this.py - TILE * 0.5, width: TILE, height: TILE * 1.5, baseline: this.py + TILE };
+		const playerFrame = this.moving ? this.walkFrame : 0;
+		const playerImage = this.images[`player_${DIRS[this.dir].name}${playerFrame}`] || this.images.player_down0;
 		// Completed props (opened chests, defeated bosses) share one predicate
 		// with collision and interaction: they must not keep looking actionable.
 		for (const o of visibleObjects(m.objects, this.flags)) {
@@ -2450,45 +2465,70 @@ export class ReliquaryGame {
 			const candidateObject = elderhallCandidateObject(m.id, o, elderhallCandidate);
 			const art = candidateObject !== o && this.images[`prop_${candidateObject.sprite}`] ? candidateObject : o;
 			const visual = resolveWorldPropLayout(art, TILE);
-			const faded = shouldFadePropForPlayer(visual, { x: this.px, y: this.py - TILE * 0.5, width: TILE, height: TILE * 1.5, baseline: this.py + TILE });
 			const bounds = worldPropCullBounds(o, visual, TILE);
-			if (bounds.left >= camX + this.cw() || bounds.right <= camX || bounds.top >= camY + this.ch() || bounds.bottom <= camY) continue;
+			if (bounds.left >= renderCamX + this.cw() || bounds.right <= renderCamX || bounds.top >= visibleBottom || bounds.bottom <= visibleTop) continue;
+			const img = this.images[`prop_${art.sprite}`] || this.images[`sprite_${art.sprite}`] || this.images[`npc_${art.sprite}`];
+			if (o.id === "north_gate_candidate" && img) {
+				for (const part of elderhallGateRenderRegions(visual)) {
+					const rect = { x: visual.x + visual.width * part.left, y: visual.y,
+						width: visual.width * (part.right - part.left), height: visual.height, baseline: part.baseline };
+					const faded = shouldFadePropForPlayer({ ...rect, height: rect.height * part.revealBottom }, playerFoot);
+					list.push({ y: part.baseline, priority: 0, id: `${o.id}:${part.kind}`, draw: () => {
+						const source = { x: img.naturalWidth * part.left, y: 0,
+							width: img.naturalWidth * (part.right - part.left), height: img.naturalHeight };
+						const dest = { x: rect.x - renderCamX, y: rect.y - renderCamY, width: rect.width, height: rect.height };
+						const playerRect = { x: playerFoot.x - renderCamX, y: playerFoot.y - renderCamY, width: playerFoot.width, height: playerFoot.height };
+						if (faded && part.kind === "overhang") paintPropWithLocalFade(ctx, img, dest,
+							playerRect,
+							0.45, dest.y + dest.height * part.revealBottom, source);
+						else {
+							ctx.drawImage(img, source.x, source.y, source.width, source.height, dest.x, dest.y, dest.width, dest.height);
+							if (faded && playerImage) paintActorBehindPost(ctx, playerImage, img, dest, playerRect,
+								dest.y + dest.height * part.revealBottom, source);
+						}
+					} });
+				}
+				continue;
+			}
+			const overhang = worldPropOverhang(art.sprite, visual);
+			const faded = overhang !== null && shouldFadePropForPlayer(overhang, playerFoot);
 			list.push({
 				y: visual.baseline,
+				priority: 0,
+				id: o.id,
 				draw: () => {
-					const img = this.images[`prop_${art.sprite}`] || this.images[`sprite_${art.sprite}`] || this.images[`npc_${art.sprite}`];
-					const dx = visual.x - camX;
-					const dy = visual.y - camY;
+					const dx = visual.x - renderCamX;
+					const dy = visual.y - renderCamY;
 					const dw = visual.width;
 					const dh = visual.height;
 					if (img) {
-						const tallCandidateFade = faded && /^elderhall-(gate|tree|well|cottage|guild|shop)-reference$/.test(art.sprite);
-						if (tallCandidateFade) {
-							paintWorldPropShadow(ctx, art.sprite, dx, dy, dw, dh);
+						paintWorldPropShadow(ctx, art.sprite, dx, dy, dw, dh);
+						if (faded && overhang) {
+							const treeCanopy = art.sprite === "elderhall-tree-reference";
 							paintPropWithLocalFade(ctx, img, { x: dx, y: dy, width: dw, height: dh },
-								{ x: this.px - camX, y: this.py - TILE * 0.5 - camY, width: TILE, height: TILE * 1.5 },
-								art.id === "north_gate_candidate" ? 0.12 : 0.35);
+								{ x: playerFoot.x - renderCamX, y: playerFoot.y - renderCamY, width: playerFoot.width, height: playerFoot.height },
+								treeCanopy ? 0.15 : 0.45, overhang.y + overhang.height - renderCamY, undefined,
+								treeCanopy ? "elderhall-tree" : undefined);
 						} else {
-							if (faded) { ctx.save(); ctx.globalAlpha = 0.35; }
-							paintWorldPropShadow(ctx, art.sprite, dx, dy, dw, dh);
 							ctx.drawImage(img, dx, dy, dw, dh);
-							if (faded) ctx.restore();
 						}
-					} else if (o.id === "north_gate_candidate") paintCandidateGateFallback(ctx, o, camX, camY, TILE);
-					else if (o.id === "green_bench_candidate") paintCandidateBenchFallback(ctx, o, camX, camY, TILE);
+					} else if (o.id === "north_gate_candidate") paintCandidateGateFallback(ctx, o, renderCamX, renderCamY, TILE);
+					else if (o.id === "green_bench_candidate") paintCandidateBenchFallback(ctx, o, renderCamX, renderCamY, TILE);
 				}
 			});
 		}
 		for (const n of m.npcs) {
-			if (n.x * TILE >= camX + this.cw() || (n.x + 1) * TILE <= camX || (n.y - .25) * TILE >= camY + this.ch() || (n.y + 1) * TILE <= camY) continue;
+			if (n.x * TILE >= renderCamX + this.cw() || (n.x + 1) * TILE <= renderCamX || (n.y - .25) * TILE >= visibleBottom || (n.y + 1) * TILE <= visibleTop) continue;
 			list.push({
 			y: (n.y + 1) * TILE,
+			priority: 1,
+			id: n.id,
 			draw: () => {
 				const img = this.images[`npc_${n.sprite}`];
-				const dx = n.x * TILE - camX;
+				const dx = n.x * TILE - renderCamX;
 				const dw = TILE;
 				const dh = TILE * 1.25;
-				const dy = n.y * TILE + TILE - dh - camY;
+				const dy = n.y * TILE + TILE - dh - renderCamY;
 				if (img) {
 					paintWorldActorShadow(ctx, dx, dy + dh - 4, dw);
 					ctx.drawImage(img, dx, dy, dw, dh);
@@ -2498,24 +2538,22 @@ export class ReliquaryGame {
 		}
 		list.push({
 			y: this.py + TILE,
+			priority: 2,
+			id: "player",
 			draw: () => {
-				const frame = this.moving ? this.walkFrame : 0;
-				const key = `player_${DIRS[this.dir].name}${frame}`;
-				const img = this.images[key] || this.images.player_down0;
-				const dx = this.px - camX;
+				const dx = this.px - renderCamX;
 				const dw = TILE;
 				const dh = TILE * 1.5;
-				const dy = this.py + TILE - dh - camY;
-				if (img) {
+				const dy = this.py + TILE - dh - renderCamY;
+				if (playerImage) {
 					paintWorldActorShadow(ctx, dx, dy + dh - 4, dw);
-					ctx.drawImage(img, dx, dy, dw, dh);
+					ctx.drawImage(playerImage, dx, dy, dw, dh);
 				} else {
 					ctx.fillStyle = "#c4a574";
 					ctx.fillRect(dx + 8, dy + 8, 16, 20);
 				}
 			}
 		});
-		const playerFoot = { x: this.px, y: this.py - TILE * 0.5, width: TILE, height: TILE * 1.5, baseline: this.py + TILE };
 		for (const deco of m.decorations ?? []) {
 			if (deco.layer !== "canopy") continue;
 			const baseline = (deco.y + deco.h) * TILE;
@@ -2523,26 +2561,29 @@ export class ReliquaryGame {
 			const height = deco.h * TILE;
 			const ox = deco.x * TILE;
 			const oy = deco.y * TILE;
-			if (ox + width < camX || ox > camX + this.cw() || oy + height < camY || oy > camY + this.ch()) continue;
+			if (ox + width < renderCamX || ox > renderCamX + this.cw() || oy + height < visibleTop || oy > visibleBottom) continue;
 			const canopyRect = { x: ox, y: oy, width, height, baseline };
-			const faded = shouldFadePropForPlayer(canopyRect, playerFoot);
+			const overhang = worldPropOverhang(deco.sprite, canopyRect);
+			const faded = overhang !== null && shouldFadePropForPlayer(overhang, playerFoot);
 			list.push({
 				y: baseline,
+				priority: 0,
+				id: `decoration:${deco.sprite}:${deco.x}:${deco.y}`,
 				draw: () => {
 					const img = this.images[`prop_${deco.sprite}`];
 					if (!img) return;
-					const dx = ox - camX;
-					const dy = oy - camY;
+					const dx = ox - renderCamX;
+					const dy = oy - renderCamY;
 					paintWorldPropShadow(ctx, deco.sprite, dx, dy, width, height);
-					if (faded) { ctx.save(); ctx.globalAlpha = 0.35; }
-					ctx.drawImage(img, dx, dy, width, height);
-					if (faded) ctx.restore();
+					if (faded && overhang) paintPropWithLocalFade(ctx, img, { x: dx, y: dy, width, height },
+						{ x: playerFoot.x - renderCamX, y: playerFoot.y - renderCamY, width: playerFoot.width, height: playerFoot.height },
+						0.45, overhang.y + overhang.height - renderCamY);
+					else ctx.drawImage(img, dx, dy, width, height);
 				},
 			});
 		}
-		list.sort((a, b) => a.y - b.y);
+		list.sort(compareWorldDepth);
 		for (const s of list) s.draw();
-		if (panWorld) ctx.restore();
 	}
 	setBattleStatusBottomRatio(ratio: number | null): void {
 		this.battleStatusBottomRatio = ratio;

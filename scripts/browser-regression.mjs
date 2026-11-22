@@ -76,6 +76,7 @@ if (serveOnly) {
   const renderOverlap = existsSync(join(root, "src/game/render/battle-scene.ts"));
   const map = {
     all: [
+      "elderhall-depth-pixels.mjs",
       "layout.mjs",
       "phone-playtest.mjs",
       "contrast.mjs",
