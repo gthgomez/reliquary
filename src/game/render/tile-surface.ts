@@ -32,11 +32,11 @@ export function paintStoneRoadBorder(ctx: CanvasRenderingContext2D, dx: number, 
   ctx.save();
   clipSoftPath(ctx, dx, dy, size, mask);
   const paint = (x: number, y: number, w: number, h: number) => {
-    ctx.fillStyle = "#504d40";
+    ctx.fillStyle = "#625f53";
     ctx.fillRect(x, y, w, h);
-    ctx.fillStyle = "#aaa48d";
+    ctx.fillStyle = "#8f8a77";
     ctx.fillRect(x, y, w - 1, Math.max(1, h - 1));
-    ctx.fillStyle = "rgba(238,225,194,.35)";
+    ctx.fillStyle = "rgba(225,215,190,.2)";
     ctx.fillRect(x + 1, y, Math.max(1, w - 3), 1);
   };
   for (let i = 0; i < 4; i++) {
@@ -121,6 +121,38 @@ export function paintCottageFloor(
   ctx.fillStyle = "#694c32";
   ctx.fillRect(door + 5, bottom + 12, size - 10, 2);
   ctx.fillRect(door + 5, bottom + 22, size - 10, 2);
+  ctx.restore();
+}
+
+/** Add a small woven rug beside the hearth while leaving the cottage threshold clear. */
+export function paintCottageRug(ctx: CanvasRenderingContext2D, size: number): void {
+  const x = Math.round(size * 3);
+  const y = Math.round(size * 5.25);
+  const width = Math.round(size * 2);
+  const height = Math.round(size * 1.25);
+  const inset = Math.max(1, Math.round(size / 16));
+  const mark = Math.max(1, Math.round(size / 16));
+  const spacingX = Math.max(mark + 1, Math.round(size / 4));
+  const spacingY = Math.max(mark + 1, Math.round(size / 5));
+  ctx.save();
+  // Flat woven ground cloth: a quiet russet border and warm, muted field.
+  ctx.fillStyle = "#785344";
+  ctx.fillRect(x, y, width, height);
+  ctx.fillStyle = "#906a4f";
+  ctx.fillRect(x + inset, y + inset, width - inset * 2, height - inset * 2);
+  ctx.fillStyle = "#ae8661";
+  ctx.fillRect(x + 2, y + 2, width - 4, 1);
+  ctx.fillRect(x + 2, y + height - 3, width - 4, 1);
+  ctx.fillRect(x + 2, y + 2, 1, height - 4);
+  ctx.fillRect(x + width - 3, y + 2, 1, height - 4);
+  for (let row = 0, yy = y + 5; yy + mark < y + height - 4; row++, yy += spacingY) {
+    for (let column = 0, xx = x + 5 + (row % 2) * Math.round(spacingX / 2);
+      xx + mark < x + width - 4; column++, xx += spacingX) {
+      const horizontal = (row + column) % 2 === 0;
+      ctx.fillStyle = horizontal ? "#9c7658" : "#806047";
+      ctx.fillRect(xx, yy, horizontal ? mark : 1, horizontal ? 1 : mark);
+    }
+  }
   ctx.restore();
 }
 

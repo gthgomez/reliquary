@@ -4,7 +4,6 @@ import {
   DialogBox,
   Hud,
   NamePrompt,
-  LoadingScreen,
   MenuPanel,
   ShopPanel,
   TitleScreen,
@@ -20,6 +19,7 @@ import { isClassicTouchEnabled, isSoundMutedStored, isUiModalOpen, shouldShowDia
 import { registerReliquaryServiceWorker, setUpdateGuard } from "../pwa/register.ts";
 import type { ReliquaryHandle } from "./types.ts";
 import { setMuted } from "./audio.ts";
+import { shouldShowInWorldAssetRecovery } from "./ui/asset-recovery.ts";
 import { acquireSaveSession } from "./save-session.ts";
 import { attachEconomyProbes } from "reliquary-economy-probes";
 import { attachBattleUiBrowserHooks } from "reliquary-battle-browser-probes";
@@ -298,8 +298,17 @@ export function GameApp() {
               />
             ) : null}
             <AppStatus showReadyToast={snap.mode === "world" && !uiModal && !dialogActive && !naming} />
+            {shouldShowInWorldAssetRecovery(snap, uiModal) ? (
+              <div className="asset-recovery-control" role="status">
+                <span>Some required game art could not be loaded. Your journey is safe.</span>
+                <button type="button" className="btn-ghost" onClick={() => void g.retryWorldAssets()}>
+                  Retry game art
+                </button>
+              </div>
+            ) : null}
             {snap.toast && !uiModal && snap.mode !== "battle" ? <Toast text={snap.toast} /> : null}
           </div>
+          {snap.interactionHint ? <p className="world-interaction-hint" aria-live="polite">{snap.interactionHint}</p> : null}
           {snap.mode === "battle" ? <BattleHud game={g} snap={snap} /> : null}
           {snap.dialog ? <DialogBox dialog={snap.dialog} game={g} /> : null}
           {snap.menu ? <MenuPanel game={g} snap={snap} onImportActivate={openImportPicker} /> : null}
@@ -307,7 +316,6 @@ export function GameApp() {
           {uiModal && snap.toast ? <Toast text={snap.toast} className="toast-modal" /> : null}
         </div>
         {snap.namePrompt ? <NamePrompt key={snap.namePrompt.uid} game={g} prompt={snap.namePrompt} /> : null}
-        {snap.mode === "boot" ? <LoadingScreen progress={snap.loadProgress} /> : null}
         {snap.mode === "title" ? <TitleScreen game={g} snap={snap} /> : null}
         {snap.mode === "victory" ? <VictoryScreen game={g} /> : null}
         <input

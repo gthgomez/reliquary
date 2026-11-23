@@ -13,6 +13,10 @@ export function DialogScene({ dialog, onAdvance, onBack }: {
   const secondary = useRef<HTMLButtonElement>(null);
   const content = useRef<HTMLDivElement>(null);
   const portrait = dialog.portraitKey ? PORTRAITS[dialog.portraitKey] : null;
+  const duplicateNonCommittingClose = !dialog.commits
+    && dialog.primaryLabel === "Close"
+    && dialog.secondaryLabel === "Close";
+  const secondaryLabel = duplicateNonCommittingClose ? null : dialog.secondaryLabel;
   useEffect(() => {
     const previousFocus = document.activeElement;
     primary.current?.focus({ preventScroll: true });
@@ -65,9 +69,16 @@ export function DialogScene({ dialog, onAdvance, onBack }: {
           </div>
         </div>
         <div className="dialog-actions">
-          <button type="button" className="dialog-back" ref={secondary} disabled={!dialog.secondaryLabel} onClick={back}>
-            {dialog.secondaryLabel ?? "Back"}
-          </button>
+          {secondaryLabel ? (
+            <button type="button" className="dialog-back" ref={secondary} onClick={back}>
+              {secondaryLabel}
+            </button>
+          ) : null}
+          {dialog.pageCount > 1 ? (
+            <span className="dialog-page-count" role="group" aria-label={`Page ${dialog.page} of ${dialog.pageCount}`}>
+              {dialog.page} / {dialog.pageCount}
+            </span>
+          ) : null}
           <button type="button" className="dialog-next" aria-describedby={textId} ref={primary} onClick={onAdvance}>
             {dialog.primaryLabel}
           </button>

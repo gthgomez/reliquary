@@ -171,14 +171,23 @@ async function verifyClassicDialogue(browser, report) {
     await page.locator(".dialog").waitFor();
     assert.equal(await page.locator(".touch-full .dpad").isVisible(), true, "classic mode keeps the full pad in dialogue");
     assert.equal(await page.getByRole("button", { name: "A — Next", exact: true }).count(), 1);
-    assert.equal(await page.getByRole("button", { name: "B — Back", exact: true }).count(), 1);
+    assert.equal(await page.getByRole("button", { name: "B — Back", exact: true }).count(), 0,
+      "Back is unavailable on the first dialogue page");
     const name = "classic-360x740-dialogue.png";
     const path = join(output, name);
     await page.screenshot({ path });
     report.classicDialogue = { file: name, sha256: createHash("sha256").update(readFileSync(path)).digest("hex"),
       viewport: { width: 360, height: 740, mobileEmulation: true }, method: "fresh-start classic dialogue; no probe warp" };
+    await page.locator(".touch .a-btn").tap();
+    await page.waitForTimeout(80);
+    assert.equal(await page.getByRole("button", { name: "B — Back", exact: true }).count(), 1,
+      "Back becomes available after advancing to page two");
+    await page.locator(".touch .b-btn").tap();
+    await page.waitForTimeout(80);
+    assert.equal(await page.getByRole("button", { name: "B — Back", exact: true }).count(), 0,
+      "touch B returns to the first dialogue page");
     for (let i = 0; i < 16 && await page.locator(".dialog").count(); i += 1) {
-      await page.locator(".touch .a-btn").click();
+      await page.locator(".touch .a-btn").tap();
       await page.waitForTimeout(80);
     }
     await page.waitForFunction(() => !document.querySelector(".dialog"), null, { timeout: 10_000 });

@@ -518,6 +518,26 @@
   align-items: flex-start;
   width: 100%;
 }
+.world-interaction-hint {
+  position: absolute;
+  bottom: calc(0.45rem + env(safe-area-inset-bottom));
+  right: 0.5rem;
+  width: max-content;
+  max-width: calc(100% - 1rem);
+  margin: 0;
+  padding: 0.35rem 0.65rem;
+  border: 1px solid #8f764f;
+  border-radius: 999px;
+  background: #171c17ed;
+  color: #f2e5c8;
+  box-shadow: 0 2px 8px #090b08a8;
+  font-size: 0.82rem;
+  line-height: 1.25;
+  text-align: center;
+  pointer-events: none;
+  user-select: none;
+  z-index: 7;
+}
 .hud-chip {
   pointer-events: none;
   min-width: 0;
@@ -547,6 +567,8 @@
   min-width: 0;
   margin-left: auto;
   order: 3;
+  padding-left: 0.55rem;
+  border-left: 1px solid color-mix(in oklab, var(--color-parchment) 38%, transparent);
 }
 .hud-companion-meter {
   display: block;
@@ -726,8 +748,13 @@
 }
 .hud-objective-preview {
   min-width: 0;
+  overflow: hidden;
   overflow-wrap: anywhere;
-  line-height: 1.35;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  line-height: 1.3;
   font-size: 0.72rem;
   color: var(--color-cream);
 }
@@ -802,8 +829,9 @@
 }
 /* On a narrow phone, give the objective its own row so directions can wrap. */
 @container (max-width: 540px) {
-  .hud-stats { order: 2; }
+  .hud-stats { order: 2; padding-left: 0; border-left: 0; }
   .hud-objective-slot { order: 3; flex-basis: 100%; }
+  .hud-objective-preview { overflow-wrap: anywhere; }
 }
 @container (max-width: 300px) {
   .hud-sigil { display: none; }
@@ -853,6 +881,7 @@
   clip-path: inset(50%);
 }
 .hud button:focus-visible,
+.hud-objective-popover:focus-visible,
 .touch button:focus-visible {
   outline: 3px solid #fff3c7;
   outline-offset: 2px;
@@ -1464,6 +1493,12 @@
   font-size: min(1.5rem, 28px);
   line-height: 1;
 }
+.b-btn-placeholder {
+  display: block;
+  flex: 0 0 60px;
+  width: 60px;
+  height: 60px;
+}
 .a-btn {
   background: radial-gradient(circle at 35% 25%, #fff5d8, #d1b78c);
   color: #30261e;
@@ -1599,10 +1634,12 @@
     clip-path: polygon(12px 0, 100% 0, 100% 100%, 12px 100%, 0 calc(100% - 12px), 0 12px);
   }
   .a-btn,
-  .b-btn {
+  .b-btn,
+  .b-btn-placeholder {
     width: 48px;
     height: 48px;
   }
+  .b-btn-placeholder { flex-basis: 48px; }
 }
 
 @media (orientation: portrait) and (max-width: 820px),
@@ -1738,6 +1775,32 @@ button:disabled {
   line-height: 1.25;
   color: var(--color-parchment-dim);
   pointer-events: none;
+}
+.asset-recovery-control {
+  position: relative;
+  z-index: 3;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  width: min(28rem, 100%);
+  padding: 0.35rem 0.55rem;
+  border: 1px solid var(--color-parchment-dim);
+  border-radius: 0.4rem;
+  background: var(--color-ink);
+  color: var(--color-parchment);
+  text-align: center;
+  font-size: 0.72rem;
+  line-height: 1.25;
+  pointer-events: auto;
+}
+.asset-recovery-control .btn-ghost {
+  pointer-events: auto;
+}
+.top-stack:has(.hud-objective-expanded) .asset-recovery-control,
+.game-root.is-battle .asset-recovery-control {
+  display: none;
 }
 .name-prompt {
   position: absolute;

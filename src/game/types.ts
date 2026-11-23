@@ -124,6 +124,8 @@ export interface MapObj {
   interactZone?: { x: number; y: number; w: number; h: number };
   /** Walking into the interact zone uses its warp. Signs, hatches, and caves leave this unset. */
   autoEnter?: boolean;
+  /** Optional player-facing directions accepted by this interaction (for example, a front-only door). */
+  interactDirections?: Dir[];
   /** Optional solid rectangles relative to x/y; defaults to the foot rows. */
   collision?: { x: number; y: number; w: number; h: number }[];
   /** Optional art geometry in tile units; gameplay uses x/y/w/h/foot above. */
@@ -280,6 +282,9 @@ export interface DialogView {
   revision: number;
   speaker: string;
   text: string;
+  /** One-based page position and total pages in the active conversation. */
+  page: number;
+  pageCount: number;
   last: boolean;
   /** Stable MapNpc.id of the speaker when the dialog came from a placed NPC. */
   npcId: string | null;
@@ -335,6 +340,12 @@ export interface NamePromptView {
 export interface Snapshot {
   mode: Mode;
   loadProgress: number;
+  worldAssetsReady: boolean;
+  worldAssetsLoading: boolean;
+  worldAssetsStalled: boolean;
+  requiredAssetsLoading: boolean;
+  worldAssetFailures: string[];
+  assetFailures: string[];
   viewW: number;
   viewH: number;
   cssW: number;
@@ -342,6 +353,7 @@ export interface Snapshot {
   mapName: string;
   region: string;
   objective: string | null;
+  interactionHint: string | null;
   gold: number;
   party: Beast[];
   box: Beast[];

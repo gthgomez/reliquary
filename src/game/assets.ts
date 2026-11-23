@@ -1,9 +1,21 @@
 import { SPECIES } from "./content.ts";
-import { GROUND_TILE } from "./maps.ts";
+import { GROUND_TILE, MAPS } from "./maps.ts";
 import { isElderhallCandidateBuild } from "./build-flags.ts";
 export { isElderhallCandidateBuild } from "./build-flags.ts";
 
 export type AssetEntry = { key: string; url: string; required: boolean };
+
+/** Art that must exist before any overworld scene can be entered. Battle and
+ * creature art can finish later; world terrain, actors, props and candidate
+ * Elderhall replacements cannot safely be omitted while collision is active. */
+const WORLD_OBJECT_SPRITES = new Set(Object.values(MAPS).flatMap((map) => [
+  ...(map?.objects ?? []).map((object) => `sprite_${object.sprite}`),
+  ...(map?.npcs ?? []).map((npc) => `sprite_${npc.sprite}`),
+]));
+
+export function isEssentialWorldAsset(entry: AssetEntry): boolean {
+  return /^(tile_|player_|prop_|npc_)/.test(entry.key) || WORLD_OBJECT_SPRITES.has(entry.key);
+}
 
 const PLAYER_FRAMES = ["down", "left", "right", "up"] as const;
 const NPC_SPRITES = ["elder", "innkeep", "shopkeep", "warden", "guard", "traveler"] as const;

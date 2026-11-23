@@ -9,7 +9,7 @@ const labels: Record<PwaStatus, string> = {
   ready: "Available offline",
   updating: "Updating…",
   blocked: "Update paused — the save could not be written. This session is kept; make storage available and it will retry.",
-  failed: "Offline cache incomplete. Connect and reload to retry.",
+  failed: "Offline play not verified. Save your progress, reconnect, then reopen to check again.",
 };
 
 const READY_NOTICE_MS = 4_000;

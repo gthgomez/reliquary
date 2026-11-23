@@ -3,6 +3,7 @@ import { chromium } from "playwright";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { MAPS } from "../src/game/maps.ts";
+import { ELDERHALL_WORLD_REVISION } from "../src/game/build-flags.ts";
 import { pathFor } from "./natural-journey-path.mjs";
 import { faceDirection, walkTo } from "./natural-journey-controls.mjs";
 import { finishStarterPact } from "./finish-starter-pact.mjs";
@@ -59,12 +60,14 @@ try {
   for (let i = 0; i < 16 && await page.locator(".dialog").count(); i++) await page.locator(".dialog-next").click();
   await page.waitForSelector(".dialog", { state: "detached", timeout: 5000 });
   report.events.push("Spoke with Elder Maren beside the well");
-  for (const building of [
-    { name: "home", front: { x: 4, y: 15 }, inside: "home", exit: { x: 5, y: 8 } },
-    { name: "guild", front: { x: 4, y: 9 }, inside: "guild_in", exit: { x: 6, y: 10 } },
-    { name: "inn", front: { x: 16, y: 5 }, inside: "inn_in", exit: { x: 6, y: 9 } },
-    { name: "shop", front: { x: 16, y: 9 }, inside: "shop_in", exit: { x: 5, y: 8 } },
-  ]) {
+  const buildingFrontX = ELDERHALL_WORLD_REVISION === 5 ? [5, 5, 16, 17] : [4, 4, 16, 16];
+  for (const [index, building] of [
+    { name: "home", front: { y: 15 }, inside: "home", exit: { x: 5, y: 8 } },
+    { name: "guild", front: { y: 9 }, inside: "guild_in", exit: { x: 6, y: 10 } },
+    { name: "inn", front: { y: 5 }, inside: "inn_in", exit: { x: 6, y: 9 } },
+    { name: "shop", front: { y: 9 }, inside: "shop_in", exit: { x: 5, y: 8 } },
+  ].entries()) {
+    building.front.x = buildingFrontX[index];
     await travel("elderhall", building.front);
     await faceAndInteract("KeyW", Math.PI);
     await page.waitForFunction((map) => window.__controlsTest.getPos().map === map, building.inside, { timeout: 5000 });

@@ -88,7 +88,7 @@ async function exercise(width, height, textScale = 1) {
     await advance.click();
     await page.locator(".hud-objective-preview").waitFor();
     if (!baseline) {
-      assert.match(await page.locator(".hud-objective-preview").innerText(), /doorway at the bottom/);
+      assert.equal(await page.locator(".hud-objective-preview").innerText(), "Leave the cottage");
       if (portrait) {
         assert.deepEqual(await page.locator(".game-canvas").evaluate((canvas) => [canvas.width, canvas.height]), [352, 288]);
         const down = await measureTargetVisibility(page.getByRole("button", { name: "South", exact: true }));

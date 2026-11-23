@@ -82,6 +82,20 @@ async function withGame(
   }
 }
 
+test("new-run introduction presents the westward Grove as the goal and Maren as optional", async () => {
+  await withGame((game) => {
+    game.startNew();
+    game.confirm();
+    game.confirm();
+    const intro = game.getSnapshot().dialog?.text ?? "";
+    assert.match(intro, /arrows or WASD.*touch.*direction pad/i);
+    assert.match(intro, /Z or Enter; tap A on touch/i);
+    assert.match(intro, /westward path to the Binding Grove/i);
+    assert.match(intro, /Maren.*optional guidance/i);
+    assert.doesNotMatch(intro, /Find Elder Maren/i);
+  });
+});
+
 /** A valid, serializable run: produced by the engine itself, so the schema is authoritative. */
 function seedOldRun(game: ReliquaryGame, store: ReturnType<typeof makeStore>): string {
   game.startNew();

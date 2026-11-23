@@ -1,7 +1,7 @@
 import type { MapDef } from "../types.ts";
 import { house, prop, tree } from "./helpers.ts";
 import { isElderhallCandidateBuild } from "../build-flags.ts";
-import { makeElderhallCandidate } from "./elderhall-candidate.ts";
+import { makeElderhallCandidate, makeElderhallCandidateInterior } from "./elderhall-candidate.ts";
 
 export const elderhallBase: MapDef = {
   id: "elderhall",
@@ -76,7 +76,8 @@ export const elderhallBase: MapDef = {
   ],
 };
 
-const elderhall = isElderhallCandidateBuild() ? makeElderhallCandidate(elderhallBase) : elderhallBase;
+const elderhallCandidate = isElderhallCandidateBuild();
+const elderhall = elderhallCandidate ? makeElderhallCandidate(elderhallBase) : elderhallBase;
 
 const grove: MapDef = {
   id: "grove",
@@ -774,10 +775,10 @@ const briar_camp: MapDef = {
 export const MAPS: Record<string, MapDef> = {
   elderhall,
   grove,
-  home,
+  home: elderhallCandidate ? makeElderhallCandidateInterior(home) : home,
   inn_in,
-  shop_in,
-  guild_in,
+  shop_in: elderhallCandidate ? makeElderhallCandidateInterior(shop_in) : shop_in,
+  guild_in: elderhallCandidate ? makeElderhallCandidateInterior(guild_in) : guild_in,
   briar_road,
   wildwood,
   mirefen,

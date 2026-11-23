@@ -2,6 +2,43 @@ import type { MapObj } from "../types.ts";
 
 /** Grounding shadow for overworld sprites (player, NPCs, tall props). */
 
+export const PLAYER_WIDTH_TILES = 5 / 6;
+export const PLAYER_HEIGHT_TILES = 1.25;
+
+/** The visible actor footprint shares one ground anchor across draw, mask and camera math. */
+export function resolvePlayerDrawFootprint(px: number, py: number, tileSize: number): DrawFootprint {
+  const width = tileSize * PLAYER_WIDTH_TILES;
+  const height = tileSize * PLAYER_HEIGHT_TILES;
+  return { x: px + (tileSize - width) / 2, y: py + tileSize - height, width, height, baseline: py + tileSize };
+}
+
+export function resolvePlayerScreenFootprint(
+  px: number, py: number, tileSize: number, cameraX: number, cameraY: number,
+): DrawFootprint {
+  const world = resolvePlayerDrawFootprint(px, py, tileSize);
+  return { ...world, x: world.x - cameraX, y: world.y - cameraY, baseline: world.baseline - cameraY };
+}
+
+export function playerHeadCanvasYForCamera(
+  px: number, py: number, tileSize: number, cameraX: number, cameraY: number,
+): number {
+  return resolvePlayerScreenFootprint(px, py, tileSize, cameraX, cameraY).y;
+}
+
+export const GATE_ACTOR_TINT_ALPHA = 0.46;
+export const GATE_ACTOR_OVERLAY_ALPHA = 0.8;
+
+/** Pixel result of the post mask's cream tint followed by its translucent overlay. */
+export function compositeGateActorCueColor(
+  actor: readonly [number, number, number], post: readonly [number, number, number],
+): [number, number, number] {
+  const tint: readonly [number, number, number] = [255, 244, 198];
+  return [0, 1, 2].map((channel) => {
+    const tintedActor = actor[channel]! * (1 - GATE_ACTOR_TINT_ALPHA) + tint[channel]! * GATE_ACTOR_TINT_ALPHA;
+    return tintedActor * GATE_ACTOR_OVERLAY_ALPHA + post[channel]! * (1 - GATE_ACTOR_OVERLAY_ALPHA);
+  }) as [number, number, number];
+}
+
 export function paintWorldActorShadow(
   ctx: CanvasRenderingContext2D,
   footX: number,
@@ -111,11 +148,11 @@ export function paintActorBehindPost(
   mask.globalCompositeOperation = "destination-in";
   mask.drawImage(postImage, source.x, source.y, source.width, source.height, 0, 0, width, height);
   mask.globalCompositeOperation = "source-atop";
-  mask.fillStyle = "rgba(255, 244, 198, 0.65)";
+  mask.fillStyle = `rgba(255, 244, 198, ${GATE_ACTOR_TINT_ALPHA})`;
   mask.fillRect(0, 0, width, height);
   mask.restore();
   ctx.save();
-  ctx.globalAlpha *= 0.85;
+  ctx.globalAlpha *= GATE_ACTOR_OVERLAY_ALPHA;
   ctx.drawImage(buffer, post.x, post.y, post.width, post.height);
   ctx.restore();
 }

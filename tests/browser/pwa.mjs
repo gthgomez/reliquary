@@ -89,7 +89,7 @@ try {
     assert.equal(removed, true, "negative control actually deletes a required precache entry");
     await page.reload({ waitUntil: "domcontentloaded", timeout: 30_000 });
     await waitForGameBoot(page);
-    const warning = status.filter({ hasText: /Offline cache incomplete/ });
+    const warning = status.filter({ hasText: /Offline play not verified/ });
     await warning.waitFor();
     assert.equal(await warning.getAttribute("role"), "status");
     await page.waitForTimeout(4_200);
@@ -113,7 +113,7 @@ try {
       window.setTimeout = (fn, ms, ...args) => schedule(fn, ms === 45_000 ? 150 : ms, ...args);
     });
     await page.goto(slow.baseUrl, { waitUntil: "domcontentloaded" });
-    await page.locator(".app-status").filter({ hasText: /Offline cache incomplete/ }).waitFor();
+    await page.locator(".app-status").filter({ hasText: /Offline play not verified/ }).waitFor();
     assert.equal(await page.evaluate(() => navigator.serviceWorker.controller), null);
     releaseManifest();
     await page.waitForFunction(() => navigator.serviceWorker.controller?.state === "activated");

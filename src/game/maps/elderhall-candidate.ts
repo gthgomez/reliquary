@@ -1,5 +1,13 @@
-import type { MapDef, MapObj } from "../types.ts";
+import type { Dir, MapDef, MapObj } from "../types.ts";
 import { elderhallCandidateBench, elderhallCandidateGate, type VisualMetadata } from "../render/elderhall-visual.ts";
+
+/** One source for preview door targets and their reciprocal outdoor return tiles. */
+const CANDIDATE_DOORWAYS: Record<string, { interiorId: string; exteriorX: number }> = {
+  h_home: { interiorId: "home", exteriorX: 5 },
+  h_guild: { interiorId: "guild_in", exteriorX: 5 },
+  h_inn: { interiorId: "inn_in", exteriorX: 16 },
+  h_shop: { interiorId: "shop_in", exteriorX: 17 },
+};
 
 /** Preview-only composition; the production map and its save coordinates remain untouched. */
 export function makeElderhallCandidate(base: MapDef, geometry?: Record<string, VisualMetadata>): MapDef {
@@ -14,7 +22,18 @@ export function makeElderhallCandidate(base: MapDef, geometry?: Record<string, V
   };
   const existing = base.objects.filter((object) => !["north_gate_candidate", "green_bench_candidate"].includes(object.id));
   const objects: MapObj[] = [elderhallCandidateGate(geometry?.["gate-reference"]), elderhallCandidateBench(geometry?.bench),
-    ...existing.map((object) => moved[object.id] ? { ...object, ...moved[object.id] } : object)];
+    ...existing.map((object) => {
+      const updated = moved[object.id] ? { ...object, ...moved[object.id] } : object;
+      const doorway = CANDIDATE_DOORWAYS[object.id];
+      // Revision-5 replacement art paints three doors over the middle
+      // footprint column. Candidate doors accept entry only from the south;
+      // the legacy inn keeps its target but no longer accepts side entry.
+      if (!doorway) return updated;
+      return { ...updated,
+        ...(updated.interactZone ? { interactZone: { ...updated.interactZone, x: doorway.exteriorX - updated.x } } : {}),
+        interactDirections: [3 as Dir],
+      };
+    })];
   return {
     ...base,
     ground: ground.map((row) => row.join("")),
@@ -49,4 +68,11 @@ export function makeElderhallCandidate(base: MapDef, geometry?: Record<string, V
       { sprite: "elderhall-flowers", x: 14.2, y: 8.35, w: 0.75, h: 0.35, layer: "ground" },
     ],
   };
+}
+
+/** Candidate interiors return to the approach tile directly south of their painted doors. */
+export function makeElderhallCandidateInterior(base: MapDef): MapDef {
+  const doorway = Object.values(CANDIDATE_DOORWAYS).find((entry) => entry.interiorId === base.id);
+  if (!doorway) return base;
+  return { ...base, warps: base.warps.map((warp) => warp.to === "elderhall" ? { ...warp, tx: doorway.exteriorX } : warp) };
 }

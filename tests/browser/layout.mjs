@@ -1,5 +1,12 @@
 import assert from "node:assert/strict";
+import { mkdirSync } from "node:fs";
+import { join, resolve } from "node:path";
 import { startStaticServer, withBrowser, waitForGameBoot } from "./helpers.mjs";
+
+const artifactDir = process.env.RELIQUARY_BROWSER_ARTIFACTS
+  ? resolve(process.env.RELIQUARY_BROWSER_ARTIFACTS)
+  : null;
+if (artifactDir) mkdirSync(artifactDir, { recursive: true });
 
 async function dismissIntro(page) {
   for (let i = 0; i < 16; i += 1) {
@@ -27,6 +34,24 @@ async function waitForObjectiveSafeArea(page, checkPlayer) {
       && report.effectivePlayerHeadCanvasY >= popBottomCanvas
       && report.effectivePlayerHeadCanvasY + 48 <= canvas.height + 1;
   }, checkPlayer, { timeout: 10_000 });
+}
+
+async function revealCottageDoorHint(page) {
+  for (const x of [5, 4]) {
+    await page.evaluate((doorX) => {
+      window.__controlsTest.warp("elderhall", doorX, 15);
+      window.__controlsTest.setKeys(["KeyW"]);
+    }, x);
+    await page.waitForTimeout(80);
+    await page.evaluate(() => window.__controlsTest.setKeys([]));
+    const visible = await page.waitForFunction(() =>
+      document.querySelector(".world-interaction-hint")?.textContent?.startsWith("Enter · Interact:") === true,
+    null, { timeout: 900 }).then(() => true, () => false);
+    if (visible) return x;
+    await page.evaluate(() => window.__controlsTest.setKeys([]));
+    await page.waitForTimeout(80);
+  }
+  throw new Error("Could not reveal the cottage doorway interaction hint");
 }
 
 const VIEWPORTS = [
@@ -117,13 +142,15 @@ try {
         text: el.textContent ?? "", clientHeight: el.clientHeight, scrollHeight: el.scrollHeight,
         clientWidth: el.clientWidth, scrollWidth: el.scrollWidth,
         compact: getComputedStyle(el).clipPath !== "none",
+        lineClamp: getComputedStyle(el).webkitLineClamp || getComputedStyle(el).lineClamp,
+        truncated: el.scrollHeight > el.clientHeight + 1 || el.scrollWidth > el.clientWidth + 1,
       }));
       const inCottage = (await page.locator(".hud-place").innerText()).includes("Cottage");
-      assert.match(objective.text, inCottage ? /doorway at the bottom/ : /Binding Grove/,
-        "the starting objective gives a usable next step for the current map");
+      assert.equal(objective.text, inCottage ? "Leave the cottage" : "Find the Binding Grove",
+        "the persistent HUD gives a compact, accurate next step for the current map");
       assert.ok(
         objective.compact || (objective.clientHeight > 0 &&
-          objective.scrollHeight <= objective.clientHeight + 1 &&
+          (objective.lineClamp === "2" || objective.scrollHeight <= objective.clientHeight + 1) &&
           objective.scrollWidth <= objective.clientWidth + 1),
         `the starting objective fits at ${viewport.width}x${viewport.height}: ${JSON.stringify(objective)}`,
       );
@@ -175,7 +202,52 @@ try {
         if (viewport.width === 320) await status.waitFor();
         await page.locator(".hud-objective-btn").first().click();
         await page.waitForSelector(".hud-objective-popover", { timeout: 3000 });
-        assert.match(await page.locator(".hud-objective-popover").innerText(), /Binding Grove/);
+        const objectiveRegion = page.getByRole("region", { name: "Current objective" });
+        const fullObjective = await objectiveRegion.locator(".hud-objective-full").first().innerText();
+        assert.equal(fullObjective, "Speak a pact at the Binding Grove, west of Elderhall.",
+          "the full chapter objective remains readable from the objective control");
+        const fullHint = await objectiveRegion.locator(".hud-objective-full").nth(1).innerText();
+        assert.match(fullHint, inCottage ? /then follow the village path west\./ : /Binding Grove is west.*opening beside the grove sign.*optional guidance/i,
+          "the full contextual direction remains available in the objective panel");
+        await page.keyboard.press("Tab");
+        assert.equal(await objectiveRegion.evaluate((el) => document.activeElement === el), true,
+          "keyboard users can focus and scroll the full objective region");
+        await page.keyboard.press("End");
+        await page.waitForFunction(() => {
+          const el = document.querySelector(".hud-objective-popover");
+          const action = el?.querySelector(".hud-objective-lantern");
+          if (!el || !action) return false;
+          const region = el.getBoundingClientRect();
+          const target = action.getBoundingClientRect();
+          return target.top >= region.top - 1 && target.bottom <= region.bottom + 1;
+        }, null, { timeout: 3000, polling: "raf" });
+        const objectiveReach = await objectiveRegion.evaluate((el, cottage) => {
+          const action = el.querySelector(".hud-objective-lantern");
+          const region = el.getBoundingClientRect();
+          const target = action?.getBoundingClientRect();
+          const contextualDirections = [...el.querySelectorAll(".hud-objective-full")].some((node) => {
+            const copy = node.innerText;
+            return cottage ? /then follow the village path west/i.test(copy)
+              : /Binding Grove is west.*opening beside the grove sign.*optional guidance/i.test(copy);
+          });
+          return {
+            fullHintPresent: contextualDirections,
+            optionalMaren: [...el.querySelectorAll(".hud-objective-full")].some((node) => /maren.*optional guidance/i.test(node.innerText)),
+            actionReachable: !!target && target.top >= region.top - 1 && target.bottom <= region.bottom + 1,
+            scrollHeight: el.scrollHeight,
+            clientHeight: el.clientHeight,
+          };
+        }, inCottage);
+        assert.equal(objectiveReach.fullHintPresent, true, "the complete contextual direction is in the scrollable region");
+        if (!inCottage) assert.equal(objectiveReach.optionalMaren, true, "optional Maren guidance remains available in the full directions");
+        assert.equal(objectiveReach.actionReachable, true,
+          `objective action is reachable at the end of the full panel: ${JSON.stringify(objectiveReach)}`);
+        if (objective.truncated) {
+          assert.equal(fullObjective, "Speak a pact at the Binding Grove, west of Elderhall.",
+            "a truncated HUD summary opens to the complete current objective");
+          assert.equal(objectiveReach.fullHintPresent, true,
+            "the contextual hint remains available when the HUD summary is clipped");
+        }
         if (viewport.width === 320) {
           assert.equal(await status.evaluate((el) => getComputedStyle(el).clipPath), "inset(50%)",
             "offline status remains announced and does not paint over the objective");
@@ -224,10 +296,62 @@ try {
             "offline status is visible again after dismissing the objective");
         }
       }
+      if ((viewport.width === 320 && viewport.height === 568)
+        || (viewport.width === 568 && viewport.height === 320)
+        || (viewport.width === 640 && viewport.height === 320)
+        || (viewport.width === 390 && viewport.height === 844)) {
+        const doorX = await revealCottageDoorHint(page);
+        if (await page.locator(".hud-objective-btn").getAttribute("aria-expanded") === "false") {
+          await page.locator(".hud-objective-btn").click();
+          await page.waitForSelector(".hud-objective-popover", { timeout: 3000 });
+        }
+        const fullDirections = await page.locator(".hud-objective-full").allInnerTexts();
+        assert.ok(fullDirections.some((text) => /Binding Grove is west.*optional guidance/i.test(text)),
+          "the doorway geometry scenario retains the full westward goal and optional Maren guidance");
+        const hintGeometry = await page.evaluate(() => {
+          const hint = document.querySelector(".world-interaction-hint")?.getBoundingClientRect();
+          const viewport = document.querySelector(".viewport")?.getBoundingClientRect();
+          const status = document.querySelector(".app-status")?.getBoundingClientRect();
+          const objective = document.querySelector(".hud-objective-popover")?.getBoundingClientRect();
+          const controls = [...document.querySelectorAll(".touch-full .dpad, .touch-full .ab")]
+            .filter((el) => el.getClientRects().length).map((el) => el.getBoundingClientRect());
+          const overlaps = (a, b) => !!a && !!b && a.left < b.right - 1 && b.left < a.right - 1 && a.top < b.bottom - 1 && b.top < a.bottom - 1;
+          return {
+            insideViewport: !!hint && !!viewport && hint.left >= viewport.left - 1 && hint.right <= viewport.right + 1
+              && hint.top >= viewport.top - 1 && hint.bottom <= viewport.bottom + 1,
+            overlapsStatus: overlaps(hint, status),
+            overlapsObjective: overlaps(hint, objective),
+            overlapsTouch: controls.some((rect) => overlaps(hint, rect)),
+            bottomEdge: !!hint && !!viewport && viewport.bottom - hint.bottom <= 16,
+            rightCorner: !!hint && !!viewport && viewport.right - hint.right <= 16,
+            hint: hint && { x: hint.x, y: hint.y, width: hint.width, height: hint.height },
+          };
+        });
+        assert.equal(hintGeometry.insideViewport, true, `interaction hint stays in the game viewport: ${JSON.stringify(hintGeometry)}`);
+        assert.equal(hintGeometry.overlapsStatus, false, `interaction hint clears offline status: ${JSON.stringify(hintGeometry)}`);
+        assert.equal(hintGeometry.overlapsObjective, false, `interaction hint clears the expanded objective: ${JSON.stringify(hintGeometry)}`);
+        assert.equal(hintGeometry.overlapsTouch, false, `interaction hint clears touch controls: ${JSON.stringify(hintGeometry)}`);
+        assert.equal(hintGeometry.bottomEdge, true, `interaction hint stays at the bottom edge: ${JSON.stringify(hintGeometry)}`);
+        assert.equal(hintGeometry.rightCorner, true, `interaction hint stays at the right corner, away from the doorway approach: ${JSON.stringify(hintGeometry)}`);
+        if (viewport.width === 390 && viewport.height === 844) {
+          if (artifactDir) {
+            await page.screenshot({ path: join(artifactDir, "interaction-hint-cottage-door-390x844.png") });
+          }
+          assert.ok(doorX === 4 || doorX === 5);
+        }
+      }
+      await page.evaluate(() => window.__controlsTest.warp("elderhall", 2, 7));
+      await page.evaluate(() => window.__controlsTest.setKeys([]));
+      await page.waitForSelector(".world-interaction-hint", { timeout: 3000 });
+      await page.keyboard.press("z");
+      await page.waitForSelector(".dialog", { timeout: 3000 });
+      assert.equal(await page.locator(".world-interaction-hint").count(), 0, "dialogue hides the world interaction hint");
+      await dismissIntro(page);
       await page.evaluate(() => {
         window.__reliquary?.openMenu?.();
       });
       await page.waitForSelector(".overlay-panel", { timeout: 10_000 });
+      assert.equal(await page.locator(".world-interaction-hint").count(), 0, "menus hide the world interaction hint");
       const modalChrome = await page.evaluate(() => {
         const touch = document.querySelector(".touch");
         return {

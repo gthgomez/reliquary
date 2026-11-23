@@ -329,7 +329,13 @@ try {
       await page.reload({ waitUntil: "load" });
       await page.getByRole("button", { name: "Continue", exact: true }).click();
       const objective = await page.locator(".hud-objective-preview").innerText();
-      assert(/Hollow Crown/.test(objective), `post-trial objective wrong: ${objective}`);
+      assert(/Rest or travel beyond the ash/.test(objective), `post-trial objective summary wrong: ${objective}`);
+      await page.locator(".hud-objective-btn").click();
+      const objectiveRegion = page.getByRole("region", { name: "Current objective" });
+      const fullObjective = await objectiveRegion.locator(".hud-objective-full").allInnerTexts();
+      assert(fullObjective.length === 1 && /Hollow Crown/.test(fullObjective[0]),
+        `post-trial full objective wrong: ${fullObjective.join(" | ")}`);
+      await page.locator(".hud-objective-btn").click();
       await page.screenshot({ path: join(output, "after-trial.png") });
       report.scenarios.push("warden-trial: won, Thorn Mark granted, objective advanced");
     },

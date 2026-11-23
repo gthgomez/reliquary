@@ -897,8 +897,10 @@ test("fractional camera offsets keep terrain, actors and props aligned", async (
       const camY = groundDraw[2] as number;
       assert.equal(camX, Math.round(camX), "terrain uses the shared integer camera sample on X");
       assert.equal(camY, Math.round(camY), "terrain uses the shared integer camera sample on Y");
-      assert.ok(Math.abs((playerDraw[1] as number) + camX - game.px) < 1e-9);
-      assert.ok(Math.abs((playerDraw[2] as number) + camY - (game.py - TILE * 0.5)) < 1e-9);
+      assert.ok(Math.abs((playerDraw[1] as number) + camX - (game.px + TILE / 12)) < 1e-9,
+        "the actor is centered at the smaller width within its unchanged tile");
+      assert.ok(Math.abs((playerDraw[2] as number) + camY - (game.py - TILE / 4)) < 1e-9,
+        "the 1.25-tile actor head matches its unchanged feet baseline");
       const prop = MAPS.elderhall!.objects.find((object) => object.id === "well")!;
       const visual = resolveWorldPropLayout(prop, TILE);
       assert.ok(Math.abs((wellDraw[1] as number) + camX - visual.x) < 1e-9);
@@ -933,7 +935,7 @@ test("HUD pan preserves the terrain transform and extends only the map edge", as
         const groundDraws = draws.filter((args) => args[0] === terrain);
         const main = groundDraws.at(-1)!;
         const actor = draws.find((args) => args[0] === player)!;
-        const adjustedCamY = py - TILE * 0.5 - (actor[2] as number);
+        const adjustedCamY = py + TILE - TILE * 1.25 - (actor[2] as number);
         const pan = (game as unknown as { worldCamRelief: { contentPanY: number } }).worldCamRelief.contentPanY;
         assert.ok(pan > 0, "the fixture must exercise HUD pan");
         assert.equal(adjustedCamY, Math.round(adjustedCamY), "the shared render camera is pixel aligned");
@@ -949,8 +951,9 @@ test("HUD pan preserves the terrain transform and extends only the map edge", as
       (game as unknown as { resetWorldCameraRelief(): void }).resetWorldCameraRelief();
       game.py = 64; inset = 80; frame(48);
       draws.length = 0; game.py = 60; inset = 200; frame(64);
-      const head = Math.round(draws.find((args) => args[0] === player)![2] as number);
-      assert.ok(head >= 204 && head + 48 <= game.ch(), "an expanding HUD overrides the motion limiter without clipping the feet");
+      const actorTop = Math.round(draws.find((args) => args[0] === player)![2] as number);
+      assert.ok(actorTop >= 204 && actorTop + TILE * 1.25 <= game.ch(),
+        "an expanding HUD overrides the motion limiter without clipping the 1.25-tile actor");
     });
   } finally {
     if (previousStyle === undefined) delete globals.getComputedStyle;
@@ -1027,14 +1030,15 @@ test("gate reveals stay local while posts and ground contact retain depth", asyn
       const gateImage = { naturalWidth: 160, naturalHeight: 112 } as HTMLImageElement;
       const playerImage = {} as HTMLImageElement;
       const draws: unknown[][] = [];
-      const masks: { rect: number[]; stops: [number, string][]; images: { image: unknown; mode: string }[]; fills: string[] }[] = [];
+      const masks: { rect: number[]; stops: [number, string][]; images: { image: unknown; mode: string }[]; fills: string[]; fillStyles: string[] }[] = [];
       let currentMask: (typeof masks)[number];
       const mask = {
         globalCompositeOperation: "source-over",
+        fillStyle: "",
         drawImage(image: unknown) { currentMask.images.push({ image, mode: this.globalCompositeOperation }); },
         save() {}, restore() { this.globalCompositeOperation = "source-over"; }, beginPath() {}, clip() {}, translate() {}, scale() {},
-        fillRect() { currentMask.fills.push(this.globalCompositeOperation); },
-        clearRect() { currentMask = { rect: [], stops: [], images: [], fills: [] }; masks.push(currentMask); },
+        fillRect() { currentMask.fills.push(this.globalCompositeOperation); currentMask.fillStyles.push(this.fillStyle); },
+        clearRect() { currentMask = { rect: [], stops: [], images: [], fills: [], fillStyles: [] }; masks.push(currentMask); },
         rect(...args: number[]) { currentMask.rect = args; },
         createRadialGradient() { return { addColorStop(offset: number, color: string) { currentMask.stops.push([offset, color]); } }; },
       };
@@ -1068,7 +1072,9 @@ test("gate reveals stay local while posts and ground contact retain depth", asyn
         assert.ok(postMask.images.some((item) => item.image === gateImage && item.mode === "destination-in"),
           "the silhouette is restricted to opaque post artwork");
         assert.ok(postMask.fills.includes("source-atop"), "only the occluded actor pixels are tinted");
-        assert.ok(reveals.some((reveal) => reveal.alpha === 0.85 &&
+        assert.ok(postMask.fillStyles.includes("rgba(255, 244, 198, 0.46)"),
+          "the occluded actor pixels receive the selected warm tint");
+        assert.ok(reveals.some((reveal) => reveal.alpha === 0.8 &&
           draws.slice(0, reveal.index).some((args) => args[0] === gateImage)), "the opaque post is drawn before the cue");
       }
 
@@ -1209,10 +1215,14 @@ test("dialogue cancel navigates backwards or dismisses without confirming", asyn
   await withGame((game) => {
     game.mode = "world";
     game.openDialog("Sign", ["First", "Second", "Third"]);
+    assert.equal(game.getSnapshot().dialog?.page, 1);
+    assert.equal(game.getSnapshot().dialog?.pageCount, 3);
     game.cancel();
     assert.equal(game.getSnapshot().dialog?.text, "First", "B is inert on the first information page");
     game.confirm();
     assert.equal(game.getSnapshot().dialog?.text, "Second");
+    assert.equal(game.getSnapshot().dialog?.page, 2);
+    assert.equal(game.getSnapshot().dialog?.pageCount, 3);
     game.cancel();
     assert.equal(game.getSnapshot().dialog?.text, "First", "B navigates ordinary dialogue backwards");
     game.confirm();
