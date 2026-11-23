@@ -45,6 +45,28 @@ const slotsOf = (page) =>
     backup: localStorage.getItem("reliquary.save.v3.bak"),
   }));
 
+const waitForTitleActionEnabled = async (page, label) => {
+  await page.waitForFunction((actionLabel) => {
+    const button = [...document.querySelectorAll(".title-actions > button")]
+      .find((candidate) => candidate.textContent?.trim() === actionLabel);
+    return button && !button.disabled;
+  }, label, { timeout: 20_000 });
+};
+
+const holdEssentialWorldAsset = async (page) => {
+  let release;
+  const gate = new Promise((resolve) => { release = resolve; });
+  const requested = page.waitForRequest(
+    (request) => new URL(request.url()).pathname === "/game/tiles/grass.png",
+    { timeout: 20_000 },
+  );
+  await page.route("**/game/tiles/grass.png", async (route) => {
+    await gate;
+    await route.continue();
+  });
+  return { requested, release };
+};
+
 const openConsentWithRepeatedActivation = async (page) => {
   const newGame = page.getByRole("button", { name: "New Game", exact: true });
   const newGameBox = await newGame.boundingBox();
@@ -147,11 +169,7 @@ try {
     await page.getByRole("button", { name: "New Game", exact: true }).waitFor();
     const continueButton = page.getByRole("button", { name: "Continue", exact: true });
     assert.ok(await continueButton.isVisible());
-    await page.waitForFunction(() => {
-      const button = [...document.querySelectorAll(".title-actions > button")]
-        .find((candidate) => candidate.textContent?.trim() === "Continue");
-      return button && !button.disabled;
-    }, null, { timeout: 20_000 });
+    await waitForTitleActionEnabled(page, "Continue");
     const actions = await page.locator(".title-actions > button").evaluateAll((buttons) =>
       buttons.map((button) => {
         const rect = button.getBoundingClientRect();
@@ -275,6 +293,7 @@ try {
       "a fresh profile sees Start");
     assert.equal(await page.getByRole("button", { name: "Continue", exact: true }).count(), 0,
       "a fresh profile has no Continue action");
+    await waitForTitleActionEnabled(page, "Start");
     await page.keyboard.press("Tab");
     assert.equal(await page.evaluate(() => document.activeElement?.textContent?.trim()), "Start",
       "keyboard focus reaches Start on a fresh profile");
@@ -293,19 +312,10 @@ try {
       "the player can move into the cottage after the opening dialogue");
   });
   await withBrowser(async (page) => {
-    let releaseEssentialAsset;
-    const essentialAssetGate = new Promise((resolve) => { releaseEssentialAsset = resolve; });
+    const { requested: essentialAssetRequested, release: releaseEssentialAsset } = await holdEssentialWorldAsset(page);
     await page.addInitScript(({ key, value }) => {
       if (!localStorage.getItem(key)) localStorage.setItem(key, value);
     }, { key: SAVE_KEY, value: JSON.stringify(oldRun) });
-    const essentialAssetRequested = page.waitForRequest(
-      (request) => new URL(request.url()).pathname === "/game/tiles/grass.png",
-      { timeout: 20_000 },
-    );
-    await page.route("**/game/tiles/grass.png", async (route) => {
-      await essentialAssetGate;
-      await route.continue();
-    });
     try {
       await page.goto(baseUrl, { waitUntil: "domcontentloaded" });
       await waitForGameBoot(page);
@@ -327,16 +337,39 @@ try {
         "Tab cannot focus New Game while essential world art is pending");
 
       releaseEssentialAsset();
-      await page.waitForFunction(() => {
-        const button = [...document.querySelectorAll(".title-actions > button")]
-          .find((candidate) => candidate.textContent?.trim() === "Continue");
-        return button && !button.disabled;
-      }, null, { timeout: 20_000 });
+      await waitForTitleActionEnabled(page, "Continue");
       await page.keyboard.press("Tab");
       assert.equal(await page.evaluate(() => document.activeElement?.textContent?.trim()), "Continue",
         "keyboard focus reaches the safe Continue action after essential art loads");
       assert.deepEqual(await slotsOf(page), { primary: JSON.stringify(oldRun), backup: null },
         "loading essential art does not modify the saved journey");
+    } finally {
+      releaseEssentialAsset();
+    }
+  });
+  await withBrowser(async (page) => {
+    const { requested: essentialAssetRequested, release: releaseEssentialAsset } = await holdEssentialWorldAsset(page);
+    try {
+      await page.goto(baseUrl, { waitUntil: "domcontentloaded" });
+      await waitForGameBoot(page);
+      await essentialAssetRequested;
+      const startButton = page.getByRole("button", { name: "Start", exact: true });
+      await startButton.waitFor({ state: "visible" });
+      assert.equal(await startButton.isEnabled(), false,
+        "Start stays disabled while essential world art is pending");
+      assert.deepEqual(await slotsOf(page), { primary: null, backup: null },
+        "pending world art does not create a save for a fresh profile");
+      await page.keyboard.press("Tab");
+      assert.notEqual(await page.evaluate(() => document.activeElement?.textContent?.trim()), "Start",
+        "Tab cannot focus Start while essential world art is pending");
+
+      releaseEssentialAsset();
+      await waitForTitleActionEnabled(page, "Start");
+      await page.keyboard.press("Tab");
+      assert.equal(await page.evaluate(() => document.activeElement?.textContent?.trim()), "Start",
+        "keyboard focus reaches Start after essential art loads");
+      assert.deepEqual(await slotsOf(page), { primary: null, backup: null },
+        "loading essential art does not create a save before starting");
     } finally {
       releaseEssentialAsset();
     }
