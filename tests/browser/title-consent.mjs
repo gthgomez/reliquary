@@ -147,6 +147,11 @@ try {
     await page.getByRole("button", { name: "New Game", exact: true }).waitFor();
     const continueButton = page.getByRole("button", { name: "Continue", exact: true });
     assert.ok(await continueButton.isVisible());
+    await page.waitForFunction(() => {
+      const button = [...document.querySelectorAll(".title-actions > button")]
+        .find((candidate) => candidate.textContent?.trim() === "Continue");
+      return button && !button.disabled;
+    }, null, { timeout: 20_000 });
     const actions = await page.locator(".title-actions > button").evaluateAll((buttons) =>
       buttons.map((button) => {
         const rect = button.getBoundingClientRect();
@@ -286,6 +291,55 @@ try {
     await page.waitForSelector(".hud-menu", { timeout: 20_000 });
     assert.match(await page.locator(".game-root").getAttribute("class"), /is-cottage/,
       "the player can move into the cottage after the opening dialogue");
+  });
+  await withBrowser(async (page) => {
+    let releaseEssentialAsset;
+    const essentialAssetGate = new Promise((resolve) => { releaseEssentialAsset = resolve; });
+    await page.addInitScript(({ key, value }) => {
+      if (!localStorage.getItem(key)) localStorage.setItem(key, value);
+    }, { key: SAVE_KEY, value: JSON.stringify(oldRun) });
+    const essentialAssetRequested = page.waitForRequest(
+      (request) => new URL(request.url()).pathname === "/game/tiles/grass.png",
+      { timeout: 20_000 },
+    );
+    await page.route("**/game/tiles/grass.png", async (route) => {
+      await essentialAssetGate;
+      await route.continue();
+    });
+    try {
+      await page.goto(baseUrl, { waitUntil: "domcontentloaded" });
+      await waitForGameBoot(page);
+      await essentialAssetRequested;
+      const continueButton = page.getByRole("button", { name: "Continue", exact: true });
+      const newGameButton = page.getByRole("button", { name: "New Game", exact: true });
+      await continueButton.waitFor({ state: "visible" });
+      await newGameButton.waitFor({ state: "visible" });
+      assert.equal(await continueButton.isEnabled(), false,
+        "Continue stays disabled while essential world art is pending");
+      assert.equal(await newGameButton.isEnabled(), false,
+        "New Game stays disabled while essential world art is pending");
+      assert.deepEqual(await slotsOf(page), { primary: JSON.stringify(oldRun), backup: null },
+        "pending world art leaves saved bytes unchanged");
+      await page.keyboard.press("Tab");
+      assert.notEqual(await page.evaluate(() => document.activeElement?.textContent?.trim()), "Continue",
+        "Tab cannot focus Continue while essential world art is pending");
+      assert.notEqual(await page.evaluate(() => document.activeElement?.textContent?.trim()), "New Game",
+        "Tab cannot focus New Game while essential world art is pending");
+
+      releaseEssentialAsset();
+      await page.waitForFunction(() => {
+        const button = [...document.querySelectorAll(".title-actions > button")]
+          .find((candidate) => candidate.textContent?.trim() === "Continue");
+        return button && !button.disabled;
+      }, null, { timeout: 20_000 });
+      await page.keyboard.press("Tab");
+      assert.equal(await page.evaluate(() => document.activeElement?.textContent?.trim()), "Continue",
+        "keyboard focus reaches the safe Continue action after essential art loads");
+      assert.deepEqual(await slotsOf(page), { primary: JSON.stringify(oldRun), backup: null },
+        "loading essential art does not modify the saved journey");
+    } finally {
+      releaseEssentialAsset();
+    }
   });
   await withBrowser(async (page) => {
     const newer = JSON.stringify({ ...oldRun, worldRevision: 6, gold: 999 });
