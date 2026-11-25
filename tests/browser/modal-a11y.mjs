@@ -40,7 +40,10 @@ try {
 
     if (await page.locator(".hud-objective-btn").count()) {
       await page.locator(".hud-objective-btn").first().click();
-      assert.equal(await page.locator(".hud-objective-full").first().isVisible(), true);
+      const lantern = page.getByRole("dialog", { name: "Lantern", exact: true });
+      assert.match(await lantern.locator(".sheet-sub").first().innerText(), /Binding Grove/);
+      await lantern.getByRole("button", { name: "Close", exact: true }).click();
+      await page.waitForFunction(() => document.activeElement?.classList.contains("hud-objective-btn"));
     }
 
     await page.click(".hud-menu");

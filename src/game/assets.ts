@@ -1,6 +1,8 @@
 import { SPECIES } from "./content.ts";
 import { GROUND_TILE, MAPS } from "./maps.ts";
 import { isElderhallCandidateBuild } from "./build-flags.ts";
+import { ELDERHALL_ENVIRONMENT_IDS, elderhallEnvironmentUrl } from "./elderhall-assets.ts";
+import { ELDERHALL_PORTRAIT_URLS } from "./portraits.ts";
 export { isElderhallCandidateBuild } from "./build-flags.ts";
 
 export type AssetEntry = { key: string; url: string; required: boolean };
@@ -48,9 +50,12 @@ export function collectGameAssets(options: { elderhallCandidate?: boolean } = {}
     out.push({ key: `prop_${p}`, url: `/game/props/${p}.png`, required: true });
   }
   if (options.elderhallCandidate ?? isElderhallCandidateBuild()) {
-    for (const id of ["grass-atlas", "dirt-atlas", "stone-atlas", "well-reference", "cottage-reference", "guild-reference", "shop-reference", "tree-reference", "gate-reference", "bench", "flowers"]) {
+    for (const id of ELDERHALL_ENVIRONMENT_IDS) {
       const kind = id.endsWith("-atlas") ? "tile" : "prop";
-      out.push({ key: `${kind}_elderhall-${id}`, url: `/game/elderhall/assets/elderhall.${id}.png`, required: true });
+      out.push({ key: `${kind}_elderhall-${id}`, url: elderhallEnvironmentUrl(id), required: true });
+    }
+    for (const url of ELDERHALL_PORTRAIT_URLS) {
+      out.push({ key: `portrait_${url.slice(url.lastIndexOf("/") + 1, -4)}`, url, required: true });
     }
   }
   for (const bg of BG_KEYS) {

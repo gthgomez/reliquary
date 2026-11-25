@@ -28,6 +28,8 @@ import { shopBuyAffordability } from "./ui-chrome.ts";
 import { objectiveHint, objectivePreview } from "../systems/objective.ts";
 import { clearTouchHolds, requestAccessibleStep, updateTouchHold, type HoldId } from "./touch-hold.ts";
 import { shouldShowTitleWorldRetry } from "./asset-recovery.ts";
+import { isElderhallCandidateBuild } from "../build-flags.ts";
+import { portraitSource } from "../portraits.ts";
 
 export function TitleScreen({ game, snap }: { game: ReliquaryGame; snap: Snapshot }) {
   const [confirmingReplace, setConfirmingReplace] = useState(false);
@@ -241,12 +243,14 @@ export function Hud({
   snap,
   mapId,
   onMenu,
+  onObjectiveMenu,
   menuButtonRef,
   dormant = false,
 }: {
   snap: Snapshot;
   mapId: string;
   onMenu: () => void;
+  onObjectiveMenu: () => void;
   menuButtonRef?: RefObject<HTMLButtonElement | null>;
   dormant?: boolean;
 }) {
@@ -255,25 +259,12 @@ export function Hud({
   const companionCritical = lead && st ? lead.hp > 0 && lead.hp * 4 <= st.hp : false;
   const companionFainted = lead ? lead.hp <= 0 : false;
   const hpRatio = lead && st && st.hp > 0 ? Math.max(0, Math.min(1, lead.hp / st.hp)) : 0;
-  const [objectiveOpen, setObjectiveOpen] = useState(false);
-  const objectiveButtonRef = useRef<HTMLButtonElement>(null);
-  const hint = objectiveHint(snap.flags, snap.mapName);
   const preview = objectivePreview(snap.flags, mapId);
-  useEffect(() => {
-    if (dormant) setObjectiveOpen(false);
-  }, [dormant]);
   return (
     <div
-      className={`hud${dormant ? " hud-dormant" : ""}${objectiveOpen ? " hud-objective-expanded" : ""}`}
+      className={`hud${dormant ? " hud-dormant" : ""}`}
       aria-hidden={dormant}
       inert={dormant}
-      onKeyDown={(event) => {
-        if (event.key !== "Escape" || !objectiveOpen) return;
-        event.preventDefault();
-        event.stopPropagation();
-        setObjectiveOpen(false);
-        objectiveButtonRef.current?.focus();
-      }}
     >
       <div className="hud-row">
         <div className="hud-chip hud-chip-grow">
@@ -296,26 +287,16 @@ export function Hud({
               <button
                 type="button"
                 className="hud-objective-btn"
-                ref={objectiveButtonRef}
-                aria-expanded={objectiveOpen}
-                aria-controls={objectiveOpen ? "current-objective" : undefined}
-                onClick={() => setObjectiveOpen((open) => !open)}
+                aria-haspopup="dialog"
+                aria-label={`Objective: ${preview}. Open full directions in Lantern`}
+                onClick={onObjectiveMenu}
               >
                 <span className="hud-objective-label">Objective</span>
                 <span className="hud-objective-preview">{preview}</span>
                 <svg className="hud-objective-chevron" viewBox="0 0 16 16" aria-hidden="true">
-                  <path d="m4 6 4 4 4-4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                  <path d="M4 12 12 4M5 4h7v7" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
               </button>
-              {objectiveOpen ? (
-                <div id="current-objective" className="hud-objective-popover" role="region" aria-label="Current objective" tabIndex={0}>
-                  <p className="hud-objective-full">{snap.objective}</p>
-                  {hint ? <p className="hud-objective-full">{hint}</p> : null}
-                  <button type="button" className="hud-objective-lantern" onClick={onMenu}>
-                    Open in Lantern menu
-                  </button>
-                </div>
-              ) : null}
             </div>
           ) : null}
           <div className="hud-stats">
@@ -429,7 +410,9 @@ export function MenuPanel({ game, snap, onImportActivate }: { game: ReliquaryGam
     return (
       <OverlayPanel
         title="Lantern"
-        subtitle={snap.objective ? `Objective — ${snap.objective}` : undefined}
+        subtitle={snap.objective
+          ? `Objective — ${snap.objective}${objectiveHint(snap.flags, snap.mapName) ? `\n\n${objectiveHint(snap.flags, snap.mapName)}` : ""}`
+          : undefined}
         closeLabel="Close"
         onClose={() => game.chooseMenu(ROOT_MENU.length - 1)}
         onCloseFocus={() => { game.setMenuIndex(ROOT_MENU.length - 1); game.emitPublic(); }}
@@ -848,6 +831,7 @@ export function Meter({
 }
 
 export function ShopPanel({ game, snap }: { game: ReliquaryGame; snap: Snapshot }) {
+  const [portraitFailed, setPortraitFailed] = useState(false);
   const list =
     snap.shopMode === "buy"
       ? snap.shopStock
@@ -864,6 +848,10 @@ export function ShopPanel({ game, snap }: { game: ReliquaryGame; snap: Snapshot 
       closeLabel="Leave"
     >
       <div className="shop-tabs">
+        {isElderhallCandidateBuild() && !portraitFailed ? (
+          <img className="shop-portrait" src={portraitSource("shopkeep", true)} alt=""
+            width={40} height={52} onError={() => setPortraitFailed(true)} />
+        ) : null}
         <button
           type="button"
           className={snap.shopMode === "buy" ? "active" : ""}

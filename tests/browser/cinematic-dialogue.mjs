@@ -93,7 +93,7 @@ async function checkLayout(page, label, shot = false) {
       next: one(".dialog-next"),
       blockers: [
         ...document.querySelectorAll(
-          ".hud-chip, .hud-menu, .hud-objective-popover, .app-status, .touch button, .touch-dialog-hint",
+          ".hud-chip, .hud-menu, .app-status, .touch button, .touch-dialog-hint",
         ),
       ]
         .map(rect)

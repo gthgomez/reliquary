@@ -4,7 +4,7 @@
  * and the test probe observes coordinates. Controlled random draws make
  * encountered species and binding outcomes reproducible.
  */
-import { chromium } from "playwright";
+import { launchQaChrome } from "../tests/browser/helpers.mjs";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { faceDirection, walkTo } from "./natural-journey-controls.mjs";
@@ -21,7 +21,7 @@ if (trialSeed !== null && (!Number.isInteger(trialSeed) || trialSeed <= 0 || tri
   throw new Error("RELIQUARY_TRIAL_SEED must be a nonzero 32-bit unsigned integer");
 mkdirSync(output, { recursive: true });
 
-const browser = await chromium.launch({ channel: process.env.RELIQUARY_QA_CHANNEL ?? "msedge", headless: true });
+const browser = await launchQaChrome("msedge");
 const viewport = { width: 1280, height: 800 };
 const report = { browser: browser.version(), viewport, trialSeed, events: [], errors: [], warnings: [] };
 const context = await browser.newContext({ viewport, serviceWorkers: "block" });
@@ -58,10 +58,10 @@ try {
     const summary = await page.locator(".hud-objective-preview").innerText();
     if (!summary.match(summaryMust)) throw new Error(`Objective summary expected /${summaryMust.source}/, got: ${summary}`);
     await page.locator(".hud-objective-btn").click();
-    const region = page.getByRole("region", { name: "Current objective" });
+    const region = page.getByRole("dialog", { name: "Lantern", exact: true });
     try {
       await region.waitFor({ state: "visible" });
-      const full = await region.locator(".hud-objective-full").allInnerTexts();
+      const full = (await region.locator(".sheet-sub").first().textContent()).split("\n\n");
       if (!full[0]?.match(fullMust)) throw new Error(`Full objective expected /${fullMust.source}/, got: ${full[0] ?? "(missing)"}`);
       if (hintMust) {
         if (!full[1]?.match(hintMust)) throw new Error(`Objective context expected /${hintMust.source}/, got: ${full[1] ?? "(missing)"}`);
@@ -69,7 +69,7 @@ try {
         throw new Error(`Expected no extra objective context, got: ${full.slice(1).join(" | ")}`);
       }
     } finally {
-      await page.locator(".hud-objective-btn").click();
+      await region.getByRole("button", { name: "Close", exact: true }).click();
     }
     return summary;
   };

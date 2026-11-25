@@ -1,6 +1,7 @@
-import { useEffect, useId, useRef } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import type { DialogView } from "../types.ts";
-import { PORTRAITS } from "../portraits.ts";
+import { isElderhallCandidateBuild } from "../build-flags.ts";
+import { PORTRAITS, portraitSource } from "../portraits.ts";
 import "./dialogue.css";
 
 export function DialogScene({ dialog, onAdvance, onBack }: {
@@ -13,6 +14,10 @@ export function DialogScene({ dialog, onAdvance, onBack }: {
   const secondary = useRef<HTMLButtonElement>(null);
   const content = useRef<HTMLDivElement>(null);
   const portrait = dialog.portraitKey ? PORTRAITS[dialog.portraitKey] : null;
+  const [failedPortrait, setFailedPortrait] = useState<string | null>(null);
+  const candidatePortrait = isElderhallCandidateBuild() && dialog.portraitKey
+    ? portraitSource(dialog.portraitKey, true) : null;
+  const pixelPortrait = candidatePortrait && candidatePortrait !== failedPortrait ? candidatePortrait : null;
   const duplicateNonCommittingClose = !dialog.commits
     && dialog.primaryLabel === "Close"
     && dialog.secondaryLabel === "Close";
@@ -38,14 +43,15 @@ export function DialogScene({ dialog, onAdvance, onBack }: {
 
   return (
     <div
-      className={`dialog-scene${portrait ? " dialog-scene-npc" : ""}`}
+      className={`dialog-scene${portrait ? " dialog-scene-npc" : ""}${pixelPortrait ? " dialog-scene-pixel" : ""}`}
       data-npc-id={dialog.npcId ?? undefined}
       role="dialog"
       aria-label={dialog.speaker || "Story"}
     >
       {portrait ? (
         <div className="dialog-portrait" aria-hidden="true">
-          <img src={portrait.src} alt="" draggable={false} />
+          <img src={pixelPortrait ?? portrait.src} alt="" draggable={false}
+            onError={pixelPortrait ? () => setFailedPortrait(pixelPortrait) : undefined} />
         </div>
       ) : null}
       <div className={`dialog${portrait ? " dialog-panel" : ""}`} data-portrait={dialog.portraitKey ?? "none"}>

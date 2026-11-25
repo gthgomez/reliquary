@@ -128,6 +128,11 @@
   object-fit: contain;
   object-position: bottom;
 }
+.dialog-scene-pixel .dialog-portrait img {
+  max-width: 320px;
+  max-height: 416px;
+  image-rendering: pixelated;
+}
 .dialog.dialog-panel {
   position: relative;
   max-height: 100%;
@@ -197,6 +202,13 @@
   :is([data-npc-id="maren"], [data-npc-id="maren2"]) .dialog-portrait img {
     width: 76%;
     height: 84%;
+  }
+  .dialog-scene-pixel[data-npc-id] .dialog-portrait img {
+    width: min(82%, 240px);
+    height: 100%;
+  }
+  .dialog-scene-pixel .dialog.dialog-panel {
+    max-height: min(52dvh, 20rem);
   }
   .dialog.dialog-panel {
     margin: 0;

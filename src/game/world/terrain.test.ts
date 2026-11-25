@@ -3,6 +3,7 @@ import { test } from "node:test";
 import { MAPS } from "../maps.ts";
 import * as junctions from "../render/road-junctions.ts";
 import { bakeMapTerrain, chooseTileVariant, walkableEdgeMask } from "./terrain.ts";
+import { makeElderhallCandidate } from "../maps/elderhall-candidate.ts";
 
 test("chooseTileVariant is stable and independent of Math.random", () => {
   const a = chooseTileVariant("briar_road", 4, 7, "grass", 3);
@@ -42,6 +43,19 @@ test("bakeMapTerrain invokes decoration callbacks", () => {
   assert.ok(tiles > 0);
   assert.ok(deco > 0, "decorations and tallgrass should draw");
   assert.ok(accents > 0, "ground accents should scatter on walkable tiles");
+});
+
+test("candidate village and Grove terrain dapple stays sparse and deterministic", () => {
+  for (const map of [makeElderhallCandidate(MAPS.elderhall), MAPS.grove]) {
+    const variations: string[] = [];
+    bakeMapTerrain({ map, tileSize: 32, candidateTerrain: true, drawTile: () => {},
+      drawOverlay: (style, x, y) => { if (style === "variation") variations.push(`${x},${y}`); }, drawDecoration: () => {} });
+    const repeated: string[] = [];
+    bakeMapTerrain({ map, tileSize: 32, candidateTerrain: true, drawTile: () => {},
+      drawOverlay: (style, x, y) => { if (style === "variation") repeated.push(`${x},${y}`); }, drawDecoration: () => {} });
+    assert.ok(variations.length > 0 && variations.length < 60, `${map.id} receives sparse ground tinting`);
+    assert.deepEqual(repeated, variations, `${map.id} dapple positions are stable across bakes`);
+  }
 });
 
 test("the Grove bakes one continuous grass surface and leaves its open edges untinted", () => {

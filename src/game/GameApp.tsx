@@ -211,6 +211,7 @@ export function GameApp() {
   const cottage = mapId === "home" && snap.mode === "world";
   const dialogActive = !!snap.dialog;
   const menuButtonRef = useRef<HTMLButtonElement>(null);
+  const objectiveReturnRef = useRef(false);
   const wasUiModal = useRef(false);
 
   // Stage padding and adaptive eligibility change with the current screen and
@@ -241,7 +242,10 @@ export function GameApp() {
     if (!wasUiModal.current) return;
     wasUiModal.current = false;
     requestAnimationFrame(() => {
-      menuButtonRef.current?.focus({ preventScroll: true });
+      if (objectiveReturnRef.current) {
+        objectiveReturnRef.current = false;
+        document.querySelector<HTMLButtonElement>(".hud-objective-btn")?.focus({ preventScroll: true });
+      } else menuButtonRef.current?.focus({ preventScroll: true });
     });
   // cardMenu?.uid: a nested sheet swaps panels without changing menu/mode,
   // so focus would fall to <body> between the unmount and the next Tab.
@@ -295,6 +299,10 @@ export function GameApp() {
                 menuButtonRef={menuButtonRef}
                 dormant={uiModal || dialogActive || naming}
                 onMenu={() => g.toggleMenu()}
+                onObjectiveMenu={() => {
+                  objectiveReturnRef.current = true;
+                  g.toggleMenu();
+                }}
               />
             ) : null}
             <AppStatus showReadyToast={snap.mode === "world" && !uiModal && !dialogActive && !naming} />

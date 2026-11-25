@@ -21,8 +21,8 @@ test("the candidate composes a green west of an accessible well without changing
   assert.equal(Math.abs(maren.x - well.x) + Math.abs(maren.y - well.y), 1);
   assert.equal(map.ground[tree.y]![tree.x], ".");
   assert.equal(map.ground[bench.y]![bench.x], ".");
-  assert.equal(map.ground[well.y]![well.x], "c", "the well sits on a stone communal apron");
-  assert.equal(map.ground[maren.y]![maren.x], "c");
+  assert.equal(map.ground[well.y]![well.x], "p", "the well apron is a visual treatment over the shared dirt road");
+  assert.equal(map.ground[maren.y]![maren.x], "p");
   for (const item of [tree, bench, well]) assert.ok(isOccupied(map, {}, item.x, item.y));
   assert.deepEqual(map.warps, base.warps, "the two map exits retain their targets");
   assert.deepEqual(map.objects.filter((o) => !o.id.endsWith("_candidate")).map((o) => o.id).sort(),
@@ -51,10 +51,10 @@ test("candidate crossroads, entrances, Maren and both exits stay reachable", () 
   const maren = map.npcs.find((npc) => npc.id === "maren")!;
   assert.deepEqual([maren.x, maren.y], [13, 10], "face east from (12,10) to talk to Maren");
   assert.equal(map.ground[10]![8], "p", "west approach joins the main road");
-  for (const [x, y] of [[13, 9], [14, 9], [15, 9], [13, 10], [14, 10], [15, 10]]) {
-    assert.equal(map.ground[y]![x], "c", `communal apron covers ${x},${y}`);
+  for (const [x, y] of [[14, 9], [15, 9], [13, 10], [14, 10], [15, 10], [14, 11]]) {
+    assert.equal(map.ground[y]![x], "p", `communal apron keeps continuous dirt under ${x},${y}`);
   }
-  for (const [x, y] of [[13, 9], [14, 9], [15, 9], [15, 10]]) {
+  for (const [x, y] of [[14, 9], [15, 9], [15, 10], [14, 11]]) {
     assert.ok(reachable.has(`${x},${y}`), `open cobble at ${x},${y} remains reachable`);
   }
   for (const [label, x, y] of [["green", 9, 13], ["Maren and well", 12, 10], ["north gate", 11, 8], ["north gate close", 11, 4], ["guard approach", 12, 7], ["west approach", 1, 10]] as const) {

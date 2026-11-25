@@ -3,3 +3,5 @@
 # the JSON bytes and invalidate the package digest.
 tests/fixtures/ages-animations/** -text
 tests/fixtures/ages-ppc/** -text
+assets/elderhall-candidate/manifest.json text eol=lf
+assets/elderhall-portraits/manifest.json text eol=lf

@@ -6,8 +6,7 @@ import assert from "node:assert/strict";
 import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { startStaticServer, waitForGameBoot } from "./helpers.mjs";
-import { chromium } from "playwright";
+import { launchQaChrome, startStaticServer, waitForGameBoot } from "./helpers.mjs";
 
 const SAVE_KEY = "reliquary.save.v3";
 const SLOT_KEYS = [
@@ -93,7 +92,7 @@ const importFile = join(work, "import-save.json");
 writeFileSync(importFile, JSON.stringify(validSave(777)));
 
 try {
-  const browser = await chromium.launch({ headless: true });
+  const browser = await launchQaChrome();
   try {
     const context = await browser.newContext({ serviceWorkers: "block" });
     const pageA = await context.newPage();

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { chooseTileAccent, tileAtlasQuadrant, roadBorderEdges, roadBorderCorners, paintStoneRoadBorder, paintCottageRug, clipSoftPath } from "./tile-surface.ts";
+import { chooseTileAccent, tileAtlasQuadrant, roadBorderEdges, roadBorderCorners, paintOrganicStoneRoadBorder, paintStoneRoadBorder, paintCottageRug, clipSoftPath } from "./tile-surface.ts";
 import { MAPS } from "../maps.ts";
 import { isElderhallCandidateBuild } from "../build-flags.ts";
 import { makeElderhallCandidateInterior } from "../maps/elderhall-candidate.ts";
@@ -38,6 +38,20 @@ test("road edging uses visible stones rather than thin dashed strokes", () => {
   assert.ok(colors.includes("rgba(225,215,190,.2)"), "the highlight is subdued");
 });
 
+test("candidate road stones vary deterministically and keep the edge walkable", () => {
+  const draw = (x: number, y: number) => {
+    const rects: number[][] = [];
+    const ctx = { save() {}, restore() {}, beginPath() {}, moveTo() {}, lineTo() {}, quadraticCurveTo() {}, closePath() {}, clip() {},
+      fillStyle: "", fillRect(...args: number[]) { rects.push(args); } } as unknown as CanvasRenderingContext2D;
+    paintOrganicStoneRoadBorder(ctx, x * 32, y * 32, 32, 5, x, y);
+    return rects;
+  };
+  const first = draw(3, 7);
+  assert.ok(first.length >= 16 && first.length <= 40, "broken stone segments stay visible but spaced");
+  assert.deepEqual(draw(3, 7), first, "the same world tile bakes identical border stones");
+  assert.ok(first.every((rect) => rect.every(Number.isInteger)), "stone marks remain pixel-aligned");
+});
+
 test("cottage rug stays off the walk-through threshold and leaves gameplay geometry unchanged", () => {
   const rects: number[][] = [];
   const ctx = { save() {}, restore() {}, fillStyle: "", fillRect(...args: number[]) { rects.push(args); } } as unknown as CanvasRenderingContext2D;
@@ -65,6 +79,14 @@ test("a path curves at exposed and concave corners", () => {
   const ctx = { beginPath() {}, moveTo() {}, lineTo() {}, quadraticCurveTo() { curves++; }, closePath() {}, clip() {} } as unknown as CanvasRenderingContext2D;
   clipSoftPath(ctx, 0, 0, 32, 255 & ~16);
   assert.ok(curves > 0, "missing north-east diagonal produces a curved join");
+});
+
+test("candidate woodland terminal paths end in a broad round cap", () => {
+  const curves: number[][] = [];
+  const ctx = { beginPath() {}, moveTo() {}, lineTo() {}, quadraticCurveTo(...args: number[]) { curves.push(args); }, closePath() {}, clip() {} } as unknown as CanvasRenderingContext2D;
+  clipSoftPath(ctx, 0, 0, 32, 1, true);
+  assert.equal(curves.length, 2, "the terminal face has a curve on both corners");
+  assert.ok(curves.some(([, , , y]) => y === 28) && curves.some(([, , x]) => x === 4), "both curves meet the same broad rounded cap");
 });
 
 test("tileAtlasQuadrant is stable per tile coordinate", () => {

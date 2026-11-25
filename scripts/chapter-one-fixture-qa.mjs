@@ -5,7 +5,7 @@
  * Covered: learn/decline choice persistence, a lost battle's whiteout, the
  * Cael advisory for a weak party, and the Warden trial from a prepared party.
  */
-import { chromium } from "playwright";
+import { launchQaChrome } from "../tests/browser/helpers.mjs";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { makeBeast } from "../src/game/content.ts";
@@ -15,7 +15,7 @@ const output = process.argv[3];
 if (!output || !["localhost", "127.0.0.1"].includes(new URL(url).hostname))
   throw new Error("usage: node scripts/chapter-one-fixture-qa.mjs <local-url> <evidence-directory>");
 mkdirSync(output, { recursive: true });
-const browser = await chromium.launch({ channel: process.env.RELIQUARY_QA_CHANNEL ?? "msedge", headless: true });
+const browser = await launchQaChrome("msedge");
 const report = { browser: browser.version(), scenarios: [], errors: [] };
 const assert = (condition, message) => {
   if (!condition) throw new Error(message);
@@ -331,11 +331,11 @@ try {
       const objective = await page.locator(".hud-objective-preview").innerText();
       assert(/Rest or travel beyond the ash/.test(objective), `post-trial objective summary wrong: ${objective}`);
       await page.locator(".hud-objective-btn").click();
-      const objectiveRegion = page.getByRole("region", { name: "Current objective" });
-      const fullObjective = await objectiveRegion.locator(".hud-objective-full").allInnerTexts();
+      const objectiveRegion = page.getByRole("dialog", { name: "Lantern", exact: true });
+      const fullObjective = (await objectiveRegion.locator(".sheet-sub").first().textContent()).split("\n\n");
       assert(fullObjective.length === 1 && /Hollow Crown/.test(fullObjective[0]),
         `post-trial full objective wrong: ${fullObjective.join(" | ")}`);
-      await page.locator(".hud-objective-btn").click();
+      await objectiveRegion.getByRole("button", { name: "Close", exact: true }).click();
       await page.screenshot({ path: join(output, "after-trial.png") });
       report.scenarios.push("warden-trial: won, Thorn Mark granted, objective advanced");
     },

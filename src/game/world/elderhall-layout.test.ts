@@ -17,7 +17,7 @@ function roadTiles(map: typeof elderhallBase): Set<string> {
   const path = new Set<string>();
   for (let y = 0; y < map.ground.length; y++) {
     for (let x = 0; x < map.ground[y]!.length; x++) {
-      if (map.ground[y]![x] === "p") path.add(`${x},${y}`);
+      if (map.ground[y]![x] === "p" || map.ground[y]![x] === "c") path.add(`${x},${y}`);
     }
   }
   return path;
@@ -75,12 +75,12 @@ test("revision-specific Elderhall well placements stay solid beside reachable ro
       assert.equal(isOccupied(map, {}, 8, 11), false, "revision 2 route past the well is clear");
       assert.ok(reachableTiles(map, map.spawn, {}).has("8,11"), "revision 2 nearby road remains reachable");
     } else {
-      for (const y of [9, 10]) for (const x of [13, 14, 15]) {
-        assert.equal(map.ground[y]![x], "c", `revision 5 stone apron covers ${x},${y}`);
+      for (const [x, y] of [[14, 9], [15, 9], [13, 10], [14, 10], [15, 10], [14, 11]]) {
+        assert.equal(map.ground[y]![x], "p", `revision 5 organic apron retains dirt beneath its paved overlay at ${x},${y}`);
       }
-      assert.equal(map.ground[11]![14], "p", "revision 5 road continues south of the stone apron");
-      assert.equal(isOccupied(map, {}, 14, 11), false, "revision 5 route south of the well is clear");
-      assert.ok(reachableTiles(map, map.spawn, {}).has("14,11"), "revision 5 nearby road remains reachable");
+      assert.equal(map.ground[11]![13], "p", "revision 5 road continues around the apron");
+      assert.equal(isOccupied(map, {}, 13, 11), false, "revision 5 lane beside the apron is clear");
+      assert.ok(reachableTiles(map, map.spawn, {}).has("13,11"), "revision 5 nearby road remains reachable");
     }
   }
 });

@@ -36,10 +36,10 @@ try {
     ctx.drawImage(actor, 4, 2);
     ctx.drawImage(post, 8, 0);
     const pixel = (context, x, y) => Array.from(context.getImageData(x, y, 1, 1).data);
-    const before = { actor: pixel(ctx, 8, 4), covered: pixel(ctx, 10, 4), post: pixel(ctx, 12, 4), base: pixel(ctx, 10, 9) };
+    const before = { actor: pixel(ctx, 8, 4), covered: pixel(ctx, 10, 4), outline: pixel(ctx, 12, 4), post: pixel(ctx, 15, 4), base: pixel(ctx, 10, 9) };
     paintActorBehindPost(ctx, actor, post, { x: 8, y: 0, width: 8, height: 12 },
       { x: 4, y: 2, width: 8, height: 8 }, 8, { x: 0, y: 0, width: 8, height: 12 });
-    const after = { actor: pixel(ctx, 8, 4), covered: pixel(ctx, 10, 4), post: pixel(ctx, 12, 4), base: pixel(ctx, 10, 9) };
+    const after = { actor: pixel(ctx, 8, 4), covered: pixel(ctx, 10, 4), outline: pixel(ctx, 12, 4), post: pixel(ctx, 15, 4), base: pixel(ctx, 10, 9) };
 
     const roof = makeCanvas(30, 30);
     const roofCtx = roof.getContext("2d");
@@ -129,6 +129,11 @@ try {
     return { before, after, fade, treeBefore, treeAfter, mismatches };
   }, { moduleCode: code, cameraCode: transformCode });
   assert.notDeepEqual(samples.after.covered, samples.before.covered, "hidden actor pixels receive a visible cue");
+  const cueContrast = Math.hypot(...samples.after.covered.slice(0, 3).map((channel, index) => channel - samples.after.post[index]));
+  assert.ok(cueContrast >= 35, `occluded player pixel remains distinguishable from the opaque post (RGB distance ${cueContrast.toFixed(1)})`);
+  assert.equal(samples.after.covered[3], 255, "the local cue does not make the foreground post translucent");
+  assert.ok(samples.after.outline[0] < samples.before.outline[0] - 35, "a one-pixel dark contour outlines the actor against the post");
+  assert.equal(samples.after.outline[3], 255, "the contour keeps the post fully opaque");
   assert.deepEqual(samples.after.actor, samples.before.actor, "transparent artwork does not tint the visible actor");
   assert.deepEqual(samples.after.post, samples.before.post, "post pixels outside the actor remain unchanged");
   assert.deepEqual(samples.after.base, samples.before.base, "the solid post base remains unchanged");

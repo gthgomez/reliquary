@@ -28,6 +28,18 @@ test("guild and shop use distinct preview art without changing gameplay footprin
   }
 });
 
+test("the inn uses warm candidate artwork while preserving its doorway and collision", () => {
+  const inn = MAPS.elderhall.objects.find((item) => item.id === "h_inn")!;
+  const candidate = elderhallCandidateObject("elderhall", inn, true);
+  assert.equal(candidate.sprite, "elderhall-inn");
+  assert.deepEqual({ x: candidate.x, y: candidate.y, w: candidate.w, h: candidate.h, foot: candidate.foot, interact: candidate.interact,
+    interactZone: candidate.interactZone, interactDirections: candidate.interactDirections },
+  { x: inn.x, y: inn.y, w: inn.w, h: inn.h, foot: inn.foot, interact: inn.interact,
+    interactZone: inn.interactZone, interactDirections: inn.interactDirections });
+  assert.deepEqual(candidate.visual, { width: 3, height: 2.925, anchorX: 92 / 160, anchorY: 152 / 156, groundX: inn.w / 2, groundY: inn.h });
+  assert.equal(elderhallCandidateObject("elderhall", inn, false), inn);
+});
+
 test("the preview gate keeps the two northern routes open", () => {
   const map = { ...MAPS.elderhall, objects: [...MAPS.elderhall.objects, elderhallCandidateGate()] };
   assert.equal(isOccupied(map, {}, 9, 6), true);
@@ -63,6 +75,7 @@ test("if gate art fails, its solid posts remain visibly marked", () => {
 test("Elderhall terrain uses candidate atlases only when explicitly enabled", () => {
   assert.equal(elderhallTerrainAtlas("elderhall", "grass", true), "tile_elderhall-grass-atlas");
   assert.equal(elderhallTerrainAtlas("elderhall", "cobble", true), "tile_elderhall-stone-atlas");
-  assert.equal(elderhallTerrainAtlas("grove", "grass", true), null);
+  assert.equal(elderhallTerrainAtlas("grove", "grass", true), "tile_elderhall-grass-atlas");
+  assert.equal(elderhallTerrainAtlas("grove", "dirt", true), "tile_elderhall-dirt-atlas");
   assert.equal(elderhallTerrainAtlas("elderhall", "grass", false), null);
 });

@@ -3,6 +3,8 @@ import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { test } from "node:test";
 import { collectGameAssets } from "./assets.ts";
+import { ELDERHALL_ENVIRONMENT_IDS, elderhallEnvironmentUrl } from "./elderhall-assets.ts";
+import { ELDERHALL_PORTRAIT_URLS } from "./portraits.ts";
 
 const root = join(import.meta.dirname, "..", "..");
 
@@ -23,13 +25,12 @@ test("new release creatures register sprite paths", () => {
   }
 });
 
-test("Elderhall candidate sprites and distinct atlases are registered only for a candidate build", () => {
+test("only the candidate build preloads the selected Elderhall environment art and portraits", () => {
   const normal = collectGameAssets({ elderhallCandidate: false });
   const candidate = collectGameAssets({ elderhallCandidate: true });
-  const expected = ["grass-atlas", "dirt-atlas", "stone-atlas", "well-reference", "cottage-reference", "guild-reference", "shop-reference", "tree-reference", "gate-reference", "bench", "flowers"];
-  for (const id of expected) {
-    const url = `/game/elderhall/assets/elderhall.${id}.png`;
-    assert.equal(normal.some((asset) => asset.url === url), false, `${id} excluded from normal builds`);
-    assert.equal(candidate.some((asset) => asset.url === url), true, `${id} registered for candidate preview`);
-  }
+  const selected = (assets: typeof candidate) => assets.filter(({ url }) => url.startsWith("/game/elderhall/"));
+  assert.deepEqual(selected(normal), []);
+  assert.deepEqual(selected(candidate).map(({ url }) => url).sort(),
+    [...ELDERHALL_ENVIRONMENT_IDS.map(elderhallEnvironmentUrl), ...ELDERHALL_PORTRAIT_URLS].sort());
+  assert.ok(selected(candidate).every(({ required }) => required));
 });

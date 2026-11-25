@@ -36,5 +36,5 @@ test("recovery markup has an interactive class and is removed from focus in clip
   const css = readFileSync(join(root, "src", "styles.css"), "utf8");
   assert.match(app, /className="asset-recovery-control"/);
   assert.match(css, /\.asset-recovery-control\s*\{[^}]*pointer-events:\s*auto;/s);
-  assert.match(css, /\.top-stack:has\(\.hud-objective-expanded\) \.asset-recovery-control,\s*\.game-root\.is-battle \.asset-recovery-control\s*\{[^}]*display:\s*none;/s);
+  assert.match(css, /\.game-root\.is-battle \.asset-recovery-control\s*\{[^}]*display:\s*none;/s);
 });

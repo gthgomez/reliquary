@@ -846,7 +846,7 @@ test("terrain is reused between frames and rebuilt when the map changes", async 
       drawImage() {
         terrainDraws++;
       },
-      fillRect() {},
+      fillRect() {}, ellipse() {}, fill() {},
       save() {}, restore() {}, beginPath() {}, moveTo() {}, lineTo() {}, quadraticCurveTo() {}, closePath() {}, rect() {}, clip() {},
     };
     const canvas = { getContext: () => ground, width: 0, height: 0 };
@@ -873,7 +873,7 @@ test("terrain is reused between frames and rebuilt when the map changes", async 
 
 test("fractional camera offsets keep terrain, actors and props aligned", async () => {
   await withGame((game, frame) => {
-    const ground = { drawImage() {}, fillRect() {}, save() {}, restore() {}, beginPath() {}, moveTo() {}, lineTo() {},
+    const ground = { drawImage() {}, fillRect() {}, ellipse() {}, fill() {}, save() {}, restore() {}, beginPath() {}, moveTo() {}, lineTo() {},
       quadraticCurveTo() {}, closePath() {}, rect() {}, clip() {} };
     const terrain = { getContext: () => ground, width: 0, height: 0 };
     Object.assign(document, { createElement: () => terrain });
@@ -916,7 +916,7 @@ test("HUD pan preserves the terrain transform and extends only the map edge", as
   globals.getComputedStyle = () => ({ getPropertyValue: () => String(inset) });
   try {
     await withGame((game, frame) => {
-      const ground = { drawImage() {}, fillRect() {}, save() {}, restore() {}, beginPath() {}, moveTo() {}, lineTo() {},
+      const ground = { drawImage() {}, fillRect() {}, ellipse() {}, fill() {}, save() {}, restore() {}, beginPath() {}, moveTo() {}, lineTo() {},
         quadraticCurveTo() {}, closePath() {}, rect() {}, clip() {} };
       const terrain = { getContext: () => ground, width: 0, height: 0 };
       Object.assign(document, { createElement: () => terrain });
@@ -976,7 +976,7 @@ async function stoneTransitionDraws(options: { candidate: boolean; atlas: boolea
   try {
     await withGame((game, frame) => {
       const ground = {
-        drawImage(...args: unknown[]) { draws.push(args); }, fillRect() {}, save() {}, restore() {},
+        drawImage(...args: unknown[]) { draws.push(args); }, fillRect() {}, ellipse() {}, fill() {}, save() {}, restore() {},
         beginPath() {}, moveTo() {}, lineTo() {}, quadraticCurveTo() {}, closePath() {}, rect() {}, clip() {},
       };
       Object.assign(document, { createElement: () => ({ getContext: () => ground, width: 0, height: 0 }) });
@@ -1006,11 +1006,19 @@ test("Elderhall candidate dirt-to-stone transition draws a deterministic candida
     "the legacy stone texture is not mixed into the candidate transition");
 });
 
-test("stone transitions fall back to the legacy tile in normal, missing-atlas, and other-map builds", async () => {
+test("candidate Grove transitions use the shared nature stone atlas", async () => {
+  const { draws, atlas, legacy } = await stoneTransitionDraws({ candidate: true, atlas: true, mapId: "grove" });
+  assert.equal(draws.filter((args) => args.length === 9 && args[0] === atlas && args[5] === TILE && args[6] === TILE).length, 1,
+    "the Grove uses the selected candidate stone atlas for its path transition");
+  assert.equal(draws.some((args) => args.length === 5 && args[0] === legacy && args[1] === TILE && args[2] === TILE), false,
+    "the legacy stone tile is not mixed into candidate Grove terrain");
+});
+
+test("stone transitions fall back to the legacy tile in normal, missing-atlas, and noncandidate maps", async () => {
   for (const options of [
     { candidate: false, atlas: true },
     { candidate: true, atlas: false },
-    { candidate: true, atlas: true, mapId: "grove" as const },
+    { candidate: false, atlas: true, mapId: "grove" as const },
   ]) {
     const { draws, atlas, legacy } = await stoneTransitionDraws(options);
     assert.ok(draws.some((args) => args.length === 5 && args[0] === legacy && args[1] === TILE && args[2] === TILE),
@@ -1047,7 +1055,7 @@ test("gate reveals stay local while posts and ground contact retain depth", asyn
       const screen = { canvas: { ownerDocument: { createElement: () => buffer } }, globalAlpha: 1,
         save() {}, restore() { this.globalAlpha = 1; }, beginPath() {}, rect() {}, clip() {},
         drawImage(...args: unknown[]) { draws.push(args); if (args[0] === buffer && this.globalAlpha < 1) reveals.push({ alpha: this.globalAlpha, index: draws.length - 1 }); }, fillRect() {} };
-      const ground = { drawImage() {}, fillRect() {}, save() {}, restore() {}, beginPath() {}, moveTo() {}, lineTo() {},
+      const ground = { drawImage() {}, fillRect() {}, ellipse() {}, fill() {}, save() {}, restore() {}, beginPath() {}, moveTo() {}, lineTo() {},
         quadraticCurveTo() {}, closePath() {}, rect() {}, clip() {} };
       Object.assign(document, { createElement: () => ({ getContext: () => ground, width: 0, height: 0 }) });
       game.canvas = { getContext: () => screen } as unknown as HTMLCanvasElement;

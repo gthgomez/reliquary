@@ -96,7 +96,7 @@ export function compareWorldDepth(a: { y: number; priority: number; id: string }
 const OVERHANG_BOTTOM: Record<string, number> = {
   "elderhall-tree-reference": 0.8, "elderhall-well-reference": 0.48,
   "elderhall-cottage-reference": 0.56, "elderhall-guild-reference": 0.56,
-  "elderhall-shop-reference": 0.56, tree: 0.62, well: 0.48,
+  "elderhall-shop-reference": 0.56, "elderhall-inn": 0.56, tree: 0.62, well: 0.48,
   cottage: 0.56, inn: 0.56, shop: 0.56,
 };
 
@@ -118,6 +118,7 @@ export function shouldFadePropForPlayer(prop: DrawFootprint, player: DrawFootpri
 }
 
 const fadeBuffers = new WeakMap<HTMLCanvasElement, HTMLCanvasElement>();
+const gateActorContours = new WeakMap<HTMLCanvasElement, HTMLCanvasElement>();
 
 /** Tint only the actor pixels actually hidden by a post; leave its base opaque. */
 export function paintActorBehindPost(
@@ -125,34 +126,62 @@ export function paintActorBehindPost(
   post: DrawRect, player: DrawRect, revealBottom: number, source: DrawRect,
 ): void {
   let buffer = fadeBuffers.get(ctx.canvas);
-  if (!buffer) {
-    buffer = ctx.canvas.ownerDocument.createElement("canvas");
-    fadeBuffers.set(ctx.canvas, buffer);
-  }
+  if (!buffer) { buffer = ctx.canvas.ownerDocument.createElement("canvas"); fadeBuffers.set(ctx.canvas, buffer); }
+  let contour = gateActorContours.get(ctx.canvas);
+  if (!contour) { contour = ctx.canvas.ownerDocument.createElement("canvas"); gateActorContours.set(ctx.canvas, contour); }
   const width = Math.max(1, Math.ceil(post.width));
   const height = Math.max(1, Math.ceil(post.height));
   if (buffer.width !== width) buffer.width = width;
   if (buffer.height !== height) buffer.height = height;
+  if (contour.width !== width) contour.width = width;
+  if (contour.height !== height) contour.height = height;
   const mask = buffer.getContext("2d");
-  if (!mask) return;
+  const contourCtx = contour.getContext("2d");
+  if (!mask || !contourCtx) return;
   const scaleX = width / post.width;
   const scaleY = height / post.height;
+  const actor = { x: (player.x - post.x) * scaleX, y: (player.y - post.y) * scaleY,
+    width: player.width * scaleX, height: player.height * scaleY };
+  const revealHeight = Math.max(0, (revealBottom - post.y) * scaleY);
   mask.clearRect(0, 0, width, height);
   mask.save();
   mask.imageSmoothingEnabled = false;
   mask.beginPath();
-  mask.rect(0, 0, width, Math.max(0, (revealBottom - post.y) * scaleY));
+  mask.rect(0, 0, width, revealHeight);
   mask.clip();
-  mask.drawImage(image, (player.x - post.x) * scaleX, (player.y - post.y) * scaleY,
-    player.width * scaleX, player.height * scaleY);
-  mask.globalCompositeOperation = "destination-in";
-  mask.drawImage(postImage, source.x, source.y, source.width, source.height, 0, 0, width, height);
+  mask.drawImage(image, actor.x, actor.y, actor.width, actor.height);
   mask.globalCompositeOperation = "source-atop";
   mask.fillStyle = `rgba(255, 244, 198, ${GATE_ACTOR_TINT_ALPHA})`;
   mask.fillRect(0, 0, width, height);
+  mask.globalCompositeOperation = "destination-in";
+  mask.drawImage(postImage, source.x, source.y, source.width, source.height, 0, 0, width, height);
   mask.restore();
+
+  // Dilate the actor mask by one canvas pixel, subtract the original actor,
+  // then clip the contour to opaque post pixels. This uses only canvas
+  // composites and avoids synchronous pixel readbacks in the render loop.
+  contourCtx.clearRect(0, 0, width, height);
+  contourCtx.save();
+  contourCtx.imageSmoothingEnabled = false;
+  contourCtx.beginPath();
+  contourCtx.rect(0, 0, width, revealHeight);
+  contourCtx.clip();
+  for (let dy = -1; dy <= 1; dy += 1) for (let dx = -1; dx <= 1; dx += 1) {
+    if (dx === 0 && dy === 0) continue;
+    contourCtx.drawImage(image, actor.x + dx, actor.y + dy, actor.width, actor.height);
+  }
+  contourCtx.globalCompositeOperation = "destination-out";
+  contourCtx.drawImage(image, actor.x, actor.y, actor.width, actor.height);
+  contourCtx.globalCompositeOperation = "destination-in";
+  contourCtx.drawImage(postImage, source.x, source.y, source.width, source.height, 0, 0, width, height);
+  contourCtx.globalCompositeOperation = "source-in";
+  contourCtx.fillStyle = "#181d1b";
+  contourCtx.fillRect(0, 0, width, height);
+  contourCtx.restore();
+
   ctx.save();
   ctx.globalAlpha *= GATE_ACTOR_OVERLAY_ALPHA;
+  ctx.drawImage(contour, post.x, post.y, post.width, post.height);
   ctx.drawImage(buffer, post.x, post.y, post.width, post.height);
   ctx.restore();
 }

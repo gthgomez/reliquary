@@ -1,16 +1,19 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
-import { existsSync, readFileSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
+import { dirname, join, relative } from "node:path";
 import { CANDIDATE_IDS, validateElderhallPack } from "./elderhall-pack.mjs";
+import { validateElderhallPortraits } from "./elderhall-portraits.mjs";
 
 export function selectElderhallWorld(release, env) {
   assert.ok([2, 5].includes(release.revision), "Unsupported Elderhall release revision");
   if (release.revision === 5) {
-    const { evidence, manifestSha256, worldSha256 } = release.approval ?? {};
+    const { evidence, candidateCommit, manifestSha256, worldSha256, portraitsSha256, artifactSha256 } = release.approval ?? {};
     assert.ok(typeof evidence === "string" && evidence.trim() &&
-      /^[a-f0-9]{64}$/.test(manifestSha256) && /^[a-f0-9]{64}$/.test(worldSha256),
-    "Elderhall revision 5 requires a recorded visual and provenance approval with manifest and world hashes");
+      typeof candidateCommit === "string" && /^[a-f0-9]{40}$/.test(candidateCommit) &&
+      [manifestSha256, worldSha256, portraitsSha256, artifactSha256].every((hash) =>
+        typeof hash === "string" && /^[a-f0-9]{64}$/.test(hash)),
+    "Elderhall revision 5 requires recorded visual and provenance approval for the candidate commit, world, art and artifact");
     return 5;
   }
   const candidate = env.VERCEL_ENV !== "production" &&
@@ -20,9 +23,19 @@ export function selectElderhallWorld(release, env) {
 
 const sha256 = (data) => createHash("sha256").update(data).digest("hex");
 
+/** Bind the exact served bytes, including the shell, service worker and images. */
+export function elderhallArtifactDigest(staticDir) {
+  const files = readdirSync(staticDir, { recursive: true, withFileTypes: true })
+    .filter((file) => file.isFile() && !file.name.endsWith(".map"))
+    .map((file) => join(file.parentPath, file.name));
+  return sha256(JSON.stringify(files.map((file) => [
+    relative(staticDir, file).replaceAll("\\", "/"), sha256(readFileSync(file)),
+  ]).sort(([left], [right]) => left < right ? -1 : left > right ? 1 : 0)));
+}
+
 export function elderhallVisualGeometry(manifest) {
   const ids = new Set(["well-reference", "tree-reference", "cottage-reference",
-    "guild-reference", "shop-reference", "gate-reference", "bench"]);
+    "guild-reference", "shop-reference", "gate-reference", "bench", "inn"]);
   const entries = manifest.assets.map(({ id, dimensions, anchor, render_size_tiles }) =>
     [id.slice("elderhall.".length), { dimensions, anchor, render_size_tiles }]);
   return Object.fromEntries(entries.filter(([id]) => ids.has(id)));
@@ -31,20 +44,25 @@ export function elderhallVisualGeometry(manifest) {
 export async function approvedElderhallDigests(sourcePack) {
   const manifest = readFileSync(join(sourcePack, "manifest.json"));
   const geometry = elderhallVisualGeometry(validateElderhallPack(sourcePack));
-  const { elderhallBase } = await import("../src/game/maps/registry.ts");
-  const { makeElderhallCandidate } = await import("../src/game/maps/elderhall-candidate.ts");
+  const { elderhallBase, MAPS } = await import("../src/game/maps/registry.ts");
+  const { makeElderhallCandidate, makeElderhallCandidateInterior } = await import("../src/game/maps/elderhall-candidate.ts");
   const { elderhallCandidateObject } = await import("../src/game/render/elderhall-visual.ts");
   const { isOccupied } = await import("../src/game/world/movement.ts");
-  const world = makeElderhallCandidate(elderhallBase, geometry);
-  const visuals = world.objects.map((object) => elderhallCandidateObject(world.id, object, true, geometry));
-  const collision = world.ground.map((row, y) => [...row].map((_, x) => isOccupied(world, {}, x, y)));
-  return { manifestSha256: sha256(manifest), worldSha256: sha256(JSON.stringify({ world, visuals, collision })) };
+  const interiors = ["home", "guild_in", "shop_in", "inn_in"].map((id) => makeElderhallCandidateInterior(MAPS[id]));
+  const worlds = [makeElderhallCandidate(elderhallBase, geometry), MAPS.grove, ...interiors].map((world) => ({
+    world,
+    visuals: world.objects.map((object) => elderhallCandidateObject(world.id, object, true, geometry)),
+    collision: world.ground.map((row, y) => [...row].map((_, x) => isOccupied(world, {}, x, y))),
+  }));
+  const portraits = validateElderhallPortraits(join(dirname(sourcePack), "elderhall-portraits"), join(sourcePack, "../.."));
+  return { manifestSha256: sha256(manifest), worldSha256: sha256(JSON.stringify(worlds)), portraitsSha256: portraits.sha256 };
 }
 
 export async function assertApprovedElderhall(sourcePack, approval) {
   const digests = await approvedElderhallDigests(sourcePack);
   assert.equal(digests.manifestSha256, approval.manifestSha256, "Elderhall manifest differs from the approved pack");
-  assert.equal(digests.worldSha256, approval.worldSha256, "Elderhall map, collision, NPCs or warps differ from the approved world");
+  assert.equal(digests.worldSha256, approval.worldSha256, "Elderhall or Binding Grove differs from the approved world");
+  assert.equal(digests.portraitsSha256, approval.portraitsSha256, "Elderhall dialogue portraits differ from the approved art");
 }
 
 export function assertElderhallArtifact(staticDir, revision, sourcePack) {
@@ -97,5 +115,11 @@ export function assertElderhallArtifact(staticDir, revision, sourcePack) {
   const urls = new Set([...worker.matchAll(/url"?\s*:\s*"\/?([^"]+)"/g)].map((match) => match[1]));
   for (const file of ["manifest.json", ...manifest.assets.map((asset) => asset.file)]) {
     assert.ok(urls.has(`game/elderhall/${file}`), `Elderhall precache is missing ${file}`);
+  }
+  const portraits = validateElderhallPortraits(join(pack, "portraits"));
+  const sourcePortraits = validateElderhallPortraits(join(dirname(sourcePack), "elderhall-portraits"), projectRoot);
+  assert.equal(portraits.sha256, sourcePortraits.sha256, "Bundled Elderhall portraits differ from the source pack");
+  for (const file of ["manifest.json", ...portraits.manifest.assets.map((asset) => asset.file)]) {
+    assert.ok(urls.has(`game/elderhall/portraits/${file}`), `Elderhall portrait precache is missing ${file}`);
   }
 }

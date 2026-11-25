@@ -625,17 +625,6 @@
   font-size: 0.72rem;
   line-height: 1;
 }
-.hud-objective-expanded .hud-place,
-.hud-objective-expanded .hud-region {
-  opacity: 0.78;
-  transition: opacity 180ms ease;
-}
-@media (prefers-reduced-motion: reduce) {
-  .hud-objective-expanded .hud-place,
-  .hud-objective-expanded .hud-region {
-    transition: none;
-  }
-}
 .hud-place {
   font-family: Georgia, "Palatino Linotype", serif;
   font-size: 0.84rem;
@@ -763,45 +752,6 @@
   height: 1rem;
   color: var(--color-parchment);
 }
-.hud-objective-btn[aria-expanded="true"] .hud-objective-chevron {
-  transform: rotate(180deg);
-}
-.hud-objective-popover {
-  position: absolute;
-  top: calc(100% + 0.2rem);
-  left: 0;
-  right: 0;
-  max-width: 30rem;
-  z-index: 12;
-  padding: 0.45rem 0.5rem 0.5rem;
-  border-radius: var(--radius-md);
-  border: 1px solid color-mix(in oklab, var(--color-cream) 22%, transparent);
-  background: color-mix(in oklab, var(--color-ink) 92%, transparent);
-  box-shadow: 0 10px 28px color-mix(in oklab, var(--color-ink) 55%, transparent);
-  pointer-events: auto;
-  max-height: min(38dvh, 220px);
-  overflow-y: auto;
-  touch-action: pan-y;
-}
-.hud-objective-full {
-  margin: 0 0 0.45rem;
-  color: var(--color-cream);
-  font-size: 0.78rem;
-  line-height: 1.4;
-  text-wrap: pretty;
-}
-.hud-objective-lantern {
-  pointer-events: auto;
-  align-self: flex-start;
-  min-height: 44px;
-  padding: 0.35rem 0.55rem;
-  border: 0;
-  background: transparent;
-  color: var(--color-parchment);
-  font-size: 0.72rem;
-  text-decoration: underline;
-  text-underline-offset: 3px;
-}
 .hud-menu {
   flex: 0 0 auto;
   display: flex;
@@ -872,7 +822,6 @@
     clip-path: inset(50%);
   }
 }
-.top-stack:has(.hud-objective-expanded) .app-status,
 .game-root.is-battle .app-status {
   position: absolute;
   width: 1px;
@@ -881,7 +830,6 @@
   clip-path: inset(50%);
 }
 .hud button:focus-visible,
-.hud-objective-popover:focus-visible,
 .touch button:focus-visible {
   outline: 3px solid #fff3c7;
   outline-offset: 2px;
@@ -1001,6 +949,7 @@
   color: color-mix(in oklab, var(--color-ink) 78%, transparent);
   font-size: 0.85rem;
   line-height: 1.4;
+  white-space: pre-line;
 }
 .sheet-section {
   font-family: var(--font-display);
@@ -1241,6 +1190,10 @@
   display: flex;
   gap: 0.4rem;
   margin-bottom: 0.6rem;
+}
+.shop-portrait {
+  flex: 0 0 auto;
+  image-rendering: pixelated;
 }
 .shop-tabs button {
   flex: 1;
@@ -1738,8 +1691,12 @@
     )));
     transform: translateX(-50%);
   }
-  .game-root.has-explore-touch .hud-objective-popover {
-    max-height: min(30dvh, 150px);
+  .game-root.has-explore-touch .hud-chip-grow {
+    row-gap: 0.1rem;
+  }
+  .game-root.has-explore-touch .hud-region,
+  .game-root.has-explore-touch .hud-region-sep {
+    display: none;
   }
 }
 
@@ -1798,7 +1755,6 @@ button:disabled {
 .asset-recovery-control .btn-ghost {
   pointer-events: auto;
 }
-.top-stack:has(.hud-objective-expanded) .asset-recovery-control,
 .game-root.is-battle .asset-recovery-control {
   display: none;
 }

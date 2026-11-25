@@ -72,11 +72,11 @@ import {
   resetWorldCamRelief,
   type WorldCamReliefState,
 } from "./render/world-camera-safe.ts";
-import { clipSoftPath, clipStoneTransition, drawAtlasTile, paintCottageFloor, paintCottageRug, paintStoneRoadBorder, paintTileAccent, tileAtlasQuadrant } from "./render/tile-surface.ts";
+import { clipSoftPath, clipStoneTransition, drawAtlasTile, paintCottageFloor, paintCottageRug, paintOrganicStoneRoadBorder, paintStoneRoadBorder, paintTileAccent, tileAtlasQuadrant } from "./render/tile-surface.ts";
 import { paintDirtPathJunctions } from "./render/road-junctions.ts";
 import { snapWorldCameraForPlayer, type WorldCameraSnapState } from "./render/world-transform.ts";
 import { compareWorldDepth, paintActorBehindPost, paintPropWithLocalFade, paintWorldActorShadow, paintWorldPropShadow, PLAYER_HEIGHT_TILES, playerHeadCanvasYForCamera, resolvePlayerDrawFootprint, resolvePlayerScreenFootprint, resolveWorldPropLayout, shouldFadePropForPlayer, worldPropCullBounds, worldPropOverhang } from "./render/world-actors.ts";
-import { elderhallCandidateObject, elderhallGateRenderRegions, elderhallTerrainAtlas, paintCandidateGateFallback, paintCandidateBenchFallback, paintElderhallRoadJunctions } from "./render/elderhall-visual.ts";
+import { elderhallCandidateObject, elderhallGateRenderRegions, elderhallTerrainAtlas, paintCandidateGateFallback, paintCandidateBenchFallback, paintCandidateTerrainJunctions } from "./render/elderhall-visual.ts";
 import { captureChance, captureSucceeds, storeCapturedBeast } from "./systems/capture.ts";
 import { healBeast, playerActsFirst, spendSkillMp } from "./systems/combat.ts";
 import { applySkillEvents, resolveSkillUse } from "./systems/battle-engine.ts";
@@ -2533,8 +2533,8 @@ export class ReliquaryGame {
 			const groveDirt = m.id === "grove" ? this.images.tile_dirt : undefined;
 			const cottageExit = m.id === "home" ? m.warps.find((warp) => warp.to === "elderhall") : undefined;
 			let finishFloor: (() => void) | undefined;
-			if (elderhallCandidate && m.id === "elderhall" && candidateDirtAtlas && candidateGrassAtlas) {
-				finishFloor = () => paintElderhallRoadJunctions(ground, m, TILE, candidateDirtAtlas);
+			if (elderhallCandidate && (m.id === "elderhall" || m.id === "grove") && candidateDirtAtlas && candidateGrassAtlas) {
+				finishFloor = () => paintCandidateTerrainJunctions(ground, m, TILE, candidateDirtAtlas);
 			} else if (groveDirt) {
 				finishFloor = () => paintDirtPathJunctions(ground, m, TILE, (x, y) => {
 					ground.drawImage(groveDirt, x * TILE, y * TILE, TILE, TILE);
@@ -2548,22 +2548,27 @@ export class ReliquaryGame {
 			bakeMapTerrain({
 				map: m,
 				tileSize: TILE,
+				candidateTerrain: elderhallCandidate,
 				drawJunctions: finishFloor,
 				drawTile: (name, dx, dy, variant, pathMask, stoneMask) => {
 					const tx = dx / TILE;
 					const ty = dy / TILE;
-					const candidateAtlas = elderhallTerrainAtlas(m.id, name, elderhallCandidate);
+						const candidateAtlas = elderhallTerrainAtlas(m.id, name, elderhallCandidate);
 					const atlas = candidateAtlas ? this.images[candidateAtlas] : this.images[`tile_${name}-2x2`];
-					const base = this.images[`tile_${name}`];
+						const base = this.images[`tile_${name}`];
 					if (pathMask !== undefined) {
 						ground.save();
-						clipSoftPath(ground, dx, dy, TILE, pathMask);
+						clipSoftPath(ground, dx, dy, TILE, pathMask, elderhallCandidate && m.id === "grove");
 					}
 					if (atlas && (candidateAtlas || variant > 0)) {
 						drawAtlasTile(ground, atlas, dx, dy, TILE, tileAtlasQuadrant(variant, tx, ty));
 					} else if (base) ground.drawImage(base, dx, dy, TILE, TILE);
 					else {
 						ground.fillStyle = name === "water" ? "#3d6e8a" : name === "wall" ? "#3a342e" : "#3d4a38";
+						ground.fillRect(dx, dy, TILE, TILE);
+					}
+					if (elderhallCandidate && m.id === "grove" && candidateAtlas) {
+						ground.fillStyle = name === "grass" ? "rgba(24,48,32,.22)" : name === "dirt" ? "rgba(63,45,31,.11)" : "rgba(33,42,34,.06)";
 						ground.fillRect(dx, dy, TILE, TILE);
 					}
 					if (variant > 0 && !atlas) {
@@ -2582,13 +2587,32 @@ export class ReliquaryGame {
 					}
 					if (pathMask !== undefined) {
 						ground.restore();
-						if (m.roadBorder === "stone") paintStoneRoadBorder(ground, dx, dy, TILE, pathMask);
+						if (m.roadBorder === "stone") {
+							if (elderhallCandidate && m.id === "elderhall") paintOrganicStoneRoadBorder(ground, dx, dy, TILE, pathMask, tx, ty);
+							else paintStoneRoadBorder(ground, dx, dy, TILE, pathMask);
+						}
 					}
 				},
 				drawOverlay: (style, dx, dy, strength) => {
 					if (style === "edge") {
 						ground.fillStyle = `rgba(20,17,14,${0.12 + strength * 0.2})`;
 						ground.fillRect(dx + 2, dy + 2, TILE - 4, TILE - 4);
+					} else if (style === "variation") {
+						const tx = Math.floor(dx / TILE), ty = Math.floor(dy / TILE);
+						const phase = (tx * 3 + ty * 5) % 4;
+						const groundSymbol = m.ground[ty]?.[tx];
+						ground.fillStyle = groundSymbol === "p"
+							? `rgba(${m.id === "grove" ? "67,48,34" : "94,66,41"},${0.025 + strength * 0.025})`
+							: m.id === "grove" && phase % 2 === 0
+								? `rgba(103,131,82,${0.05 + strength * 0.04})`
+								: phase % 2 === 0
+									? `rgba(112,139,73,${0.045 + strength * 0.04})`
+									: `rgba(205,179,112,${0.03 + strength * 0.025})`;
+						ground.beginPath();
+						const road = groundSymbol === "p";
+						ground.ellipse(dx + TILE * (0.38 + (phase % 2) * 0.2), dy + TILE * (0.36 + (phase >> 1) * 0.22),
+							TILE * (road ? 0.32 : 1.05), TILE * (road ? 0.1 : 0.72), phase * 0.3, 0, Math.PI * 2);
+						ground.fill();
 					} else {
 						ground.fillStyle = `rgba(0,0,0,${strength * 0.15})`;
 						ground.fillRect(dx, dy + TILE - 6, TILE, 6);

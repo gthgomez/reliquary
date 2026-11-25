@@ -7,7 +7,7 @@
  *
  * Usage: node scripts/save-transfer-qa.mjs <local-url> <evidence-directory>
  */
-import { chromium } from "playwright";
+import { launchQaChrome } from "../tests/browser/helpers.mjs";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 
@@ -23,7 +23,7 @@ const check = (condition, message) => {
   if (!condition) report.failures.push(message);
 };
 
-const browser = await chromium.launch({ channel: process.env.RELIQUARY_QA_CHANNEL ?? "msedge", headless: true });
+const browser = await launchQaChrome("msedge");
 report.browser = browser.version();
 try {
   const context = await browser.newContext({

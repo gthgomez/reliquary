@@ -124,7 +124,6 @@ async function sampleWorld(page, label) {
       report,
       canvasClientTop: r?.top ?? null,
       menuOpen: document.querySelector(".game-root")?.classList.contains("is-ui-modal") ?? false,
-      objectiveOpen: document.querySelector(".hud-objective-popover") != null,
     };
   }, label);
 }
@@ -160,10 +159,6 @@ async function measurePlayerHudVisibility(page) {
     if (!canvas || !report) return { ok: false, reason: "missing canvas or report" };
     const cr = canvas.getBoundingClientRect();
     const scaleY = canvas.height > 0 ? cr.height / canvas.height : 1;
-    const topStack = document.querySelector(".top-stack");
-    const popover = document.querySelector(".hud-objective-popover");
-    void topStack;
-    void popover;
     const headCanvasY = report.effectivePlayerHeadCanvasY ?? report.playerHeadCanvasY;
     const hudFloorCanvasY = report.hudInsetBottom + 4;
     const spriteTopClientY = cr.top + headCanvasY * scaleY;
@@ -255,12 +250,11 @@ try {
 
     if (await page.locator(".hud-objective-btn").count()) {
       await page.locator(".hud-objective-btn").first().click();
-      await page.waitForSelector(".hud-objective-popover", { timeout: 5000 });
+      await page.getByRole("dialog", { name: "Lantern", exact: true }).waitFor();
       await page.waitForTimeout(200);
       log.samples.push(await sampleWorld(page, "objective-open"));
       await page.screenshot({ path: join(outDir, "world-390x667-objective-open.png") });
-      log.visibilityObjectiveOpen390 = await measurePlayerHudVisibility(page);
-      await page.locator(".hud-objective-btn").first().click();
+      await page.getByRole("dialog", { name: "Lantern", exact: true }).getByRole("button", { name: "Close", exact: true }).click();
     }
 
     const menuYBefore = (await page.locator(".hud-menu").boundingBox())?.y;
@@ -379,10 +373,11 @@ try {
     await page.waitForTimeout(400);
     if (await page.locator(".hud-objective-btn").count()) {
       await page.locator(".hud-objective-btn").first().click();
-      await page.waitForSelector(".hud-objective-popover", { timeout: 5000 });
+      await page.getByRole("dialog", { name: "Lantern", exact: true }).waitFor();
     }
-    log.visibilityNorth320 = await measurePlayerHudVisibility(page);
     await page.screenshot({ path: join(outDir, "world-320x568-home-y1-objective-open.png") });
+    await page.getByRole("dialog", { name: "Lantern", exact: true }).getByRole("button", { name: "Close", exact: true }).click();
+    log.visibilityNorth320 = await measurePlayerHudVisibility(page);
   }, { textScale: 2 });
 
   writeFileSync(join(outDir, "production-runtime-probe.json"), JSON.stringify({ note: "Run scripts/assert-production-runtime.mjs on build:web output" }, null, 2));

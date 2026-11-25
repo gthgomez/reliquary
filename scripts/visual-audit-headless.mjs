@@ -162,19 +162,18 @@ async function runAudit() {
       await page.screenshot({ path: join(auditDir, `${vp.name}-03-cottage-overworld.png`) });
       await checkOverflow("Cottage Overworld");
 
-      // --- Scene 4: Objective Expander ---
+      // --- Scene 4: Objective reading in Lantern ---
       await page.locator(".hud-objective-btn").click();
       await page.waitForTimeout(200);
       const objectiveExpandedBoxes = await getElementBoxes({
         hudRow: ".hud-row",
         hudMenu: ".hud-menu",
-        hudObjectiveFull: ".hud-objective-full",
+        objectiveGuidance: ".overlay-panel .sheet-sub",
       });
       metrics.push({ viewport: vp.name, scene: "Objective Expanded", boxes: objectiveExpandedBoxes });
       await page.screenshot({ path: join(auditDir, `${vp.name}-04-objective-expanded.png`) });
       await checkOverflow("Objective Expanded");
-      // Collapse objective
-      await page.locator(".hud-objective-btn").click();
+      await page.getByRole("dialog", { name: "Lantern" }).getByRole("button", { name: "Close", exact: true }).click();
       await page.waitForTimeout(200);
 
       // --- Scene 5: Party Screen (Empty/Starter-less) ---
