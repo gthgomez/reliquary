@@ -15,12 +15,12 @@ mkdirSync(output, { recursive: true });
 
 let activeRoot = resolve(legacyDir);
 const { server, baseUrl } = await startStaticServer(0, { getRoot: () => activeRoot });
-const transitUrl = baseUrl + "api/release-qualification";
 const report = { browser: null, steps: [], errors: [] };
 let browser, context, page;
 
 async function openTitle() {
-  await page.goto(baseUrl, { waitUntil: "domcontentloaded" });
+  if (page.url() === baseUrl) await page.reload({ waitUntil: "domcontentloaded" });
+  else await page.goto(baseUrl, { waitUntil: "domcontentloaded" });
   await waitForGameBoot(page);
 }
 
@@ -41,32 +41,37 @@ async function start() {
   await page.getByText("Rowan's Cottage", { exact: true }).waitFor();
 }
 
-async function waitForCache(candidate) {
-  await page.waitForFunction(async ([asset, expected]) => {
-    if (!navigator.serviceWorker.controller) return false;
+async function waitForCache(candidate, entry = null) {
+  await page.waitForFunction(async ([asset, expected, expectedEntry]) => {
+    if (navigator.serviceWorker.controller?.state !== "activated") return false;
     const cacheList = await caches.keys();
     const precache = cacheList.find((name) => name.startsWith("workbox-precache"));
     if (!precache) return false;
     const cache = await caches.open(precache);
-    return Boolean(await cache.match(asset, { ignoreSearch: true })) === expected;
-  }, [candidateImage, candidate], { timeout: 30_000 });
+    if (Boolean(await cache.match(asset, { ignoreSearch: true })) !== expected) return false;
+    if (!expectedEntry) return true;
+    const shell = await cache.match("/index.html", { ignoreSearch: true });
+    return (await shell?.text())?.includes(expectedEntry) && Boolean(await cache.match(expectedEntry, { ignoreSearch: true }));
+  }, [candidateImage, candidate, entry], { timeout: 30_000 });
 }
 
 async function switchArtifact(dir, candidate) {
   if (!(await page.evaluate(() => navigator.onLine))) await context.setOffline(false);
-  // Leave the game before swapping the server. Its lifecycle gets a chance to
-  // write the active run before the next worker controls this origin.
-  if (page.url() !== transitUrl) await page.goto(transitUrl);
-  activeRoot = dir;
-  // Reopen the installed game online and let its normal update check replace
-  // the active shell. The cached assets can arrive before activation, so
-  // also wait to observe the new executable entry in the real document.
+  if (page.url() !== baseUrl) await openTitle();
+  await page.waitForFunction(() => navigator.serviceWorker.controller?.state === "activated");
   const expectedEntry = readFileSync(join(dir, "index.html"), "utf8").match(/src="(\/assets\/index-[^"]+\.js)"/)?.[1];
   assert.ok(expectedEntry, "The replacement artifact has a game entry");
-  await openTitle();
+  // Trigger the update from the live controlled game, as the production
+  // update check does. The game applies its ordinary save and reload guard.
+  activeRoot = dir;
+  await page.evaluate(async () => {
+    const registration = await navigator.serviceWorker.getRegistration();
+    if (!registration) throw new Error("The installed game has no worker registration");
+    await registration.update();
+  });
   await page.waitForFunction((entry) => document.querySelector('script[type="module"][src]')?.getAttribute("src") === entry,
     expectedEntry, { timeout: 45_000 });
-  await waitForCache(candidate);
+  await waitForCache(candidate, expectedEntry);
 }
 
 async function exportFromTitle(name, expected) {
@@ -85,12 +90,6 @@ try {
   context = await browser.newContext({ serviceWorkers: "allow", acceptDownloads: true });
   await context.tracing.start({ screenshots: true, snapshots: true });
   page = await context.newPage();
-  // Keep a regular same-origin HTML client during the switch. Chromium's
-  // native JSON document can leave worker update jobs without a client ID.
-  await page.route(transitUrl, (route) => route.fulfill({
-    contentType: "text/html; charset=utf-8",
-    body: "<!doctype html><title>Elderhall release qualification</title>",
-  }));
   page.on("pageerror", (error) => report.errors.push(String(error?.stack ?? error)));
   await openTitle();
   await waitForCache(false);
@@ -99,7 +98,7 @@ try {
   assert.equal(baseline.worldRevision, 2);
   report.steps.push({ name: "Fresh save on revision 2", worldRevision: baseline.worldRevision });
 
-  await page.goto(transitUrl);
+  await page.goto(baseUrl + "game/manifest.json");
   // Only the blocked-tile upgrade uses a fixture. It derives from the real
   // revision 2 save and keeps its character, party, inventory and flags.
   const fixture = { ...baseline, mapId: "elderhall", x: 9, y: 6, gold: 321 };
