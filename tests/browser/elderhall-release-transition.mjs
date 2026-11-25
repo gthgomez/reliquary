@@ -7,9 +7,13 @@ import { launchQaChrome, startStaticServer, waitForGameBoot } from "./helpers.mj
 
 const legacyDir = process.env.RELIQUARY_LEGACY_STATIC_ROOT;
 assert.ok(legacyDir, "Set RELIQUARY_LEGACY_STATIC_ROOT to the preserved revision 2 production artifact");
+const rollbackDir = process.env.RELIQUARY_ROLLBACK_STATIC_ROOT;
+assert.ok(rollbackDir, "Set RELIQUARY_ROLLBACK_STATIC_ROOT to the current revision 2 rollback artifact");
 const candidateDir = resolve(process.env.RELIQUARY_STATIC_ROOT ?? ".vercel/output/static");
 const output = resolve(process.env.RELIQUARY_TRANSITION_EVIDENCE ?? "qa-evidence/elderhall-transition");
 const saveKey = "reliquary.save.v3";
+const backupKey = "reliquary.save.v3.bak";
+const archiveKey = "reliquary.save.forward";
 const candidateImage = "/game/elderhall/portraits/maren.png";
 mkdirSync(output, { recursive: true });
 
@@ -24,8 +28,8 @@ async function openTitle() {
   await waitForGameBoot(page);
 }
 
-async function readSavedBytes() {
-  return page.evaluate((key) => localStorage.getItem(key), saveKey);
+async function readSavedBytes(key = saveKey) {
+  return page.evaluate((slot) => localStorage.getItem(slot), key);
 }
 
 async function save() {
@@ -124,22 +128,39 @@ try {
   await page.waitForTimeout(230);
   const progressed = await save();
   assert.notEqual(progressed.x, upgraded.x, "normal input advances the candidate save");
-  await switchArtifact(resolve(legacyDir), false);
+  await switchArtifact(resolve(rollbackDir), false);
   const newerBytes = await readSavedBytes();
+  const backupBytes = await readSavedBytes(backupKey);
   assert.equal(JSON.parse(newerBytes).worldRevision, 5);
+  assert.equal(JSON.parse(backupBytes).worldRevision, 5);
+  assert.notEqual(backupBytes, newerBytes, "rollback must cover two distinct protected records");
   await openTitle();
   const newerSha256 = await exportFromTitle("Export newer save", newerBytes);
   assert.equal(await page.getByRole("button", { name: "Continue", exact: true }).count(), 0);
   await start();
   const fallback = await save();
-  assert.equal(fallback.worldRevision, 2, "rollback writes a compatible save");
-  report.steps.push({ name: "Rollback and exact-byte newer-save export", newerSha256 });
+  assert.deepEqual([fallback.worldRevision, fallback.mapId], [2, "home"],
+    "rollback writes a compatible save in the cottage");
+  await page.keyboard.down("ArrowDown");
+  try {
+    await page.getByText("Elderhall", { exact: true }).waitFor();
+  } finally {
+    await page.keyboard.up("ArrowDown");
+  }
+  const fallbackProgress = await save();
+  assert.equal(fallbackProgress.worldRevision, 2);
+  assert.equal(fallbackProgress.mapId, "elderhall", "a second compatible save must persist active play");
+  assert.equal(await readSavedBytes(backupKey), backupBytes);
+  assert.equal(await readSavedBytes(archiveKey), newerBytes);
+  report.steps.push({ name: "Rollback and exact-byte preservation of two newer records", newerSha256,
+    backupSha256: createHash("sha256").update(backupBytes).digest("hex") });
 
   await switchArtifact(candidateDir, true);
   await context.setOffline(true);
   await openTitle();
   const archivedSha256 = await exportFromTitle("Export archived save", newerBytes);
   assert.equal(archivedSha256, newerSha256);
+  assert.equal(await readSavedBytes(backupKey), backupBytes);
   await page.getByRole("button", { name: "Continue", exact: true }).click();
   await page.getByRole("button", { name: "Menu", exact: true }).click();
   const [chooser] = await Promise.all([

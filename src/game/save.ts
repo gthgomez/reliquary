@@ -211,14 +211,17 @@ export function findArchivedSave(source: ReadableSaveStorage | null = browserSto
  * this build cannot even parse. Refuse the overwrite unless an exact copy
  * is preserved; a different forward archive must not be displaced.
  */
-function quarantineForwardSave(target: SaveStorage, previous: string | null): boolean {
-  if (previous === null || !isForwardSave(previous)) return true;
+function protectForwardSave(
+  target: SaveStorage,
+  previous: string | null,
+): "safe" | "archive-occupied" | "storage-failed" {
+  if (previous === null || !isForwardSave(previous)) return "safe";
   // Storage errors propagate to writeSave's failure handler before any primary
   // write, backup rotation or legacy cleanup can occur.
   const archived = target.getItem(SAVE_FORWARD_KEY);
-  if (archived !== null) return archived === previous;
+  if (archived !== null) return archived === previous ? "safe" : "archive-occupied";
   target.setItem(SAVE_FORWARD_KEY, previous);
-  return target.getItem(SAVE_FORWARD_KEY) === previous;
+  return target.getItem(SAVE_FORWARD_KEY) === previous ? "safe" : "storage-failed";
 }
 
 export function writeSave(save: GameSave, target: SaveStorage | null = browserStorage()): boolean {
@@ -233,16 +236,20 @@ export function writeSave(save: GameSave, target: SaveStorage | null = browserSt
       || target.getItem(LEGACY_SAVE_BACKUP) !== null
       || target.getItem(LEGACY_V1_KEY) !== null
       || target.getItem(LEGACY_V1_BACKUP) !== null;
-    if (!quarantineForwardSave(target, previous)) return false;
-    const rotateBackup = previous !== null && parseSave(previous) !== null;
-    // Check backup rotation before touching the primary.
-    // A forward backup may be the only remaining copy of a newer-build save.
-    if (rotateBackup && !quarantineForwardSave(target, target.getItem(SAVE_BACKUP))) return false;
+    if (protectForwardSave(target, previous) !== "safe") return false;
+    const hasBackupCandidate = previous !== null && parseSave(previous) !== null;
+    // A distinct newer backup can stay in its slot while the player saves
+    // their active run. A failed attempt to preserve the backup still vetoes
+    // the write before any durable primary change.
+    const backupProtection = hasBackupCandidate
+      ? protectForwardSave(target, target.getItem(SAVE_BACKUP))
+      : "safe";
+    if (backupProtection === "storage-failed") return false;
     // Write the primary before rotating backups or removing legacy slots.
     target.setItem(SAVE_KEY, text);
     // Backup rotation is best-effort — under quota a failed backup must not
     // undo a durable primary write.
-    if (rotateBackup) {
+    if (hasBackupCandidate && backupProtection === "safe") {
       try { target.setItem(SAVE_BACKUP, previous); } catch { /* primary is durable */ }
     }
     if (hadLegacySlots) {

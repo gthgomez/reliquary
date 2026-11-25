@@ -117,10 +117,18 @@ progress remains available for recovery in a compatible build. If a revision
 **Export archived save**. Export it and use **Import** from the Lantern menu
 to resume it. The active run remains selected until the player imports.
 
-Run the same-origin upgrade and rollback check against preserved revision 2
-and the current probe-free candidate builds.
+Preserve the current production revision 2 artifact for rollback. It can
+write an active revision 2 save while a distinct revision 5 archive and
+backup remain in their original slots. An older revision 2 build can pause
+an update when it cannot safely rotate a backup. In that case, export any
+unsaved progress from Lantern before closing and reopening the game.
+
+Run the same-origin transition check with the historical revision 2 artifact
+for the initial upgrade, the current revision 2 build for rollback, and the
+probe-free revision 5 build for upgrade and recovery.
 
 ```sh
 RELIQUARY_LEGACY_STATIC_ROOT=/path/to/revision-2/.vercel/output/static \
+  RELIQUARY_ROLLBACK_STATIC_ROOT=/path/to/current-revision-2/.vercel/output/static \
   RELIQUARY_QA_CHANNEL=chrome node tests/browser/elderhall-release-transition.mjs
 ```

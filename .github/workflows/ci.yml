@@ -123,8 +123,12 @@ jobs:
           git worktree add --detach "$legacy" FETCH_HEAD
           npm ci --prefix "$legacy"
           (cd "$legacy" && VERCEL_ENV=production npm run build:web)
+          rollback="$RUNNER_TEMP/reliquary-r2-rollback"
+          VERCEL_ENV=production npm run build:web
+          cp -a .vercel/output/static "$rollback"
           npm run build:web
-          RELIQUARY_LEGACY_STATIC_ROOT="$legacy/.vercel/output/static" node tests/browser/elderhall-release-transition.mjs
+          RELIQUARY_LEGACY_STATIC_ROOT="$legacy/.vercel/output/static" \
+            RELIQUARY_ROLLBACK_STATIC_ROOT="$rollback" node tests/browser/elderhall-release-transition.mjs
           node --input-type=module -e '
             import { approvedElderhallDigests, elderhallArtifactDigest } from "./scripts/elderhall-release.mjs";
             console.log(JSON.stringify({
