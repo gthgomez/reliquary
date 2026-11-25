@@ -19,16 +19,31 @@ try {
     assert.equal(dialogChrome.explore, false, "no walk pad during dialogue");
     assert.equal(dialogChrome.dialogTouch, true, "compact dialog touch row");
     assert.equal(dialogChrome.dpad, false, "N/W/E/S hidden while Next is shown");
-    assert.equal(dialogChrome.ab, true, "A/B still available for dialogue");
+    assert.equal(dialogChrome.ab, true, "A and the reserved B position remain in the dialogue row");
     assert.equal(await page.getByRole("button", { name: "A — Next", exact: true }).count(), 1);
     const firstPage = await page.locator(".dialog-text").innerText();
-    assert.ok(await page.getByRole("button", { name: "B — Back", exact: true }).isDisabled());
-    assert.ok(await page.locator(".dialog-back").isDisabled());
+    const firstABox = await page.getByRole("button", { name: "A — Next", exact: true }).boundingBox();
+    assert.ok(firstABox, "A is reachable on the first page");
+    assert.equal(await page.getByRole("button", { name: /^B —/ }).count(), 0,
+      "unavailable first-page Back is absent from the touch controls");
+    assert.equal(await page.locator(".dialog-back").count(), 0,
+      "unavailable first-page Back is absent from the panel");
     await page.keyboard.press("Escape");
     assert.equal(await page.locator(".dialog-text").innerText(), firstPage);
-    await page.getByRole("button", { name: "A — Next", exact: true }).click();
-    await page.getByRole("button", { name: "B — Back", exact: true }).click();
+    await page.getByRole("button", { name: "A — Next", exact: true }).tap();
+    assert.notEqual(await page.locator(".dialog-text").innerText(), firstPage, "A advances one page");
+    const secondABox = await page.getByRole("button", { name: "A — Next", exact: true }).boundingBox();
+    assert.ok(secondABox, "A remains reachable after advancing");
+    for (const key of ["x", "y", "width", "height"])
+      assert.ok(Math.abs(firstABox[key] - secondABox[key]) <= 1,
+        `A keeps its touch position across pages (${key})`);
+    assert.equal(await page.getByRole("button", { name: "B — Back", exact: true }).count(), 1,
+      "Back appears when a prior page exists");
+    await page.getByRole("button", { name: "B — Back", exact: true }).tap();
     assert.equal(await page.locator(".dialog-text").innerText(), firstPage);
+    await page.keyboard.press("Escape");
+    assert.equal(await page.locator(".dialog-text").innerText(), firstPage,
+      "Escape remains inert on the first page after Back");
 
     for (let i = 0; i < 16; i += 1) {
       if ((await page.locator(".dialog").count()) === 0) break;
@@ -60,7 +75,31 @@ try {
     await page.waitForFunction(() => window.__controlsTest.getPos().x === 12);
     await page.waitForTimeout(220);
     assert.equal((await page.evaluate(() => window.__controlsTest.getPos())).x, 12, "assistive click requests one step");
-  });
+
+    // Starter confirmation exercises the later-page Back and Cancel paths
+    // using the same compact A/B touch controls.
+    await page.evaluate(() => window.__controlsTest.warp("grove", 4, 7));
+    await page.keyboard.down("ArrowUp");
+    await page.waitForFunction(() => window.__controlsTest.getYaw() !== 0);
+    await page.keyboard.up("ArrowUp");
+    await page.keyboard.press("z");
+    await page.waitForSelector(".dialog");
+    assert.equal(await page.getByRole("button", { name: "A — Next", exact: true }).count(), 1);
+    assert.equal(await page.getByRole("button", { name: "B — Cancel", exact: true }).count(), 1,
+      "starter inspection keeps its real Cancel action");
+    await page.getByRole("button", { name: "A — Next", exact: true }).tap();
+    assert.equal(await page.getByRole("button", { name: "B — Back", exact: true }).count(), 1,
+      "starter confirmation exposes Back after advancing");
+    await page.getByRole("button", { name: "B — Back", exact: true }).tap();
+    await page.getByRole("button", { name: "A — Next", exact: true }).tap();
+    await page.getByRole("button", { name: "A — Next", exact: true }).tap();
+    assert.equal(await page.getByRole("button", { name: "A — Bind Emberkit", exact: true }).count(), 1,
+      "final starter confirmation remains reachable");
+    await page.getByRole("button", { name: "B — Cancel", exact: true }).tap();
+    await page.waitForSelector(".dialog", { state: "detached" });
+    assert.equal((await page.evaluate(() => window.__controlsTest.getPos())).mode, "world",
+      "later-page B Cancel declines the starter without opening naming");
+  }, { context: { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true } });
   console.log("[touch-arbitration] dialog vs overworld pad ok");
 
   await withBrowser(async (page) => {
@@ -81,7 +120,11 @@ try {
     assert.equal(dialogClassic.explore, true, "classic keeps exploration pad during dialogue");
     assert.equal(dialogClassic.dpad, true, "dpad visible in classic dialogue");
     assert.equal(await page.getByRole("button", { name: "A — Next", exact: true }).count(), 1, "classic dialogue labels A as Next");
-    assert.equal(await page.getByRole("button", { name: "B — Back", exact: true }).count(), 1, "classic dialogue labels B as Back");
+    assert.equal(await page.getByRole("button", { name: /^B —/ }).count(), 0,
+      "classic dialogue omits unavailable first-page Back");
+    await page.getByRole("button", { name: "A — Next", exact: true }).click();
+    assert.equal(await page.getByRole("button", { name: "B — Back", exact: true }).count(), 1,
+      "classic dialogue exposes B Back after advancing");
 
     for (let i = 0; i < 16; i += 1) {
       if ((await page.locator(".dialog").count()) === 0) break;

@@ -4,7 +4,7 @@
  * and the test probe observes coordinates. Controlled random draws make
  * encountered species and binding outcomes reproducible.
  */
-import { chromium } from "playwright";
+import { launchQaChrome } from "../tests/browser/helpers.mjs";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { faceDirection, walkTo } from "./natural-journey-controls.mjs";
@@ -21,7 +21,7 @@ if (trialSeed !== null && (!Number.isInteger(trialSeed) || trialSeed <= 0 || tri
   throw new Error("RELIQUARY_TRIAL_SEED must be a nonzero 32-bit unsigned integer");
 mkdirSync(output, { recursive: true });
 
-const browser = await chromium.launch({ channel: process.env.RELIQUARY_QA_CHANNEL ?? "msedge", headless: true });
+const browser = await launchQaChrome("msedge");
 const viewport = { width: 1280, height: 800 };
 const report = { browser: browser.version(), viewport, trialSeed, events: [], errors: [], warnings: [] };
 const context = await browser.newContext({ viewport, serviceWorkers: "block" });
@@ -54,12 +54,26 @@ try {
   for (let i = 0; i < 3; i++) await page.locator(".dialog-next").click();
   await page.screenshot({ path: join(output, "02-intro-world.png") });
 
-  const objectiveAt = async (must) => {
-    const text = await page.locator(".hud-objective-preview").innerText();
-    if (!text.match(must)) throw new Error(`Objective expected /${must.source}/, got: ${text}`);
-    return text;
+  const objectiveAt = async (summaryMust, fullMust, hintMust = null) => {
+    const summary = await page.locator(".hud-objective-preview").innerText();
+    if (!summary.match(summaryMust)) throw new Error(`Objective summary expected /${summaryMust.source}/, got: ${summary}`);
+    await page.locator(".hud-objective-btn").click();
+    const region = page.getByRole("dialog", { name: "Lantern", exact: true });
+    try {
+      await region.waitFor({ state: "visible" });
+      const full = (await region.locator(".sheet-sub").first().textContent()).split("\n\n");
+      if (!full[0]?.match(fullMust)) throw new Error(`Full objective expected /${fullMust.source}/, got: ${full[0] ?? "(missing)"}`);
+      if (hintMust) {
+        if (!full[1]?.match(hintMust)) throw new Error(`Objective context expected /${hintMust.source}/, got: ${full[1] ?? "(missing)"}`);
+      } else if (full.length !== 1) {
+        throw new Error(`Expected no extra objective context, got: ${full.slice(1).join(" | ")}`);
+      }
+    } finally {
+      await region.getByRole("button", { name: "Close", exact: true }).click();
+    }
+    return summary;
   };
-  await objectiveAt(/doorway at the bottom/);
+  await objectiveAt(/Leave the cottage/, /Speak a pact at the Binding Grove/, /doorway at the bottom/);
 
   async function press(code, times = 1) {
     for (let i = 0; i < times; i++) await page.keyboard.press(code);
@@ -77,7 +91,7 @@ try {
 
   let position = await travel("home", { x: 5, y: 8 });
   if (position.map !== "elderhall") throw new Error("Home exit failed");
-  await objectiveAt(/Binding Grove/);
+  await objectiveAt(/Find the Binding Grove/, /Speak a pact at the Binding Grove/, /opening beside the grove sign/);
   const maren = MAPS.elderhall.npcs.find((npc) => npc.id === "maren");
   if (!maren) throw new Error("Elder Maren is missing from Elderhall");
   await travel("elderhall", { x: maren.x, y: maren.y + 1 });
@@ -92,10 +106,11 @@ try {
   if (position.map !== "grove") throw new Error("Grove entrance failed");
   await page.screenshot({ path: join(output, "03-grove.png") });
   await travel("grove", { x: 4, y: 7 });
+  await objectiveAt(/Make a pact/, /Speak a pact at the Binding Grove/, /inspect all three/);
   await faceNorth();
   await press("KeyZ");
   await finishStarterPact(page, { nickname: "Kindling" });
-  await objectiveAt(/Wildwood/);
+  await objectiveAt(/Return to Elderhall/, /Wildwood/, /Return east to Elderhall/);
   report.events.push("Pact spoken with Emberkit, named Kindling; objective advanced to Thornkeep");
 
   // Back to Elderhall, then Briar Road for the first wild encounter.
@@ -529,7 +544,7 @@ try {
   page = await openPage();
   await page.goto(url, { waitUntil: "load" });
   await page.getByRole("button", { name: "Continue", exact: true }).click();
-  await objectiveAt(/Hollow Crown/);
+  await objectiveAt(/Rest or travel beyond the ash/, /Hollow Crown/);
   if ((await positionAt()).map !== "thornkeep") throw new Error("The completed game did not reopen in Thornkeep");
   await faceNorth();
   await press("KeyZ");

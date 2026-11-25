@@ -5,6 +5,7 @@ import { MAPS } from "../maps.ts";
 import { makeElderhallCandidate } from "../maps/elderhall-candidate.ts";
 import { bakeMapTerrain } from "../world/terrain.ts";
 import { elderhallRoadJunctions, paintElderhallRoadJunctions } from "./elderhall-visual.ts";
+import { paintCandidateWellApron } from "./road-junctions.ts";
 import { resolveWorldPropLayout } from "./world-actors.ts";
 
 function corner(dx: -1 | 1, dy: -1 | 1) {
@@ -42,7 +43,7 @@ test("the candidate's well apron is excluded while unoccupied village corners ar
   assert.ok(joins.some(({ x, y }) => x === 8 && y === 9), "the western crossroads remains rounded");
   assert.ok(joins.some(({ x, y }) => x === 9 && y === 12));
   assert.ok(!joins.some(({ x, y }) => x === 12 && y === 6), "the relocated gate post remains protected");
-  assert.ok(!joins.some(({ x, y }) => x === 12 && y === 8), "no repaint beside the cobble apron");
+  assert.ok(joins.some(({ x, y }) => x === 12 && y === 8), "the curved road edge rounds into the apron approach");
   assert.equal(JSON.stringify(map), before, "visual junction selection does not alter map or collision data");
 });
 
@@ -78,6 +79,24 @@ test("each clipped join repaints four original atlas tiles and a stone outline",
   assert.equal(calls.filter((call) => call === "atlas").length, 4);
   assert.equal(calls.filter((call) => call === "stroke").length, 2);
   assert.ok(calls.indexOf("clip") < calls.indexOf("atlas"));
+  assert.equal(calls.at(-1), "restore");
+});
+
+test("candidate well apron paints a rounded, segmented rim only on the preview map", () => {
+  const calls: string[] = [];
+  const context = {
+    save() { calls.push("save"); }, restore() { calls.push("restore"); }, beginPath() { calls.push("path"); },
+    ellipse() { calls.push("ellipse"); }, moveTo() {}, quadraticCurveTo() { calls.push("curve"); }, closePath() {}, fill() { calls.push("fill"); }, stroke() { calls.push("stroke"); },
+    fillRect() { calls.push("stone-joint"); }, clip() {}, setLineDash(dash: number[]) { if (dash.length) calls.push("broken-rim"); },
+  } as unknown as CanvasRenderingContext2D;
+  const candidate = makeElderhallCandidate(MAPS.elderhall);
+  assert.equal(paintCandidateWellApron(context, candidate, 32), true);
+  assert.equal(paintCandidateWellApron(context, MAPS.elderhall, 32), false, "production terrain keeps its original rendering");
+  assert.ok(calls.filter((call) => call === "curve").length >= 64, "inner and outer apron edges have smoothed organic curves");
+  assert.ok(calls.includes("ellipse"), "the well gets a rounded contact shadow");
+  assert.ok(calls.includes("broken-rim"), "rim stones have broken joints rather than a solid outline");
+  assert.ok(calls.includes("stone-joint"), "the paved surface has deterministic inset joints");
+  assert.equal(calls[0], "save");
   assert.equal(calls.at(-1), "restore");
 });
 
@@ -122,7 +141,7 @@ test("the real engine bakes and caches preview junctions only when both candidat
     import { MAPS } from "./src/game/maps.ts";
     import { elderhallRoadJunctions } from "./src/game/render/elderhall-visual.ts";
     let strokes = 0, images = 0;
-    const ground = { drawImage() { images++; }, fillRect() {}, save() {}, restore() {}, beginPath() {}, moveTo() {},
+    const ground = { drawImage() { images++; }, fillRect() {}, ellipse() {}, fill() {}, save() {}, restore() {}, beginPath() {}, moveTo() {},
       lineTo() {}, quadraticCurveTo() {}, closePath() {}, rect() {}, clip() {}, translate() {}, scale() {},
       setLineDash() {}, stroke() { strokes++; } };
     globalThis.document = { createElement: () => ({ width: 0, height: 0, getContext: () => ground }) };
@@ -134,7 +153,7 @@ test("the real engine bakes and caches preview junctions only when both candidat
     const joins = elderhallRoadJunctions(MAPS.elderhall).length;
     assert.ok(joins >= 6, "both current and proposed gate positions retain other rounded joins");
     const expected = process.env.VITE_ELDERHALL_CANDIDATE === "1" ? 2 * joins : 0;
-    assert.equal(strokes, expected);
+      assert.equal(strokes, expected + (process.env.VITE_ELDERHALL_CANDIDATE === "1" ? 2 : 0));
     const firstImages = images; game.drawWorld(screen);
     assert.equal(images, firstImages, "cached terrain is reused between frames");
     game.terrain = null; delete game.images["tile_elderhall-grass-atlas"]; strokes = 0;

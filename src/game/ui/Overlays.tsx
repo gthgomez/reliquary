@@ -27,6 +27,9 @@ import {
 import { shopBuyAffordability } from "./ui-chrome.ts";
 import { objectiveHint, objectivePreview } from "../systems/objective.ts";
 import { clearTouchHolds, requestAccessibleStep, updateTouchHold, type HoldId } from "./touch-hold.ts";
+import { shouldShowTitleWorldRetry } from "./asset-recovery.ts";
+import { isElderhallCandidateBuild } from "../build-flags.ts";
+import { portraitSource } from "../portraits.ts";
 
 export function TitleScreen({ game, snap }: { game: ReliquaryGame; snap: Snapshot }) {
   const [confirmingReplace, setConfirmingReplace] = useState(false);
@@ -61,6 +64,33 @@ export function TitleScreen({ game, snap }: { game: ReliquaryGame; snap: Snapsho
       <div className="title-copy">
         <h1 className="title-word">Reliquary</h1>
         <p className="title-tag">Bind the wild. Keep the old roads.</p>
+        {!snap.worldAssetsReady ? (
+          <div className="title-save-recovery">
+            <p role="status" aria-live="polite">
+              {snap.worldAssetFailures.length
+                ? "Some world art could not be loaded. Your saved journey is unchanged."
+                : snap.worldAssetsStalled
+                  ? "World art is taking longer than expected. Your saved journey is unchanged."
+                  : "Preparing the world. Your saved journey is unchanged."}
+            </p>
+            <div className="load-bar" role="progressbar" aria-label="World art loading" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(snap.loadProgress * 100)}>
+              <div className="load-fill" style={{ width: `${Math.round(snap.loadProgress * 100)}%` }} />
+            </div>
+            {shouldShowTitleWorldRetry(snap) ? (
+              <button type="button" className="btn-ghost" onClick={() => void game.retryWorldAssets()}>
+                Retry world art
+              </button>
+            ) : null}
+          </div>
+        ) : null}
+        {snap.worldAssetsReady && snap.assetFailures.length ? (
+          <div className="title-save-recovery" role="status">
+            <p>Some required game art could not be loaded. Your save is unchanged.</p>
+            <button type="button" className="btn-ghost" onClick={() => void game.retryWorldAssets()}>
+              Retry game art
+            </button>
+          </div>
+        ) : null}
         {snap.hasSave && confirmingReplace ? (
           <div
             className="title-confirm"
@@ -106,6 +136,7 @@ export function TitleScreen({ game, snap }: { game: ReliquaryGame; snap: Snapsho
                   setConfirmingReplace(false);
                   game.startNew();
                 }}
+                disabled={!snap.worldAssetsReady}
               >
                 Begin new game
               </button>
@@ -119,6 +150,7 @@ export function TitleScreen({ game, snap }: { game: ReliquaryGame; snap: Snapsho
                   type="button"
                   className="btn-primary"
                   onClick={() => game.continueGame()}
+                  disabled={!snap.worldAssetsReady}
                 >
                   Continue
                 </button>
@@ -127,6 +159,7 @@ export function TitleScreen({ game, snap }: { game: ReliquaryGame; snap: Snapsho
                   className="btn-ghost"
                   ref={newGameRef}
                   onClick={() => setConfirmingReplace(true)}
+                disabled={!snap.worldAssetsReady}
                 >
                   New Game
                 </button>
@@ -136,18 +169,27 @@ export function TitleScreen({ game, snap }: { game: ReliquaryGame; snap: Snapsho
                 type="button"
                 className="btn-primary"
                 onClick={() => game.startNew()}
+                disabled={!snap.worldAssetsReady}
               >
                 Start
               </button>
             )}
           </div>
         )}
-        {game.hasNewerSave && !confirmingReplace ? (
+        {(game.hasNewerSave || game.hasArchivedSave) && !confirmingReplace ? (
           <div className="title-save-recovery">
-            <p>A journey here was saved by a newer version. Export it here and import the file in that version.</p>
-            <button type="button" className="btn-ghost" onClick={() => setExportFailed(!game.exportNewerSave())}>
-              Export newer save
-            </button>
+            {game.hasNewerSave ? <>
+              <p>A journey here was saved by a newer version. Export it here and import the file in that version.</p>
+              <button type="button" className="btn-ghost" onClick={() => setExportFailed(!game.exportRecoverySave())}>
+                Export newer save
+              </button>
+            </> : null}
+            {game.hasArchivedSave ? <>
+              <p>A previous version archived a journey. Export it here, then use Import from the Lantern menu to resume it.</p>
+              <button type="button" className="btn-ghost" onClick={() => setExportFailed(!game.exportRecoverySave(true))}>
+                Export archived save
+              </button>
+            </> : null}
             {exportFailed ? <p role="status">Could not export the save. Try again in the browser that holds it.</p> : null}
           </div>
         ) : null}
@@ -201,12 +243,14 @@ export function Hud({
   snap,
   mapId,
   onMenu,
+  onObjectiveMenu,
   menuButtonRef,
   dormant = false,
 }: {
   snap: Snapshot;
   mapId: string;
   onMenu: () => void;
+  onObjectiveMenu: () => void;
   menuButtonRef?: RefObject<HTMLButtonElement | null>;
   dormant?: boolean;
 }) {
@@ -215,25 +259,12 @@ export function Hud({
   const companionCritical = lead && st ? lead.hp > 0 && lead.hp * 4 <= st.hp : false;
   const companionFainted = lead ? lead.hp <= 0 : false;
   const hpRatio = lead && st && st.hp > 0 ? Math.max(0, Math.min(1, lead.hp / st.hp)) : 0;
-  const [objectiveOpen, setObjectiveOpen] = useState(false);
-  const objectiveButtonRef = useRef<HTMLButtonElement>(null);
-  const hint = objectiveHint(snap.flags, snap.mapName);
   const preview = objectivePreview(snap.flags, mapId);
-  useEffect(() => {
-    if (dormant) setObjectiveOpen(false);
-  }, [dormant]);
   return (
     <div
-      className={`hud${dormant ? " hud-dormant" : ""}${objectiveOpen ? " hud-objective-expanded" : ""}`}
+      className={`hud${dormant ? " hud-dormant" : ""}`}
       aria-hidden={dormant}
       inert={dormant}
-      onKeyDown={(event) => {
-        if (event.key !== "Escape" || !objectiveOpen) return;
-        event.preventDefault();
-        event.stopPropagation();
-        setObjectiveOpen(false);
-        objectiveButtonRef.current?.focus();
-      }}
     >
       <div className="hud-row">
         <div className="hud-chip hud-chip-grow">
@@ -256,26 +287,16 @@ export function Hud({
               <button
                 type="button"
                 className="hud-objective-btn"
-                ref={objectiveButtonRef}
-                aria-expanded={objectiveOpen}
-                aria-controls={objectiveOpen ? "current-objective" : undefined}
-                onClick={() => setObjectiveOpen((open) => !open)}
+                aria-haspopup="dialog"
+                aria-label={`Objective: ${preview}. Open full directions in Lantern`}
+                onClick={onObjectiveMenu}
               >
                 <span className="hud-objective-label">Objective</span>
                 <span className="hud-objective-preview">{preview}</span>
                 <svg className="hud-objective-chevron" viewBox="0 0 16 16" aria-hidden="true">
-                  <path d="m4 6 4 4 4-4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                  <path d="M4 12 12 4M5 4h7v7" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
               </button>
-              {objectiveOpen ? (
-                <div id="current-objective" className="hud-objective-popover" role="region" aria-label="Current objective">
-                  <p className="hud-objective-full">{snap.objective}</p>
-                  {hint ? <p className="hud-objective-full">{hint}</p> : null}
-                  <button type="button" className="hud-objective-lantern" onClick={onMenu}>
-                    Open in Lantern menu
-                  </button>
-                </div>
-              ) : null}
             </div>
           ) : null}
           <div className="hud-stats">
@@ -389,7 +410,9 @@ export function MenuPanel({ game, snap, onImportActivate }: { game: ReliquaryGam
     return (
       <OverlayPanel
         title="Lantern"
-        subtitle={snap.objective ? `Objective — ${snap.objective}` : undefined}
+        subtitle={snap.objective
+          ? `Objective — ${snap.objective}${objectiveHint(snap.flags, snap.mapName) ? `\n\n${objectiveHint(snap.flags, snap.mapName)}` : ""}`
+          : undefined}
         closeLabel="Close"
         onClose={() => game.chooseMenu(ROOT_MENU.length - 1)}
         onCloseFocus={() => { game.setMenuIndex(ROOT_MENU.length - 1); game.emitPublic(); }}
@@ -808,6 +831,7 @@ export function Meter({
 }
 
 export function ShopPanel({ game, snap }: { game: ReliquaryGame; snap: Snapshot }) {
+  const [portraitFailed, setPortraitFailed] = useState(false);
   const list =
     snap.shopMode === "buy"
       ? snap.shopStock
@@ -824,6 +848,10 @@ export function ShopPanel({ game, snap }: { game: ReliquaryGame; snap: Snapshot 
       closeLabel="Leave"
     >
       <div className="shop-tabs">
+        {isElderhallCandidateBuild() && !portraitFailed ? (
+          <img className="shop-portrait" src={portraitSource("shopkeep", true)} alt=""
+            width={40} height={52} onError={() => setPortraitFailed(true)} />
+        ) : null}
         <button
           type="button"
           className={snap.shopMode === "buy" ? "active" : ""}
@@ -1002,10 +1030,12 @@ export function TouchPad({ game, variant = "full", dialog }: {
         </p>
       )}
       <div className="ab">
-        <button type="button" className="b-btn" aria-label={`B — ${dialog ? dialog.secondaryLabel ?? "Back" : "Cancel"}`}
-          disabled={dialogActive && !dialog?.secondaryLabel} onClick={() => game.activateDialogueAction(dialog?.revision ?? null, "cancel")}>
-          B
-        </button>
+        {(!dialogActive || dialog?.secondaryLabel) ? (
+          <button type="button" className="b-btn" aria-label={`B — ${dialog ? dialog.secondaryLabel : "Cancel"}`}
+            onClick={() => game.activateDialogueAction(dialog?.revision ?? null, "cancel")}>
+            B
+          </button>
+        ) : <span className="b-btn-placeholder" aria-hidden="true" />}
         <button type="button" className="a-btn" aria-label={`A — ${dialog?.primaryLabel ?? "Interact"}`}
           onClick={() => game.activateDialogueAction(dialog?.revision ?? null, "confirm")}>
           A

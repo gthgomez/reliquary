@@ -1,7 +1,9 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { paintWorldPropShadow, resolveWorldPropLayout, shouldFadePropForPlayer, worldPropCullBounds } from "./world-actors.ts";
+import { compositeGateActorCueColor, paintWorldPropShadow, playerHeadCanvasYForCamera, resolvePlayerDrawFootprint, resolvePlayerScreenFootprint, resolveWorldPropLayout, shouldFadePropForPlayer, worldPropCullBounds } from "./world-actors.ts";
 import type { MapObj } from "../types.ts";
+import * as worldActors from "./world-actors.ts";
+import * as elderhallVisual from "./elderhall-visual.ts";
 
 test("a prop's visible ground contact lands on its logical footprint", () => {
   const well: MapObj = { id: "well", sprite: "well", x: 8, y: 10, w: 1, h: 1, foot: 1, solid: true };
@@ -9,6 +11,40 @@ test("a prop's visible ground contact lands on its logical footprint", () => {
   assert.equal(layout.baseline, 11 * 32);
   assert.equal(layout.y + layout.height * (33 / 48), layout.baseline);
   assert.equal(layout.x + layout.width / 2, 8.5 * 32);
+});
+
+test("Rowan's smaller draw and occlusion footprint stays centered and grounded", () => {
+  const player = resolvePlayerDrawFootprint(64, 96, 32);
+  assert.deepEqual(player, { x: 64 + 32 / 12, y: 88, width: 32 * 5 / 6, height: 40, baseline: 128 });
+  assert.equal(player.y + player.height, player.baseline);
+  assert.ok(player.height < 48, "the doorway scale reduction changes only the visible actor footprint");
+});
+
+test("reported player head matches the actual screen-space draw footprint", () => {
+  const screenDraw = resolvePlayerScreenFootprint(64, 96, 32, 12, 20);
+  const actualDrawHead = screenDraw.y;
+  const reportedPlayerHead = playerHeadCanvasYForCamera(64, 96, 32, 12, 20);
+  assert.equal(reportedPlayerHead, actualDrawHead);
+  assert.equal(reportedPlayerHead, 96 + 32 - 40 - 20);
+});
+
+test("gate-post compositing separates sampled brown actor and wood pixels", () => {
+  // Opaque pixels sampled from player/down0.png (11,6) and elderhall.gate-reference.png (82,14).
+  // This checks the tint/overlay blend against the source palette, not the full scene or browser readability.
+  const actor = [121, 71, 39] as const;
+  const post = [132, 72, 39] as const;
+  const composited = compositeGateActorCueColor(actor, post);
+  const before = [0.85, 0.65] as const;
+  const originalPaleCue = actor.map((channel, index) => {
+    const cream = [255, 244, 198][index]!;
+    const tinted = channel * (1 - before[1]) + cream * before[1];
+    return tinted * before[0] + post[index]! * (1 - before[0]);
+  });
+  assert.ok(composited[1]! - post[1]! > 45 && composited[2]! - post[2]! > 40,
+    `warm tint should separate actor green/blue from the sampled wood: ${composited.map(Math.round)}`);
+  assert.ok(composited.reduce((sum, channel) => sum + channel, 0) / 3 <
+    originalPaleCue.reduce((sum, channel) => sum + channel, 0) / 3 - 20,
+  "sampled blend stays darker than the original pale cue");
 });
 
 test("the shipped tree trunk and its shadow meet the ground despite transparent source padding", () => {
@@ -37,6 +73,45 @@ test("a foreground prop fades only when it overlaps the player", () => {
   assert.equal(shouldFadePropForPlayer(tree, { x: 120, y: 90, width: 32, height: 48, baseline: 138 }), true);
   assert.equal(shouldFadePropForPlayer(tree, { x: 220, y: 90, width: 32, height: 48, baseline: 138 }), false);
   assert.equal(shouldFadePropForPlayer(tree, { x: 120, y: 160, width: 32, height: 48, baseline: 208 }), false);
+});
+
+test("gate posts and beam have separate, complete art regions at the same ground contact", () => {
+  const gate = elderhallVisual.elderhallCandidateGate();
+  const visual = resolveWorldPropLayout(gate, 32);
+  const parts = elderhallVisual.elderhallGateRenderRegions(visual);
+  assert.deepEqual(parts.map((part) => part.kind), ["left-post", "overhang", "right-post"]);
+  assert.equal(parts[0]!.left, 0);
+  assert.equal(parts[0]!.right, parts[1]!.left);
+  assert.equal(parts[1]!.right, parts[2]!.left);
+  assert.equal(parts[2]!.right, 1);
+  assert.ok(parts.every((part) => part.baseline === visual.baseline));
+  assert.deepEqual(parts.map((part) => part.revealBottom), [0.88, 1, 0.88], "post bases stay opaque");
+  assert.ok(parts[1]!.left * visual.width + visual.x < 10 * 32, "arch includes the left open lane");
+  assert.ok(parts[1]!.right * visual.width + visual.x > 12 * 32, "arch includes the right open lane");
+});
+
+test("depth follows fractional feet positions with stable ties", () => {
+  const entries = [
+    { y: 200, priority: 0, id: "post-right" },
+    { y: 200.01, priority: 2, id: "player-front" },
+    { y: 199.99, priority: 2, id: "player-behind" },
+    { y: 200, priority: 2, id: "player-tied" },
+    { y: 200, priority: 0, id: "post-left" },
+  ];
+  assert.deepEqual(entries.sort(worldActors.compareWorldDepth).map((entry) => entry.id),
+    ["player-behind", "post-left", "post-right", "player-tied", "player-front"]);
+});
+
+test("only an upper overhang is eligible for a local reveal", () => {
+  const visual = { x: 0, y: 0, width: 100, height: 100, baseline: 100 };
+  const roof = worldActors.worldPropOverhang("elderhall-cottage-reference", visual);
+  assert.ok(roof && roof.height < visual.height);
+  const tree = worldActors.worldPropOverhang("elderhall-tree-reference", visual);
+  assert.equal(tree?.height, 80, "the candidate tree reveal reaches its lower side foliage");
+  assert.equal(worldActors.worldPropOverhang("elderhall-bench", visual), null);
+  assert.equal(worldActors.worldPropOverhang("barrel", visual), null);
+  assert.equal(shouldFadePropForPlayer(roof, { x: 20, y: 10, width: 20, height: 40, baseline: 80 }), true);
+  assert.equal(shouldFadePropForPlayer(roof, { x: 20, y: 70, width: 20, height: 20, baseline: 90 }), false);
 });
 
 test("culling retains solid fallback footprints extending beyond the sprite", () => {

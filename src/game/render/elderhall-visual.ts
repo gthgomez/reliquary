@@ -1,8 +1,8 @@
 import type { MapDef, MapObj } from "../types.ts";
 import { chooseTileVariant } from "../world/terrain.ts";
 import { drawAtlasTile, tileAtlasQuadrant } from "./tile-surface.ts";
-import { dirtPathJunctions, paintDirtPathJunctions } from "./road-junctions.ts";
-type VisualMetadata = { dimensions: number[]; anchor: number[]; render_size_tiles: number[] };
+import { dirtPathJunctions, paintCandidateWellApron, paintDirtPathJunctions } from "./road-junctions.ts";
+export type VisualMetadata = { dimensions: number[]; anchor: number[]; render_size_tiles: number[] };
 declare const __ELDERHALL_GEOMETRY__: Record<string, VisualMetadata> | undefined;
 
 // Node-only fixture for deterministic tests without Vite's build-time define.
@@ -13,6 +13,7 @@ const NODE_TEST_GEOMETRY: Record<string, VisualMetadata> = {
   "cottage-reference": { dimensions: [160, 160], anchor: [80, 156], render_size_tiles: [3, 3] },
   "guild-reference": { dimensions: [160, 160], anchor: [80, 156], render_size_tiles: [3, 3] },
   "shop-reference": { dimensions: [160, 160], anchor: [80, 156], render_size_tiles: [3, 3] },
+  inn: { dimensions: [160, 156], anchor: [92, 152], render_size_tiles: [3, 2.925] },
   "gate-reference": { dimensions: [160, 112], anchor: [80, 108], render_size_tiles: [3, 2.1] },
   bench: { dimensions: [96, 48], anchor: [48, 43], render_size_tiles: [1.5, 0.75] },
 };
@@ -32,15 +33,26 @@ export function candidateVisualFromMetadata(obj: MapObj, metadata: VisualMetadat
 }
 
 /** The open arch has two solid posts and a walkable two-tile center. */
-export function elderhallCandidateGate(): MapObj {
+export function elderhallCandidateGate(metadata = assetMetadata("gate-reference")): MapObj {
   const gate: MapObj = { id: "north_gate_candidate", sprite: "elderhall-gate-reference", x: 9, y: 3, w: 4, h: 4, foot: 1, solid: true,
     collision: [{ x: 0, y: 3, w: 1, h: 1 }, { x: 3, y: 3, w: 1, h: 1 }] };
-  return { ...gate, visual: { ...candidateVisualFromMetadata(gate, assetMetadata("gate-reference"), 1.5), groundY: 3.25 } };
+  return { ...gate, visual: { ...candidateVisualFromMetadata(gate, metadata, 1.5), groundY: 3.25 } };
 }
 
-export function elderhallCandidateBench(): MapObj {
+/** Source-image slices retain the original artwork and keep the post bases solid. */
+export function elderhallGateRenderRegions(visual: { baseline: number }): {
+  kind: "left-post" | "overhang" | "right-post"; left: number; right: number; baseline: number; revealBottom: number;
+}[] {
+  return [
+    { kind: "left-post", left: 0, right: 38 / 160, baseline: visual.baseline, revealBottom: 0.88 },
+    { kind: "overhang", left: 38 / 160, right: 122 / 160, baseline: visual.baseline, revealBottom: 1 },
+    { kind: "right-post", left: 122 / 160, right: 1, baseline: visual.baseline, revealBottom: 0.88 },
+  ];
+}
+
+export function elderhallCandidateBench(metadata = assetMetadata("bench")): MapObj {
   const bench: MapObj = { id: "green_bench_candidate", sprite: "elderhall-bench", x: 8, y: 14, w: 1, h: 1, foot: 1, solid: true };
-  return { ...bench, visual: candidateVisualFromMetadata(bench, assetMetadata("bench")) };
+  return { ...bench, visual: candidateVisualFromMetadata(bench, metadata) };
 }
 
 /** If the candidate PNG fails to load, show the post collision instead of invisible walls. */
@@ -55,18 +67,19 @@ export function paintCandidateBenchFallback(ctx: CanvasRenderingContext2D, bench
 }
 
 /** Preview-only mapping from stable gameplay objects to candidate IDs. */
-export function elderhallCandidateObject(mapId: string, obj: MapObj, enabled: boolean): MapObj {
+export function elderhallCandidateObject(mapId: string, obj: MapObj, enabled: boolean, geometry?: Record<string, VisualMetadata>): MapObj {
   if (!enabled || mapId !== "elderhall") return obj;
-  if (obj.id === "well") return { ...obj, sprite: "elderhall-well-reference", visual: candidateVisualFromMetadata(obj, assetMetadata("well-reference"), 0.75) };
-  if (obj.id === "green_tree") return { ...obj, sprite: "elderhall-tree-reference", visual: candidateVisualFromMetadata(obj, assetMetadata("tree-reference"), 14 / 15) };
-  if (obj.id === "h_guild") return { ...obj, sprite: "elderhall-guild-reference", visual: candidateVisualFromMetadata(obj, assetMetadata("guild-reference")) };
-  if (obj.id === "h_shop") return { ...obj, sprite: "elderhall-shop-reference", visual: candidateVisualFromMetadata(obj, assetMetadata("shop-reference")) };
-  if (obj.sprite === "cottage") return { ...obj, sprite: "elderhall-cottage-reference", visual: candidateVisualFromMetadata(obj, assetMetadata("cottage-reference")) };
+  if (obj.id === "h_inn") return { ...obj, sprite: "elderhall-inn", visual: candidateVisualFromMetadata(obj, geometry?.inn ?? assetMetadata("inn")) };
+  if (obj.id === "well") return { ...obj, sprite: "elderhall-well-reference", visual: candidateVisualFromMetadata(obj, geometry?.["well-reference"] ?? assetMetadata("well-reference"), 0.75) };
+  if (obj.id === "green_tree") return { ...obj, sprite: "elderhall-tree-reference", visual: candidateVisualFromMetadata(obj, geometry?.["tree-reference"] ?? assetMetadata("tree-reference"), 14 / 15) };
+  if (obj.id === "h_guild") return { ...obj, sprite: "elderhall-guild-reference", visual: candidateVisualFromMetadata(obj, geometry?.["guild-reference"] ?? assetMetadata("guild-reference")) };
+  if (obj.id === "h_shop") return { ...obj, sprite: "elderhall-shop-reference", visual: candidateVisualFromMetadata(obj, geometry?.["shop-reference"] ?? assetMetadata("shop-reference")) };
+  if (obj.sprite === "cottage") return { ...obj, sprite: "elderhall-cottage-reference", visual: candidateVisualFromMetadata(obj, geometry?.["cottage-reference"] ?? assetMetadata("cottage-reference")) };
   return obj;
 }
 
 export function elderhallTerrainAtlas(mapId: string, tileName: string, enabled: boolean): string | null {
-  if (!enabled || mapId !== "elderhall") return null;
+  if (!enabled || (mapId !== "elderhall" && mapId !== "grove")) return null;
   const name = tileName === "cobble" ? "stone" : tileName;
   return ["grass", "dirt", "stone"].includes(name) ? `tile_elderhall-${name}-atlas` : null;
 }
@@ -81,8 +94,15 @@ export function elderhallRoadJunctions(map: MapDef) {
 
 export function paintElderhallRoadJunctions(ctx: CanvasRenderingContext2D, map: MapDef, size: number, atlas: CanvasImageSource): void {
   if (!hasElderhallRoadJunctions(map)) return;
+  paintCandidateTerrainJunctions(ctx, map, size, atlas);
+}
+
+/** Candidate map joins share one deterministic dirt treatment across the village and Grove. */
+export function paintCandidateTerrainJunctions(ctx: CanvasRenderingContext2D, map: MapDef, size: number, atlas: CanvasImageSource): void {
+  if (map.id !== "elderhall" && map.id !== "grove") return;
   paintDirtPathJunctions(ctx, map, size, (x, y) => {
     const variant = chooseTileVariant(map.id, x, y, "dirt", 3);
     drawAtlasTile(ctx, atlas, x * size, y * size, size, tileAtlasQuadrant(variant, x, y));
   });
+  if (map.id === "elderhall") paintCandidateWellApron(ctx, map, size);
 }

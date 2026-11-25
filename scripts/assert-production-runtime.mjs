@@ -30,6 +30,8 @@ const bundle = clientBundlePath();
 assert.ok(bundle, `[assert:prod-runtime] missing client bundle under ${staticDir}`);
 
 const bundleSource = readFileSync(bundle, "utf8");
+const expectedWorld = existsSync(join(staticDir, "game/elderhall/manifest.json")) ? 5 : 2;
+const saveKey = "reliquary.save.v3";
 assert.equal(bundleSource.includes("__reliquaryJourneyRandom"), false, "production must exclude the journey random source");
 const deadStringPresent = {
   __battleStageReport: bundleSource.includes("__battleStageReport"),
@@ -103,11 +105,47 @@ try {
     assert.ok(precache.includes("/index.html"), "production must precache the game shell");
     assert.equal(precache.some((path) => /sprite\.runtime\.json|agespreviewpanel-/i.test(path)), false);
 
+    async function saveFromMenu() {
+      await page.getByRole("button", { name: "Menu", exact: true }).click();
+      await page.getByRole("button", { name: "Save", exact: true }).click();
+      return page.evaluate((key) => JSON.parse(localStorage.getItem(key)), saveKey);
+    }
+
+    const fresh = await saveFromMenu();
+    assert.equal(fresh.worldRevision, expectedWorld, "the served game writes the expected world revision");
+    if (expectedWorld === 5) {
+      // Detach the running game before writing a fixture so its page lifecycle
+      // save cannot overwrite the fixture. Exercise the normal Continue/Save UI.
+      for (const [revision, x, y, expectedX, expectedY] of [[2, 9, 6, 12, 14], [5, 11, 8, 11, 8]]) {
+        await page.goto(baseUrl + "game/manifest.json");
+        const fixture = { ...fresh, worldRevision: revision, mapId: "elderhall", x, y,
+          gold: 321, flags: { ...fresh.flags, met_maren: true } };
+        await page.evaluate(([key, save]) => localStorage.setItem(key, JSON.stringify(save)), [saveKey, fixture]);
+        await page.goto(baseUrl);
+        await page.getByRole("button", { name: "Continue", exact: true }).click();
+        const migrated = await saveFromMenu();
+        assert.deepEqual([migrated.worldRevision, migrated.x, migrated.y], [5, expectedX, expectedY]);
+        for (const key of ["gold", "flags", "playerName", "inventory", "party", "box", "caught", "seen"]) {
+          assert.deepEqual(migrated[key], fixture[key], `world migration changed ${key}`);
+        }
+      }
+    }
+
+    await page.goto(baseUrl + "game/manifest.json");
+    const archive = JSON.stringify({ ...fresh, worldRevision: 5, mapId: "elderhall", x: 11, y: 8 }, null, 2);
+    await page.evaluate((raw) => localStorage.setItem("reliquary.save.forward", raw), archive);
+    await page.goto(baseUrl);
+    const [download] = await Promise.all([
+      page.waitForEvent("download"),
+      page.getByRole("button", { name: expectedWorld === 5 ? "Export archived save" : "Export newer save" }).click(),
+    ]);
+    assert.equal(readFileSync(await download.path(), "utf8"), archive, "rollback recovery must export the exact record");
+
     await context.setOffline(true);
     await page.reload({ waitUntil: "domcontentloaded" });
     await waitForGameBoot(page);
     assert.equal(await page.locator("#ages-candidate-preview").count(), 0, "offline production must omit preview UI");
-    return { ...online, offlinePrecacheEntries: precache.length, previewManifestStatus: previewRequest.status() };
+    return { ...online, expectedWorld, offlinePrecacheEntries: precache.length, previewManifestStatus: previewRequest.status() };
   }, { context: { serviceWorkers: "allow" } });
 
   console.log("[assert:prod-runtime] dead bundle strings (informational):", deadStringPresent);

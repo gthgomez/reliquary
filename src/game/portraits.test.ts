@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { existsSync } from "node:fs";
-import { PORTRAITS, resolveNpcPortrait } from "./portraits.ts";
+import { PORTRAITS, portraitSource, resolveNpcPortrait, type PortraitKey } from "./portraits.ts";
 import { MAPS } from "./maps.ts";
 
 test("placed NPC identities resolve independently of names and shared scripts/sprites", () => {
@@ -42,5 +42,15 @@ test("all current placed NPCs resolve to shipped art; registry has no ambiguous 
   for (const map of Object.values(MAPS)) {
     for (const npc of map.npcs)
       assert.ok(resolveNpcPortrait(npc.id, npc.sprite), `${map.id}: ${npc.id}`);
+  }
+});
+
+test("candidate portraits have one distinct URL per role and leave the normal build on SVG art", () => {
+  const keys = Object.keys(PORTRAITS) as PortraitKey[];
+  const pixelUrls = new Set(keys.map((key) => portraitSource(key, true)));
+  assert.equal(pixelUrls.size, keys.length);
+  for (const key of keys) {
+    assert.equal(portraitSource(key, false), PORTRAITS[key].src);
+    assert.match(portraitSource(key, true), /^\/game\/elderhall\/portraits\/[a-z]+\.png$/);
   }
 });

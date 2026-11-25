@@ -58,6 +58,14 @@ jobs:
         run: npm run verify:pwa && npm run test:pwa
       - name: Browser regressions
         run: npm run test:browser -- --suite=all
+      - name: Build revision 5 without browser-test probes
+        run: npm run build:web
+        env:
+          RELIQUARY_ELDERHALL_CANDIDATE: '1'
+      - name: Verify revision 5 package, save migration and offline entry
+        run: npm run verify:web:runtime && node tests/browser/elderhall-candidate-offline.mjs
+        env:
+          RELIQUARY_QA_CHANNEL: ${{ matrix.os == 'ubuntu-latest' && 'chrome' || 'msedge' }}
 
   journeys:
     name: Deep chapter journeys (${{ matrix.os }})
@@ -100,18 +108,39 @@ jobs:
           RELIQUARY_QA_CHANNEL: chrome
           RELIQUARY_ELDERHALL_CANDIDATE: '1'
           VITE_ELDERHALL_CANDIDATE: '1'
-      - name: Play the candidate starter journey
+      - name: Play the full candidate chapter and recovery journeys
         if: ${{ !cancelled() && matrix.os == 'ubuntu-latest' && steps.elderhall_candidate_build.outcome == 'success' }}
-        run: node tests/browser/elderhall-candidate-journey.mjs
+        run: node scripts/journeys-ci.mjs
         env:
           RELIQUARY_QA_CHANNEL: chrome
           VITE_ELDERHALL_CANDIDATE: '1'
-      - name: Check the candidate offline
+          RELIQUARY_QA_EVIDENCE: qa-evidence/elderhall-candidate-journeys
+      - name: Exercise same-origin upgrade, rollback and recovery
         if: ${{ !cancelled() && matrix.os == 'ubuntu-latest' && steps.elderhall_candidate_build.outcome == 'success' }}
-        run: node tests/browser/elderhall-candidate-offline.mjs
+        run: |
+          legacy="$RUNNER_TEMP/reliquary-r2"
+          git fetch --depth=1 origin a6b576b2773bfbae4d1829dc0180cb4756b86340
+          git worktree add --detach "$legacy" FETCH_HEAD
+          npm ci --prefix "$legacy"
+          (cd "$legacy" && VERCEL_ENV=production npm run build:web)
+          rollback="$RUNNER_TEMP/reliquary-r2-rollback"
+          VERCEL_ENV=production npm run build:web
+          cp -a .vercel/output/static "$rollback"
+          npm run build:web
+          RELIQUARY_LEGACY_STATIC_ROOT="$legacy/.vercel/output/static" \
+            RELIQUARY_ROLLBACK_STATIC_ROOT="$rollback" node tests/browser/elderhall-release-transition.mjs
+          node --input-type=module -e '
+            import { approvedElderhallDigests, elderhallArtifactDigest } from "./scripts/elderhall-release.mjs";
+            console.log(JSON.stringify({
+              gitSha: process.env.GITHUB_SHA,
+              node: process.version,
+              ...(await approvedElderhallDigests("assets/elderhall-candidate")),
+              artifactSha256: elderhallArtifactDigest(".vercel/output/static"),
+            }, null, 2));
+          ' > qa-evidence/elderhall-release-digests.json
         env:
           RELIQUARY_QA_CHANNEL: chrome
-          VITE_ELDERHALL_CANDIDATE: '1'
+          RELIQUARY_ELDERHALL_CANDIDATE: '1'
       # npm ci reports advisory counts; retain the details for triage rather
       # than treating a non-gating inventory as a security clearance.
       - name: Record dependency advisory inventory

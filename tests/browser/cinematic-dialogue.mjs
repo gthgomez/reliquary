@@ -19,6 +19,12 @@ const viewports = [
   { width: 844, height: 390, mobile: true, classic: true, safe: true },
 ];
 const { server, baseUrl } = await startStaticServer(0);
+const candidateManifestResponse = await fetch(new URL("/game/elderhall/manifest.json", baseUrl));
+assert.ok(
+  candidateManifestResponse.status === 200 || candidateManifestResponse.status === 404,
+  `elderhall build marker has expected status: ${candidateManifestResponse.status}`,
+);
+const candidateElderhall = candidateManifestResponse.status === 200;
 
 async function settle(page) {
   await page.evaluate(async () => {
@@ -87,7 +93,7 @@ async function checkLayout(page, label, shot = false) {
       next: one(".dialog-next"),
       blockers: [
         ...document.querySelectorAll(
-          ".hud-chip, .hud-menu, .hud-objective-popover, .app-status, .touch button, .touch-dialog-hint",
+          ".hud-chip, .hud-menu, .app-status, .touch button, .touch-dialog-hint",
         ),
       ]
         .map(rect)
@@ -183,7 +189,10 @@ try {
           await page.locator(".top-stack .toast[role=status]").waitFor();
         }
 
-        await speak(page, "elderhall", 7, 10, "z", !checkToast);
+        // The candidate-only manifest identifies which built map this static
+        // server serves; approach the corresponding Maren fixture directly.
+        const marenApproach = candidateElderhall ? [13, 11] : [7, 10];
+        await speak(page, "elderhall", ...marenApproach);
         if (checkToast) {
           const toast = page.locator(".top-stack .toast[role=status]");
           assert.equal(await toast.count(), 1, "save status remains mounted during portrait dialogue");
@@ -205,17 +214,44 @@ try {
             "none",
           );
         assert.ok(await page.locator(".dialog-next").evaluate((button) => document.activeElement === button), "primary dialogue action receives focus");
+        const touchA = page.locator(".touch .a-btn");
+        const firstTouchABox = await touchA.isVisible() ? await touchA.boundingBox() : null;
+        assert.equal(await page.locator(".dialog-back").count(), 0, "unavailable first-page Back is omitted");
+        assert.equal(await page.locator(".dialog-page-count").textContent(), "1 / 2", "first page count is accurate");
+        assert.equal(await page.getByRole("group", { name: "Page 1 of 2" }).count(), 1,
+          "page count has a semantic accessible name");
+        if (v.mobile)
+          assert.equal(await page.getByRole("button", { name: /^B —/ }).count(), 0,
+            "touch Back is omitted when no secondary dialogue action exists");
+        await page.keyboard.press("Shift+Tab");
+        assert.equal(await page.locator(".dialog-content").evaluate((content) => document.activeElement === content), true,
+          "reverse tab reaches scrollable dialogue text when Back is unavailable");
+        assert.match(await page.locator(".dialog-text").innerText(), /Crown cracked/,
+          "focus navigation does not advance the first page");
+        await page.keyboard.press("Tab");
+        assert.ok(await page.locator(".dialog-next").evaluate((button) => document.activeElement === button),
+          "Tab returns from dialogue text to the primary action");
         await page.keyboard.press("Enter");
         assert.match(
           await page.locator(".dialog-text").textContent(),
           /Walk west/,
           "one Enter advances exactly one page",
         );
+        assert.equal(await page.locator(".dialog-page-count").textContent(), "2 / 2", "second page count is accurate");
+        assert.equal(await page.getByRole("group", { name: "Page 2 of 2" }).count(), 1,
+          "updated page count remains accessibly named");
+        if (firstTouchABox) {
+          const secondTouchABox = await touchA.boundingBox();
+          assert.ok(secondTouchABox, "touch A remains present after advancing");
+          for (const key of ["x", "y", "width", "height"])
+            assert.ok(Math.abs(firstTouchABox[key] - secondTouchABox[key]) <= 1,
+              `touch A ${key} stays fixed across pages: ${JSON.stringify({ firstTouchABox, secondTouchABox })}`);
+        }
         await page.keyboard.press("Shift+Tab");
         assert.match(await page.locator(".dialog-text").innerText(), /Walk west/,
           "reverse tab navigation keeps the current page");
         assert.equal(await page.locator(".dialog-back").evaluate((button) => document.activeElement === button), true,
-          "reverse tab reaches Back without activating it");
+          "reverse tab reaches Back when it is available");
         await page.keyboard.press("Tab");
         await checkLayout(page, `${prefix}-maren-page2`);
         if (v.mobile) {
@@ -331,7 +367,6 @@ try {
         await closePages(page);
 
         for (const [map, x, y, key, name] of [
-          ["elderhall", 11, 3, "guard", "Gateward"],
           ["briar_camp", 4, 6, "patch", "Patch"],
           ["guild_in", 6, 7, "elder-maren", "Elder Maren"],
           ["warden_hall", 7, 5, "warden-cael", "Warden Cael"],
@@ -363,6 +398,14 @@ try {
           } else await closePages(page);
         }
 
+        // Both fixtures stand directly south of Gateward and face north.
+        const guardApproach = candidateElderhall ? [13, 8] : [11, 3];
+        await speak(page, "elderhall", ...guardApproach);
+        const gateward = await checkLayout(page, `${prefix}-elderhall-guard`, !v.mobile);
+        assert.equal(gateward.portraitKey, "guard");
+        assert.equal(gateward.nameContent, "Gateward");
+        await closePages(page);
+
         const checkSignToast = v.width === 568 && v.height === 320 && !v.classic;
         if (checkSignToast) {
           await page.locator(".hud-menu").click();
@@ -386,7 +429,29 @@ try {
         assert.equal(sign.portraitKey, "none");
         assert.equal(sign.portrait, null);
         assert.match(sign.textContent, /BRIAR ROAD/);
-        await closePages(page);
+        assert.equal(await page.locator(".dialog-next").textContent(), "Close",
+          "one-page narrator dialogue keeps its primary Close action");
+        assert.equal(await page.locator(".dialog-back").count(), 0,
+          "equivalent secondary Close is not duplicated in the panel");
+        if (v.mobile) {
+          assert.equal(await page.getByRole("button", { name: "B — Close", exact: true }).count(), 1,
+            "touch B retains the equivalent cancel action");
+          await page.getByRole("button", { name: "B — Close", exact: true }).tap();
+        } else {
+          await page.keyboard.press("Escape");
+        }
+        await page.waitForSelector(".dialog", { state: "detached" });
+        if (v.width >= 1200 && v.height >= 640) {
+          const assertSideCard = (layout, label) => {
+            const center = layout.viewport.left + layout.viewport.width / 2;
+            assert.ok(layout.panel.left > center,
+              `${label}: narrator card sits beside the stage center so the central path remains visible`);
+            assert.ok(layout.panel.width <= layout.viewport.width * 0.45,
+              `${label}: narrator card leaves the center and threshold uncovered`);
+          };
+          assertSideCard(maren, "wide NPC dialogue");
+          assertSideCard(sign, "wide text-only dialogue");
+        }
         assert.equal(await page.locator(".hud").isVisible(), true, "HUD returns after text-only dialogue");
         assert.equal(await page.locator(".hud").evaluate((el) => el.inert), false, "returned HUD is interactive");
         const pos = await page.evaluate(() => window.__controlsTest.getPos());

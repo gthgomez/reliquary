@@ -26,6 +26,35 @@ corrects PR #29's body attribution; it does not affect runtime behavior).
 All seven files are included by the existing PWA public-asset precache. The
 canvas preload inventory and existing source-art provenance remain unchanged.
 
+## Elderhall revision 5 portraits
+
+`scripts/draw-elderhall-portraits.py` contains the original hand-placed pixel
+drawings for Maren, Cael, the gate guard, the traveler, both inn and shop
+keepers, and Patch. The drawings use the established Reliquary character
+identities and transparent 80 × 104 native raster artwork. Pillow writes
+the PNGs directly at that scale. The source script and per-image SHA-256
+hashes, dimensions, and visible bounds are recorded in
+`assets/elderhall-portraits/manifest.json`. Candidate builds place the assets in
+`/game/elderhall/portraits/` and precache every image. The repository owner's
+delegated original-art authorization is recorded in the manifest.
+
+The removed pack-level `art_direction.reference_sha256` was a duplicate of
+the value still recorded in each of the six reference-conditioned asset
+provenance records. Its removal aligns the manifest with the current AGES
+export contract. The two concept hashes named in the artwork review remain
+distinct until the exact source files and their relationship are established.
+
+The new Quiet Lantern inn was generated from an original text brief using
+OpenAI ImageGen. The source SHA-256 is recorded in the inn's environment-pack
+entry. `scripts/prepare-elderhall-inn.mjs` validates that source, crops its
+alpha bounds, and nearest-samples two bands to give the doorway more room
+at gameplay scale. The runtime PNG is 160 × 156 with a ground anchor of
+(92, 152) and a render size of 3 × 2.925 tiles. The generated master stays
+outside the public repository. The environment manifest binds the packaged
+PNG hash to those placement values.
+
+## Legacy art inventory
+
 | Path/category | Likely source | Transformation | Status/confidence | Action |
 |---|---|---|---|---|
 | `assets/sprites/**/raw-sheet*.png` (smaller intermediates still in tree: 5 `raw-sheet-clean.png` under 1 MB plus `assets/sprites/panel/raw-sheet.png`; the 23 full-resolution sheets over 1 MB were removed, see below) | Original-looking source sheets; AI/Grok involvement cannot be established | Source inputs for sprite processing scripts | Unclear / low | Record generator/source and retain proof of rights |

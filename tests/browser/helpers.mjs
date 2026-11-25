@@ -56,9 +56,16 @@ export function startStaticServer(port = 0, options = {}) {
   });
 }
 
+export function launchQaChrome(defaultChannel) {
+  const executablePath = process.env.RELIQUARY_QA_CHROMIUM;
+  return chromium.launch({
+    headless: true,
+    ...(executablePath ? { executablePath } : { channel: process.env.RELIQUARY_QA_CHANNEL ?? defaultChannel }),
+  });
+}
+
 export async function withBrowser(fn, options = {}) {
-  const executablePath = process.env.RELIQUARY_QA_CHROMIUM || undefined;
-  const browser = await chromium.launch({ headless: true, executablePath });
+  const browser = await launchQaChrome();
   try {
     const context = await browser.newContext({ serviceWorkers: "block", ...(options.context ?? {}) });
     if (options.textScale !== undefined) {

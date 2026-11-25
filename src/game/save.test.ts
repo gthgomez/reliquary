@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { makeBeast } from "./content.ts";
-import { LEGACY_SAVE_BACKUP, LEGACY_SAVE_KEY, LEGACY_V1_BACKUP, LEGACY_V1_KEY, SAVE_BACKUP, SAVE_FORWARD_KEY, SAVE_KEY, SAVE_VERSION, WORLD_REVISION, loadSave, parseSave, serializeSave, writeSave, type SaveStorage } from "./save.ts";
+import { LEGACY_SAVE_BACKUP, LEGACY_SAVE_KEY, LEGACY_V1_BACKUP, LEGACY_V1_KEY, SAVE_BACKUP, SAVE_FORWARD_KEY, SAVE_KEY, SAVE_VERSION, WORLD_REVISION, findArchivedSave, loadSave, parseSave, serializeSave, writeSave, type SaveStorage } from "./save.ts";
 import { MAPS } from "./maps.ts";
 import { isOccupied } from "./world/movement.ts";
 
@@ -305,14 +305,17 @@ for (const kind of ["format", "world"] as const) {
     });
   }
 
-  test(`a forward ${kind} backup does not displace a different forward archive`, () => {
+  test(`saving with a forward ${kind} backup preserves it and a different archive`, () => {
     const store = new MemoryStorage();
+    const backup = JSON.stringify(forwardSave());
+    const archive = "a distinct newer-build record";
     store.data.set(SAVE_KEY, JSON.stringify(validSave()));
-    store.data.set(SAVE_BACKUP, JSON.stringify(forwardSave()));
-    store.data.set(SAVE_FORWARD_KEY, "a distinct newer-build record");
-    const before = new Map(store.data);
-    assert.equal(writeSave({ ...validSave(), gold: 77 }, store), false);
-    assert.deepEqual(store.data, before);
+    store.data.set(SAVE_BACKUP, backup);
+    store.data.set(SAVE_FORWARD_KEY, archive);
+    assert.equal(writeSave({ ...validSave(), gold: 77 }, store), true);
+    assert.equal(loadSave(store)?.gold, 77);
+    assert.equal(store.data.get(SAVE_BACKUP), backup);
+    assert.equal(store.data.get(SAVE_FORWARD_KEY), archive);
   });
 
   test(`a forward ${kind} backup is archived before ordinary rotation`, () => {
@@ -328,7 +331,7 @@ for (const kind of ["format", "world"] as const) {
   });
 
   for (const sameRecord of [false, true]) {
-    test(`a second save ${sameRecord ? "reuses" : "does not replace"} the quarantined ${kind} primary when rotating a ${sameRecord ? "matching" : "distinct"} forward backup`, () => {
+    test(`a second save preserves a ${sameRecord ? "matching" : "distinct"} forward ${kind} backup in the archive or backup slot`, () => {
       const store = new MemoryStorage();
       const newer = forwardSave();
       const primary = JSON.stringify(newer);
@@ -338,15 +341,14 @@ for (const kind of ["format", "world"] as const) {
       assert.equal(writeSave({ ...validSave(), gold: 77 }, store), true);
       assert.equal(store.data.get(SAVE_FORWARD_KEY), primary);
       assert.equal(store.data.get(SAVE_BACKUP), backup);
-      const beforeSecondSave = new Map(store.data);
       store.failOn = SAVE_FORWARD_KEY;
-      assert.equal(writeSave({ ...validSave(), gold: 88 }, store), sameRecord);
+      assert.equal(writeSave({ ...validSave(), gold: 88 }, store), true);
       assert.equal(store.data.get(SAVE_FORWARD_KEY), primary);
+      assert.equal(loadSave(store)?.gold, 88);
       if (sameRecord) {
         assert.equal(parseSave(store.data.get(SAVE_BACKUP)!)?.gold, 77);
-        assert.equal(loadSave(store)?.gold, 88);
       } else {
-        assert.deepEqual(store.data, beforeSecondSave);
+        assert.equal(store.data.get(SAVE_BACKUP), backup);
       }
     });
   }
@@ -466,3 +468,13 @@ for (const version of [1, 2]) {
     assert.equal(loadSave(store)?.gold, 77);
   });
 }
+
+test("a compatible rollback archive is exportable without replacing a different active run", () => {
+  const store = new MemoryStorage();
+  const archive = JSON.stringify({ ...validSave(), gold: 808 }, null, 2);
+  store.data.set(SAVE_KEY, JSON.stringify({ ...validSave(), gold: 42 }));
+  store.data.set(SAVE_FORWARD_KEY, archive);
+  assert.equal(loadSave(store)?.gold, 42);
+  assert.equal(findArchivedSave(store), archive);
+  assert.equal(store.data.get(SAVE_FORWARD_KEY), archive);
+});

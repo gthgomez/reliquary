@@ -57,6 +57,13 @@ export const PORTRAITS = {
 export type PortraitKey = keyof typeof PORTRAITS;
 const entries = Object.entries(PORTRAITS) as [PortraitKey, PortraitSpec][];
 
+export function portraitSource(key: PortraitKey, pixelArt: boolean): string {
+  const source = PORTRAITS[key].src;
+  return pixelArt ? source.replace("/game/portraits/", "/game/elderhall/portraits/").replace(/\.svg$/, ".png") : source;
+}
+
+export const ELDERHALL_PORTRAIT_URLS = entries.map(([key]) => portraitSource(key, true));
+
 export function resolveNpcPortrait(
   npcId: string | null | undefined,
   sprite: string | null | undefined,

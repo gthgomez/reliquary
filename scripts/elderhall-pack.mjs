@@ -2,8 +2,9 @@ import { createHash } from "node:crypto";
 import { copyFileSync, lstatSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import pngjs from "pngjs";
+import { ELDERHALL_ENVIRONMENT_IDS as CANDIDATE_IDS } from "../src/game/elderhall-assets.ts";
 
-export const CANDIDATE_IDS = ["grass-atlas", "dirt-atlas", "stone-atlas", "well-reference", "cottage-reference", "guild-reference", "shop-reference", "tree-reference", "gate-reference", "bench", "flowers"];
+export { CANDIDATE_IDS };
 
 const PROVENANCE_SOURCE_TYPES = new Set(["original_programmatic", "reference_conditioned", "owner_provided", "external", "native_recipe"]);
 

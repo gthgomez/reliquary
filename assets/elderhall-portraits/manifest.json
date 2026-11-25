@@ -1,0 +1,113 @@
+{
+  "source": "scripts/draw-elderhall-portraits.py",
+  "sourceSha256": "4718e35cf7ede51a10c25d6364e59c9877316dad58862856818a10814bb26133",
+  "method": "Original hand-placed pixel clusters and limited palettes rasterized directly to transparent PNG with Pillow.",
+  "rightsBasis": "Drawn for Reliquary under the repository owner's delegated original-art authorization. Character identities follow Reliquary's existing dialogue roster.",
+  "assets": [
+    {
+      "id": "maren",
+      "file": "maren.png",
+      "sha256": "30c5a4ee52321dfa22a114576849ae52c1ee774e8d13ff14b2fdc73e5e040537",
+      "dimensions": [
+        80,
+        104
+      ],
+      "alphaBounds": [
+        4,
+        7,
+        80,
+        104
+      ]
+    },
+    {
+      "id": "cael",
+      "file": "cael.png",
+      "sha256": "b0ff3500e06043150838541d5d6ad49f52a3a48f41486bbfbf6626d14d1dfac9",
+      "dimensions": [
+        80,
+        104
+      ],
+      "alphaBounds": [
+        4,
+        16,
+        80,
+        104
+      ]
+    },
+    {
+      "id": "guard",
+      "file": "guard.png",
+      "sha256": "eb6382d3fed0c684f6868f63fa29b5c94fc0723dfce99f298f0380005a1fcad9",
+      "dimensions": [
+        80,
+        104
+      ],
+      "alphaBounds": [
+        4,
+        14,
+        80,
+        104
+      ]
+    },
+    {
+      "id": "traveler",
+      "file": "traveler.png",
+      "sha256": "7f58fddb14517ae3df918fa6103ba6249ba7df0bd8ce48bca1d3611b9d42f534",
+      "dimensions": [
+        80,
+        104
+      ],
+      "alphaBounds": [
+        4,
+        8,
+        80,
+        104
+      ]
+    },
+    {
+      "id": "innkeep",
+      "file": "innkeep.png",
+      "sha256": "acca934b940364adc649a9b4745a71fcf1187725626929f11f700cc9888f279b",
+      "dimensions": [
+        80,
+        104
+      ],
+      "alphaBounds": [
+        4,
+        15,
+        80,
+        104
+      ]
+    },
+    {
+      "id": "shopkeep",
+      "file": "shopkeep.png",
+      "sha256": "2d308740d6359a4f4dd2ead89f55636929c42370ff7a2f4177ea08e33c543287",
+      "dimensions": [
+        80,
+        104
+      ],
+      "alphaBounds": [
+        4,
+        18,
+        80,
+        104
+      ]
+    },
+    {
+      "id": "patch",
+      "file": "patch.png",
+      "sha256": "714beb9d557b38ddc818d2a12b520466d8c25c15b56109b88a86843c998d02c5",
+      "dimensions": [
+        80,
+        104
+      ],
+      "alphaBounds": [
+        4,
+        8,
+        80,
+        104
+      ]
+    }
+  ]
+}

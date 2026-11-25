@@ -37,10 +37,11 @@ export type TerrainBakeContext = {
   map: MapDef;
   tileSize: number;
   drawTile: (name: string, dx: number, dy: number, variant: number, pathMask?: number, stoneMask?: number) => void;
-  drawOverlay: (style: "edge" | "shadow", dx: number, dy: number, strength: number) => void;
+  drawOverlay: (style: "edge" | "shadow" | "variation", dx: number, dy: number, strength: number) => void;
   drawDecoration: (sprite: string, dx: number, dy: number, w: number, h: number) => void;
   drawAccent?: (kind: TileAccentKind, dx: number, dy: number) => void;
   drawJunctions?: () => void;
+  candidateTerrain?: boolean;
 };
 
 /** Neighboring path tiles (or map edges): cardinal bits 1–8 and NE/SE/SW/NW bits 16–128. */
@@ -68,6 +69,7 @@ export function bakeMapTerrain(ctx: TerrainBakeContext): void {
   const mw = map.ground[0]?.length ?? 0;
   const grove = map.id === "grove";
   const cottage = map.id === "home";
+  const candidatePalette = !!ctx.candidateTerrain && (map.id === "elderhall" || map.id === "grove");
   const overgrown = new Set((map.overgrownPaths ?? []).map(({ x, y }) => `${x},${y}`));
   for (let y = 0; y < mh; y++) {
     for (let x = 0; x < mw; x++) {
@@ -86,6 +88,13 @@ export function bakeMapTerrain(ctx: TerrainBakeContext): void {
       }
       const accent = chooseTileAccent(map.id, x, y, symbol);
       if (accent && ctx.drawAccent) ctx.drawAccent(accent, dx, dy);
+      // Break atlas repetition with sparse, low-contrast dapple patches. The
+      // selection is fixed to world coordinates, so the terrain bake is stable.
+      const dappleCell = (x * 17 + y * 31 + (x ^ y) * 7) % 11 === 0;
+      const wornPathCell = symbol === "p" && (x * 13 + y * 19 + (x ^ y) * 5) % 7 === 0;
+      if (candidatePalette && ((symbol === "." && dappleCell) || wornPathCell)) {
+        ctx.drawOverlay("variation", dx, dy, ((x * 3 + y * 5) % 4) / 3);
+      }
       if (symbol === ",") {
         ctx.drawDecoration("tallgrass", dx, dy, 1, 1);
       }

@@ -7,8 +7,7 @@ import assert from "node:assert/strict";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { measureTargetVisibility, startStaticServer, waitForGameBoot } from "./helpers.mjs";
-import { chromium } from "playwright";
+import { launchQaChrome, measureTargetVisibility, startStaticServer, waitForGameBoot } from "./helpers.mjs";
 
 const artifactDir = process.env.RELIQUARY_BROWSER_ARTIFACTS
   ?? fileURLToPath(new URL("../../artifacts/browser/", import.meta.url));
@@ -73,7 +72,7 @@ const { server, baseUrl } = await startStaticServer(0);
 const report = { viewports: [] };
 
 try {
-  const browser = await chromium.launch({ headless: true });
+  const browser = await launchQaChrome();
   try {
     for (const vp of VIEWPORTS) {
       const context = await browser.newContext({ serviceWorkers: "block", hasTouch: true, viewport: { width: vp.width, height: vp.height } });

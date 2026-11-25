@@ -15,7 +15,7 @@ import { dirname, join, relative, extname } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
-const staticDir = join(root, ".vercel/output/static");
+const staticDir = process.env.RELIQUARY_STATIC_ROOT ?? join(root, ".vercel/output/static");
 // Visible directory (S05): dot-directories are dropped by actions/upload-artifact
 // unless include-hidden-files is set, which is exactly how earlier green runs
 // lost every artifact while the upload step stayed green.

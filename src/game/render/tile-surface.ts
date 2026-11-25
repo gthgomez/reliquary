@@ -32,11 +32,11 @@ export function paintStoneRoadBorder(ctx: CanvasRenderingContext2D, dx: number, 
   ctx.save();
   clipSoftPath(ctx, dx, dy, size, mask);
   const paint = (x: number, y: number, w: number, h: number) => {
-    ctx.fillStyle = "#504d40";
+    ctx.fillStyle = "#625f53";
     ctx.fillRect(x, y, w, h);
-    ctx.fillStyle = "#aaa48d";
+    ctx.fillStyle = "#8f8a77";
     ctx.fillRect(x, y, w - 1, Math.max(1, h - 1));
-    ctx.fillStyle = "rgba(238,225,194,.35)";
+    ctx.fillStyle = "rgba(225,215,190,.2)";
     ctx.fillRect(x + 1, y, Math.max(1, w - 3), 1);
   };
   for (let i = 0; i < 4; i++) {
@@ -53,13 +53,84 @@ export function paintStoneRoadBorder(ctx: CanvasRenderingContext2D, dx: number, 
   ctx.restore();
 }
 
+/** Loosen the candidate road edge with spaced, coordinate-stable paving stones. */
+export function paintOrganicStoneRoadBorder(
+  ctx: CanvasRenderingContext2D, dx: number, dy: number, size: number, mask: number, tileX: number, tileY: number,
+): void {
+  const edges = roadBorderEdges(mask);
+  const inset = Math.round(size / 8), thickness = Math.max(2, Math.round(size / 10));
+  const hash = (edge: number, index: number) => {
+    let value = Math.imul(tileX + index * 23 + edge * 97 + 0x45d9f3b, tileY + edge * 31 + index * 11 + 0x119de1f3);
+    value = Math.imul(value ^ (value >>> 16), 0x45d9f3b);
+    return (value ^ (value >>> 16)) >>> 0;
+  };
+  ctx.save(); clipSoftPath(ctx, dx, dy, size, mask);
+  const horizontal = (edge: number, y: number) => {
+    const count = 5, nominal = size / count;
+    for (let i = 0; i < count; i++) {
+      const h = hash(edge, i);
+      if (h % 9 === 0) continue; // worn gaps break the repeated picket edge
+      const x = dx + Math.round(i * nominal + 1 + ((h >>> 5) % 3));
+      const w = Math.max(3, Math.round(nominal * (0.66 + ((h >>> 9) % 30) / 100)));
+      const stoneH = Math.max(2, thickness - (h % 3 === 0 ? 1 : 0));
+      ctx.fillStyle = "rgba(47,42,33,.28)"; ctx.fillRect(x + 1, y + 1, w, stoneH);
+      ctx.fillStyle = ["#797564", "#827e6a", "#716e5e", "#8a8570"][h % 4]!;
+      ctx.fillRect(x, y, w, stoneH);
+      ctx.fillStyle = "rgba(232,222,193,.27)"; ctx.fillRect(x + 1, y, Math.max(1, w - 3), 1);
+    }
+  };
+  const vertical = (edge: number, x: number) => {
+    const count = 5, nominal = size / count;
+    for (let i = 0; i < count; i++) {
+      const h = hash(edge, i);
+      if (h % 9 === 0) continue;
+      const y = dy + Math.round(i * nominal + 1 + ((h >>> 5) % 3));
+      const length = Math.max(3, Math.round(nominal * (0.66 + ((h >>> 9) % 30) / 100)));
+      const stoneW = Math.max(2, thickness - (h % 3 === 0 ? 1 : 0));
+      ctx.fillStyle = "rgba(47,42,33,.28)"; ctx.fillRect(x + 1, y + 1, stoneW, length);
+      ctx.fillStyle = ["#797564", "#827e6a", "#716e5e", "#8a8570"][h % 4]!;
+      ctx.fillRect(x, y, stoneW, length);
+      ctx.fillStyle = "rgba(232,222,193,.27)"; ctx.fillRect(x, y + 1, 1, Math.max(1, length - 3));
+    }
+  };
+  if (edges & 1) horizontal(1, dy + inset);
+  if (edges & 2) vertical(2, dx + size - inset - thickness);
+  if (edges & 4) horizontal(4, dy + size - inset - thickness);
+  if (edges & 8) vertical(8, dx + inset);
+  ctx.restore();
+}
+
 /** Clip a dirt tile to an inset, chamfered outline connected to nearby paths. */
-export function clipSoftPath(ctx: CanvasRenderingContext2D, dx: number, dy: number, size: number, mask: number): void {
+export function clipSoftPath(ctx: CanvasRenderingContext2D, dx: number, dy: number, size: number, mask: number, roundEndCap = false): void {
   const north = !!(mask & 1), east = !!(mask & 2), south = !!(mask & 4), west = !!(mask & 8);
   const inset = size / 8;
   const left = dx + (west ? 0 : inset), right = dx + size - (east ? 0 : inset);
   const top = dy + (north ? 0 : inset), bottom = dy + size - (south ? 0 : inset);
-  const corner = size / 16;
+  const corner = size / (roundEndCap ? 5 : 16);
+  const directions = mask & 15;
+  if (roundEndCap && directions !== 0 && (directions & (directions - 1)) === 0) {
+    const radius = Math.min(size / 3, (right - left) / 2, (bottom - top) / 2);
+    ctx.beginPath();
+    if (directions & 1) { // north joins; cap the south-facing trail end
+      ctx.moveTo(left, top); ctx.lineTo(right, top); ctx.lineTo(right, bottom - radius);
+      ctx.quadraticCurveTo(right, bottom, right - radius, bottom); ctx.lineTo(left + radius, bottom);
+      ctx.quadraticCurveTo(left, bottom, left, bottom - radius);
+    } else if (directions & 4) { // south joins; cap the north-facing trail end
+      ctx.moveTo(left, bottom); ctx.lineTo(right, bottom); ctx.lineTo(right, top + radius);
+      ctx.quadraticCurveTo(right, top, right - radius, top); ctx.lineTo(left + radius, top);
+      ctx.quadraticCurveTo(left, top, left, top + radius);
+    } else if (directions & 2) { // east joins; cap the west-facing trail end
+      ctx.moveTo(right, top); ctx.lineTo(right, bottom); ctx.lineTo(left + radius, bottom);
+      ctx.quadraticCurveTo(left, bottom, left, bottom - radius); ctx.lineTo(left, top + radius);
+      ctx.quadraticCurveTo(left, top, left + radius, top);
+    } else { // west joins; cap the east-facing trail end
+      ctx.moveTo(left, top); ctx.lineTo(left, bottom); ctx.lineTo(right - radius, bottom);
+      ctx.quadraticCurveTo(right, bottom, right, bottom - radius); ctx.lineTo(right, top + radius);
+      ctx.quadraticCurveTo(right, top, right - radius, top);
+    }
+    ctx.closePath(); ctx.clip();
+    return;
+  }
   // Round only genuinely exposed outer corners. Rounding at every tile seam
   // makes an otherwise straight road look scalloped.
   const nw = !north && !west ? corner : north && west && !(mask & 128) ? inset : 0;
@@ -121,6 +192,38 @@ export function paintCottageFloor(
   ctx.fillStyle = "#694c32";
   ctx.fillRect(door + 5, bottom + 12, size - 10, 2);
   ctx.fillRect(door + 5, bottom + 22, size - 10, 2);
+  ctx.restore();
+}
+
+/** Add a small woven rug beside the hearth while leaving the cottage threshold clear. */
+export function paintCottageRug(ctx: CanvasRenderingContext2D, size: number): void {
+  const x = Math.round(size * 3);
+  const y = Math.round(size * 5.25);
+  const width = Math.round(size * 2);
+  const height = Math.round(size * 1.25);
+  const inset = Math.max(1, Math.round(size / 16));
+  const mark = Math.max(1, Math.round(size / 16));
+  const spacingX = Math.max(mark + 1, Math.round(size / 4));
+  const spacingY = Math.max(mark + 1, Math.round(size / 5));
+  ctx.save();
+  // Flat woven ground cloth: a quiet russet border and warm, muted field.
+  ctx.fillStyle = "#785344";
+  ctx.fillRect(x, y, width, height);
+  ctx.fillStyle = "#906a4f";
+  ctx.fillRect(x + inset, y + inset, width - inset * 2, height - inset * 2);
+  ctx.fillStyle = "#ae8661";
+  ctx.fillRect(x + 2, y + 2, width - 4, 1);
+  ctx.fillRect(x + 2, y + height - 3, width - 4, 1);
+  ctx.fillRect(x + 2, y + 2, 1, height - 4);
+  ctx.fillRect(x + width - 3, y + 2, 1, height - 4);
+  for (let row = 0, yy = y + 5; yy + mark < y + height - 4; row++, yy += spacingY) {
+    for (let column = 0, xx = x + 5 + (row % 2) * Math.round(spacingX / 2);
+      xx + mark < x + width - 4; column++, xx += spacingX) {
+      const horizontal = (row + column) % 2 === 0;
+      ctx.fillStyle = horizontal ? "#9c7658" : "#806047";
+      ctx.fillRect(xx, yy, horizontal ? mark : 1, horizontal ? 1 : mark);
+    }
+  }
   ctx.restore();
 }
 

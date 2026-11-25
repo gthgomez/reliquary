@@ -243,17 +243,12 @@ try {
       await page.waitForTimeout(120);
     }
     await page.waitForSelector(".hud-menu", { timeout: 15_000 });
-    if (await page.locator(".hud-objective-btn").count()) {
-      await page.locator(".hud-objective-btn").first().click();
-    }
-
     const hudReport = await measureSelectors(page, [
       ["hud-muted", ".hud-chip .hud-muted"],
       ["hud-objective-preview", ".hud-objective-preview"],
-      ["hud-objective-full", ".hud-objective-full"],
     ]);
 
-    await page.click(".hud-menu");
+    await page.locator(".hud-objective-btn").click();
     await page.waitForSelector(".overlay-panel .sheet-sub");
     const panelReport = await measureSelectors(page, [["sheet-sub", ".overlay-panel .sheet-sub"]]);
 

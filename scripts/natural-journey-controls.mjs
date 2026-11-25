@@ -22,15 +22,31 @@ export async function walkTo(page, map, target, starterChosen = false) {
   for (let attempt = 0; attempt < 150; attempt++) {
     const [step] = pathFor(map, position, target, starterChosen);
     if (!step) return position;
+    if (step.warp) {
+      // A warp takes effect before a normal tile step completes. Release on
+      // the map change so a long input doesn't also walk past the threshold.
+      await page.keyboard.down(step.key);
+      try {
+        const firstArrival = await page.waitForFunction((mapId) => {
+          const pos = window.__controlsTest.getPos();
+          return pos.map !== mapId && pos;
+        }, map.id, { timeout: 5000 });
+        try {
+          return await firstArrival.jsonValue();
+        } finally {
+          await firstArrival.dispose();
+        }
+      } finally {
+        await page.keyboard.up(step.key);
+      }
+    }
     // Hold across several frames but release before a normal tile can repeat.
-    // Instant map exits can start a step before release, so always observe
-    // where the player actually stops before planning the next key.
+    // Observe where the player actually stops before planning the next key.
     await page.keyboard.press(step.key, { delay: 85 });
     const next = await settledPosition(page);
     if (next.mode === "battle") return next;
     if (next.map !== map.id) {
-      if (!step.warp) throw new Error(`Unexpected exit from ${map.id} toward ${step.x},${step.y}: ${JSON.stringify(next)}`);
-      return next;
+      throw new Error(`Unexpected exit from ${map.id} toward ${step.x},${step.y}: ${JSON.stringify(next)}`);
     }
     stalled = next.x === position.x && next.y === position.y ? stalled + 1 : 0;
     position = next;

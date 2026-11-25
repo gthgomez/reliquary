@@ -164,7 +164,8 @@ test("copy exposes only selected runtime PNGs and their candidate manifest", () 
     copyElderhallCandidate(source, dir);
     assert.ok(existsSync(join(dir, "assets", "elderhall.well-reference.png")));
     assert.ok(existsSync(join(dir, "manifest.json")));
-    assert.equal(existsSync(join(dir, "assets", "elderhall.inn.png")), false);
+    assert.ok(existsSync(join(dir, "assets", "elderhall.inn.png")));
+    assert.equal(existsSync(join(dir, "assets", "elderhall.grass-0.png")), false);
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
 

@@ -9,7 +9,6 @@
       "copper gold"
     ],
     "perspective": "three-quarter, south-facing",
-    "reference_sha256": "04ac8efeb1b52dd63f026c222dceb4427ab2514f54741561813ddbfb90f967c5",
     "reference_use": "visual direction; procedural drawings are not reference-conditioned generation"
   },
   "assets": [
@@ -864,14 +863,14 @@
     },
     {
       "anchor": [
-        80,
-        121
+        92,
+        152
       ],
       "collision": null,
-      "depth_baseline": 121,
+      "depth_baseline": 152,
       "dimensions": [
         160,
-        132
+        156
       ],
       "file": "assets/elderhall.inn.png",
       "id": "elderhall.inn",
@@ -882,17 +881,19 @@
         1
       ],
       "provenance": {
-        "authorization": "Created at project owner's request for Reliquary; production approval pending",
-        "license": "Legal license not independently verified",
-        "method": "locally drawn deterministic Pillow operations",
-        "rights_holder": "Not independently verified",
-        "source_type": "original_programmatic"
+        "source_type": "native_recipe",
+        "method": "Original text-only OpenAI ImageGen drawing of the Quiet Lantern. Source alpha cropped and converted to binary, then nearest-sampled in separate roof and facade bands at 160 x 156 by scripts/prepare-elderhall-inn.mjs. No input image was supplied to generation.",
+        "rights_holder": "Reliquary repository owner for output rights granted by the generator terms",
+        "license": "Reliquary project license and OpenAI Terms of Use for the generated output",
+        "authorization": "Original artwork creation and game integration delegated by the repository owner for the Elderhall campaign",
+        "source_sha256": "53baac29ff5c7b54ce4b1c32654bd33b258cce0515a14e15082b1dced55ff5bb",
+        "review_status": "Candidate art, original drawing from a text brief"
       },
       "render_size_tiles": [
-        2.5,
-        2.0625
+        3,
+        2.925
       ],
-      "sha256": "e5af823c63ccab7f06487202bc95574b0dd30a920cf3528601c13ee6d9e63a51",
+      "sha256": "1247645deb0f00fbf8407a7fe9ee8d3c978e1843b3e8cb51a4729a99c1ecdcc6",
       "shadow": null
     },
     {
@@ -1304,5 +1305,5 @@
   "id": "reliquary.elderhall",
   "schema_version": "ages.environment-pack/1",
   "tile_size": 32,
-  "version": "0.2.0"
+  "version": "0.3.0"
 }

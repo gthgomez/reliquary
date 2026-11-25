@@ -1,5 +1,12 @@
 import assert from "node:assert/strict";
-import { startStaticServer, withBrowser, waitForGameBoot } from "./helpers.mjs";
+import { mkdirSync } from "node:fs";
+import { join, resolve } from "node:path";
+import { measureTargetVisibility, startStaticServer, withBrowser, waitForGameBoot } from "./helpers.mjs";
+
+const artifactDir = process.env.RELIQUARY_BROWSER_ARTIFACTS
+  ? resolve(process.env.RELIQUARY_BROWSER_ARTIFACTS)
+  : null;
+if (artifactDir) mkdirSync(artifactDir, { recursive: true });
 
 async function dismissIntro(page) {
   for (let i = 0; i < 16; i += 1) {
@@ -11,11 +18,11 @@ async function dismissIntro(page) {
 
 async function waitForObjectiveSafeArea(page, checkPlayer) {
   await page.waitForFunction((shouldCheckPlayer) => {
-    const popover = document.querySelector(".hud-objective-popover");
+    const chrome = document.querySelector(".top-stack");
     const viewport = document.querySelector(".viewport");
     const canvas = document.querySelector(".game-canvas");
-    if (!popover || !viewport || !canvas || !popover.getClientRects().length) return false;
-    const pop = popover.getBoundingClientRect();
+    if (!chrome || !viewport || !canvas || !chrome.getClientRects().length) return false;
+    const pop = chrome.getBoundingClientRect();
     const view = viewport.getBoundingClientRect();
     const safe = Number.parseFloat(getComputedStyle(viewport).getPropertyValue("--ui-safe-top-px"));
     if (safe < pop.bottom - view.top + 3) return false;
@@ -27,6 +34,24 @@ async function waitForObjectiveSafeArea(page, checkPlayer) {
       && report.effectivePlayerHeadCanvasY >= popBottomCanvas
       && report.effectivePlayerHeadCanvasY + 48 <= canvas.height + 1;
   }, checkPlayer, { timeout: 10_000 });
+}
+
+async function revealCottageDoorHint(page) {
+  for (const x of [5, 4]) {
+    await page.evaluate((doorX) => {
+      window.__controlsTest.warp("elderhall", doorX, 15);
+      window.__controlsTest.setKeys(["KeyW"]);
+    }, x);
+    await page.waitForTimeout(80);
+    await page.evaluate(() => window.__controlsTest.setKeys([]));
+    const visible = await page.waitForFunction(() =>
+      document.querySelector(".world-interaction-hint")?.textContent?.startsWith("Enter · Interact:") === true,
+    null, { timeout: 900 }).then(() => true, () => false);
+    if (visible) return x;
+    await page.evaluate(() => window.__controlsTest.setKeys([]));
+    await page.waitForTimeout(80);
+  }
+  throw new Error("Could not reveal the cottage doorway interaction hint");
 }
 
 const VIEWPORTS = [
@@ -117,13 +142,15 @@ try {
         text: el.textContent ?? "", clientHeight: el.clientHeight, scrollHeight: el.scrollHeight,
         clientWidth: el.clientWidth, scrollWidth: el.scrollWidth,
         compact: getComputedStyle(el).clipPath !== "none",
+        lineClamp: getComputedStyle(el).webkitLineClamp || getComputedStyle(el).lineClamp,
+        truncated: el.scrollHeight > el.clientHeight + 1 || el.scrollWidth > el.clientWidth + 1,
       }));
       const inCottage = (await page.locator(".hud-place").innerText()).includes("Cottage");
-      assert.match(objective.text, inCottage ? /doorway at the bottom/ : /Binding Grove/,
-        "the starting objective gives a usable next step for the current map");
+      assert.equal(objective.text, inCottage ? "Leave the cottage" : "Find the Binding Grove",
+        "the persistent HUD gives a compact, accurate next step for the current map");
       assert.ok(
         objective.compact || (objective.clientHeight > 0 &&
-          objective.scrollHeight <= objective.clientHeight + 1 &&
+          (objective.lineClamp === "2" || objective.scrollHeight <= objective.clientHeight + 1) &&
           objective.scrollWidth <= objective.clientWidth + 1),
         `the starting objective fits at ${viewport.width}x${viewport.height}: ${JSON.stringify(objective)}`,
       );
@@ -165,69 +192,77 @@ try {
       assert.deepEqual(fit.overlaps, [], "HUD elements do not overlap");
       if (await page.locator(".hud-objective-btn").count()) {
         const checkPlayer = viewport.width === 390 && (viewport.height === 844 || viewport.height === 667);
-        if (checkPlayer) {
-          // Put the player at the north edge for the popover geometry check.
-          await page.evaluate(() => window.__controlsTest.warp("elderhall", 11, 1));
-        }
-        const menuBoxBefore = await page.locator(".hud-menu").boundingBox();
-        assert.ok(menuBoxBefore, "menu visible before objective expand");
-        const status = page.getByRole("status").and(page.locator(".app-status"));
-        if (viewport.width === 320) await status.waitFor();
-        await page.locator(".hud-objective-btn").first().click();
-        await page.waitForSelector(".hud-objective-popover", { timeout: 3000 });
-        assert.match(await page.locator(".hud-objective-popover").innerText(), /Binding Grove/);
-        if (viewport.width === 320) {
-          assert.equal(await status.evaluate((el) => getComputedStyle(el).clipPath), "inset(50%)",
-            "offline status remains announced and does not paint over the objective");
-        }
+        if (checkPlayer) await page.evaluate(() => window.__controlsTest.warp("elderhall", 11, 1));
         await waitForObjectiveSafeArea(page, checkPlayer);
-        if (checkPlayer) {
-          const action = page.locator(".hud-objective-lantern");
-          assert.equal(await action.isVisible(), true, "objective action remains visible");
-          assert.equal(await action.evaluate((button) => {
-            const rect = button.getBoundingClientRect();
-            const hit = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
-            return hit === button || button.contains(hit);
-          }), true, "objective action remains pointer-accessible");
-        }
+        const before = await page.evaluate(() => window.__controlsTest.getPos());
+        await page.locator(".hud-objective-btn").click();
+        const panel = page.getByRole("dialog", { name: "Lantern", exact: true });
+        const guidance = await panel.locator(".sheet-sub").first().innerText();
+        assert.match(guidance, /Speak a pact at the Binding Grove, west of Elderhall\./);
+        assert.match(guidance, inCottage ? /then follow the village path west\./ : /Binding Grove is west.*opening beside the grove sign.*optional guidance/i);
+        const close = panel.getByRole("button", { name: "Close", exact: true });
+        assert.ok((await measureTargetVisibility(close)).hitOk, "Lantern dismissal remains reachable");
+        assert.ok(await page.locator(".hud").evaluate((el) => el.inert), "Lantern owns exploration input");
         if (viewport.width === 390 && viewport.height === 844) {
-          // Reflow the open panel; its new visible bottom must remain reserved.
           await page.setViewportSize({ width: 360, height: 844 });
-          await waitForObjectiveSafeArea(page, true);
+          assert.ok((await measureTargetVisibility(close)).fullyVisible, "Lantern Close remains visible after resizing");
           await page.setViewportSize(viewport);
-          await waitForObjectiveSafeArea(page, true);
         }
-        const menuBoxAfter = await page.locator(".hud-menu").boundingBox();
-        assert.ok(menuBoxAfter, "menu visible after objective expand");
-        assert.ok(
-          Math.abs(menuBoxBefore.y - menuBoxAfter.y) < 1.5,
-          `objective expand shifted Menu vertically (${menuBoxBefore.y} → ${menuBoxAfter.y})`,
-        );
-        const safeTop = await page.evaluate(() => {
-          const vp = document.querySelector(".viewport");
-          if (!vp) return 0;
-          return Number.parseFloat(getComputedStyle(vp).getPropertyValue("--ui-safe-top-px"));
-        });
-        assert.ok(safeTop > 24, `--ui-safe-top-px should reflect HUD stack (${safeTop})`);
         await page.keyboard.press("Escape");
-        assert.equal(await page.locator(".hud-objective-popover").count(), 0, "Escape dismisses the objective");
-        await page.waitForFunction(() => {
-          const stack = document.querySelector(".top-stack");
-          const viewport = document.querySelector(".viewport");
-          const safe = Number.parseFloat(getComputedStyle(viewport).getPropertyValue("--ui-safe-top-px"));
-          return safe <= stack.getBoundingClientRect().bottom - viewport.getBoundingClientRect().top + 5;
+        await panel.waitFor({ state: "detached" });
+        await page.waitForFunction(() => document.activeElement?.classList.contains("hud-objective-btn"));
+        assert.deepEqual(await page.evaluate(() => window.__controlsTest.getPos()), before, "Lantern preserves the world position");
+        await waitForObjectiveSafeArea(page, checkPlayer);
+      }
+      if ((viewport.width === 320 && viewport.height === 568)
+        || (viewport.width === 568 && viewport.height === 320)
+        || (viewport.width === 640 && viewport.height === 320)
+        || (viewport.width === 390 && viewport.height === 844)) {
+        const doorX = await revealCottageDoorHint(page);
+        const hintGeometry = await page.evaluate(() => {
+          const hint = document.querySelector(".world-interaction-hint")?.getBoundingClientRect();
+          const viewport = document.querySelector(".viewport")?.getBoundingClientRect();
+          const status = document.querySelector(".app-status")?.getBoundingClientRect();
+          const objective = document.querySelector(".hud")?.getBoundingClientRect();
+          const controls = [...document.querySelectorAll(".touch-full .dpad, .touch-full .ab")]
+            .filter((el) => el.getClientRects().length).map((el) => el.getBoundingClientRect());
+          const overlaps = (a, b) => !!a && !!b && a.left < b.right - 1 && b.left < a.right - 1 && a.top < b.bottom - 1 && b.top < a.bottom - 1;
+          return {
+            insideViewport: !!hint && !!viewport && hint.left >= viewport.left - 1 && hint.right <= viewport.right + 1
+              && hint.top >= viewport.top - 1 && hint.bottom <= viewport.bottom + 1,
+            overlapsStatus: overlaps(hint, status),
+            overlapsObjective: overlaps(hint, objective),
+            overlapsTouch: controls.some((rect) => overlaps(hint, rect)),
+            bottomEdge: !!hint && !!viewport && viewport.bottom - hint.bottom <= 16,
+            rightCorner: !!hint && !!viewport && viewport.right - hint.right <= 16,
+            hint: hint && { x: hint.x, y: hint.y, width: hint.width, height: hint.height },
+          };
         });
-        assert.equal(await page.locator(".hud-objective-btn").getAttribute("aria-expanded"), "false");
-        assert.equal(await page.locator(".hud-objective-btn").evaluate((el) => el === document.activeElement), true, "dismissal restores objective focus");
-        if (viewport.width === 320) {
-          assert.equal(await status.evaluate((el) => getComputedStyle(el).clipPath), "none",
-            "offline status is visible again after dismissing the objective");
+        assert.equal(hintGeometry.insideViewport, true, `interaction hint stays in the game viewport: ${JSON.stringify(hintGeometry)}`);
+        assert.equal(hintGeometry.overlapsStatus, false, `interaction hint clears offline status: ${JSON.stringify(hintGeometry)}`);
+        assert.equal(hintGeometry.overlapsObjective, false, `interaction hint clears the objective HUD: ${JSON.stringify(hintGeometry)}`);
+        assert.equal(hintGeometry.overlapsTouch, false, `interaction hint clears touch controls: ${JSON.stringify(hintGeometry)}`);
+        assert.equal(hintGeometry.bottomEdge, true, `interaction hint stays at the bottom edge: ${JSON.stringify(hintGeometry)}`);
+        assert.equal(hintGeometry.rightCorner, true, `interaction hint stays at the right corner, away from the doorway approach: ${JSON.stringify(hintGeometry)}`);
+        if (viewport.width === 390 && viewport.height === 844) {
+          if (artifactDir) {
+            await page.screenshot({ path: join(artifactDir, "interaction-hint-cottage-door-390x844.png") });
+          }
+          assert.ok(doorX === 4 || doorX === 5);
         }
       }
+      await page.evaluate(() => window.__controlsTest.warp("elderhall", 2, 7));
+      await page.evaluate(() => window.__controlsTest.setKeys([]));
+      await page.waitForSelector(".world-interaction-hint", { timeout: 3000 });
+      await page.keyboard.press("z");
+      await page.waitForSelector(".dialog", { timeout: 3000 });
+      assert.equal(await page.locator(".world-interaction-hint").count(), 0, "dialogue hides the world interaction hint");
+      await dismissIntro(page);
       await page.evaluate(() => {
         window.__reliquary?.openMenu?.();
       });
       await page.waitForSelector(".overlay-panel", { timeout: 10_000 });
+      assert.equal(await page.locator(".world-interaction-hint").count(), 0, "menus hide the world interaction hint");
       const modalChrome = await page.evaluate(() => {
         const touch = document.querySelector(".touch");
         return {
@@ -294,15 +329,15 @@ try {
       assert.ok(await page.locator(".hud-chip").evaluate((el) => el.scrollWidth <= el.clientWidth + 1),
         "enlarged location and status fit their HUD card");
       await objective.tap();
-      const panel = page.getByRole("region", { name: "Current objective" });
+      const panel = page.getByRole("dialog", { name: "Lantern", exact: true });
       assert.match(await panel.innerText(), /Binding Grove/);
       const panelBox = await panel.boundingBox();
-      const touchBox = await page.locator(".touch-full").boundingBox();
-      const bottom = viewport.width < viewport.height ? touchBox?.y : viewport.height;
-      assert.ok(panelBox && bottom && panelBox.y + panelBox.height <= bottom + 1,
-        `expanded objective clears the controls at 200% text, ${viewport.width}x${viewport.height}`);
-      await panel.getByRole("button", { name: "Open in Lantern menu" }).tap();
-      await page.locator(".overlay-panel").waitFor();
+      assert.ok(panelBox && panelBox.y + panelBox.height <= viewport.height + 1,
+        `Lantern fits at 200% text, ${viewport.width}x${viewport.height}`);
+      const close = panel.getByRole("button", { name: "Close", exact: true });
+      assert.ok((await measureTargetVisibility(close)).hitOk, "Lantern dismissal remains reachable with 200% text");
+      await close.tap();
+      await panel.waitFor({ state: "detached" });
     }, { textScale: 2, context: { hasTouch: true } });
     console.log(`[layout] ok ${viewport.width}x${viewport.height} at 200% text`);
   }

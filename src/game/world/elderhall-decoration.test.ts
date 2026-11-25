@@ -5,11 +5,11 @@ import { MAPS } from "../maps.ts";
 import { makeElderhallCandidate } from "../maps/elderhall-candidate.ts";
 import { isOccupied } from "./movement.ts";
 
-test("candidate flowerbeds stay on clear grass and do not change gameplay geometry", () => {
+test("candidate flower clusters stay on clear grass and do not change gameplay geometry", () => {
   const base = MAPS.elderhall;
   const map = makeElderhallCandidate(base);
   const flowers = (map.decorations ?? []).filter((deco) => deco.sprite === "elderhall-flowers");
-  assert.ok(flowers.length >= 20, "the candidate includes grouped gardens around the village");
+  assert.equal(flowers.length, 8, "the candidate uses a few composed planting clusters instead of repeated flower stamps");
   for (const flower of flowers) {
     assert.equal(flower.layer, "ground");
     // Check every tile covered by the artwork, not only its origin tile.

@@ -25,6 +25,7 @@ test("after the trial, the objective closes chapter one", () => {
 test("optional directions change with place and progression", () => {
   assert.match(objectiveHint({}, "Rowan's Cottage")!, /doorway/);
   assert.match(objectiveHint({}, "Elderhall")!, /western|west/);
+  assert.match(objectiveHint({}, "Elderhall")!, /optional guidance/i);
   assert.doesNotMatch(objectiveHint({}, "Elderhall")!, /stone path/i);
   assert.match(objectiveHint({}, "Binding Grove")!, /face it.*inspect/);
   assert.match(objectiveHint({ starter: true }, "Elderhall")!, /north.*Briar Road/);
@@ -33,10 +34,17 @@ test("optional directions change with place and progression", () => {
 });
 
 test("the cottage directs a new player to the actual exit before the larger objective", () => {
-  assert.match(objectivePreview({}, "home")!, /doorway at the bottom of the cottage/);
+  assert.equal(objectivePreview({}, "home"), "Leave the cottage");
   assert.match(currentObjective({})!, /Binding Grove/);
-  assert.match(objectivePreview({}, "elderhall")!, /Binding Grove.*west/);
-  assert.match(objectivePreview({ starter: true }, "home")!, /Thornkeep/);
+  assert.equal(objectivePreview({}, "elderhall"), "Find the Binding Grove");
+  assert.equal(objectivePreview({}, "grove"), "Make a pact");
+  assert.equal(objectivePreview({ starter: true }, "grove"), "Return to Elderhall");
+  assert.equal(objectivePreview({ starter: true }, "briar_road"), "Continue north to Thornkeep");
+  assert.equal(objectivePreview({ starter: true }, "wildwood"), "Continue north to Thornkeep");
+  assert.equal(objectivePreview({ starter: true }, "thornkeep"), "Find Warden Cael");
+  assert.equal(objectivePreview({ starter: true }, "home"), "Travel north to Thornkeep");
+  assert.equal(objectivePreview({ starter: true, trial: true }, "elderhall"), "Rest or travel beyond the ash");
+  assert.equal(objectivePreview({ starter: true, trial: true }, "grove"), "Rest or travel beyond the ash");
 });
 
 test("Maren's first meeting clue names the landmark next to her in each world", () => {

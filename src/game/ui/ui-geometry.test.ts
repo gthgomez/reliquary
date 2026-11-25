@@ -6,57 +6,43 @@ test("formatUiSafeTopPx adds configured gap", () => {
   assert.equal(formatUiSafeTopPx(40), `${40 + UI_SAFE_TOP_GAP_PX}`);
 });
 
-test("safe top follows an out-of-flow popover opening, resizing, hiding and closing", () => {
-  const saved = { ResizeObserver: globalThis.ResizeObserver, MutationObserver: globalThis.MutationObserver, getComputedStyle: globalThis.getComputedStyle };
+test("the safe top follows the HUD stack and clears when it closes", () => {
+  const saved = globalThis.ResizeObserver;
   let resize: (() => void) | undefined;
-  let mutation: (() => void) | undefined;
   const observed = new Set<unknown>();
-  let resizeDisconnected = false;
-  let mutationDisconnected = false;
-  let popover: { bottom: number; height: number; visible: boolean; getBoundingClientRect: () => { bottom: number; height: number } } | null = null;
+  let disconnected = false;
   let viewportTop = 10;
+  let stackBottom = 100;
+  let stackHeight = 90;
   let value = "";
   const viewport = {
     getBoundingClientRect: () => ({ top: viewportTop }),
     style: { setProperty: (_key: string, next: string) => { value = next; }, removeProperty: () => { value = ""; } },
   };
-  const stack = { getBoundingClientRect: () => ({ bottom: 100, height: 90 }), querySelector: () => popover };
+  const stack = { getBoundingClientRect: () => ({ bottom: stackBottom, height: stackHeight }) };
   class FakeResizeObserver {
     constructor(callback: () => void) { resize = callback; }
     observe(element: unknown) { observed.add(element); }
-    unobserve(element: unknown) { observed.delete(element); }
-    disconnect() { resizeDisconnected = true; }
+    disconnect() { disconnected = true; }
   }
-  class FakeMutationObserver {
-    constructor(callback: () => void) { mutation = callback; }
-    observe() {}
-    disconnect() { mutationDisconnected = true; }
-  }
-  Object.assign(globalThis, { ResizeObserver: FakeResizeObserver, MutationObserver: FakeMutationObserver,
-    getComputedStyle: (element: { visible: boolean }) => ({ visibility: element.visible ? "visible" : "hidden" }) });
+  Object.assign(globalThis, { ResizeObserver: FakeResizeObserver });
   try {
     const cleanup = observeUiSafeTop(viewport as unknown as HTMLElement, stack as unknown as HTMLElement);
     assert.equal(value, "94");
-    popover = { bottom: 220, height: 120, visible: true, getBoundingClientRect() { return this; } };
-    mutation!();
-    assert.ok(observed.has(popover));
-    assert.equal(value, "214");
-    popover.bottom = 260;
+    assert.deepEqual(observed, new Set([stack, viewport]));
+    stackBottom = 140;
+    stackHeight = 130;
     resize!();
-    assert.equal(value, "254");
-    popover.visible = false;
-    resize!();
-    assert.equal(value, "94");
-    const removed = popover;
-    popover = null;
-    mutation!();
-    assert.equal(observed.has(removed), false);
+    assert.equal(value, "134");
     viewportTop = 20;
     resize!();
-    assert.equal(value, "84");
+    assert.equal(value, "124");
+    stackHeight = 0;
+    resize!();
+    assert.equal(value, "");
     cleanup();
-    assert.ok(resizeDisconnected && mutationDisconnected);
+    assert.ok(disconnected);
   } finally {
-    Object.assign(globalThis, saved);
+    Object.assign(globalThis, { ResizeObserver: saved });
   }
 });

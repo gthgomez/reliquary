@@ -18,8 +18,19 @@ export function currentObjective(flags: ObjectiveFlags): string | null {
 }
 
 export function objectivePreview(flags: ObjectiveFlags, mapId: string): string | null {
-  if (mapId === "home" && !flags.starter) return "Leave through the doorway at the bottom of the cottage.";
-  return currentObjective(flags);
+  if (!flags.starter) {
+    if (mapId === "home") return "Leave the cottage";
+    if (mapId === "elderhall") return "Find the Binding Grove";
+    if (mapId === "grove") return "Make a pact";
+    return "Find the Binding Grove";
+  }
+  if (!flags.trial) {
+    if (mapId === "grove") return "Return to Elderhall";
+    if (mapId === "thornkeep" || mapId === "warden_hall") return "Find Warden Cael";
+    if (mapId === "briar_road" || mapId === "wildwood") return "Continue north to Thornkeep";
+    return "Travel north to Thornkeep";
+  }
+  return "Rest or travel beyond the ash";
 }
 
 export function marenLandmark(candidate: boolean): string {
@@ -30,7 +41,7 @@ export function marenLandmark(candidate: boolean): string {
 export function objectiveHint(flags: ObjectiveFlags, place: string): string | null {
   if (!flags.starter) {
     if (place === "Rowan's Cottage") return "Leave through the doorway at the bottom of the cottage, then follow the village path west.";
-    if (place === "Elderhall") return "Follow the village path west through the opening beside the grove sign. The trees block other routes.";
+    if (place === "Elderhall") return "The Binding Grove is west. Follow the village path through the opening beside the grove sign; Elder Maren nearby can offer optional guidance.";
     if (place === "Binding Grove") return "Stand beside a creature and face it, then press Z or Enter, or tap A, to inspect it. You can inspect all three before making a pact.";
     return "Return to Elderhall and follow its western path to the grove.";
   }

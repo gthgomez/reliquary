@@ -22,9 +22,8 @@ export function formatUiSafeTopPx(measuredBottomFromViewportTop: number): string
   return `${Math.max(0, Math.ceil(measuredBottomFromViewportTop + UI_SAFE_TOP_GAP_PX))}`;
 }
 
-/** Publish the HUD's bottom edge, including its out-of-flow objective panel. */
+/** Publish the exploration HUD and status stack's bottom edge. */
 export function observeUiSafeTop(viewport: HTMLElement, stack: HTMLElement): () => void {
-  let popover: HTMLElement | null = null;
   const apply = () => {
     const vr = viewport.getBoundingClientRect();
     const sr = stack.getBoundingClientRect();
@@ -32,24 +31,11 @@ export function observeUiSafeTop(viewport: HTMLElement, stack: HTMLElement): () 
       viewport.style.removeProperty(UI_SAFE_TOP_CSS_VAR);
       return;
     }
-    const pr = popover?.getBoundingClientRect();
-    const popoverBottom = pr && pr.height > 0 && getComputedStyle(popover!).visibility === "visible" ? pr.bottom : sr.bottom;
-    viewport.style.setProperty(UI_SAFE_TOP_CSS_VAR, formatUiSafeTopPx(Math.max(sr.bottom, popoverBottom) - vr.top));
+    viewport.style.setProperty(UI_SAFE_TOP_CSS_VAR, formatUiSafeTopPx(sr.bottom - vr.top));
   };
   const resizeObserver = new ResizeObserver(apply);
-  const reconcilePopover = () => {
-    const next = stack.querySelector<HTMLElement>(".hud-objective-popover");
-    if (next !== popover) {
-      if (popover) resizeObserver.unobserve(popover);
-      popover = next;
-      if (popover) resizeObserver.observe(popover);
-    }
-    apply();
-  };
-  const mutationObserver = new MutationObserver(reconcilePopover);
   resizeObserver.observe(stack);
   resizeObserver.observe(viewport);
-  mutationObserver.observe(stack, { childList: true, subtree: true });
-  reconcilePopover();
-  return () => { mutationObserver.disconnect(); resizeObserver.disconnect(); };
+  apply();
+  return () => resizeObserver.disconnect();
 }
