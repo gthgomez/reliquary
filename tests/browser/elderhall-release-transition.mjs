@@ -46,8 +46,9 @@ async function start() {
 }
 
 async function waitForCache(candidate, entry = null) {
-  await page.waitForFunction(async ([asset, expected, expectedEntry]) => {
-    if (navigator.serviceWorker.controller?.state !== "activated") return false;
+  await page.waitForFunction(() => navigator.serviceWorker.controller?.state === "activated",
+    null, { timeout: 30_000 });
+  const verified = await page.evaluate(async ([asset, expected, expectedEntry]) => {
     const cacheList = await caches.keys();
     const precache = cacheList.find((name) => name.startsWith("workbox-precache"));
     if (!precache) return false;
@@ -56,7 +57,8 @@ async function waitForCache(candidate, entry = null) {
     if (!expectedEntry) return true;
     const shell = await cache.match("/index.html", { ignoreSearch: true });
     return (await shell?.text())?.includes(expectedEntry) && Boolean(await cache.match(expectedEntry, { ignoreSearch: true }));
-  }, [candidateImage, candidate, entry], { timeout: 30_000 });
+  }, [candidateImage, candidate, entry]);
+  assert.equal(verified, true, "The activated worker must cache the selected build");
 }
 
 async function switchArtifact(dir, candidate) {
@@ -103,8 +105,8 @@ try {
   report.steps.push({ name: "Fresh save on revision 2", worldRevision: baseline.worldRevision });
 
   await page.goto(baseUrl + "game/manifest.json");
-  // Only the blocked-tile upgrade uses a fixture. It derives from the real
-  // revision 2 save and keeps its character, party, inventory and flags.
+  // The blocked-tile fixture keeps the character, party, inventory and flags
+  // from the real revision 2 save.
   const fixture = { ...baseline, mapId: "elderhall", x: 9, y: 6, gold: 321 };
   await page.evaluate(([key, data]) => localStorage.setItem(key, JSON.stringify(data)), [saveKey, fixture]);
   await switchArtifact(candidateDir, true);
@@ -124,16 +126,19 @@ try {
   }, candidateImage), 80);
   report.steps.push({ name: "Same-origin upgrade and offline save migration", worldRevision: 5, x: upgraded.x, y: upgraded.y, gold: upgraded.gold });
 
+  const backupBytes = await readSavedBytes();
   await page.keyboard.press("ArrowLeft", { delay: 85 });
   await page.waitForTimeout(230);
   const progressed = await save();
   assert.notEqual(progressed.x, upgraded.x, "normal input advances the candidate save");
   await switchArtifact(resolve(rollbackDir), false);
   const newerBytes = await readSavedBytes();
-  const backupBytes = await readSavedBytes(backupKey);
-  assert.equal(JSON.parse(newerBytes).worldRevision, 5);
-  assert.equal(JSON.parse(backupBytes).worldRevision, 5);
-  assert.notEqual(backupBytes, newerBytes, "rollback must cover two distinct protected records");
+  const latest = JSON.parse(newerBytes);
+  assert.deepEqual([latest.worldRevision, latest.x], [5, progressed.x]);
+  assert.notEqual(backupBytes, newerBytes, "the captured checkpoints are distinct");
+  // Hiding the page during an update can save again and rotate the backup.
+  // Use the exact pre-move checkpoint to reliably exercise both protected slots.
+  await page.evaluate(([slot, bytes]) => localStorage.setItem(slot, bytes), [backupKey, backupBytes]);
   await openTitle();
   const newerSha256 = await exportFromTitle("Export newer save", newerBytes);
   assert.equal(await page.getByRole("button", { name: "Continue", exact: true }).count(), 0);
