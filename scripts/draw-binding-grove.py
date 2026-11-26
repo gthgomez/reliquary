@@ -36,7 +36,7 @@ def paint_grove(brush):
         brush.line((x - 2, y + 3, x + 1, y + 3), fill="#566644")
 
     # Visible ground anchors under Emberkit, Mirewhelp and Briarling.
-    for x, y, accent in [(24, 36, "#be8054"), (88, 20, "#78aba2"), (136, 36, "#a6ac66")]:
+    for x, y, accent in [(24, 31, "#be8054"), (88, 15, "#78aba2"), (136, 31, "#a6ac66")]:
         brush.ellipse((x - 12, y - 5, x + 13, y + 6), fill=(42, 51, 30, 115))
         slate(brush, x - 11, y - 5, 22, 9, "#a39776", notch=4)
         brush.line((x - 7, y + 1, x + 7, y + 1), fill=accent, width=2)
