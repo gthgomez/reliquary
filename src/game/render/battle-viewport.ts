@@ -117,8 +117,8 @@ export const BATTLE_STAGE_METRICS: Record<BattlePresentation, BattleStageMetrics
     statusSide: 0.024,
   },
   "compact-landscape": {
-    ground: 0.51,
-    commandTop: 0.55,
+    ground: 0.475,
+    commandTop: 0.52,
     playerCx: 0.305,
     foeCx: 0.7,
     playerHeight: 0.35,

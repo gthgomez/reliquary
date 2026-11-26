@@ -641,8 +641,8 @@
   min-width: 0;
   align-items: center;
   gap: 10px;
-  min-height: 44px;
-  height: clamp(44px, 7.1vh, 64px);
+  min-height: 48px;
+  height: clamp(48px, 7.1vh, 64px);
   padding: 0 clamp(12px, 1.2vw, 20px);
   background-color: var(--color-forest);
   background-image: var(--bq-panel);
@@ -692,7 +692,7 @@
   background: var(--bq-panel-strong);
 }
 .battle-details-toggle {
-  min-height: 32px;
+  min-height: 44px;
   min-width: 44px;
   padding: 2px 12px;
   border: 1px solid var(--bq-border);
@@ -881,7 +881,7 @@
   .battle-controls {
     left: 2.4%;
     right: 2.4%;
-    top: 55%;
+    top: 52%;
     bottom: 0.8%;
     gap: 4px;
   }
@@ -926,8 +926,7 @@
     height: 17px;
   }
   .battle-footer {
-    height: 36px;
-    min-height: 36px;
+    height: 48px;
     padding: 0 10px;
     gap: 6px;
   }
@@ -938,7 +937,6 @@
     font-size: 0.64rem;
   }
   .battle-details-toggle {
-    min-height: 30px;
     font-size: 0.68rem;
     padding: 1px 8px;
   }
@@ -1135,7 +1133,6 @@
     display: none;
   }
   .battle-details-toggle {
-    min-height: 44px;
     font-size: 0.64rem;
     padding: 1px 7px;
   }
