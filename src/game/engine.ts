@@ -2872,7 +2872,7 @@ export class ReliquaryGame {
 		});
 		const geometryBase = computeBattleStageGeometry(cw, ch, layout, b.phase);
 		const bg = this.images[`bg_${b.bg}`] || this.images.bg_grass;
-		paintBattleBackdrop(ctx, cw, ch, layout, b.bg, bg ?? null);
+		paintBattleBackdrop(ctx, cw, ch, layout, b.bg, bg ?? null, this.mapId === "briar_road" ? "roadside" : "scenic");
 		const anchors = { player: layout.player, foe: { cx: layout.foe.cx, cy: layout.foe.cy } };
 		const motion = b.animCue
 			? sampleBattleAnim(b.animCue, b.animElapsedMs, geometryBase.animCorridor, anchors, {

@@ -188,9 +188,8 @@ const SUNSET_GRADE: Record<
 };
 
 /**
- * Draw the battle plate with cover cropping (never stretched), then grade the
- * plate toward the reference's sunset atmosphere. The original asset stays
- * untouched on disk; the grade is presentation only.
+ * Fill the arena with the authored plate. On Briar Road, frame the grass verge
+ * and the near path so the creatures enter combat at the edge of the road.
  */
 export function paintBattleBackdrop(
   ctx: CanvasRenderingContext2D,
@@ -199,17 +198,19 @@ export function paintBattleBackdrop(
   layout: BattleLayout,
   bgKey: BattleBg,
   image?: CanvasImageSource | null,
+  framing: "scenic" | "roadside" = "scenic",
 ): void {
-  if (image) paintCover(ctx, image, cw, ch);
+  if (image) paintCover(ctx, image, cw, ch, framing);
   else {
     ctx.fillStyle = bgKey === "cave" ? "#1b1b26" : "#2c3d32";
     ctx.fillRect(0, 0, cw, ch);
   }
 
-  const grade = SUNSET_GRADE[bgKey] ?? SUNSET_GRADE.grass;
-  // The meadow plate is graded with multiply (reference purple dusk); other
-  // maps use soft-light so cave/marsh keep their authored mood.
-  if (typeof ctx.createLinearGradient === "function") {
+  if (framing === "roadside") {
+    ctx.fillStyle = "rgba(81, 105, 91, 0.22)";
+    ctx.fillRect(0, 0, cw, ch);
+  } else if (typeof ctx.createLinearGradient === "function") {
+    const grade = SUNSET_GRADE[bgKey] ?? SUNSET_GRADE.grass;
     ctx.save();
     ctx.globalCompositeOperation = grade.blend;
     const sky = ctx.createLinearGradient(0, 0, 0, ch * 0.62);
@@ -264,12 +265,26 @@ function paintCover(
   image: CanvasImageSource,
   cw: number,
   ch: number,
+  framing: "scenic" | "roadside",
 ): void {
   const src = image as { naturalWidth?: number; naturalHeight?: number };
   const sw = src.naturalWidth ?? 0;
   const sh = src.naturalHeight ?? 0;
   if (sw <= 0 || sh <= 0) {
     ctx.drawImage(image, 0, 0, cw, ch);
+    return;
+  }
+  if (framing === "roadside") {
+    // The lower part of the meadow plate contains the continuous dirt track.
+    // The original landscape remains available for the other grass arenas.
+    const vergeTop = sh * 0.58;
+    const vergeHeight = sh - vergeTop;
+    const aspect = cw / ch;
+    const width = Math.min(sw, vergeHeight * aspect);
+    const height = Math.min(vergeHeight, sw / aspect);
+    const x = (sw - width) * 0.37;
+    const y = vergeTop + (vergeHeight - height) * 0.33;
+    ctx.drawImage(image, x, y, width, height, 0, 0, cw, ch);
     return;
   }
   const scale = Math.max(cw / sw, ch / sh);
