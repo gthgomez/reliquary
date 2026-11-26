@@ -10,17 +10,54 @@ export { CANDIDATE_IDS };
 const PROVENANCE_SOURCE_TYPES = new Set(["original_programmatic", "reference_conditioned", "owner_provided", "external", "native_recipe"]);
 const ASSET_PREFIX = "elderhall.";
 const PACK_ID = "reliquary.elderhall";
-if (contract.contract_revision !== 2) throw new Error("Unsupported Elderhall contract revision");
+if (contract.contract_revision !== 3) throw new Error("Unsupported Elderhall contract revision");
 const PROFILE = contract.profiles[PACK_ID];
 const ASSET_ID = new RegExp(contract.asset_id_pattern);
 const PACK_VERSION = /^[0-9]+\.[0-9]+\.[0-9]+$/;
 const REQUIRED_LANDMARKS = PROFILE.required.filter((name) => name.endsWith("-reference") || PROFILE.placeholder_ok.includes(name));
 const PLACEHOLDER_IDS = new Set(PROFILE.placeholder_ok.map((name) => ASSET_PREFIX + name));
 const KNOWN_STAND_INS = new Set(PROFILE.known_stand_in_sha256);
+const KNOWN_STAND_IN_PIXELS = new Set(PROFILE.known_stand_in_rgba8_sha256);
 const REGISTERED_ORIGINALS = new Set(Object.values(PROFILE.original_landmarks).flatMap(Object.values));
 
 function matchesEntireValue(pattern, value) {
   return typeof value === "string" && pattern.exec(value)?.[0] === value;
+}
+
+function checkFields(value, field, label, allowedException) {
+  if (value == null || typeof value !== "object" || Array.isArray(value)) throw new Error(`Invalid ${label}`);
+  const unknown = Object.keys(value).find((key) => key !== allowedException && !contract.allowed_fields[field].includes(key));
+  if (unknown !== undefined) throw new Error(`Unknown ${label} field: ${unknown}`);
+}
+
+function checkManifestFields(manifest) {
+  checkFields(manifest, "manifest", "manifest");
+  const art = manifest.art_direction;
+  if (art == null) return;
+  const legacyReference = PROFILE.legacy_art_reference_sha256[manifest.version];
+  const allowedException = legacyReference && art.reference_sha256 === legacyReference ? "reference_sha256" : undefined;
+  checkFields(art, "art_direction", "art_direction", allowedException);
+  if (art.generator != null) {
+    checkFields(art.generator, "generator", "art_direction.generator");
+    if (Object.values(art.generator).some((value) => typeof value !== "string" || !value.trim())) {
+      throw new Error("Invalid art_direction.generator value");
+    }
+  }
+  if (art.palette != null && (!Array.isArray(art.palette) || art.palette.some((value) => typeof value !== "string"))) {
+    throw new Error("Invalid art_direction.palette");
+  }
+}
+
+function isKnownStandIn({ width, height, data }) {
+  const dimensions = Buffer.alloc(8);
+  dimensions.writeUInt32BE(width, 0);
+  dimensions.writeUInt32BE(height, 4);
+  // PNG encoders can preserve different RGB values behind zero alpha.
+  for (let pixel = 0; pixel < data.length; pixel += 4) {
+    if (data[pixel + 3] === 0) data.fill(0, pixel, pixel + 3);
+  }
+  const fingerprint = createHash("sha256").update(dimensions).update(data).digest("hex");
+  return KNOWN_STAND_IN_PIXELS.has(fingerprint);
 }
 
 // This checks the presence and shape of recorded claims; it does not approve rights or verify attestations.
@@ -29,6 +66,8 @@ function validateProvenance(asset) {
   if (!provenance || typeof provenance !== "object" || Array.isArray(provenance) || !PROVENANCE_SOURCE_TYPES.has(provenance.source_type)) {
     throw new Error(`Invalid provenance source_type: ${asset.id}`);
   }
+  checkFields(provenance, "provenance", `provenance for ${asset.id}`);
+  if (provenance.repair != null) checkFields(provenance.repair, "repair", `provenance repair for ${asset.id}`);
   const requireText = (key) => {
     const value = provenance[key];
     const characters = typeof value === "string" ? Array.from(value) : [];
@@ -46,7 +85,7 @@ function validateProvenance(asset) {
   if (provenance.source_type === "external") requireText("license_evidence");
 }
 
-function validateLandmarkPolicy(version, records) {
+function validateLandmarkPolicy(version, records, decodedStandIns) {
   for (const [id, asset] of records) {
     if (asset.placeholder !== true) continue;
     if (!PLACEHOLDER_IDS.has(id)) throw new Error(`Placeholder not permitted by the contract: ${id}`);
@@ -69,7 +108,7 @@ function validateLandmarkPolicy(version, records) {
       continue;
     }
     if (sourceType === "reference_conditioned") {
-      if (KNOWN_STAND_INS.has(asset.sha256) || isDeclaredStandIn) {
+      if (KNOWN_STAND_INS.has(asset.sha256) || decodedStandIns.has(id) || isDeclaredStandIn) {
         throw new Error(`Known stand-in cannot claim reference_conditioned provenance: ${id}`);
       }
       continue;
@@ -93,19 +132,14 @@ export function validateElderhallPack(root) {
   if (manifest?.schema_version !== contract.schema_version || manifest.id !== PACK_ID || manifest.tile_size !== PROFILE.tile_size ||
       !matchesEntireValue(PACK_VERSION, manifest.version) || !Array.isArray(manifest.assets) ||
       manifest.assets.length < 1 || manifest.assets.length > 512) throw new Error("Invalid Elderhall pack identity");
-  const artDirection = manifest.art_direction;
-  if (artDirection != null) {
-    if (typeof artDirection !== "object" || Array.isArray(artDirection)) throw new Error("Invalid art_direction");
-    if (Object.hasOwn(artDirection, "reference_sha256") &&
-        artDirection.reference_sha256 !== PROFILE.legacy_art_reference_sha256[manifest.version]) {
-      throw new Error("Unregistered art_direction.reference_sha256");
-    }
-  }
+  checkManifestFields(manifest);
   const records = new Map();
+  const decodedStandIns = new Set();
   const assetsDir = join(root, "assets");
   if (!lstatSync(assetsDir).isDirectory()) throw new Error("Invalid assets directory path");
   for (const asset of manifest.assets) {
     if (!matchesEntireValue(ASSET_ID, asset?.id) || records.has(asset.id)) throw new Error("Invalid or duplicate asset identity");
+    checkFields(asset, "asset", `asset ${asset.id}`);
     records.set(asset.id, asset);
     if ("placeholder" in asset && typeof asset.placeholder !== "boolean") throw new Error(`Invalid placeholder flag: ${asset.id}`);
     validateProvenance(asset);
@@ -121,14 +155,21 @@ export function validateElderhallPack(root) {
         asset.dimensions.some((n) => !Number.isInteger(n) || n < 1 || n > 4096)) throw new Error(`Invalid PNG dimensions: ${asset.id}`);
     if (!Array.isArray(asset.anchor) || asset.anchor.length !== 2 || asset.anchor.some((n, i) => !Number.isFinite(n) || n < 0 || n > asset.dimensions[i])) throw new Error(`Invalid anchor: ${asset.id}`);
     if (!Array.isArray(asset.render_size_tiles) || asset.render_size_tiles.length !== 2 || asset.render_size_tiles.some((n) => !Number.isFinite(n) || n <= 0 || n > 128)) throw new Error(`Invalid render size: ${asset.id}`);
-    if (asset.atlas) {
+    const depth = asset.depth_baseline;
+    if (depth != null && (!Number.isFinite(depth) || depth < 0 || depth > asset.dimensions[1])) throw new Error(`Invalid depth baseline: ${asset.id}`);
+    if (asset.atlas != null) {
       const { columns, rows, cell_size: cell } = asset.atlas;
       if (!Number.isInteger(columns) || columns <= 0 || !Number.isInteger(rows) || rows <= 0 || !Array.isArray(cell) || cell.length !== 2 || cell.some((n) => !Number.isInteger(n) || n <= 0) || columns * cell[0] !== asset.dimensions[0] || rows * cell[1] !== asset.dimensions[1]) throw new Error(`Invalid atlas: ${asset.id}`);
     }
     if (["elderhall.grass-atlas", "elderhall.dirt-atlas", "elderhall.stone-atlas"].includes(asset.id) &&
         (!asset.atlas || asset.atlas.columns !== 2 || asset.atlas.rows !== 2 || asset.atlas.cell_size[0] !== 32 || asset.atlas.cell_size[1] !== 32)) throw new Error(`Unsupported terrain atlas: ${asset.id}`);
-    try { pngjs.PNG.sync.read(bytes, { checkCRC: true }); }
+    let decoded;
+    try { decoded = pngjs.PNG.sync.read(bytes, { checkCRC: true }); }
     catch { throw new Error(`Invalid PNG data: ${asset.id}`); }
+    if (asset.provenance.source_type === "reference_conditioned" &&
+        REQUIRED_LANDMARKS.includes(asset.id.slice(ASSET_PREFIX.length)) && isKnownStandIn(decoded)) {
+      decodedStandIns.add(asset.id);
+    }
   }
   for (const name of PROFILE.required) {
     if (!records.has(ASSET_PREFIX + name)) throw new Error(`Missing candidate: ${name}`);
@@ -137,7 +178,7 @@ export function validateElderhallPack(root) {
   for (const entry of readdirSync(assetsDir, { withFileTypes: true })) {
     if (!entry.isFile() || !declared.has(entry.name)) throw new Error(`Undeclared asset path: ${entry.name}`);
   }
-  validateLandmarkPolicy(manifest.version, records);
+  validateLandmarkPolicy(manifest.version, records, decodedStandIns);
   return manifest;
 }
 
