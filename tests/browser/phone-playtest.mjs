@@ -99,6 +99,7 @@ async function exercise(width, height, textScale = 1) {
       const start = introFrames["page 1"].anchors;
       assert.ok(composition.anchors.every((position, index) => Math.abs(position - start[index]) <= 1),
         `${label}: cottage and dialogue actions remain anchored: ${JSON.stringify(introFrames)}`);
+      assert.ok(composition.textHeight[0] > 0, `${label}: the text area remains visible`);
       assert.ok((await measureTargetVisibility(advance)).hitOk, `${label}: dialogue action is reachable`);
     };
     await capture("01-cottage-intro");
@@ -113,6 +114,12 @@ async function exercise(width, height, textScale = 1) {
     await advance.click();
     await checkIntro("page 3");
     await capture("01c-cottage-intro-controls");
+    const [visibleText, totalText] = introFrames["page 3"].textHeight;
+    if (stableIntro && textScale === 2 && totalText > visibleText) {
+      await page.locator(".dialog-content").focus();
+      await page.keyboard.press("End");
+      await page.waitForFunction(() => document.querySelector(".dialog-content")?.scrollTop > 0);
+    }
     if (!baseline) {
       assert.match(await page.locator(".dialog-text").innerText(),
         buildsCandidate ? /Maren beside the village well/ : /Maren near the Chapter House/);
@@ -208,7 +215,7 @@ try {
   if (artifacts) await mkdir(artifacts, { recursive: true });
   if (process.env.RELIQUARY_PHONE_VIEWPORT) {
     const [width, height] = process.env.RELIQUARY_PHONE_VIEWPORT.split("x").map(Number);
-    await exercise(width, height);
+    await exercise(width, height, Number(process.env.RELIQUARY_PHONE_TEXT_SCALE ?? 1));
   } else {
     for (const [width, height] of cases) await exercise(width, height);
     if (!baseline) await exercise(320, 568, 2);
