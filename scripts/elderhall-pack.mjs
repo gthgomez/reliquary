@@ -30,6 +30,16 @@ function checkFields(value, field, label, allowedException) {
   if (unknown !== undefined) throw new Error(`Unknown ${label} field: ${unknown}`);
 }
 
+function hasGeneratorText(value) {
+  if (typeof value !== "string") return false;
+  // The Python validator's strip() also treats NEL and four C0 separators as whitespace.
+  for (const character of value) {
+    const code = character.codePointAt(0);
+    if (character.trim() && code !== 0x85 && (code < 0x1c || code > 0x1f)) return true;
+  }
+  return false;
+}
+
 function checkManifestFields(manifest) {
   checkFields(manifest, "manifest", "manifest");
   const art = manifest.art_direction;
@@ -39,7 +49,7 @@ function checkManifestFields(manifest) {
   checkFields(art, "art_direction", "art_direction", allowedException);
   if (art.generator != null) {
     checkFields(art.generator, "generator", "art_direction.generator");
-    if (Object.values(art.generator).some((value) => typeof value !== "string" || !value.trim())) {
+    if (!Object.values(art.generator).every(hasGeneratorText)) {
       throw new Error("Invalid art_direction.generator value");
     }
   }
