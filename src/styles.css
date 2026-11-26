@@ -1785,6 +1785,22 @@ button:disabled {
   margin: 0;
   line-height: 1.4;
 }
+.name-prompt-companion {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr);
+  align-items: center;
+  gap: 0.55rem;
+}
+.name-prompt-companion img {
+  width: 48px;
+  height: 48px;
+  object-fit: contain;
+  image-rendering: pixelated;
+}
+.name-prompt-reward {
+  color: #624229;
+  font-size: 0.86em;
+}
 .name-prompt label {
   display: grid;
   gap: 0.25rem;
@@ -1795,16 +1811,15 @@ button:disabled {
   padding: 0.5rem;
   color: var(--color-ink);
   background: var(--color-cream);
-  border: 1px solid var(--color-ink);
+  border: 1px solid #8d6948;
+  border-radius: 7px;
 }
-.name-prompt-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
+.name-prompt :is(input, button):focus-visible {
+  outline: 2px solid #68452f;
+  outline-offset: 2px;
 }
-.name-prompt .btn-ghost {
-  background: var(--color-ink);
-  color: var(--color-cream);
+.name-prompt-actions .dialog-next {
+  margin-left: 0;
 }
 @media (orientation: landscape) and (max-height: 420px) {
   .name-prompt {
@@ -1815,7 +1830,7 @@ button:disabled {
   }
   .name-prompt p,
   .name-prompt label,
-  .name-prompt .btn-ghost {
+  .name-prompt .dialog-actions button {
     line-height: 1.15;
   }
   .name-prompt label {
@@ -1830,7 +1845,7 @@ button:disabled {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 0.3rem;
   }
-  .name-prompt .btn-ghost {
+  .name-prompt .dialog-actions button {
     padding: 0.22rem 0.3rem;
     overflow-wrap: anywhere;
   }

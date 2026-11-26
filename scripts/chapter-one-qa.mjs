@@ -194,9 +194,17 @@ try {
   await page.screenshot({ path: join(output, "06b-name-prompt.png") });
   const nameInput = page.locator(".name-prompt input");
   await nameInput.fill("Glimmermote");
-  await page.getByRole("button", { name: "Call them this" }).click();
+  const capturedUid = afterEncounter.party.at(-1)?.uid;
+  await page.reload({ waitUntil: "load" });
+  await page.getByRole("button", { name: "Continue", exact: true }).click();
+  await nameInput.waitFor({ state: "visible" });
+  if (await nameInput.inputValue() !== "Glimmermote" || (await readSave()).party.at(-1)?.uid !== capturedUid) {
+    throw new Error("reload did not resume the same captured companion and unsent name");
+  }
+  await page.screenshot({ path: join(output, "06c-resumed-name-prompt.png") });
+  await page.getByRole("button", { name: "Confirm name" }).click();
   await page.waitForSelector(".name-prompt", { state: "detached", timeout: 5000 });
-  report.events.push("Named the captured beast Glimmermote at the capture prompt");
+  report.events.push("Resumed the same capture and draft after reload, then named the beast Glimmermote");
 
   const partyCards = page.locator(".party-grid .beast-card");
   // Party is reached only through the menu: keyboard path exclusively.

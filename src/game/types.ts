@@ -333,8 +333,10 @@ export interface CardMenuView {
 /** Naming card shown after a pact is already kept. Cancel leaves the species name. */
 export interface NamePromptView {
   uid: string;
+  speciesId: string;
   speciesName: string;
   kind: "starter" | "tame";
+  draft: string;
 }
 
 export interface Snapshot {

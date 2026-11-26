@@ -19,7 +19,7 @@ import { resolveNpcPortrait, type PortraitKey } from "./portraits.ts";
 import { FIXED_ENCOUNTERS } from "./encounters.ts";
 import { sfxPlay, startMusic, stopMusic, unlockAudio, isMuted, setMuted } from "./audio.ts";
 import { setSoundMutedStored } from "./ui/ui-chrome.ts";
-import { hasSave, cloneSave, findArchivedSave, findNewerSave, loadSave, parseSave, SAVE_RESUMED_MESSAGE, SAVE_VERSION, serializeSave, WORLD_REVISION, writeSave, type SaveStorage } from "./save.ts";
+import { hasSave, cloneSave, findArchivedSave, findNewerSave, loadSave, parseSave, readNameDraft, SAVE_RESUMED_MESSAGE, SAVE_VERSION, serializeSave, WORLD_REVISION, writeNameDraft, writeSave, type SaveStorage } from "./save.ts";
 import { collectGameAssets, isElderhallCandidateBuild, isEssentialWorldAsset, type AssetEntry } from "./assets.ts";
 import type { BattlePreview } from "./preview/battle-preview.ts";
 import { mathRandom, type RandomSource } from "./rng.ts";
@@ -99,6 +99,11 @@ import type {
 } from "./types.ts";
 
 export const TILE = 32;
+export const STARTER_PACT_REWARD = { sigils: 3, crowns: 40 } as const;
+
+function nameOfferFlag(kind: NamePromptView["kind"], uid: string): string {
+	return `name_offer_${kind}:${uid}`;
+}
 export const VIEW_W = 12;
 export const VIEW_H = 9;
 export const VIEW_W_PORT = 10;
@@ -111,6 +116,7 @@ type Dialog = {
 	pages: string[];
 	index: number;
 	onDone?: () => void;
+	onCancel?: () => void;
 	/** Label for the final page's action when it commits a choice (S13). */
 	doneLabel?: string;
 	npcId: string | null;
@@ -765,6 +771,7 @@ export class ReliquaryGame {
 		this.caught = {};
 		this.battle = null;
 		this.menu = null;
+		this.namePrompt = null;
 		this.moving = false;
 		this.encounterLock = false;
 		this.mode = "world";
@@ -789,6 +796,7 @@ export class ReliquaryGame {
 		}
 		this.applySave(s);
 		this.mode = "world";
+		this.restoreNamePrompt(true);
 		this.toastMsg(SAVE_RESUMED_MESSAGE);
 		this.replayEndingIfOwed();
 		this.emit();
@@ -890,6 +898,7 @@ export class ReliquaryGame {
 			return false;
 		}
 		this.applySave(save);
+		this.restoreNamePrompt(false);
 		this.menu = null;
 		this.menuIndex = 0;
 		this.hasSave = true;
@@ -1226,8 +1235,10 @@ export class ReliquaryGame {
 			this.dialogRevision += 1;
 			if (secondary === "Back") this.dialog.index -= 1;
 			else {
+				const onCancel = this.dialog.onCancel;
 				this.dialog = null;
 				if (this.mode === "dialog") this.mode = "world";
+				onCancel?.();
 			}
 			sfxPlay.cancel();
 			this.emit();
@@ -1292,11 +1303,12 @@ export class ReliquaryGame {
 		this.persist();
 		this.emit();
 	}
-	/**
-	 * Settle the naming card. Empty, too long, or unchanged text keeps the
-	 * current nickname. The prompt still closes, and a first pact then hears
-	 * Elder Maren use whatever name was kept.
-	 */
+	updateCreatureNameDraft(value: string): void {
+		if (!this.namePrompt || value.length > 40 || value === this.namePrompt.draft) return;
+		this.namePrompt = { ...this.namePrompt, draft: value };
+		if (this.saveWriteAllowed) writeNameDraft(this.namePrompt.uid, value);
+	}
+	/** Empty, too long, or unchanged text keeps the creature's current name. */
 	submitCreatureName(value: string | null): void {
 		const prompt = this.namePrompt;
 		if (!prompt) return;
@@ -1308,20 +1320,23 @@ export class ReliquaryGame {
 			this.box = this.box.map((item) => item.uid === prompt.uid ? renamed : item);
 		}
 		const nickname = renamed?.nickname ?? beast?.nickname ?? prompt.speciesName;
+		const saved = this.settleNameOffer(prompt.kind, prompt.uid);
 		if (prompt.kind === "starter") {
-			this.persist();
-			this.openDialog("Elder Maren", [
-				`So it is ${nickname}. Keep the name.`,
-				"I have left sigils in your pack. The Briar Road will teach the rest.",
-			], undefined, { npcId: "maren", sprite: "elder" });
+			this.openDialog("Rowan", [
+				`Come on, ${nickname}. Our first road together.`,
+				"East to Elderhall, then north onto the Briar Road. I'll keep the sigils close.",
+			], undefined, undefined, undefined, prompt.speciesId);
 			return;
 		}
-		if (renamed) {
-			this.persist();
-			this.toastMsg(`${renamed.nickname} it is.`);
-			return;
-		}
+		if (renamed && saved) this.toastMsg(`${renamed.nickname} it is.`);
+		this.replayEndingIfOwed();
 		this.emit();
+	}
+	private settleNameOffer(kind: NamePromptView["kind"], uid: string): boolean {
+		delete this.flags[nameOfferFlag(kind, uid)];
+		const saved = this.persist();
+		if (saved) writeNameDraft(uid, null);
+		return saved;
 	}
 	renamePartyCreature(uid: string, value: string): void {
 		if (this.mode !== "world" || (this.menu !== "party" && this.menu !== "storage") || this.battle || this.dialog) return;
@@ -1579,30 +1594,50 @@ export class ReliquaryGame {
 		this.seen[id] = true;
 		this.flags.starter = true;
 		this.flags[starterPactFlag(id)] = true;
-		this.give("common_sigil", 3);
-		this.gold += 40;
+		this.give("common_sigil", STARTER_PACT_REWARD.sigils);
+		this.gold += STARTER_PACT_REWARD.crowns;
 		sfxPlay.catch();
-		this.namePrompt = { uid: beast.uid, speciesName: sp.name, kind: "starter" };
+		this.flags[nameOfferFlag("starter", beast.uid)] = true;
+		this.showNamePrompt(beast, "starter");
 		this.persist();
+	}
+	private showNamePrompt(beast: Beast, kind: NamePromptView["kind"], draft = beast.nickname): void {
+		this.namePrompt = {
+			uid: beast.uid, speciesId: beast.speciesId, speciesName: SPECIES[beast.speciesId]?.name ?? beast.nickname, kind, draft
+		};
+	}
+	private restoreNamePrompt(recoverDraft: boolean): void {
+		this.namePrompt = null;
+		for (const beast of this.party.concat(this.box)) {
+			const speciesName = SPECIES[beast.speciesId]?.name;
+			if (!this.flags.starter || !speciesName || speciesName !== beast.nickname) continue;
+			const kind = this.flags[nameOfferFlag("starter", beast.uid)] && this.flags[starterPactFlag(beast.speciesId)]
+				? "starter" : this.flags[nameOfferFlag("tame", beast.uid)] ? "tame" : null;
+			if (!kind) continue;
+			if (!recoverDraft && this.saveWriteAllowed) writeNameDraft(beast.uid, null);
+			this.showNamePrompt(beast, kind, recoverDraft ? readNameDraft(beast.uid, this.readOnlySaveSource) : undefined);
+			break;
+		}
 	}
 	private offerCapturedName(uid: string): void {
 		const beast = this.party.concat(this.box).find((item) => item.uid === uid);
 		if (!beast) return;
 		const speciesName = SPECIES[beast.speciesId]?.name ?? beast.nickname;
 		this.openDialog("", [`${beast.nickname} accepts the compact. Give them a name, or leave ${speciesName}.`], () => {
-			this.namePrompt = { uid, speciesName, kind: "tame" };
-		}, undefined, "Give a name");
+			this.showNamePrompt(beast, "tame");
+		}, undefined, "Give a name", undefined, () => this.settleNameOffer("tame", uid));
 	}
 	private give(id: string, n: number): void {
 		this.inventory[id] = (this.inventory[id] ?? 0) + n;
 	}
-	openDialog(speaker: string, pages: string[], onDone?: () => void, npc?: DialogSpeaker | null, doneLabel?: string, speciesId?: string): void {
+	openDialog(speaker: string, pages: string[], onDone?: () => void, npc?: DialogSpeaker | null, doneLabel?: string, speciesId?: string, onCancel?: () => void): void {
 		this.dialogRevision += 1;
 		this.dialog = {
 			speaker,
 			pages,
 			index: 0,
 			onDone,
+			onCancel,
 			doneLabel,
 			speciesId,
 			npcId: npc?.npcId ?? null,
@@ -2195,6 +2230,7 @@ export class ReliquaryGame {
 		this.battleIdlePhase = 0;
 		this.mode = wasTrial && victory && !this.flags.ending ? this.maybeVictory() : "world";
 		this.encounterLock = false;
+		if (capturedUid) this.flags[nameOfferFlag("tame", capturedUid)] = true;
 		this.persist();
 		if (capturedUid && this.mode === "world" && !this.dialog) this.offerCapturedName(capturedUid);
 		this.emit();
@@ -2218,7 +2254,7 @@ export class ReliquaryGame {
 	}
 	/** A skipped epilogue (cancel/reload mid-dialog) is owed on the next load. */
 	private replayEndingIfOwed(): void {
-		if (this.flags.ending && !this.flags.ending_seen && !this.battle && !this.dialog) this.presentEnding();
+		if (this.flags.ending && !this.flags.ending_seen && !this.battle && !this.dialog && !this.namePrompt) this.presentEnding();
 	}
 	private maybeVictory(): Mode {
 		if (this.flags.trial && !this.flags.ending) {
