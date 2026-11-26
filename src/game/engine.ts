@@ -779,7 +779,7 @@ export class ReliquaryGame {
 			...(notice ? [notice] : []),
 			"A lantern ticks on the sill. Morning in Elderhall smells of peat and bread.",
 			"You are Rowan, newly sworn Pactwarden. The Crown of Binding cracked a generation ago — beasts walk feral on the old roads.",
-			`Move with the arrows or WASD; on touch, use the direction pad. Interact with Z or Enter; tap A on touch. Step through the cottage doorway, then follow the westward path to the Binding Grove. Elder Maren ${marenLandmark(isElderhallCandidateBuild())} can offer optional guidance.`
+			`Move with arrows or the D-pad. Use Enter or A to interact. Exit south, then go west to Binding Grove. Elder Maren ${marenLandmark(isElderhallCandidateBuild())} can help.`
 		]);
 	}
 	continueGame(): void {
