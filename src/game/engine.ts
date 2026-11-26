@@ -20,7 +20,7 @@ import { FIXED_ENCOUNTERS } from "./encounters.ts";
 import { sfxPlay, startMusic, stopMusic, unlockAudio, isMuted, setMuted } from "./audio.ts";
 import { setSoundMutedStored } from "./ui/ui-chrome.ts";
 import { hasSave, cloneSave, findArchivedSave, findNewerSave, loadSave, parseSave, SAVE_RESUMED_MESSAGE, SAVE_VERSION, serializeSave, WORLD_REVISION, writeSave, type SaveStorage } from "./save.ts";
-import { collectGameAssets, isElderhallCandidateBuild, isEssentialWorldAsset } from "./assets.ts";
+import { collectGameAssets, isElderhallCandidateBuild, isEssentialWorldAsset, type AssetEntry } from "./assets.ts";
 import type { BattlePreview } from "./preview/battle-preview.ts";
 import { mathRandom, type RandomSource } from "./rng.ts";
 import { BATTLE_SIGILS, battleCommands, encounterAt, rollEncounter, type BattleCommand } from "./world/encounters.ts";
@@ -386,7 +386,7 @@ export class ReliquaryGame {
 		if (this.worldAssetStallTimer !== null) clearTimeout(this.worldAssetStallTimer);
 		this.worldAssetStallTimer = null;
 	}
-	private async loadImages(token: number): Promise<void> {
+	private async loadImages(token: number, retry = false): Promise<void> {
 		const entries = collectGameAssets();
 		const essential = entries.filter(isEssentialWorldAsset);
 		const requiredPending = new Set(entries.filter((entry) => entry.required && !this.images[entry.key]).map((entry) => entry.url));
@@ -396,8 +396,14 @@ export class ReliquaryGame {
 		const priorReady = this.worldAssetsReady;
 		let stopOnFailure!: () => void;
 		const firstFailure = new Promise<void>((resolve) => { stopOnFailure = resolve; });
-		let cancelLoad!: () => void;
-		const cancelled = new Promise<void>((resolve) => { cancelLoad = resolve; });
+		const abandonImages = new Set<() => void>();
+		const cancelLoad = () => {
+			for (const abandon of abandonImages) abandon();
+		};
+		// A repeated Image.src can reuse a hung transfer or a corrupt HTTP cache
+		// entry. Retry only missing images with a fresh request, while the worker
+		// still resolves the request to the installed revision when available.
+		const retryQuery = retry ? `?reliquary-art-retry=${Date.now()}-${token}` : "";
 		this.cancelAssetLoad = cancelLoad;
 		this.clearWorldAssetStallTimer();
 		let done = essentialSettled.size;
@@ -409,22 +415,36 @@ export class ReliquaryGame {
 		this.assetFailures = [];
 		this.loadProgress = done / essential.length;
 		this.emit();
+		if (token !== this.bootToken || this.lifecycle !== "booted") return;
 		this.worldAssetStallTimer = setTimeout(() => {
 			this.worldAssetStallTimer = null;
 			if (token !== this.bootToken || this.lifecycle !== "booted" || !this.worldAssetsLoading) return;
 			this.worldAssetsStalled = true;
 			this.emit();
 		}, WORLD_ASSET_STALL_MS);
-		const loads = entries.map((entry) => new Promise<void>((resolve) => {
+		const load = (entry: AssetEntry, worldArt: boolean) => new Promise<void>((resolve) => {
 			if (this.images[entry.key]) { resolve(); return; }
 			const img = new Image();
 			img.crossOrigin = "anonymous";
+			if (worldArt) img.fetchPriority = "high";
+			const settle = () => {
+				img.onload = null;
+				img.onerror = null;
+				abandonImages.delete(abandon);
+				resolve();
+			};
+			const abandon = () => {
+				settle();
+				img.removeAttribute("src");
+			};
+			abandonImages.add(abandon);
 			img.onload = () => {
-				if (token !== this.bootToken || this.lifecycle !== "booted") { resolve(); return; }
+				settle();
+				if (token !== this.bootToken || this.lifecycle !== "booted") return;
 				this.images[entry.key] = img;
 				this.terrain = null;
 				let changed = false;
-				if (isEssentialWorldAsset(entry)) {
+				if (worldArt) {
 					if (!essentialSettled.has(entry.key)) done += 1;
 					essentialSettled.add(entry.key);
 					this.loadProgress = done / essential.length;
@@ -444,17 +464,17 @@ export class ReliquaryGame {
 					changed = true;
 				}
 				if (changed) this.emit();
-				resolve();
 			};
 			img.onerror = () => {
+				settle();
 				if (token === this.bootToken && this.lifecycle === "booted") {
-					if (entry.required) requiredFailures.add(entry.url);
 					if (entry.required) {
+						requiredFailures.add(entry.url);
 						requiredPending.delete(entry.url);
 						this.requiredAssetsLoading = requiredPending.size > 0;
 					}
 					let changed = entry.required;
-					if (isEssentialWorldAsset(entry)) {
+					if (worldArt) {
 						worldFailures.add(entry.url);
 						if (!essentialSettled.has(entry.key)) done += 1;
 						essentialSettled.add(entry.key);
@@ -478,14 +498,18 @@ export class ReliquaryGame {
 					}
 					if (changed) this.emit();
 				}
-				resolve();
 			};
-			img.src = entry.url;
-		}));
-		// Start every asset request, but admission waits only for the world art.
-		await Promise.race([Promise.all(essential.map((entry) => loads[entries.indexOf(entry)])), firstFailure, cancelled]);
+			img.src = entry.url + retryQuery;
+		});
+		const worldLoads = essential.map((entry) => load(entry, true));
+		const remainingLoads = entries.filter((entry) => !isEssentialWorldAsset(entry)).map((entry) => load(entry, false));
+		// Keep cancellation available while any image is pending, even after the
+		// title reports a failure or admits the player to the world.
+		void Promise.all([...worldLoads, ...remainingLoads]).then(() => {
+			if (this.cancelAssetLoad === cancelLoad) this.cancelAssetLoad = null;
+		});
+		await Promise.race([Promise.all(worldLoads), firstFailure]);
 		if (token !== this.bootToken || this.lifecycle !== "booted") return;
-		this.cancelAssetLoad = null;
 		if (essentialSettled.size === essential.length) {
 			this.worldAssetsLoading = false;
 			this.worldAssetsStalled = false;
@@ -532,8 +556,7 @@ export class ReliquaryGame {
 	async retryWorldAssets(): Promise<void> {
 		if (this.lifecycle !== "booted" || this.worldAssetsReady && !this.worldAssetFailures.length && !this.assetFailures.length && !this.requiredAssetsLoading) return;
 		this.cancelAssetLoad?.();
-		this.cancelAssetLoad = null;
-		await this.loadImages(++this.bootToken);
+		await this.loadImages(++this.bootToken, true);
 	}
 	destroy(): void {
 		this.bootToken += 1;
