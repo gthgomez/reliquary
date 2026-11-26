@@ -1,5 +1,5 @@
 import type { MouseEvent, PointerEvent, ReactNode, RefObject } from "react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
   currentStats,
   expToNext,
@@ -338,7 +338,32 @@ export function NamePrompt({ game, prompt }: { game: ReliquaryGame; prompt: Name
   const [name, setName] = useState(prompt.speciesName);
   const formRef = useRef<HTMLFormElement>(null);
   useOverlayFocusTrap(formRef, true);
-  const promptText = prompt.kind === "starter" ? "What will you call your first pact?" : "What will you call them?";
+  useLayoutEffect(() => {
+    const form = formRef.current;
+    const stage = form?.parentElement;
+    const viewport = window.visualViewport;
+    if (!form || !stage || !viewport) return;
+
+    // The keyboard can shrink or pan the visible viewport while the stage
+    // and camera still occupy the layout viewport.
+    const fitPrompt = () => {
+      const frame = stage.getBoundingClientRect();
+      const top = Math.max(0, viewport.offsetTop - frame.top);
+      const bottom = Math.max(0, frame.bottom - (viewport.offsetTop + viewport.height));
+      form.style.setProperty("--name-viewport-bottom", `${bottom}px`);
+      form.style.setProperty("--name-viewport-insets", `${top + bottom}px`);
+    };
+    fitPrompt();
+    viewport.addEventListener("resize", fitPrompt);
+    viewport.addEventListener("scroll", fitPrompt);
+    window.addEventListener("resize", fitPrompt);
+    return () => {
+      viewport.removeEventListener("resize", fitPrompt);
+      viewport.removeEventListener("scroll", fitPrompt);
+      window.removeEventListener("resize", fitPrompt);
+    };
+  }, []);
+
   return (
     <form
       ref={formRef}
@@ -346,13 +371,14 @@ export function NamePrompt({ game, prompt }: { game: ReliquaryGame; prompt: Name
       role="dialog"
       aria-modal="true"
       aria-label="Name your creature"
+      aria-describedby="creature-name-instructions"
       onSubmit={(event) => {
         event.preventDefault();
         if (!name.trim()) return;
         game.submitCreatureName(name);
       }}
     >
-      <p>{promptText}</p>
+      <p id="creature-name-instructions">What will you call {prompt.speciesName}?</p>
       <label>
         Creature name
         <input
