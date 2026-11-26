@@ -46,7 +46,8 @@
   grid-template-columns: 118px minmax(0, 1fr);
   gap: 14px;
   padding: 13px 18px 13px 12px;
-  background: var(--bq-panel);
+  background-color: var(--color-forest);
+  background-image: var(--bq-panel);
   border: 2px solid var(--bq-border);
   border-radius: var(--bq-radius);
   box-shadow: var(--bq-shadow);
@@ -278,7 +279,8 @@
   position: relative;
   min-width: 0;
   min-height: 0;
-  background: var(--bq-panel);
+  background-color: var(--color-forest);
+  background-image: var(--bq-panel);
   border: 2px solid var(--bq-border);
   border-radius: var(--bq-radius);
   box-shadow: var(--bq-shadow);
@@ -334,7 +336,8 @@
   padding: 0 clamp(8px, 0.9vw, 16px);
   border-radius: 8px;
   border: 2px solid var(--bq-border-soft);
-  background:
+  background-color: #38483b;
+  background-image:
     linear-gradient(180deg, #38483b, #202d24);
   color: var(--bq-ivory);
   font-family: var(--font-display);
@@ -347,7 +350,8 @@
 }
 .battle-action:hover {
   border-color: var(--bq-border);
-  background:
+  background-color: #47513e;
+  background-image:
     linear-gradient(180deg, #47513e, #293729);
 }
 .battle-action:active {
@@ -355,7 +359,8 @@
 }
 .battle-action.is-selected {
   border-color: var(--bq-accent);
-  background:
+  background-color: #665235;
+  background-image:
     linear-gradient(180deg, #665235, #493a29);
   box-shadow: inset 0 0 0 1px #edc57847;
 }
@@ -558,7 +563,8 @@
   padding: 8px 12px;
   border: 2px solid var(--bq-border-soft);
   border-radius: 8px;
-  background: var(--bq-panel);
+  background-color: var(--color-forest);
+  background-image: var(--bq-panel);
   color: var(--bq-ivory);
   font-family: var(--font-display);
   font-size: clamp(0.82rem, 1.05vw, 1.02rem);
@@ -638,7 +644,8 @@
   min-height: 44px;
   height: clamp(44px, 7.1vh, 64px);
   padding: 0 clamp(12px, 1.2vw, 20px);
-  background: var(--bq-panel);
+  background-color: var(--color-forest);
+  background-image: var(--bq-panel);
   border: 2px solid var(--bq-border);
   border-radius: var(--bq-radius);
   box-shadow: var(--bq-shadow);
@@ -772,7 +779,8 @@
   padding: 2px 10px;
   border-radius: 6px;
   border: 1px solid var(--bq-border-soft);
-  background: var(--bq-panel);
+  background-color: var(--color-forest);
+  background-image: var(--bq-panel);
   color: var(--bq-ivory);
   font-family: var(--font-display);
 }

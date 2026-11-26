@@ -779,14 +779,19 @@
 }
 /* On a narrow phone, give the objective its own row so directions can wrap. */
 @container (max-width: 540px) {
+  .hud-chip { row-gap: 0.15rem; }
+  .hud-region,
+  .hud-region-sep,
+  .hud-objective-label { display: none; }
   .hud-stats { order: 2; padding-left: 0; border-left: 0; }
+  .hud-companion-name { max-width: 3.75rem; }
+  .hud-companion-meter { width: 1.4rem; }
   .hud-objective-slot { order: 3; flex-basis: 100%; }
+  .hud-objective-btn { grid-template-columns: minmax(0, 1fr) auto; }
   .hud-objective-preview { overflow-wrap: anywhere; }
 }
 @container (max-width: 300px) {
   .hud-sigil { display: none; }
-  .hud-objective-label { display: none; }
-  .hud-objective-btn { grid-template-columns: minmax(0, 1fr) auto; }
   .hud-menu { padding-inline: 0.35rem; }
 }
 /* The landscape control rail and enlarged text can both limit line length. */
@@ -803,10 +808,14 @@
   .hud-gold { line-height: 1.2; }
   .hud-companion {
     min-width: 0;
-    flex-wrap: wrap;
-    white-space: normal;
   }
-  .hud-companion-name { max-width: 100%; }
+  .hud-companion-name,
+  .hud-companion-meter { display: none; }
+  .hud-companion-alert {
+    min-width: 18px;
+    min-height: 18px;
+    padding-inline: 2px;
+  }
   .hud-companion-hp { white-space: nowrap; }
   .hud-objective-label {
     display: block;
