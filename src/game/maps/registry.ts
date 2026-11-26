@@ -115,7 +115,7 @@ const grove: MapDef = {
     prop("gsign", "sign", 9, 9, "sign_grove_inner"),
   ],
   decorations: [
-    { sprite: "grove-ritual", x: 3, y: 4.75, w: 10, h: 4.75, layer: "ground" },
+    { sprite: "grove-ritual", x: 3, y: 4.75, w: 10, h: 3, layer: "ground" },
   ],
   npcs: [],
   warps: [

@@ -17,7 +17,7 @@ whose attribution is recorded elsewhere in this manifest.
 
 `public/game/props/grove-ritual.png` is original project artwork drawn by
 `scripts/draw-binding-grove.py` and covered by the repository license. The
-transparent 160 × 76 PNG is a ground decoration aligned to the existing
+transparent 160 × 48 PNG is a ground decoration aligned to the existing
 starter positions at 16 art pixels per world tile.
 
 ## Cinematic dialogue synthesis (issue #31, November 2026)

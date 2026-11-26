@@ -31,7 +31,7 @@ def paint_grove(brush):
         if i in {0, 1, 2, 12, 13, 14, 15, 24}:
             continue
         x = round(80 + 61 * cos(angle)) + rng.randrange(-2, 3)
-        y = round(39 + 29 * sin(angle)) + rng.randrange(-2, 3)
+        y = round(26 + 11 * sin(angle)) + rng.randrange(-2, 3)
         slate(brush, x - 5, y, rng.randrange(8, 13), rng.randrange(4, 7), rng.choice(STONE_PALETTE))
         brush.line((x - 2, y + 3, x + 1, y + 3), fill="#566644")
 
@@ -44,19 +44,19 @@ def paint_grove(brush):
         brush.point((x + 5, y - 2), fill="#5f6951")
 
     # A small inlaid knot at the center of the worn ring.
-    brush.ellipse((65, 40, 95, 57), outline=(63, 76, 51, 197), width=2)
-    brush.ellipse((68, 43, 92, 54), outline="#ac9e75")
-    brush.polygon([(80, 43), (85, 48), (80, 53), (75, 48)], outline="#d3bf8f")
-    brush.line((79, 48, 81, 48), fill="#c6b186")
+    brush.ellipse((65, 25, 95, 42), outline=(63, 76, 51, 197), width=2)
+    brush.ellipse((68, 28, 92, 39), outline="#ac9e75")
+    brush.polygon([(80, 28), (85, 33), (80, 38), (75, 33)], outline="#d3bf8f")
+    brush.line((79, 33, 81, 33), fill="#c6b186")
 
     # Moss and a few leaf-litter pixels feather the edges into the grass.
-    for x, y in [(15, 25), (33, 6), (50, 11), (127, 16), (146, 24), (25, 58), (112, 68), (134, 53)]:
+    for x, y in [(15, 25), (33, 6), (50, 11), (127, 16), (146, 24), (25, 44), (112, 45), (134, 42)]:
         for _ in range(12):
             place = (x + rng.randrange(-4, 5), y + rng.randrange(-2, 3))
             brush.point(place, fill=rng.choice(("#68764b", "#758054", "#9c945f", "#4f6243")))
 
 
 if __name__ == "__main__":
-    art = Image.new("RGBA", (160, 76))
+    art = Image.new("RGBA", (160, 48))
     paint_grove(ImageDraw.Draw(art))
     art.save(ART, optimize=True)

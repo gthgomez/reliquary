@@ -116,7 +116,7 @@
   grid-template-columns: minmax(0, 1fr) auto minmax(0, 1.65fr);
 }
 .dialog-scene-starter .dialog-actions button {
-  min-height: max(44px, 2.65em);
+  min-height: max(44px, 3.9em);
   padding-inline: 0.35rem;
   line-height: 1.15;
   overflow-wrap: anywhere;
