@@ -865,11 +865,13 @@ test("terrain is reused between frames and rebuilt when the map changes", async 
   await withGame((game, frame) => {
     let terrainDraws = 0;
     let visibleDraws = 0;
+    let vergeRotations = 0;
     const ground = {
       drawImage() {
         terrainDraws++;
       },
       fillRect() {}, ellipse() {}, fill() {},
+      translate() {}, rotate() { vergeRotations++; },
       save() {}, restore() {}, beginPath() {}, moveTo() {}, lineTo() {}, quadraticCurveTo() {}, closePath() {}, rect() {}, clip() {},
     };
     const canvas = { getContext: () => ground, width: 0, height: 0 };
@@ -891,6 +893,7 @@ test("terrain is reused between frames and rebuilt when the map changes", async 
     window.__controlsTest!.warp!("wildwood", 8, 10);
     frame(48);
     assert.ok(terrainDraws > first);
+    assert.ok(vergeRotations > 0, "the Wildwood bake draws the rotated path shoulders");
   });
 });
 
@@ -1308,6 +1311,22 @@ test("starter confirmation flow: inspect, cancel, confirm, naming, Rowan follow-
     // 2. Cancelling leaves the player with no starter
     game.cancel();
     assert.equal(game.party.length, 0, "cancel leaves party empty");
+
+    for (const [id, signature, cost, matchup] of [
+      ["emberkit", "Cinder", 6, /Ember.*Verdant and Steel/],
+      ["mirewhelp", "Torrent", 6, /Tide.*Ember and Stone/],
+      ["briarling", "Rootgrasp", 8, /Verdant.*Tide and Stone/],
+    ] as const) {
+      chooseStarter(id);
+      game.confirm();
+      const details = game.getSnapshot().dialog!.text;
+      assert.match(details, /Nip \(0 MP\)/);
+      assert.ok(details.includes(`${signature} (${cost} MP)`));
+      assert.match(details, matchup);
+      game.cancel();
+      game.cancel();
+      assert.equal(game.party.length, 0, "comparing skills does not make a pact");
+    }
 
     // 3. Inspecting again and confirming advances to pact confirmation
     chooseStarter("emberkit");

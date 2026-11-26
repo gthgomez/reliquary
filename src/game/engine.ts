@@ -101,6 +101,7 @@ import type {
 
 export const TILE = 32;
 export const STARTER_PACT_REWARD = { sigils: 3, crowns: 40 } as const;
+const STARTER_PACT_LEVEL = 5;
 
 function nameOfferFlag(kind: NamePromptView["kind"], uid: string): string {
 	return `name_offer_${kind}:${uid}`;
@@ -1325,7 +1326,7 @@ export class ReliquaryGame {
 		if (prompt.kind === "starter") {
 			this.openDialog("Rowan", [
 				`Come on, ${nickname}. Our first road together.`,
-				"East to Elderhall, then north onto the Briar Road. I'll keep the sigils close.",
+				"East to Elderhall, then north to Briar Road. A sigil works best on a weakened wild beast.",
 			], undefined, undefined, undefined, prompt.speciesId);
 			return;
 		}
@@ -1580,11 +1581,16 @@ export class ReliquaryGame {
 			this.openDialog(sp.name, [`Your pact is already spoken. ${sp.description}`], undefined, null, undefined, id);
 			return;
 		}
-		const elements = sp.elements.map((element) => ELEMENTS[element].name).join(" / ");
-		const skills = skillsForLevel(sp, 5).map((skill) => SKILLS[skill]?.name ?? skill).join(", ");
+		const skills = skillsForLevel(sp, STARTER_PACT_LEVEL).map((id) => {
+			const skill = SKILLS[id];
+			return skill ? `${skill.name} (${skill.mp} MP)` : id;
+		}).join(", ");
+		const strikeElement = ELEMENTS[sp.elements[0]!];
+		const favored = strikeElement?.strong.map((id) => ELEMENTS[id].name).join(" and ");
+		const matchup = favored ? ` ${strikeElement.name} is strong against ${favored}.` : "";
 		this.openDialog(sp.name, [
 			sp.description,
-			`${elements} · Starting skills: ${skills}.`,
+			`Starting skills: ${skills}.${matchup}`,
 			"Make this your first pact? The other creatures will stay in the grove.",
 		], () => this.bindStarter(id), null, `Bind ${sp.name}`, id);
 	}
@@ -1592,7 +1598,7 @@ export class ReliquaryGame {
 		if (this.flags.starter) return;
 		const sp = SPECIES[id];
 		if (!sp) return;
-		const beast = makeBeast(id, 5, { nickname: sp.name, random: this.random });
+		const beast = makeBeast(id, STARTER_PACT_LEVEL, { nickname: sp.name, random: this.random });
 		this.party = [beast];
 		this.caught[id] = true;
 		this.seen[id] = true;
