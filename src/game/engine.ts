@@ -26,7 +26,7 @@ import { mathRandom, type RandomSource } from "./rng.ts";
 import { BATTLE_SIGILS, battleCommands, encounterAt, rollEncounter, type BattleCommand } from "./world/encounters.ts";
 import { isOccupied } from "./world/movement.ts";
 import { pickInteractObject, selectInteractionTarget } from "./world/interaction.ts";
-import { visibleObjects } from "./world/object-state.ts";
+import { starterPactFlag, visibleObjects } from "./world/object-state.ts";
 import {
 	CHEST_LOOT,
 	NPC_DIALOGS,
@@ -1430,8 +1430,7 @@ export class ReliquaryGame {
 			else if (CHEST_LOOT[id]) action = "Open chest";
 			else {
 				const special = SPECIAL_INTERACTIONS[id];
-				if (special?.kind === "starter" && this.flags.starter) return null;
-				if (special?.kind === "starter") action = "Choose a companion";
+				if (special?.kind === "starter") action = this.flags.starter ? "Observe creature" : "Choose a companion";
 				else if (special?.kind === "shrine") action = "Rest and heal";
 				else if (special?.kind === "rest") action = "Rest";
 				else if (special?.kind === "books") action = "Read ledger";
@@ -1556,12 +1555,12 @@ export class ReliquaryGame {
 		this.openDialog(name, ["Sleep. The road will still be there. Unfortunately."], undefined, npc);
 	}
 	private chooseStarter(id: string): void {
-		if (this.flags.starter && this.party.length > 0) {
-			this.openDialog("", ["The grove is quiet. Your pact is already spoken."]);
-			return;
-		}
 		const sp = SPECIES[id];
 		if (!sp) return;
+		if (this.flags.starter) {
+			this.openDialog(sp.name, [`Your pact is already spoken. ${sp.description}`], undefined, null, undefined, id);
+			return;
+		}
 		const elements = sp.elements.map((element) => ELEMENTS[element].name).join(" / ");
 		const skills = skillsForLevel(sp, 5).map((skill) => SKILLS[skill]?.name ?? skill).join(", ");
 		this.openDialog(sp.name, [
@@ -1571,7 +1570,7 @@ export class ReliquaryGame {
 		], () => this.bindStarter(id), null, `Bind ${sp.name}`, id);
 	}
 	private bindStarter(id: string): void {
-		if (this.flags.starter && this.party.length > 0) return;
+		if (this.flags.starter) return;
 		const sp = SPECIES[id];
 		if (!sp) return;
 		const beast = makeBeast(id, 5, { nickname: sp.name, random: this.random });
@@ -1579,6 +1578,7 @@ export class ReliquaryGame {
 		this.caught[id] = true;
 		this.seen[id] = true;
 		this.flags.starter = true;
+		this.flags[starterPactFlag(id)] = true;
 		this.give("common_sigil", 3);
 		this.gold += 40;
 		sfxPlay.catch();
@@ -2664,7 +2664,6 @@ export class ReliquaryGame {
 		// Completed props (opened chests, defeated bosses) share one predicate
 		// with collision and interaction: they must not keep looking actionable.
 		for (const o of visibleObjects(m.objects, this.flags)) {
-			if (this.flags.starter && o.id.startsWith("st_")) continue;
 			const candidateObject = elderhallCandidateObject(m.id, o, elderhallCandidate);
 			const art = candidateObject !== o && this.images[`prop_${candidateObject.sprite}`] ? candidateObject : o;
 			const visual = resolveWorldPropLayout(art, TILE);

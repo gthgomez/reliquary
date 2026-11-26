@@ -9,6 +9,8 @@ import { makeElderhallCandidate } from "./maps/elderhall-candidate.ts";
 import { chooseTileVariant } from "./world/terrain.ts";
 import { tileAtlasQuadrant } from "./render/tile-surface.ts";
 import { resolveWorldPropLayout } from "./render/world-actors.ts";
+import { isOccupied } from "./world/movement.ts";
+import { visibleObjects } from "./world/object-state.ts";
 import type { Beast } from "./types.ts";
 
 async function withGame(
@@ -1333,10 +1335,63 @@ test("starter confirmation flow: inspect, cancel, confirm, naming, Elder Maren f
 
     // 7. Attempting to inspect another starter does not bind or duplicate
     chooseStarter("mirewhelp");
-    assert.match(game.getSnapshot().dialog!.text, /The grove is quiet\. Your pact is already spoken\./);
+    assert.match(game.getSnapshot().dialog!.text, /Your pact is already spoken\./);
     assert.equal(game.party.length, 1, "party still contains only original starter");
     assert.equal(game.party[0].nickname, "Ignis");
   });
+});
+
+test("each Grove pact removes only the chosen beast and pays once across reload", async () => {
+  const grove = MAPS.grove!;
+  const starters = grove.objects.filter((object) => object.id.startsWith("st_"));
+  assert.equal(starters.length, 3);
+  assert.equal(visibleObjects(grove.objects, { starter: true }).some((object) => starters.includes(object)), false,
+    "legacy saves keep the Grove layout they were written with");
+  for (const chosen of starters) {
+    await withGame((game) => {
+      const stored = new Map<string, string>();
+      (globalThis as Record<string, unknown>).localStorage = {
+        getItem: (key: string) => stored.get(key) ?? null,
+        setItem: (key: string, value: string) => stored.set(key, value),
+        removeItem: (key: string) => stored.delete(key),
+      };
+      const initialGold = game.gold;
+      const initialSigils = game.inventory.common_sigil ?? 0;
+      game.mode = "world";
+      game.mapId = grove.id;
+      game.tx = chosen.x;
+      game.ty = chosen.y + 1;
+      game.dir = 3;
+      for (let i = 0; i < 4; i += 1) game.confirm();
+      assert.equal(game.party[0]?.speciesId, chosen.sprite, "ordinary confirmation binds the approached species");
+      const uid = game.party[0]!.uid;
+      assert.equal(loadSave()?.party[0]?.uid, uid, "commit is durable before naming");
+      game.confirm();
+      assert.equal(game.gold, initialGold + 40);
+      assert.equal(game.inventory.common_sigil, initialSigils + 3);
+      game.submitCreatureName(null);
+      game.confirm();
+      game.confirm();
+      game.continueGame();
+
+      const remaining = starters.filter((object) => object !== chosen);
+      assert.deepEqual(visibleObjects(grove.objects, game.flags).filter((object) => starters.includes(object)),
+        remaining, "only the chosen beast leaves the Grove");
+      assert.equal(isOccupied(grove, game.flags, chosen.x, chosen.y), false, "chosen beast does not leave a phantom collider");
+      for (const other of remaining) {
+        assert.equal(isOccupied(grove, game.flags, other.x, other.y), true, "a visible beast keeps its collision");
+        game.tx = other.x;
+        game.ty = other.y + 1;
+        game.dir = 3;
+        game.confirm();
+        assert.match(game.getSnapshot().dialog?.text ?? "", /already spoken/i);
+        game.confirm();
+      }
+      assert.deepEqual(game.party.map((beast) => beast.uid), [uid]);
+      assert.equal(game.gold, initialGold + 40);
+      assert.equal(game.inventory.common_sigil, initialSigils + 3);
+    });
+  }
 });
 
 test("wild capture naming flow: capture offer, nickname submit, and cancel to keep default name", async () => {
