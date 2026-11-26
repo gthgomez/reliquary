@@ -23,7 +23,7 @@ const PLAYER_FRAMES = ["down", "left", "right", "up"] as const;
 const NPC_SPRITES = ["elder", "innkeep", "shopkeep", "warden", "guard", "traveler"] as const;
 const PROP_SPRITES = [
   "tree", "cottage", "inn", "shop", "shrine", "sign", "barrel", "crate", "shrub", "boulder",
-  "well", "hearth", "bed", "bookshelf", "table", "chair", "counter", "pot", "fence", "tallgrass",
+  "well", "hearth", "bed", "bookshelf", "table", "chair", "counter", "pot", "fence", "tallgrass", "grove-ritual",
 ] as const;
 const BG_KEYS = ["grass", "forest", "cave", "marsh", "keep"] as const;
 

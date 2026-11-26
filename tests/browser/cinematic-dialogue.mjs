@@ -6,6 +6,7 @@ import { measureTargetVisibility, startStaticServer, withBrowser, waitForGameBoo
 const captures = process.env.RELIQUARY_DIALOGUE_CAPTURES;
 if (captures) mkdirSync(captures, { recursive: true });
 const evidence = [];
+const onlyViewport = process.env.RELIQUARY_DIALOGUE_VIEWPORT;
 const viewports = [
   { width: 1440, height: 900 },
   { width: 390, height: 844, mobile: true },
@@ -17,7 +18,8 @@ const viewports = [
   { width: 568, height: 320, mobile: true },
   { width: 568, height: 320, mobile: true, classic: true },
   { width: 844, height: 390, mobile: true, classic: true, safe: true },
-];
+].filter(({ width, height }) => !onlyViewport || onlyViewport === `${width}x${height}`);
+assert.ok(viewports.length > 0, `Unsupported cinematic dialogue viewport: ${onlyViewport}`);
 const { server, baseUrl } = await startStaticServer(0);
 const candidateManifestResponse = await fetch(new URL("/game/elderhall/manifest.json", baseUrl));
 assert.ok(
@@ -58,6 +60,27 @@ async function closePages(page) {
     await page.locator(".dialog-next").click();
   }
   await page.waitForSelector(".dialog", { state: "detached" });
+}
+
+async function starterAnchors(page) {
+  return page.evaluate(() => {
+    const anchors = {};
+    for (const selector of [".dialog", ".dialog-species", ".dialog-name", ".dialog-next", ".dialog-back"]) {
+      const box = document.querySelector(selector)?.getBoundingClientRect();
+      if (!box?.width || !box.height) throw new Error(`Starter control is not laid out: ${selector}`);
+      anchors[selector] = [box.x, box.y, box.width, box.height];
+    }
+    return anchors;
+  });
+}
+
+async function assertStableStarterAnchors(page, initial) {
+  const current = await starterAnchors(page);
+  for (const [selector, box] of Object.entries(initial)) {
+    assert.ok(current[selector].every((value, index) => Math.abs(value - box[index]) <= 1),
+      `starter ${selector} moved between pages: ${JSON.stringify({ initial: box, current: current[selector] })}`);
+  }
+  assert.ok((await measureTargetVisibility(page.locator(".dialog-next"))).hitOk, "starter primary action stays reachable");
 }
 
 async function checkLayout(page, label, shot = false) {
@@ -274,10 +297,26 @@ try {
         );
         assert.equal(await page.locator(".hud-menu").isVisible(), true);
 
+        if (v.width === 390 && v.height === 844 && !v.classic) {
+          await page.evaluate(() => document.documentElement.style.fontSize = "200%");
+          await speak(page, "grove", 4, 7);
+          const largeStarter = await starterAnchors(page);
+          await page.locator(".dialog-next").click();
+          await assertStableStarterAnchors(page, largeStarter);
+          await page.locator(".dialog-back").click();
+          await assertStableStarterAnchors(page, largeStarter);
+          await page.locator(".dialog-next").click();
+          await page.locator(".dialog-next").click();
+          await assertStableStarterAnchors(page, largeStarter);
+          await page.locator(".dialog-back").click();
+          await page.evaluate(() => document.documentElement.style.removeProperty("font-size"));
+        }
         await speak(page, "grove", 4, 7);
         assert.equal(await page.locator(".dialog-portrait").count(), 0, "starter uses species art instead of an NPC portrait");
         const starterSprite = page.locator(".dialog-species");
+        const inspection = await starterAnchors(page);
         for (const [primary, secondary] of [["Next", "Cancel"], ["Next", "Back"], ["Bind Emberkit", "Cancel"]]) {
+          await assertStableStarterAnchors(page, inspection);
           assert.equal(await starterSprite.getAttribute("src"), "/game/sprites/emberkit.png");
           await starterSprite.evaluate((image) => image.decode());
           assert.ok(await starterSprite.evaluate((image) => image.complete && image.naturalWidth > 0), "shipped species sprite loads");

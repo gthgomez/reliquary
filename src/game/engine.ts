@@ -1445,7 +1445,10 @@ export class ReliquaryGame {
 			else if (CHEST_LOOT[id]) action = "Open chest";
 			else {
 				const special = SPECIAL_INTERACTIONS[id];
-				if (special?.kind === "starter") action = this.flags.starter ? "Observe creature" : "Choose a companion";
+				if (special?.kind === "starter") {
+					const name = SPECIES[special.speciesId]?.name ?? "creature";
+					action = `${this.flags.starter ? "Observe" : "Inspect"} ${name}`;
+				}
 				else if (special?.kind === "shrine") action = "Rest and heal";
 				else if (special?.kind === "rest") action = "Rest";
 				else if (special?.kind === "books") action = "Read ledger";

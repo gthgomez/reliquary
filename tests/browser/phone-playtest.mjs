@@ -172,6 +172,10 @@ async function exercise(width, height, textScale = 1) {
         const starter = MAPS.grove.objects.find((object) => object.sprite === species);
         await walk(page, "grove", { x: starter.x, y: starter.y + 1 });
         await faceDirection(page, "KeyW", Math.PI);
+        if (!baseline) {
+          await page.locator(".world-interaction-hint")
+            .filter({ hasText: new RegExp(`Inspect ${species}`, "i") }).waitFor();
+        }
         await page.keyboard.press("KeyZ");
         await page.locator(".dialog-name").waitFor();
         if (!baseline) {

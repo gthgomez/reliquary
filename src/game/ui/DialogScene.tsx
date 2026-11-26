@@ -22,6 +22,16 @@ export function DialogScene({ dialog, onAdvance, onBack }: {
     && dialog.primaryLabel === "Close"
     && dialog.secondaryLabel === "Close";
   const secondaryLabel = duplicateNonCommittingClose ? null : dialog.secondaryLabel;
+  const starterInspection = Boolean(dialog.speciesId && dialog.commits);
+  const speciesArt = dialog.speciesId
+    ? <img className="dialog-species" src={`/game/sprites/${dialog.speciesId}.png`} alt="" draggable={false} />
+    : null;
+  const nameplate = portrait || dialog.speaker ? (
+    <div className="dialog-nameplate">
+      {portrait ? <span className="dialog-role">{portrait.role}</span> : null}
+      {dialog.speaker ? <span className="dialog-name">{dialog.speaker}</span> : null}
+    </div>
+  ) : null;
   useEffect(() => {
     const previousFocus = document.activeElement;
     primary.current?.focus({ preventScroll: true });
@@ -43,7 +53,7 @@ export function DialogScene({ dialog, onAdvance, onBack }: {
 
   return (
     <div
-      className={`dialog-scene${portrait ? " dialog-scene-npc" : ""}${pixelPortrait ? " dialog-scene-pixel" : ""}`}
+      className={`dialog-scene${portrait ? " dialog-scene-npc" : ""}${pixelPortrait ? " dialog-scene-pixel" : ""}${starterInspection ? " dialog-scene-starter" : ""}`}
       data-npc-id={dialog.npcId ?? undefined}
       role="dialog"
       aria-label={dialog.speaker || "Story"}
@@ -55,6 +65,7 @@ export function DialogScene({ dialog, onAdvance, onBack }: {
         </div>
       ) : null}
       <div className={`dialog${portrait ? " dialog-panel" : ""}`} data-portrait={dialog.portraitKey ?? "none"}>
+        {starterInspection ? <div className="dialog-starter-heading">{speciesArt}{nameplate}</div> : null}
         <div
           className="dialog-content"
           ref={content}
@@ -63,14 +74,9 @@ export function DialogScene({ dialog, onAdvance, onBack }: {
             if (["ArrowUp", "ArrowDown", "PageUp", "PageDown", "Home", "End", " "].includes(event.key)) event.stopPropagation();
           }}
         >
-          {dialog.speciesId ? <img className="dialog-species" src={`/game/sprites/${dialog.speciesId}.png`} alt="" draggable={false} /> : null}
+          {starterInspection ? null : speciesArt}
           <div className="dialog-copy">
-            {portrait || dialog.speaker ? (
-              <div className="dialog-nameplate">
-                {portrait ? <span className="dialog-role">{portrait.role}</span> : null}
-                {dialog.speaker ? <span className="dialog-name">{dialog.speaker}</span> : null}
-              </div>
-            ) : null}
+            {starterInspection ? null : nameplate}
             <p className="dialog-text" id={textId} aria-live="polite" aria-atomic="true">{dialog.text}</p>
           </div>
         </div>

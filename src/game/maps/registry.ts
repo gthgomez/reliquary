@@ -114,6 +114,9 @@ const grove: MapDef = {
     // On the path spur, one tile north of the grass, so the post stays in frame at the crossroads.
     prop("gsign", "sign", 9, 9, "sign_grove_inner"),
   ],
+  decorations: [
+    { sprite: "grove-ritual", x: 3, y: 4.75, w: 10, h: 4.75, layer: "ground" },
+  ],
   npcs: [],
   warps: [
     { x: 15, y: 6, to: "elderhall", tx: 1, ty: 10 },
