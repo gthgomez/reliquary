@@ -38,12 +38,6 @@ hashes, dimensions, and visible bounds are recorded in
 `/game/elderhall/portraits/` and precache every image. The repository owner's
 delegated original-art authorization is recorded in the manifest.
 
-The removed pack-level `art_direction.reference_sha256` was a duplicate of
-the value still recorded in each of the six reference-conditioned asset
-provenance records. Its removal aligns the manifest with the current AGES
-export contract. The two concept hashes named in the artwork review remain
-distinct until the exact source files and their relationship are established.
-
 The new Quiet Lantern inn was generated from an original text brief using
 OpenAI ImageGen. The source SHA-256 is recorded in the inn's environment-pack
 entry. `scripts/prepare-elderhall-inn.mjs` validates that source, crops its
@@ -52,6 +46,27 @@ at gameplay scale. The runtime PNG is 160 × 156 with a ground anchor of
 (92, 152) and a render size of 3 × 2.925 tiles. The generated master stays
 outside the public repository. The environment manifest binds the packaged
 PNG hash to those placement values.
+
+## Elderhall revision 5 landmark replacements
+
+The cottage, guild hall, shop, roofed well, tree and gate in environment pack
+0.4.0 were drawn from blank canvases in
+[`scripts/draw-elderhall-landmarks.py`](../scripts/draw-elderhall-landmarks.py).
+The owner commissioned these original replacements for Reliquary. The drawing
+used the written direction (warm earth, slate, copper and foliage, upper-left
+light) and the game's existing placement geometry. It did not use the earlier
+landmark images, the source reference, the review concept, or third-party art.
+The source and PNG digests are in the environment manifest. The project LICENSE
+governs distribution of the package; the provenance record makes no exclusive
+copyright determination.
+
+The previous six assets were conditioned on a reported source reference with
+SHA-256 `04ac8efeb1b52dd63f026c222dceb4427ab2514f54741561813ddbfb90f967c5`.
+The review concept was recorded as
+`728e564e61be46bc75ebc41481af637b27f104575d5e87458423f47ab782a4ca`.
+Targeted searches of project evidence, authorized archives and AGES found
+neither image or a source-rights record. The two identities remain distinct and
+unresolved in historical evidence. Neither is a source for the current pack.
 
 ## Legacy art inventory
 

@@ -9,7 +9,7 @@
       "copper gold"
     ],
     "perspective": "three-quarter, south-facing",
-    "reference_use": "visual direction; procedural drawings are not reference-conditioned generation"
+    "reference_use": "Written visual direction only for the original village landmarks"
   },
   "assets": [
     {
@@ -949,37 +949,18 @@
         1
       ],
       "provenance": {
-        "authorization": "Project owner requested generation and Reliquary integration",
-        "license": "Owner-authorized project candidate; rights review pending",
-        "method": "Built-in reference-conditioned image tool",
-        "reference_attestation": "Caller supplied the reference to the cited generation method; this claim is recorded, not independently verified.",
-        "reference_sha256": "04ac8efeb1b52dd63f026c222dceb4427ab2514f54741561813ddbfb90f967c5",
-        "repair": {
-          "alpha_below": 16,
-          "bottom_margin": 4,
-          "canvas": [
-            128,
-            160
-          ],
-          "crop_bbox": [
-            259,
-            111,
-            1025,
-            1069
-          ],
-          "opaque_at_or_above": 240,
-          "resampling": "Pillow LANCZOS"
-        },
-        "review_status": "candidate; visual and rights review pending",
-        "rights_holder": "Ownership not independently verified",
-        "source_sha256": "13ac3e804f413a07a6b6301ad17e6942beaf5e1b9ffe3f17f593ecb6ccf45688",
-        "source_type": "reference_conditioned"
+        "authorization": "Original replacement commissioned for Reliquary Chapter One; production promotion conditional on qualification",
+        "license": "Distributed under the project LICENSE; no third-party asset used",
+        "method": "Deterministic pixel drawing from a written brief in scripts/draw-elderhall-landmarks.py",
+        "rights_holder": "Reliquary project artwork; no exclusive copyright determination",
+        "source_sha256": "5025f9a8e497f60fe7178cab5a70b705c2126328061498504f7b421f1ae8c033",
+        "source_type": "original_programmatic"
       },
       "render_size_tiles": [
         2.0,
         2.5
       ],
-      "sha256": "f0b5f7a80d1bd3de6ddd2ded34e7cf059af0d7930e831936b21ddef383eb0112",
+      "sha256": "6be363f78a32e70b41ad8c9832cdc8cddf9233cc5a7d3f695621efa385dc5f6e",
       "shadow": {
         "center": [
           64,
@@ -1011,37 +992,18 @@
         1
       ],
       "provenance": {
-        "authorization": "Project owner requested generation and Reliquary integration",
-        "license": "Owner-authorized project candidate; rights review pending",
-        "method": "Built-in reference-conditioned image tool",
-        "reference_attestation": "Caller supplied the reference to the cited generation method; this claim is recorded, not independently verified.",
-        "reference_sha256": "04ac8efeb1b52dd63f026c222dceb4427ab2514f54741561813ddbfb90f967c5",
-        "repair": {
-          "alpha_below": 16,
-          "bottom_margin": 4,
-          "canvas": [
-            160,
-            160
-          ],
-          "crop_bbox": [
-            198,
-            143,
-            1099,
-            1057
-          ],
-          "opaque_at_or_above": 240,
-          "resampling": "Pillow LANCZOS"
-        },
-        "review_status": "candidate; visual and rights review pending",
-        "rights_holder": "Ownership not independently verified",
-        "source_sha256": "533ab9605ba4165442d5eae5986f065b2c6aea715f99933ce8e24842603a3629",
-        "source_type": "reference_conditioned"
+        "authorization": "Original replacement commissioned for Reliquary Chapter One; production promotion conditional on qualification",
+        "license": "Distributed under the project LICENSE; no third-party asset used",
+        "method": "Deterministic pixel drawing from a written brief in scripts/draw-elderhall-landmarks.py",
+        "rights_holder": "Reliquary project artwork; no exclusive copyright determination",
+        "source_sha256": "5025f9a8e497f60fe7178cab5a70b705c2126328061498504f7b421f1ae8c033",
+        "source_type": "original_programmatic"
       },
       "render_size_tiles": [
         3.0,
         3.0
       ],
-      "sha256": "8354a8f1b81bde22af0f1808f477992e9bb0fcada3820092fa4e9d3bf3dde7be",
+      "sha256": "1e4cc56b6595a864a43ce354e59fc83c5ea1c7b4c1cf8c2d4c47a933059ea0dd",
       "shadow": {
         "center": [
           80,
@@ -1073,37 +1035,18 @@
         1
       ],
       "provenance": {
-        "authorization": "Project owner requested generation and Reliquary integration",
-        "license": "Owner-authorized project candidate; rights review pending",
-        "method": "Built-in reference-conditioned image tool",
-        "reference_attestation": "Caller supplied the reference to the cited generation method; this claim is recorded, not independently verified.",
-        "reference_sha256": "04ac8efeb1b52dd63f026c222dceb4427ab2514f54741561813ddbfb90f967c5",
-        "repair": {
-          "alpha_below": 16,
-          "bottom_margin": 4,
-          "canvas": [
-            160,
-            144
-          ],
-          "crop_bbox": [
-            228,
-            50,
-            1309,
-            963
-          ],
-          "opaque_at_or_above": 240,
-          "resampling": "Pillow LANCZOS"
-        },
-        "review_status": "candidate; visual and rights review pending",
-        "rights_holder": "Ownership not independently verified",
-        "source_sha256": "886c4e5feff38428930367c8afb70af189e8d468d909b39b5c82e5e5e32b6e4e",
-        "source_type": "reference_conditioned"
+        "authorization": "Original replacement commissioned for Reliquary Chapter One; production promotion conditional on qualification",
+        "license": "Distributed under the project LICENSE; no third-party asset used",
+        "method": "Deterministic pixel drawing from a written brief in scripts/draw-elderhall-landmarks.py",
+        "rights_holder": "Reliquary project artwork; no exclusive copyright determination",
+        "source_sha256": "5025f9a8e497f60fe7178cab5a70b705c2126328061498504f7b421f1ae8c033",
+        "source_type": "original_programmatic"
       },
       "render_size_tiles": [
         3.0,
         2.7
       ],
-      "sha256": "f99d75be756d406d1c27a12ff388b3a20f88234245e4c13f9b4726cddc15935f",
+      "sha256": "1ea03ac18625b4ea002ed453bc51cb5957a775094b5a8bb8b5afebf1def96e57",
       "shadow": {
         "center": [
           80,
@@ -1135,37 +1078,18 @@
         1
       ],
       "provenance": {
-        "authorization": "Project owner requested generation and Reliquary integration",
-        "license": "Owner-authorized project candidate; rights review pending",
-        "method": "Built-in reference-conditioned image tool",
-        "reference_attestation": "Caller supplied the reference to the cited generation method; this claim is recorded, not independently verified.",
-        "reference_sha256": "04ac8efeb1b52dd63f026c222dceb4427ab2514f54741561813ddbfb90f967c5",
-        "repair": {
-          "alpha_below": 16,
-          "bottom_margin": 4,
-          "canvas": [
-            160,
-            112
-          ],
-          "crop_bbox": [
-            281,
-            200,
-            1252,
-            839
-          ],
-          "opaque_at_or_above": 240,
-          "resampling": "Pillow LANCZOS"
-        },
-        "review_status": "candidate; visual and rights review pending",
-        "rights_holder": "Ownership not independently verified",
-        "source_sha256": "60ca48ce5b5e63264f98b0416c04b900f6e6638b51612c0010178169c038fc13",
-        "source_type": "reference_conditioned"
+        "authorization": "Original replacement commissioned for Reliquary Chapter One; production promotion conditional on qualification",
+        "license": "Distributed under the project LICENSE; no third-party asset used",
+        "method": "Deterministic pixel drawing from a written brief in scripts/draw-elderhall-landmarks.py",
+        "rights_holder": "Reliquary project artwork; no exclusive copyright determination",
+        "source_sha256": "5025f9a8e497f60fe7178cab5a70b705c2126328061498504f7b421f1ae8c033",
+        "source_type": "original_programmatic"
       },
       "render_size_tiles": [
         3.0,
         2.1
       ],
-      "sha256": "823697b2ee8d42ffeba1772f890dd1cca503bd121ffd201c4a3f7a654ead6008",
+      "sha256": "5a9b0e1431c6c22f1bcb3bace0147efd9e1fcb3a8aad4bbf8366b4e07f2582f7",
       "shadow": {
         "center": [
           80,
@@ -1197,37 +1121,18 @@
         3
       ],
       "provenance": {
-        "authorization": "Created at the project owner request for Reliquary; production approval pending",
-        "license": "Project candidate; rights review pending",
-        "method": "OpenAI built-in image generation, conditioned on the owner-supplied reference and cottage master SHA-256 533ab9605ba4165442d5eae5986f065b2c6aea715f99933ce8e24842603a3629",
-        "reference_attestation": "Caller supplied the reference to the cited generation method; this claim is recorded, not independently verified.",
-        "reference_sha256": "04ac8efeb1b52dd63f026c222dceb4427ab2514f54741561813ddbfb90f967c5",
-        "repair": {
-          "alpha_below": 16,
-          "bottom_margin": 4,
-          "canvas": [
-            160,
-            160
-          ],
-          "crop_bbox": [
-            102,
-            76,
-            1281,
-            1034
-          ],
-          "opaque_at_or_above": 240,
-          "resampling": "Pillow LANCZOS"
-        },
-        "review_status": "candidate; visual and rights review pending",
-        "rights_holder": "Not independently verified",
-        "source_sha256": "d79ffea36f61dae48c9497e4f0ede24f40c79dd1436d185cc93f392e2e91e077",
-        "source_type": "reference_conditioned"
+        "authorization": "Original replacement commissioned for Reliquary Chapter One; production promotion conditional on qualification",
+        "license": "Distributed under the project LICENSE; no third-party asset used",
+        "method": "Deterministic pixel drawing from a written brief in scripts/draw-elderhall-landmarks.py",
+        "rights_holder": "Reliquary project artwork; no exclusive copyright determination",
+        "source_sha256": "5025f9a8e497f60fe7178cab5a70b705c2126328061498504f7b421f1ae8c033",
+        "source_type": "original_programmatic"
       },
       "render_size_tiles": [
         3.0,
         3.0
       ],
-      "sha256": "eb3d8615874030b0c8553135a0be8c0af209876adf0abe319f91c651323c8dd8",
+      "sha256": "c881df7c907aaf6c528080b690f05871317b8dce882b6faa3d0c93c29a481957",
       "shadow": {
         "center": [
           80,
@@ -1259,37 +1164,18 @@
         3
       ],
       "provenance": {
-        "authorization": "Created at the project owner request for Reliquary; production approval pending",
-        "license": "Project candidate; rights review pending",
-        "method": "OpenAI built-in image generation, conditioned on the owner-supplied reference and cottage master SHA-256 533ab9605ba4165442d5eae5986f065b2c6aea715f99933ce8e24842603a3629",
-        "reference_attestation": "Caller supplied the reference to the cited generation method; this claim is recorded, not independently verified.",
-        "reference_sha256": "04ac8efeb1b52dd63f026c222dceb4427ab2514f54741561813ddbfb90f967c5",
-        "repair": {
-          "alpha_below": 16,
-          "bottom_margin": 4,
-          "canvas": [
-            160,
-            160
-          ],
-          "crop_bbox": [
-            193,
-            121,
-            1106,
-            1059
-          ],
-          "opaque_at_or_above": 240,
-          "resampling": "Pillow LANCZOS"
-        },
-        "review_status": "candidate; visual and rights review pending",
-        "rights_holder": "Not independently verified",
-        "source_sha256": "b8ef29089f3634c08b911081ef9bfe58932299b09ddb5bfa3c376624c95073b0",
-        "source_type": "reference_conditioned"
+        "authorization": "Original replacement commissioned for Reliquary Chapter One; production promotion conditional on qualification",
+        "license": "Distributed under the project LICENSE; no third-party asset used",
+        "method": "Deterministic pixel drawing from a written brief in scripts/draw-elderhall-landmarks.py",
+        "rights_holder": "Reliquary project artwork; no exclusive copyright determination",
+        "source_sha256": "5025f9a8e497f60fe7178cab5a70b705c2126328061498504f7b421f1ae8c033",
+        "source_type": "original_programmatic"
       },
       "render_size_tiles": [
         3.0,
         3.0
       ],
-      "sha256": "fd6f313084e80c59dcc74274d4ffa47722f3949a904b3c4f5d7f6e7fbaa27160",
+      "sha256": "33ce5f36a2a02442fd1fdf7ec7216ac53059a58dbb78d18984578315d35144ae",
       "shadow": {
         "center": [
           80,
@@ -1305,5 +1191,5 @@
   "id": "reliquary.elderhall",
   "schema_version": "ages.environment-pack/1",
   "tile_size": 32,
-  "version": "0.3.0"
+  "version": "0.4.0"
 }

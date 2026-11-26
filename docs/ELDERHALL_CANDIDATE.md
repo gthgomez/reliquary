@@ -1,23 +1,19 @@
 # Elderhall environment candidate
 
 This document records the Elderhall candidate and its release requirements.
-Its generated cottage, guild hall, shop, roofed well, tree and gate were created for this task
-with the built-in OpenAI image tool using the owner-supplied Elderhall image as
-the visual reference. The guild and shop also used the generated cottage as a
-supporting style reference, recorded in each asset's generation method. Their
-original-image and reference SHA-256 hashes,
-preparation operations and candidate status are in
-`assets/elderhall-candidate/manifest.json`. The terrain, flowers, bench and
-other simple props were drawn deterministically for this task. No AGES engine
-source or generated master images are part of this public pack.
+Pack 0.4.0 uses new, original pixel drawings for the cottage, guild hall, shop,
+roofed well, tree and gate. The source script draws on blank canvases from the
+written visual direction and the existing scene geometry. The six stable asset
+IDs retain their `-reference` suffix, dimensions, anchors and render sizes.
+`assets/elderhall-candidate/manifest.json` records the drawing source and each
+PNG's SHA-256. No AGES engine source, unverified reference, or generated master
+is needed to reproduce these six drawings.
 
-The owner requested generation and integration into this public project.
-OpenAI's [Terms of Use](https://openai.com/policies/terms-of-use/) assign output
-rights to the user as between the user and OpenAI, subject to applicable law.
-This record does not independently establish third-party rights in the supplied
-reference or any exclusive copyright in generated output. Existing game art has
-its own unresolved provenance noted in `ASSET_PROVENANCE.md`. Visual and rights
-review are still required before production promotion.
+The previous pack's six reference-conditioned landmarks were replaced because
+the original reference and rights evidence could not be recovered. See
+[`ASSET_PROVENANCE.md`](ASSET_PROVENANCE.md) for the separate historical hashes
+and unrelated legacy artwork. The replacement bytes need their own visual
+qualification. Production remains subject to the documented release gates.
 
 ## Build and verify
 
@@ -30,7 +26,11 @@ review are still required before production promotion.
   runtime gate and offline entry on a revision 5 build without test controls.
 * `node --test scripts/elderhall-pack.test.mjs` verifies hashes, decodability,
   manifest identity, provenance field structure, selected export paths and
-  the actual atlas cell edges. Reference ownership is recorded separately.
+  the actual atlas cell edges. The six original landmarks also bind their
+  drawing source.
+* To reproduce the six original landmark PNGs, run
+  `python scripts/draw-elderhall-landmarks.py --out path/to/output --preview`
+  with Python 3 and Pillow 10.4.0. Compare the PNG digests to the manifest.
 * The pack is supplied by AGES as `ages.environment-pack/1`. Re-export it in
   AGES, replace `assets/elderhall-candidate/`, validate with
   `ages environment-pack-verify assets/elderhall-candidate --json` (private AGES
@@ -63,15 +63,16 @@ tile movement. Binding Grove uses the same atlas family with woodland tones.
 The objective summary opens the Lantern reading panel, and the gate uses a
 local silhouette cue where opaque art covers the player.
 
-These matched Chrome captures compare revision 5 before and after polish.
-They use fixed positions for framing. The natural journeys exercise the same
-locations through the game's controls. [Terrain and thresholds](evidence/elderhall-final/terrain.webp)
+These historical Chrome captures compare revision 5 before and after polish
+with the previous landmark art. They use fixed positions for framing. The
+natural journeys exercise the same locations through the game's controls.
+[Terrain and thresholds](evidence/elderhall-final/terrain.webp)
 · [Gate, objective and Maren](evidence/elderhall-final/readability.webp)
 
-If a candidate image fails to load, existing art remains the fallback for the
-well, houses and tree; the gate uses visible placeholder posts rather than
-invisible blockers. The generated gate and candidate artwork still need
-human review at multiple camera positions and device sizes. The pack
+The title waits for required world art before entering the world and offers a
+retry if loading fails or stalls. The renderer also has fallbacks for the well,
+houses, tree and gate posts. The replacement gate and other landmarks still
+need visual review at multiple camera positions and device sizes. The pack
 does not certify reference fidelity, gameplay, accessibility, licensing or
 commercial readiness merely because its structural checks pass.
 
@@ -79,7 +80,7 @@ commercial readiness merely because its structural checks pass.
 
 The repository owner delegated the final artwork decision and authorized
 production promotion after qualification. Record the decision as delegated
-agent acceptance. Include the reviewed artwork, reference rights, installed
+agent acceptance. Include the reviewed artwork, provenance, installed
 Android results, visual evidence, and exact candidate commit in the release
 record. Record the digest of the qualification artifact built without browser
 probes. Update `scripts/elderhall-release.json` to revision 5 with an

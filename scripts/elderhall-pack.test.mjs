@@ -63,6 +63,14 @@ test("reference-conditioned assets require valid source and reference digests an
     for (const [key, value] of cases) {
       const manifest = structuredClone(original);
       const asset = manifest.assets.find((entry) => entry.id === "elderhall.guild-reference");
+      // The live pack uses originals, so exercise this contract with a
+      // complete synthetic record before corrupting one field at a time.
+      Object.assign(asset.provenance, {
+        source_type: "reference_conditioned",
+        source_sha256: "1".repeat(64),
+        reference_sha256: "2".repeat(64),
+        reference_attestation: "Synthetic reference attestation for the packaging test",
+      });
       asset.provenance[key] = value;
       writeFileSync(path, JSON.stringify(manifest));
       assert.throws(() => validateElderhallPack(dir), new RegExp(key), key);
@@ -169,22 +177,27 @@ test("copy exposes only selected runtime PNGs and their candidate manifest", () 
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
 
-test("the selected export contains distinct guild and shop images with reference lineage", () => {
+test("the selected original landmarks bind their drawing source and remain distinct", () => {
   const dir = mkdtempSync(join(tmpdir(), "elderhall-landmarks-"));
   try {
     copyElderhallCandidate(source, dir);
     const manifest = JSON.parse(readFileSync(join(dir, "manifest.json"), "utf8"));
-    const guild = manifest.assets.find((asset) => asset.id === "elderhall.guild-reference");
-    const shop = manifest.assets.find((asset) => asset.id === "elderhall.shop-reference");
-    for (const asset of [guild, shop]) {
+    const names = ["cottage", "gate", "guild", "shop", "tree", "well"];
+    const drawing = readFileSync(join(import.meta.dirname, "draw-elderhall-landmarks.py"), "utf8").replace(/\r\n/g, "\n");
+    const drawingHash = createHash("sha256").update(drawing).digest("hex");
+    const landmarks = names.map((name) => manifest.assets.find((asset) => asset.id === `elderhall.${name}-reference`));
+    for (const asset of landmarks) {
       assert.ok(asset, "selected landmark appears in exported manifest");
-      assert.equal(asset.provenance.source_type, "reference_conditioned");
-      assert.match(asset.provenance.source_sha256, /^[0-9a-f]{64}$/);
-      assert.match(asset.provenance.reference_sha256, /^[0-9a-f]{64}$/);
-      assert.deepEqual(asset.logical_footprint, [3, 3], "building footprint reflects the authored logical size");
+      assert.equal(asset.provenance.source_type, "original_programmatic");
+      assert.equal(asset.provenance.source_sha256, drawingHash);
+      assert.equal(asset.provenance.reference_sha256, undefined);
       assert.ok(existsSync(join(dir, asset.file)));
     }
-    assert.notEqual(guild.sha256, shop.sha256, "the landmarks are different images");
+    for (const id of ["elderhall.guild-reference", "elderhall.shop-reference"]) {
+      const asset = landmarks.find((landmark) => landmark.id === id);
+      assert.deepEqual(asset.logical_footprint, [3, 3], "building footprint reflects the authored logical size");
+    }
+    assert.equal(new Set(landmarks.map((asset) => asset.sha256)).size, names.length);
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
 
