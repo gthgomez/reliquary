@@ -222,8 +222,15 @@ export function GameApp() {
 
   useEffect(() => {
     if (uiModal) {
+      const openedFromObjective = !wasUiModal.current && objectiveReturnRef.current;
       wasUiModal.current = true;
       requestAnimationFrame(() => {
+        // Opening from the objective should leave the directions at the top
+        // of the scrollable body, even when a row can't fit beneath them.
+        if (openedFromObjective && snap.menu === "root") {
+          document.querySelector<HTMLElement>(".overlay-panel-close")?.focus({ preventScroll: true });
+          return;
+        }
         // S09: actual focus starts on the engine's visible selection, so
         // Enter/Space act on the highlighted row. Listless panels fall back
         // to the close button.
