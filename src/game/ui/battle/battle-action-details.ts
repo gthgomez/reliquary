@@ -1,7 +1,7 @@
-import { currentStats, ELEMENTS, ITEMS, SKILLS, SPECIES } from "../../content.ts";
+import { currentStats, ELEMENTS, ITEMS, SKILLS, SPECIES, typeMod } from "../../content.ts";
 import { STATUS_NAMES } from "../../systems/status.ts";
 import { skillMpHint } from "../ui-chrome.ts";
-import type { Beast, BattleState, ItemDef, Skill, SkillKind } from "../../types.ts";
+import type { Beast, BattleState, ElementId, ItemDef, Skill, SkillKind } from "../../types.ts";
 import type { BattleCommand } from "../../world/encounters.ts";
 
 export type ActionDetailMeta = { label: string; value: string };
@@ -28,6 +28,7 @@ export type BattleDetailsInput = {
   party: Beast[];
   inventory: Record<string, number>;
   skillIds: string[];
+  foeElements?: ElementId[];
   usableItemIds: string[];
   bindIds: string[];
   menuIndex: number;
@@ -57,7 +58,7 @@ function titleCase(value: string): string {
   return value.charAt(0).toUpperCase() + value.slice(1);
 }
 
-export function skillDetails(skillId: string, currentMp: number): ActionDetails {
+export function skillDetails(skillId: string, currentMp: number, foeElements: ElementId[] = []): ActionDetails {
   const skill: Skill | undefined = SKILLS[skillId];
   if (!skill) {
     return {
@@ -71,6 +72,9 @@ export function skillDetails(skillId: string, currentMp: number): ActionDetails 
     };
   }
   const affordable = currentMp >= skill.mp;
+  const matchup = skill.power > 0 && skill.kind !== "heal" ? typeMod(skill.element, foeElements) : 1;
+  const matchupText = matchup > 1 ? "Strong against this foe." : matchup < 1 ? "Resisted by this foe." : "";
+  const description = matchupText ? `${matchupText} ${skill.desc}` : skill.desc;
   const meta: ActionDetailMeta[] = [
     { label: "Type", value: SKILL_KIND_LABEL[skill.kind] ?? titleCase(skill.kind) },
     { label: "Element", value: ELEMENTS[skill.element]?.name ?? titleCase(skill.element) },
@@ -84,12 +88,12 @@ export function skillDetails(skillId: string, currentMp: number): ActionDetails 
   }
   return {
     title: skill.name,
-    description: skill.desc,
+    description,
     meta,
     chips: [ELEMENTS[skill.element]?.name ?? titleCase(skill.element), SKILL_KIND_LABEL[skill.kind] ?? titleCase(skill.kind)],
     availability: affordable ? "ready" : "insufficient-mp",
     note: affordable ? null : `${skillMpHint(currentMp, skill.mp)} — inspecting does not spend MP.`,
-    ariaLabel: `${skill.name}. ${skill.desc} ${affordable ? `${skill.mp} MP` : `${skillMpHint(currentMp, skill.mp)}`}.`,
+    ariaLabel: `${skill.name}. ${description} ${affordable ? `${skill.mp} MP` : `${skillMpHint(currentMp, skill.mp)}`}.`,
   };
 }
 
@@ -260,10 +264,10 @@ export function commandDetails(command: BattleCommand, input: BattleDetailsInput
           ariaLabel: "Bind. Not permitted in this encounter.",
         };
       }
-      const count = input.bindIds.length;
+      const count = input.bindIds.reduce((total, id) => total + (input.inventory[id] ?? 0), 0);
       return {
         title: "Bind",
-        description: "Cast a sigil at a weakened wild beast.",
+        description: count ? "Weaken a wild beast, then cast a sigil." : "You need a binding sigil.",
         meta: [
           { label: "Type", value: "Binding" },
           { label: "Sigils", value: String(count) },
@@ -351,7 +355,7 @@ export function resolveBattleActionDetails(input: BattleDetailsInput): ActionDet
         ariaLabel: "No techniques learned",
       };
     }
-    return skillDetails(skillId, active.mp);
+    return skillDetails(skillId, active.mp, input.foeElements);
   }
   if (input.phase === "items") {
     const itemId = input.usableItemIds[input.menuIndex];
