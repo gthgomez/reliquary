@@ -99,7 +99,8 @@ async function exercise(width, height, textScale = 1) {
       const start = introFrames["page 1"].anchors;
       assert.ok(composition.anchors.every((position, index) => Math.abs(position - start[index]) <= 1),
         `${label}: cottage and dialogue actions remain anchored: ${JSON.stringify(introFrames)}`);
-      assert.ok(composition.textHeight[0] > 0, `${label}: the text area remains visible`);
+      const lineHeight = await page.locator(".dialog-text").evaluate((text) => parseFloat(getComputedStyle(text).lineHeight));
+      assert.ok(composition.textHeight[0] >= 2 * lineHeight - 1, `${label}: room for two readable lines`);
       assert.ok((await measureTargetVisibility(advance)).hitOk, `${label}: dialogue action is reachable`);
     };
     await capture("01-cottage-intro");

@@ -1649,7 +1649,7 @@
   }
   .game-root.is-cottage.is-dialog .game-canvas {
     flex: 0 0 auto;
-    width: min(100%, var(--scene-width), 54dvh);
+    width: min(100%, var(--scene-width), 54dvh, max(60vw, calc(100dvh - 11rem)));
     margin-block: 0;
   }
   .game-root.is-cottage .dialog-scene:not(.dialog-scene-npc) {
@@ -1659,7 +1659,7 @@
     display: flex;
     min-height: 0;
     max-height: 52%;
-    height: min(11rem, 34dvh);
+    height: min(11rem, 38dvh);
     flex: 0 1 auto;
   }
   .game-root.is-cottage .dialog-scene:not(.dialog-scene-npc) .dialog {
