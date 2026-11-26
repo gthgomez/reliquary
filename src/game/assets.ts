@@ -30,6 +30,7 @@ const BG_KEYS = ["grass", "forest", "cave", "marsh", "keep"] as const;
 export function collectGameAssets(options: { elderhallCandidate?: boolean } = {}): readonly AssetEntry[] {
   const out: AssetEntry[] = [
     { key: "title", url: "/game/bg/title.jpg", required: true },
+    { key: "room_rowan_cottage", url: "/game/rooms/rowan-cottage.png", required: true },
     { key: "manifest_game", url: "/game/manifest.json", required: false },
   ];
   for (const tile of new Set(Object.values(GROUND_TILE))) {

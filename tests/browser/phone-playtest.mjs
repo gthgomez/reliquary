@@ -65,6 +65,18 @@ async function exercise(width, height, textScale = 1) {
       shots.push(name);
     };
     const advance = page.locator(".dialog-next");
+    const introFrames = {};
+    const introComposition = async () => {
+      const frame = await page.locator(".game-canvas").boundingBox();
+      const panel = await page.locator(".dialog").boundingBox();
+      const action = await advance.boundingBox();
+      assert.ok(frame && panel && action);
+      const scroll = await page.locator(".dialog-content").evaluate((main) => [main.clientHeight, main.scrollHeight]);
+      return {
+        anchors: [frame.x, frame.y, frame.width, frame.height, panel.y, action.y, action.height],
+        textHeight: scroll,
+      };
+    };
     await page.goto(baseUrl, { waitUntil: "networkidle" });
     await waitForGameBoot(page);
     await page.getByRole("button", { name: "Start", exact: true }).click();
@@ -78,9 +90,29 @@ async function exercise(width, height, textScale = 1) {
       assert.ok(action.fullyVisible && action.hitOk, "intro action remains reachable");
       assert.equal(await page.locator(".dialog-name").count(), 0);
     }
+    introFrames["page 1"] = await introComposition();
+    const stableIntro = !baseline && portrait;
+    const checkIntro = async (label) => {
+      const composition = await introComposition();
+      introFrames[label] = composition;
+      if (!stableIntro) return;
+      const start = introFrames["page 1"].anchors;
+      assert.ok(composition.anchors.every((position, index) => Math.abs(position - start[index]) <= 1),
+        `${label}: cottage and dialogue actions remain anchored: ${JSON.stringify(introFrames)}`);
+      assert.ok((await measureTargetVisibility(advance)).hitOk, `${label}: dialogue action is reachable`);
+    };
     await capture("01-cottage-intro");
     await advance.click();
+    await checkIntro("page 2");
+    await capture("01b-cottage-intro-story");
+    if (stableIntro) {
+      await page.getByRole("button", { name: "Back", exact: true }).click();
+      await checkIntro("back to page 1");
+      await advance.click();
+    }
     await advance.click();
+    await checkIntro("page 3");
+    await capture("01c-cottage-intro-controls");
     if (!baseline) {
       assert.match(await page.locator(".dialog-text").innerText(),
         buildsCandidate ? /Maren beside the village well/ : /Maren near the Chapter House/);
@@ -160,7 +192,7 @@ async function exercise(width, height, textScale = 1) {
       }
     }
     assert.deepEqual(failures, []);
-    records.push({ viewport: [width, height], textScale, browser: context.browser().version(), shots, failures });
+    records.push({ viewport: [width, height], textScale, browser: context.browser().version(), introFrames, shots, failures });
     console.log(`[phone-playtest] ${label} passed`);
   }, {
     context: { viewport: { width, height }, isMobile: phone, hasTouch: phone, reducedMotion: "reduce", serviceWorkers: "allow" },

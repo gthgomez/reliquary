@@ -2563,9 +2563,13 @@ export class ReliquaryGame {
 					ground.drawImage(groveDirt, x * TILE, y * TILE, TILE, TILE);
 				});
 			} else if (cottageExit) {
+				const room = this.images.room_rowan_cottage;
 				finishFloor = () => {
-					paintCottageFloor(ground, TILE, mw, mh, cottageExit.x);
-					paintCottageRug(ground, TILE);
+					if (room) ground.drawImage(room, 0, 0, mw * TILE, mh * TILE);
+					else {
+						paintCottageFloor(ground, TILE, mw, mh, cottageExit.x);
+						paintCottageRug(ground, TILE);
+					}
 				};
 			}
 			bakeMapTerrain({

@@ -153,11 +153,15 @@ function interior(id: string, name: string, w: number, h: number, doorX: number,
 
 const home = interior("home", "Rowan's Cottage", 11, 9, 5, "elderhall", 4, 15, {
   objects: [
-    { id: "bed", sprite: "bed", x: 2, y: 2, w: 1, h: 1, foot: 1, solid: true, interact: "bed" },
-    { id: "table", sprite: "table", x: 5, y: 3, w: 1, h: 1, foot: 1, solid: true },
+    { id: "bed", sprite: "bed", x: 2, y: 2, w: 1, h: 1, foot: 1, solid: true, interact: "bed",
+      visual: { width: 1.5, height: 1.5, anchorX: 0.5, anchorY: 1, groundX: 0.5, groundY: 1 } },
+    { id: "table", sprite: "table", x: 5, y: 3, w: 1, h: 1, foot: 1, solid: true,
+      visual: { width: 1.3, height: 1.3, anchorX: 0.5, anchorY: 1, groundX: 0.5, groundY: 1 } },
     { id: "chair", sprite: "chair", x: 6, y: 3, w: 1, h: 1, foot: 1, solid: true },
-    { id: "books", sprite: "bookshelf", x: 8, y: 1, w: 1, h: 1, foot: 1, solid: true, interact: "books" },
-    { id: "hearth", sprite: "hearth", x: 2, y: 5, w: 1, h: 1, foot: 1, solid: true },
+    { id: "books", sprite: "bookshelf", x: 8, y: 1, w: 1, h: 1, foot: 1, solid: true, interact: "books",
+      visual: { width: 1.35, height: 1.35, anchorX: 0.5, anchorY: 1, groundX: 0.5, groundY: 1 } },
+    { id: "hearth", sprite: "hearth", x: 2, y: 5, w: 1, h: 1, foot: 1, solid: true,
+      visual: { width: 1.45, height: 1.45, anchorX: 0.5, anchorY: 1, groundX: 0.5, groundY: 1 } },
   ],
 });
 

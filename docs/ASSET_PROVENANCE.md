@@ -5,6 +5,14 @@ source-license file was present in the initial repository, and the repository
 has one initial commit. Unresolved entries are retained and flagged rather than
 deleted.
 
+## Rowan's cottage room
+
+`public/game/rooms/rowan-cottage.png` is original project artwork drawn by
+`scripts/draw-rowan-cottage.py` and covered by the repository license. Its
+176 × 144 pixels map to the existing 11 × 9 room at 16 art pixels per
+32-pixel world tile. The room composition uses existing furniture assets,
+whose attribution is recorded elsewhere in this manifest.
+
 ## Cinematic dialogue synthesis (issue #31, November 2026)
 
 Seven standalone SVGs in `public/game/portraits/` share the game's moss, copper,
