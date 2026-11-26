@@ -302,7 +302,14 @@ test("foe retaliation targets the incoming beast on a voluntary switch", async (
 
 test("a caught beast can take a nickname, and declining leaves the species name", async () => {
   await withGame((game, frame) => {
+    const stored = new Map<string, string>();
+    (globalThis as Record<string, unknown>).localStorage = {
+      getItem: (key: string) => stored.get(key) ?? null,
+      setItem: (key: string, value: string) => stored.set(key, value),
+      removeItem: (key: string) => stored.delete(key),
+    };
     game.party = [makeBeast("emberkit", 5)];
+    game.flags.starter = true;
     (game as unknown as { random: () => number }).random = () => 0;
     let ts = 100;
     const catchOne = () => {
@@ -321,12 +328,18 @@ test("a caught beast can take a nickname, and declining leaves the species name"
     const kept = game.party[1]!.nickname;
     game.cancel();
     assert.equal(game.getSnapshot().namePrompt, null);
+    game.continueGame();
+    assert.equal(game.namePrompt, null, "declining the capture offer is durable");
     assert.equal(game.party[1]!.nickname, kept);
 
     catchOne();
     game.confirm();
     assert.equal(game.getSnapshot().namePrompt?.kind, "tame");
     const beforeBlank = game.party[2]!.nickname;
+    game.updateCreatureNameDraft("");
+    game.namePrompt = null;
+    game.continueGame();
+    assert.equal(game.getSnapshot().namePrompt?.draft, "", "an empty draft does not restore the default text");
     game.submitCreatureName("   ");
     assert.equal(game.getSnapshot().namePrompt, null);
     assert.equal(game.party[2]!.nickname, beforeBlank);
@@ -340,9 +353,17 @@ test("a caught beast can take a nickname, and declining leaves the species name"
     while (game.party.length < 4) game.party.push(makeBeast("mirewhelp", 5));
     catchOne();
     game.confirm();
-    game.submitCreatureName("Moss");
-    assert.ok(game.box.some((beast) => beast.nickname === "Moss"));
-    assert.equal(game.party.some((beast) => beast.nickname === "Moss"), false);
+    const boxed = game.box.at(-1)!;
+    game.updateCreatureNameDraft("Moss".repeat(10));
+    game.updateCreatureNameDraft("Moss".repeat(11));
+    game.namePrompt = null;
+    game.continueGame();
+    assert.equal(game.getSnapshot().namePrompt?.uid, boxed.uid);
+    assert.equal(game.getSnapshot().namePrompt?.draft, "Moss".repeat(10));
+    game.submitCreatureName("Moss".repeat(10));
+    assert.equal(game.box.find((beast) => beast.uid === boxed.uid)?.nickname, "Moss".repeat(10));
+    game.continueGame();
+    assert.equal(game.namePrompt, null, "confirmed captured companion never reopens the offer");
   });
 });
 
@@ -1265,7 +1286,7 @@ test("dialogue cancel navigates backwards or dismisses without confirming", asyn
   });
 });
 
-test("starter confirmation flow: inspect, cancel, confirm, naming, Elder Maren follow-up", async () => {
+test("starter confirmation flow: inspect, cancel, confirm, naming, Rowan follow-up", async () => {
   await withGame((game) => {
     game.mode = "world";
     const chooseStarter = (id: string) =>
@@ -1324,11 +1345,10 @@ test("starter confirmation flow: inspect, cancel, confirm, naming, Elder Maren f
     game.submitCreatureName("Ignis");
     assert.equal(game.party[0].nickname, "Ignis", "nickname applied");
     assert.equal(game.namePrompt, null, "namePrompt closed");
-    // Elder Maren speaks using the nickname
-    assert.ok(game.getSnapshot().dialog, "Elder Maren follow-up dialog opens");
-    assert.match(game.getSnapshot().dialog!.text, /So it is Ignis\. Keep the name\./);
+    assert.equal(game.getSnapshot().dialog?.speaker, "Rowan", "the player speaks from the Grove");
+    assert.match(game.getSnapshot().dialog!.text, /Come on, Ignis\. Our first road together\./);
 
-    // 6. Dismiss Elder Maren dialog
+    // 6. Dismiss Rowan's dialogue
     game.confirm();
     game.confirm();
     assert.equal(game.getSnapshot().dialog, null, "dialog closed");
@@ -1366,6 +1386,19 @@ test("each Grove pact removes only the chosen beast and pays once across reload"
       assert.equal(game.party[0]?.speciesId, chosen.sprite, "ordinary confirmation binds the approached species");
       const uid = game.party[0]!.uid;
       assert.equal(loadSave()?.party[0]?.uid, uid, "commit is durable before naming");
+      game.namePrompt = null;
+      game.continueGame();
+      assert.equal(game.getSnapshot().namePrompt?.uid, uid, "reload before editing resumes the same pact");
+      game.updateCreatureNameDraft("Bracken");
+      game.namePrompt = null;
+      game.continueGame();
+      assert.equal(game.getSnapshot().namePrompt?.draft, "Bracken", "reload preserves the unsent name");
+      assert.equal(game.party[0]?.nickname, game.getSnapshot().namePrompt?.speciesName, "draft is still optional");
+      game.setSaveWriteAllowed(false);
+      game.updateCreatureNameDraft("Unsaved tab");
+      game.continueGame();
+      assert.equal(game.getSnapshot().namePrompt?.draft, "Bracken", "read-only naming cannot write the draft");
+      game.setSaveWriteAllowed(true);
       game.confirm();
       assert.equal(game.gold, initialGold + 40);
       assert.equal(game.inventory.common_sigil, initialSigils + 3);
@@ -1373,6 +1406,7 @@ test("each Grove pact removes only the chosen beast and pays once across reload"
       game.confirm();
       game.confirm();
       game.continueGame();
+      assert.equal(game.namePrompt, null, "settled naming stays closed after reload");
 
       const remaining = starters.filter((object) => object !== chosen);
       assert.deepEqual(visibleObjects(grove.objects, game.flags).filter((object) => starters.includes(object)),

@@ -290,6 +290,13 @@ try {
           await page.locator(".dialog-next").click();
         }
         const namingInput = page.getByRole("textbox", { name: "Creature name", exact: true });
+        const namingPanel = page.getByRole("dialog", { name: "Name your creature" });
+        assert.equal(await namingPanel.locator("img").getAttribute("src"), "/game/sprites/emberkit.png");
+        assert.match(await namingPanel.textContent(), /\+3 common sigils · \+40 crowns/);
+        const submitName = page.getByRole("button", { name: "Confirm name" });
+        assert.equal(await submitName.isDisabled(), true, "the default name is the initial action");
+        await namingInput.fill("");
+        assert.equal(await submitName.isDisabled(), true, "blank text cannot commit a nickname");
         await namingInput.fill("Sparks");
         if (v.width === 390 && v.height === 844 && !v.classic) {
           const visibleTop = 63;
@@ -312,7 +319,7 @@ try {
             const targets = [
               heading,
               namingInput,
-              page.getByRole("button", { name: "Call them this" }),
+              submitName,
               page.getByRole("button", { name: "Keep Emberkit" }),
             ];
             for (const target of targets) {
@@ -356,14 +363,14 @@ try {
             "the focused name remains in the viewport after rotation at 200% text");
           assert.equal(await page.getByRole("button", { name: "North", exact: true }).count(), 0,
             "walking controls do not compete with the naming modal");
-          const submit = await measureTargetVisibility(page.getByRole("button", { name: "Call them this" }));
+          const submit = await measureTargetVisibility(submitName);
           assert.equal(submit.hitOk, true, `the naming submit is reached in short landscape: ${JSON.stringify(submit)}`);
           assert.equal(await namingInput.inputValue(), "Sparks", "rotation preserves the draft name");
           await page.setViewportSize({ width: v.width, height: v.height });
           await page.evaluate(() => document.documentElement.style.removeProperty("font-size"));
         }
         await page.keyboard.press("Tab");
-        assert.equal(await page.getByRole("button", { name: "Call them this" })
+        assert.equal(await submitName
           .evaluate((button) => document.activeElement === button), true);
         await page.keyboard.press("Shift+Tab");
         assert.equal(await namingInput.count(), 1, "reverse Tab does not dismiss naming");
@@ -374,11 +381,8 @@ try {
         assert.equal(await page.getByRole("button", { name: "Keep Emberkit" })
           .evaluate((button) => document.activeElement === button), true, "name focus wraps within its controls");
         await page.getByRole("button", { name: "Keep Emberkit" }).click();
-        assert.equal(
-          await page.locator(".dialog").getAttribute("data-portrait"),
-          "elder-maren",
-          "starter callback identity",
-        );
+        assert.equal(await page.getByRole("dialog", { name: "Rowan" }).locator(".dialog-species").getAttribute("src"),
+          "/game/sprites/emberkit.png", "Rowan addresses the companion in the Grove");
         await closePages(page);
 
         await speak(page, "thornkeep", 11, 7);
