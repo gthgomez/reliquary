@@ -192,6 +192,29 @@ try {
     );
   }
 
+  await withBrowser(async (page) => {
+    await page.goto(baseUrl, { waitUntil: "domcontentloaded" });
+    await bootWorld(page);
+    const objective = page.getByRole("button", { name: /Objective/i });
+    await objective.tap();
+    const lantern = page.getByRole("dialog", { name: "Lantern", exact: true });
+    const close = lantern.getByRole("button", { name: "Close", exact: true });
+    await close.waitFor();
+    // Initial keyboard focus must not scroll the requested directions away
+    // behind the menu choices in a short landscape viewport.
+    await page.waitForFunction(() => document.activeElement?.closest(".overlay-panel"));
+    const reading = await lantern.locator(".sheet-sub").evaluate((text) => {
+      const body = text.closest(".overlay-panel-body");
+      return { scrollTop: body.scrollTop, visible: text.getBoundingClientRect().top < body.getBoundingClientRect().bottom };
+    });
+    assert.deepEqual(reading, { scrollTop: 0, visible: true });
+    assert.equal(await close.evaluate((node) => node === document.activeElement), true);
+    await page.keyboard.press("Tab");
+    assert.equal(await lantern.getByRole("button", { name: "Party", exact: true }).evaluate((node) => node === document.activeElement), true);
+    await page.keyboard.press("Escape");
+    await page.waitForFunction(() => document.activeElement?.classList.contains("hud-objective-btn"));
+  }, { textScale: 2, context: { viewport: { width: 568, height: 320 }, isMobile: true, hasTouch: true } });
+
   console.log("[modal-a11y] objective, focus cycle, hints, scrim, landscape, 200% reflow ok");
 } finally {
   server.close();
