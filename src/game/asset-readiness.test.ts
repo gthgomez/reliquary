@@ -4,7 +4,7 @@ import { collectGameAssets, isEssentialWorldAsset } from "./assets.ts";
 import { ReliquaryGame } from "./engine.ts";
 import { serializeSave } from "./save.ts";
 
-type FakeImage = { url: string; onload?: () => void; onerror?: () => void; src: string };
+type FakeImage = { url: string; requestUrl: string; abandoned: boolean; onload?: () => void; onerror?: () => void; src: string };
 
 async function withImages(run: (game: ReliquaryGame, pending: FakeImage[]) => Promise<void>, saveSource = { getItem: () => null as string | null }) {
   const globals = globalThis as Record<string, unknown>;
@@ -14,9 +14,17 @@ async function withImages(run: (game: ReliquaryGame, pending: FakeImage[]) => Pr
   globals.window = { addEventListener() {}, removeEventListener() {} };
   globals.document = { visibilityState: "visible", addEventListener() {}, removeEventListener() {} };
   globals.Image = class {
+    url = "";
+    requestUrl = "";
+    abandoned = false;
     onload?: () => void;
     onerror?: () => void;
-    set src(url: string) { pending.push(this as unknown as FakeImage); (this as unknown as FakeImage).url = url; }
+    set src(url: string) {
+      this.requestUrl = url;
+      this.url = url.split("?")[0]!;
+      pending.push(this);
+    }
+    removeAttribute() { this.abandoned = true; }
   };
   globals.requestAnimationFrame = () => 1;
   globals.cancelAnimationFrame = () => {};
@@ -115,9 +123,13 @@ test("a world failure unlocks retry even while another essential image stays pen
 
     const retryStart = pending.length;
     const retry = game.retryWorldAssets();
+    assert.equal(pending.find((image) => image.url === hangingUrl)?.abandoned, true,
+      "retry detaches the previous attempt's pending image");
     assert.deepEqual(game.getSnapshot().worldAssetFailures, [], "retry clears the prior failure immediately");
     assert.equal(game.getSnapshot().worldAssetsLoading, true, "retry progress is published immediately");
     const retryImages = pending.slice(retryStart);
+    assert.notEqual(retryImages.find((image) => image.url === hangingUrl)?.requestUrl, hangingUrl,
+      "retry does not reuse the hung image request");
     for (const image of retryImages) {
       if (image.url === failedUrl || image.url === hangingUrl) image.onload?.();
     }
@@ -183,6 +195,17 @@ test("destroyed loads cannot mark a restarted game ready", async () => {
     settleWorld(pending.slice(oldImages.length));
     await Promise.all([firstBoot, secondBoot]);
     assert.equal(game.worldAssetsReady, true);
+  });
+});
+
+test("teardown from a loading subscriber does not start obsolete image requests", async () => {
+  await withImages(async (game, pending) => {
+    game.subscribe(() => {
+      if (game.getSnapshot().worldAssetsLoading) game.destroy();
+    });
+    await game.boot({ width: 0, height: 0 } as HTMLCanvasElement);
+    assert.equal(game.lifecycle, "stopped");
+    assert.equal(pending.length, 0);
   });
 });
 

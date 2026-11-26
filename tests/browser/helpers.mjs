@@ -36,7 +36,8 @@ export function startStaticServer(port = 0, options = {}) {
       res.end("not found");
       return;
     }
-    if (options.beforeResponse) await options.beforeResponse(path);
+    if (options.beforeResponse) await options.beforeResponse(path, res);
+    if (res.writableEnded || res.destroyed) return;
     const body = readFileSync(filePath);
     res.writeHead(200, { "content-type": MIME[extname(filePath)] ?? "application/octet-stream" });
     res.end(body);

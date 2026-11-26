@@ -1,14 +1,13 @@
 import assert from "node:assert/strict";
-import { startStaticServer, withBrowser, waitForGameBoot } from "./helpers.mjs";
+import { startStaticServer, withBrowser } from "./helpers.mjs";
 
 async function bootWorld(page) {
-  await page.click("text=Start");
-  for (let i = 0; i < 16; i += 1) {
-    if ((await page.locator(".dialog").count()) === 0) break;
-    await page.locator(".dialog-next").click({ timeout: 2000 }).catch(() => page.keyboard.press("Enter"));
-    await page.waitForTimeout(120);
-  }
-  await page.waitForSelector(".hud-menu", { timeout: 15_000 });
+  await page.getByRole("button", { name: "Start", exact: true }).click();
+  const next = page.getByRole("button", { name: "Next", exact: true });
+  await next.click();
+  await next.click();
+  await page.getByRole("button", { name: "Close", exact: true }).click();
+  await page.getByRole("button", { name: "Menu", exact: true }).waitFor();
 }
 
 function activeInPanel(page) {
@@ -36,9 +35,23 @@ const { server, baseUrl } = await startStaticServer(0);
 try {
   await withBrowser(async (page) => {
     await page.setViewportSize({ width: 320, height: 568 });
-    await page.goto(baseUrl, { waitUntil: "networkidle", timeout: 60_000 });
-    await waitForGameBoot(page);
-    await bootWorld(page);
+    const loadErrors = [];
+    page.on("pageerror", (error) => loadErrors.push(error.message));
+    page.on("requestfailed", (request) => loadErrors.push(`${request.url()} ${request.failure()?.errorText}`));
+    page.on("response", (response) => {
+      if (response.status() >= 400) loadErrors.push(`${response.url()} HTTP ${response.status()}`);
+    });
+    try {
+      await page.goto(baseUrl, { waitUntil: "domcontentloaded" });
+      await bootWorld(page);
+    } catch (error) {
+      console.error("[modal-focus-trap] startup", {
+        loadErrors,
+        title: await page.locator(".title-copy").allTextContents(),
+        progress: await page.getByRole("progressbar").first().getAttribute("aria-valuenow", { timeout: 1_000 }).catch(() => null),
+      });
+      throw error;
+    }
 
     await page.click(".hud-menu");
     await page.waitForSelector(".overlay-panel-close");

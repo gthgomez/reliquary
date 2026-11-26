@@ -70,6 +70,13 @@ try {
     // Keep the real controller/cache and fail only the page-side update call.
     await page.evaluate(() => sessionStorage.setItem("qa-reject-sw-update", "1"));
     await context.setOffline(true);
+    const retryImage = await page.evaluate(async () => {
+      const img = new Image();
+      img.src = "/game/props/bed.png?reliquary-art-retry=offline-recovery";
+      await img.decode();
+      return img.naturalWidth;
+    });
+    assert.ok(retryImage > 0, "an explicit image retry still uses the installed precache while offline");
     await verifyCachedBoot(page);
     await page.waitForFunction(() => window.rejectedOfflineUpdate === true);
     assert.deepEqual(await page.evaluate(() => window.offlineStatusHistory), []);
@@ -128,4 +135,57 @@ try {
   slow.server.close();
 }
 
-console.log("[pwa] verified install notice, offline boot, incomplete cache, and late controller recovery");
+// A CDN can return a cacheable HTTP 200 that isn't a usable image. The
+// installing worker must reject it rather than owning every subsequent retry.
+let releaseInvalidImage;
+let imageRepaired = false;
+const invalidImageGate = new Promise((resolve) => { releaseInvalidImage = resolve; });
+const corrupt = await startStaticServer(0, {
+  async beforeResponse(path, response) {
+    if (path !== "/game/props/bed.png" || imageRepaired) return;
+    await invalidImageGate;
+    response.writeHead(200, { "Content-Type": "image/png", "Cache-Control": "public, max-age=600" });
+    response.end("not an image");
+  },
+});
+try {
+  await withBrowser(async (page, context) => {
+    await page.addInitScript(() => {
+      const register = navigator.serviceWorker.register.bind(navigator.serviceWorker);
+      navigator.serviceWorker.register = async (...args) => {
+        const registration = await register(...args);
+        const worker = registration.installing;
+        if (worker) {
+          const observe = () => { window.qaInstallingWorkerState = worker.state; };
+          worker.addEventListener("statechange", observe);
+          observe();
+        }
+        return registration;
+      };
+    });
+    await page.goto(corrupt.baseUrl, { waitUntil: "domcontentloaded" });
+    await page.waitForFunction(() => window.qaInstallingWorkerState === "installing");
+    releaseInvalidImage();
+    await page.waitForFunction(() => window.qaInstallingWorkerState === "redundant");
+    assert.equal(await page.evaluate(() => navigator.serviceWorker.controller), null);
+    await page.getByText(/Some world art could not be loaded/).waitFor();
+    assert.equal(await page.getByRole("button", { name: "Start", exact: true }).isEnabled(), false);
+    imageRepaired = true;
+    await page.getByRole("button", { name: "Retry world art", exact: true }).click();
+    await page.getByRole("button", { name: "Start", exact: true }).click();
+    for (let i = 0; i < 3; i += 1) await page.locator(".dialog-next").click();
+    await page.getByRole("button", { name: "Menu", exact: true }).click();
+    await page.getByRole("button", { name: "Save", exact: true }).click();
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await page.waitForFunction(() => navigator.serviceWorker.controller?.state === "activated");
+    await context.setOffline(true);
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await page.getByRole("button", { name: "Continue", exact: true }).click();
+    await page.getByText("Rowan's Cottage", { exact: true }).waitFor();
+  }, { context: { serviceWorkers: "allow" } });
+} finally {
+  releaseInvalidImage();
+  corrupt.server.close();
+}
+
+console.log("[pwa] verified offline boot, incomplete cache, late control, and recovery from a corrupt install response");
