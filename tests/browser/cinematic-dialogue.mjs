@@ -292,6 +292,63 @@ try {
         const namingInput = page.getByRole("textbox", { name: "Creature name", exact: true });
         await namingInput.fill("Sparks");
         if (v.width === 390 && v.height === 844 && !v.classic) {
+          const visibleTop = 63;
+          const visibleHeight = 388;
+          const beforeTyping = await page.locator(".game-canvas").boundingBox();
+          const positionBeforeTyping = await page.evaluate(() => window.__controlsTest.getPos());
+          // Model the browser reporting a shrunk and panned visual viewport
+          // while the layout viewport retains its original dimensions.
+          await page.evaluate(({ top, height }) => {
+            const viewport = window.visualViewport;
+            Object.defineProperties(viewport, {
+              offsetTop: { configurable: true, value: top },
+              height: { configurable: true, value: height },
+            });
+            viewport.dispatchEvent(new Event("resize"));
+            viewport.dispatchEvent(new Event("scroll"));
+          }, { top: visibleTop, height: visibleHeight });
+          try {
+            const heading = page.getByText("What will you call Emberkit?", { exact: true });
+            const targets = [
+              heading,
+              namingInput,
+              page.getByRole("button", { name: "Call them this" }),
+              page.getByRole("button", { name: "Keep Emberkit" }),
+            ];
+            for (const target of targets) {
+              const bounds = await target.boundingBox();
+              assert.ok(bounds && bounds.y >= visibleTop && bounds.y + bounds.height <= visibleTop + visibleHeight,
+                `${await target.getAttribute("aria-label") ?? await target.textContent()} fits the keyboard-visible viewport: ${JSON.stringify(bounds)}`);
+              assert.equal((await measureTargetVisibility(target)).hitOk, true, "keyboard-visible target can be hit");
+            }
+            assert.deepEqual(await page.locator(".game-canvas").boundingBox(), beforeTyping,
+              "keyboard-only viewport changes do not resize or move the world canvas");
+            await page.keyboard.press("ArrowRight");
+            assert.deepEqual(await page.evaluate(() => window.__controlsTest.getPos()), positionBeforeTyping,
+              "keys typed into the name field do not move the player");
+            assert.equal(await namingInput.inputValue(), "Sparks");
+            assert.equal(await namingInput.evaluate((input) => document.activeElement === input), true);
+            const layers = await page.evaluate(() => ({
+              naming: Number(getComputedStyle(document.querySelector(".name-prompt")).zIndex),
+              status: Number(getComputedStyle(document.querySelector(".top-stack")).zIndex),
+            }));
+            assert.ok(layers.naming > layers.status, "world notices cannot obscure the raised naming form");
+            if (captures) {
+              await page.screenshot({
+                path: join(captures, "390x844-naming-simulated-visual-viewport.png"),
+                clip: { x: 0, y: visibleTop, width: v.width, height: visibleHeight },
+              });
+            }
+          } finally {
+            await page.evaluate(() => {
+              const viewport = window.visualViewport;
+              delete viewport.offsetTop;
+              delete viewport.height;
+              viewport.dispatchEvent(new Event("resize"));
+            });
+          }
+          assert.deepEqual(await page.locator(".game-canvas").boundingBox(), beforeTyping);
+
           await page.evaluate(() => document.documentElement.style.fontSize = "200%");
           await page.setViewportSize({ width: 568, height: 320 });
           await settle(page);
