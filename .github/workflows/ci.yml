@@ -32,9 +32,10 @@ jobs:
       - name: Install pinned dependencies
         run: npm ci
       # Script-level gates (assert-production-web-shell.test.mjs) launch a
-      # browser, so chromium must exist before test:platform runs.
-      - name: Install Chromium for browser gates
-        run: npx playwright install --with-deps chromium
+      # headless browser before test:platform. The separately selected Chrome
+      # and Edge channels come from the runner image.
+      - name: Install Playwright Chromium headless shell
+        run: npx playwright install --with-deps --only-shell chromium
       - name: Typecheck
         run: npm run typecheck
       - name: Vite browser-test flag regression
