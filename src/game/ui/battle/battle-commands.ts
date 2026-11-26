@@ -56,7 +56,7 @@ export function commandSlotIndex(id: BattleCommand): number {
 }
 
 /**
- * Spatial navigation over the visible 3x2 grid. Movement follows the cells the
+ * Spatial navigation over the visible command grid. Movement follows the cells the
  * player can actually see — including a disabled slot, so its explanation is
  * discoverable — while activation of a disabled slot stays inert.
  */
@@ -64,10 +64,10 @@ export function nextBattleCommand(
   slots: readonly BattleCommandSlot[],
   from: BattleCommand,
   direction: "up" | "down" | "left" | "right",
+  cols = BATTLE_COMMAND_COLUMNS,
 ): BattleCommand | null {
   const start = commandSlotIndex(from);
   if (start < 0) return firstAvailableCommand(slots);
-  const cols = BATTLE_COMMAND_COLUMNS;
   const rows = Math.ceil(slots.length / cols);
   const row = Math.floor(start / cols);
   const col = start % cols;

@@ -230,7 +230,11 @@ export function BattleHud({ game, snap }: { game: ReliquaryGame; snap: Snapshot 
       event.preventDefault();
       event.stopPropagation();
       if (b.phase === "command") {
-        const next = nextBattleCommand(slots, focusCommand, arrows[key]);
+        const grid = event.currentTarget.querySelector(".battle-action-grid");
+        // Read the column count that CSS uses to lay out the current grid.
+        // This also handles a rotation between key presses.
+        const columns = grid ? Number(getComputedStyle(grid).getPropertyValue("--battle-command-columns")) : 0;
+        const next = nextBattleCommand(slots, focusCommand, arrows[key], columns || undefined);
         if (next) selectCommand(next, true);
         return;
       }
