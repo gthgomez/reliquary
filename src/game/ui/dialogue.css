@@ -259,6 +259,26 @@
     font-size: 0.96rem;
     line-height: 1.45;
   }
+  .dialog-scene-npc:is([data-npc-id="maren"], [data-npc-id="maren2"]) {
+    .dialog-panel {
+      height: min(13rem, 52dvh);
+    }
+    .dialog-content {
+      flex: 1 1 auto;
+    }
+    .dialog-actions {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    }
+    .dialog-page-count {
+      grid-column: 2;
+      margin-inline: 0;
+    }
+    .dialog-actions .dialog-next {
+      grid-column: 3;
+      margin-inline: 0;
+    }
+  }
 }
 @media (orientation: landscape) and (max-height: 520px) {
   /* Conversation controls only need the right gutter. Keeping the overworld's

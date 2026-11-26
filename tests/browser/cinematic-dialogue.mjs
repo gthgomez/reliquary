@@ -276,7 +276,15 @@ try {
         assert.equal(await page.locator(".dialog-back").evaluate((button) => document.activeElement === button), true,
           "reverse tab reaches Back when it is available");
         await page.keyboard.press("Tab");
-        await checkLayout(page, `${prefix}-maren-page2`);
+        const marenSecond = await checkLayout(page, `${prefix}-maren-page2`, true);
+        if (v.mobile && v.height > v.width) {
+          for (const part of ["panel", "portrait", "next"]) {
+            for (const metric of ["left", "top", "width", "height"]) {
+              assert.ok(Math.abs(maren[part][metric] - marenSecond[part][metric]) <= 1,
+                `${prefix}: Maren ${part} ${metric} remains fixed across pages`);
+            }
+          }
+        }
         if (v.mobile) {
           await page.getByRole("button", { name: "B — Back", exact: true }).tap();
           assert.match(await page.locator(".dialog-text").textContent(), /Crown cracked/);
