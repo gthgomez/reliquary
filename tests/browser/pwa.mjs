@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
 import { startStaticServer, withBrowser, waitForGameBoot } from "./helpers.mjs";
 
-const { server, baseUrl } = await startStaticServer(0);
+let releaseWorldArt;
+const worldArtGate = new Promise((resolve) => { releaseWorldArt = resolve; });
+const { server, baseUrl } = await startStaticServer(0, {
+  beforeResponse: (path) => path === "/game/props/bed.png" ? worldArtGate : undefined,
+});
 
 async function installControls(page) {
   await page.addInitScript(() => {
@@ -53,8 +57,13 @@ try {
     const status = page.locator(".app-status");
     const start = page.getByRole("button", { name: "Start", exact: true });
     const preparation = page.locator(".title-copy").getByRole("status").filter({ hasText: "Preparing offline play…" });
-    assert.equal(await start.isEnabled(), true, "Start is available while optional installation is held");
+    await start.waitFor();
+    assert.equal(await start.isEnabled(), false, "Start waits for required world art");
+    releaseWorldArt();
     await preparation.waitFor({ state: "visible" });
+    assert.equal(await start.isEnabled(), true, "Start is available while optional installation is held");
+    assert.equal(await page.evaluate(() => navigator.serviceWorker.controller), null,
+      "Start became available before the optional installation completed");
     const startBox = await start.boundingBox();
     const statusBox = await preparation.boundingBox();
     assert.ok(startBox && statusBox && statusBox.y >= startBox.y + startBox.height,
@@ -110,6 +119,7 @@ try {
     assert.equal(await warning.isVisible(), true, "incomplete cache warning persists");
   }, { context: { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, serviceWorkers: "allow" } });
 } finally {
+  releaseWorldArt();
   server.close();
 }
 
