@@ -118,7 +118,7 @@ try {
   for (const key of ["gold", "flags", "inventory", "playerName", "party", "box", "caught", "seen"]) {
     assert.deepEqual(upgraded[key], fixture[key], `Upgrade changed ${key}`);
   }
-  assert.equal(await page.evaluate(async (url) => {
+  assert.deepEqual(await page.evaluate(async (url) => {
     const image = new Image();
     image.src = url;
     await image.decode();
