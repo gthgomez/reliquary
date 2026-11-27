@@ -17,6 +17,7 @@ import {
 import { MAPS } from "./maps.ts";
 import { resolveNpcPortrait, type PortraitKey } from "./portraits.ts";
 import { FIXED_ENCOUNTERS } from "./encounters.ts";
+import { isInteriorRoom, paintInteriorRoom, type InteriorRoomId } from "./render/room-visual.ts";
 import { sfxPlay, startMusic, stopMusic, unlockAudio, isMuted, setMuted } from "./audio.ts";
 import { setSoundMutedStored } from "./ui/ui-chrome.ts";
 import { hasSave, cloneSave, findArchivedSave, findNewerSave, loadSave, parseSave, readNameDraft, SAVE_RESUMED_MESSAGE, SAVE_VERSION, serializeSave, WORLD_REVISION, writeNameDraft, writeSave, type SaveStorage } from "./save.ts";
@@ -609,9 +610,17 @@ export class ReliquaryGame {
 		const portrait = presentation === "portrait" ||
 			(!inBattle && stageW > 0 && stageH > stageW * 1.05 && stageW < 920);
 		const battleSize = presentation ? battleViewportForStage(presentation, stageW, stageH) : null;
-		const cottage = frameCottage && this.mode === "world" && this.mapId === "home" ? this.map() : null;
-		const vw = cottage?.ground[0]?.length ?? battleSize?.viewW ?? (portrait ? VIEW_W_PORT : VIEW_W);
-		let vh = cottage?.ground.length ?? battleSize?.viewH ?? (portrait ? VIEW_H_PORT : VIEW_H);
+		const room = this.mode === "world" && isInteriorRoom(this.mapId) ? this.map() : null;
+		const cottage = frameCottage && this.mode === "world" && this.mapId === "home" ? room : null;
+		// Interior maps are authored as complete rooms. Fit the whole room on
+		// portrait screens so the threshold and every service prop remain visible;
+		// this changes only the camera viewport, never map topology.
+		// Rowan's cottage keeps its legacy viewport unless the responsive shell
+		// explicitly opts into the authored full-room frame; service interiors can
+		// always use their complete portrait composition.
+		const framedRoom = room && (cottage || (portrait && this.mapId !== "home")) ? room : null;
+		const vw = framedRoom?.ground[0]?.length ?? battleSize?.viewW ?? (portrait ? VIEW_W_PORT : VIEW_W);
+		let vh = framedRoom?.ground.length ?? battleSize?.viewH ?? (portrait ? VIEW_H_PORT : VIEW_H);
 		// Dialogue stays on the exploration view. Snapping back to the short
 		// canvas made the playfield jump inward whenever a sign or conversation opened.
 		if (!cottage && portrait && devicePortrait && this.mode === "world" && !this.menu) {
@@ -2621,7 +2630,7 @@ export class ReliquaryGame {
 				finishFloor = () => paintDirtPathJunctions(ground, m, TILE, (x, y) => {
 					ground.drawImage(groveDirt, x * TILE, y * TILE, TILE, TILE);
 				});
-			} else if (cottageExit) {
+				} else if (cottageExit) {
 				const room = this.images.room_rowan_cottage;
 				finishFloor = () => {
 					if (room) ground.drawImage(room, 0, 0, mw * TILE, mh * TILE);
@@ -2631,6 +2640,10 @@ export class ReliquaryGame {
 					}
 				};
 			}
+				if (isInteriorRoom(m.id) && m.id !== "home") {
+					const door = m.warps.find((warp) => warp.to === "elderhall" || warp.to === "thornkeep");
+					finishFloor = () => paintInteriorRoom(ground, m.id as InteriorRoomId, mw, mh, door?.x ?? Math.floor(mw / 2), TILE);
+				}
 			bakeMapTerrain({
 				map: m,
 				tileSize: TILE,
@@ -2765,7 +2778,7 @@ export class ReliquaryGame {
 								dest.y + dest.height * part.revealBottom, source);
 						}
 					} });
-				}
+					}
 				continue;
 			}
 			const overhang = worldPropOverhang(art.sprite, visual);
