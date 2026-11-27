@@ -33,6 +33,25 @@ def paint_floor(room, brush):
                     room.putpixel((px, py), (91 + value, 57 + value, 37 + round(0.65 * value)))
             x = end
 
+    # The firebox sits on a continuous slate apron keyed to the west wall.
+    # Hexagonal seams distinguish the flush stones from the raised furniture.
+    brush.polygon([(4, 71), (35, 71), (49, 78), (49, 96), (4, 96)], fill="#423831")
+    brush.polygon([(4, 73), (35, 73), (47, 80), (47, 94), (4, 94)], fill="#625043")
+    for row in range(3):
+        y = 75 + row * 6
+        brush.line((5, y, 44, y), fill="#8a6b52")
+        for x in range(10 + 3 * (row % 2), 44, 9):
+            brush.line((x, y + 1, x + 1, y + 4), fill="#483d36")
+
+    # The worn runner under the bed and the reading mat by the books use
+    # different accents so the room's domestic functions read from the door.
+    brush.rectangle((26, 41, 53, 54), fill="#362e2e")
+    brush.rectangle((27, 42, 52, 52), fill="#536052")
+    brush.line((28, 51, 51, 51), fill="#877755")
+    brush.rectangle((124, 27, 152, 44), fill="#493134")
+    brush.rectangle((125, 28, 151, 43), fill="#77584c")
+    brush.rectangle((127, 30, 149, 41), outline="#aa865f")
+
     # Patterned wool hearth rug. Its fringe is well clear of the entry.
     brush.rectangle((53, 78, 95, 106), fill="#35232c")
     brush.rectangle((55, 79, 93, 105), fill="#6b3d35")
@@ -80,12 +99,13 @@ def paint_walls(brush):
     brush.polygon([(46, 8), (49, 12), (46, 17), (44, 12)], outline="#d3ac6e")
     brush.point((47, 12), fill="#f2cb81")
 
-    # Splayed posts and three treads on the actual walk-through door tile.
+    # A worn sill leads outside through the actual walk-through door tile.
     brush.rectangle((0, 130, 175, 143), fill="#302321")
     brush.rectangle((DOOR_X + 1, 128, DOOR_X + TILE - 2, 143), fill="#96704c")
-    for y in (130, 135, 140):
-        brush.line((DOOR_X + 2, y, DOOR_X + TILE - 3, y), fill="#cba072")
-        brush.line((DOOR_X + 2, y + 1, DOOR_X + TILE - 3, y + 1), fill="#684d37")
+    brush.rectangle((DOOR_X + 2, 131, DOOR_X + TILE - 3, 136), fill="#ac8058")
+    brush.line((DOOR_X + 2, 132, DOOR_X + TILE - 3, 132), fill="#cfa478")
+    brush.line((DOOR_X + 1, 137, DOOR_X + TILE - 2, 137), fill="#694c37")
+    brush.line((DOOR_X + 4, 140, DOOR_X + TILE - 5, 140), fill="#79593d")
     brush.rectangle((0, 128, DOOR_X, 131), fill="#4b3228")
     brush.rectangle((DOOR_X + TILE - 1, 128, 175, 131), fill="#4b3228")
     brush.line((0, 128, DOOR_X, 128), fill="#996844")
