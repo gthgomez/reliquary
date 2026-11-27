@@ -270,6 +270,7 @@ export function GameApp() {
   return (
     <div
       className={`game-root${showTouch ? " has-touch" : ""}${showExplorationTouch ? " has-explore-touch" : ""}${showDialogTouch ? " has-dialog-touch" : ""}${classicTouch ? " classic-touch" : ""}${cottage ? " is-cottage" : ""}${uiModal ? " is-ui-modal" : ""}${snap.dialog ? " is-dialog" : ""}${snap.dialog?.portraitKey ? " is-dialog-portrait" : ""}${snap.mode === "battle" ? " is-battle" : ""}${battleSubmenuRootClass(snap.battle?.phase)}`}
+      data-world-map={snap.mode === "world" ? mapId : undefined}
     >
       <div className="stage" ref={stageRef}>
         <div

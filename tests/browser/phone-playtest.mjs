@@ -156,6 +156,13 @@ async function exercise(width, height, textScale = 1) {
       }
       await capture("03-elderhall");
 
+      const checkGroveFrame = !baseline && portrait && height >= 800;
+      const readWorldFrame = async () => ({
+        canvas: await page.locator(".game-canvas").boundingBox(),
+        south: await page.getByRole("button", { name: "South", exact: true }).boundingBox(),
+      });
+      const elderhallFrame = checkGroveFrame ? await readWorldFrame() : null;
+
       const maren = MAPS.elderhall.npcs.find((npc) => npc.id === "maren");
       await walk(page, "elderhall", { x: maren.x, y: maren.y + 1 });
       await faceDirection(page, "KeyW", Math.PI);
@@ -174,6 +181,17 @@ async function exercise(width, height, textScale = 1) {
       await advance.click();
 
       await walk(page, "elderhall", { x: 0, y: 10 }, "grove");
+      if (elderhallFrame) {
+        await page.locator(".hud-place").filter({ hasText: "Binding Grove" }).waitFor();
+        const groveFrame = await readWorldFrame();
+        const groveHeight = MAPS.grove.ground.length;
+        assert.ok(Math.abs(groveFrame.canvas.height - groveFrame.canvas.width * groveHeight / 10) < 1,
+          `the Grove canvas ends at its map edge: ${JSON.stringify(groveFrame)}`);
+        assert.equal(groveFrame.canvas.width, elderhallFrame.canvas.width, "the warp keeps the world scale");
+        assert.equal(groveFrame.canvas.y, elderhallFrame.canvas.y, "the warp keeps the world anchored");
+        assert.deepEqual(groveFrame.south, elderhallFrame.south, "the warp keeps the D-pad under the player's thumb");
+        await capture("04b-grove-arrival");
+      }
       const starters = !baseline && width === 390 && height === 844
         ? ["mirewhelp", "emberkit", "briarling"] : ["mirewhelp"];
       for (const species of starters) {
@@ -194,8 +212,14 @@ async function exercise(width, height, textScale = 1) {
         }
         await capture(`05-starter-${species}`);
         if (!baseline) {
+          const frame = checkGroveFrame ? await page.locator(".game-canvas").boundingBox() : null;
           await advance.click();
           assert.match(await page.locator(".dialog-text").innerText(), /Starting skills/);
+          if (frame) {
+            assert.deepEqual(await page.locator(".game-canvas").boundingBox(), frame,
+              "starter dialogue pages share the same world frame");
+            assert.ok((await measureTargetVisibility(advance)).hitOk, "starter dialogue remains reachable");
+          }
           await page.keyboard.press("KeyX");
           await page.keyboard.press("KeyX");
           assert.equal(await page.locator(".dialog").count(), 0, "Back then Cancel returns to the grove");

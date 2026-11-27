@@ -997,11 +997,11 @@
   }
 }
 
-/* Portrait phones: two compact cards, a 2x3 command grid, and a one-line
-   details strip so the action grid stays above device safe areas. */
+/* Portrait phones: keep a two-column command grid above the safe area.
+   Give tall screens more arena space when the current text size allows it. */
 @media (orientation: portrait) and (max-width: 1100px) {
   .battle-status-zone {
-    top: 2.2%;
+    top: clamp(2.2%, calc(15% - 5.25rem), 6%);
     left: 2.8%;
     right: 2.8%;
     gap: 3%;
@@ -1056,7 +1056,7 @@
   .battle-controls {
     left: 2.8%;
     right: 2.8%;
-    top: 55%;
+    top: clamp(55%, calc(80% - 10.5rem), 61%);
     bottom: 0.8%;
     gap: 4px;
   }
