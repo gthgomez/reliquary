@@ -242,6 +242,10 @@
     width: min(68%, 210px);
     height: min(80%, 270px);
   }
+  .dialog-scene-npc:not(.dialog-scene-pixel):is([data-npc-id="maren"], [data-npc-id="maren2"]) .dialog-portrait img {
+    width: min(76%, 240px);
+    height: 84%;
+  }
   .dialog-scene-pixel .dialog.dialog-panel {
     max-height: min(52dvh, 20rem);
   }
@@ -256,7 +260,7 @@
     font-size: 0.96rem;
     line-height: 1.45;
   }
-  .dialog-scene-pixel {
+  :is(.dialog-scene-pixel, .dialog-scene-npc:is([data-npc-id="maren"], [data-npc-id="maren2"])) {
     .dialog-panel {
       height: min(13rem, 52dvh);
     }
