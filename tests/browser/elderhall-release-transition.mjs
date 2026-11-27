@@ -122,8 +122,8 @@ try {
     const image = new Image();
     image.src = url;
     await image.decode();
-    return image.naturalWidth;
-  }, candidateImage), 80);
+    return [image.naturalWidth, image.naturalHeight];
+  }, candidateImage), [240, 312]);
   report.steps.push({ name: "Same-origin upgrade and offline save migration", worldRevision: 5, x: upgraded.x, y: upgraded.y, gold: upgraded.gold });
 
   const backupBytes = await readSavedBytes();
