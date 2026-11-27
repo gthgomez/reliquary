@@ -617,12 +617,12 @@ export class ReliquaryGame {
 		if (!cottage && portrait && devicePortrait && this.mode === "world" && !this.menu) {
 			const map = this.map();
 			if ((map.ground[0]?.length ?? 0) >= VIEW_W_PORT) {
-				// Keep the authored 10-tile width and fit the height to the space
-				// left after the shell reserves its controls. Short maps retain at
-				// most the old 16-tile view; taller ones stop at the map edge.
-				// A 12–20 tile bound keeps extreme aspect ratios usable.
-				const maxHeight = Math.min(20, Math.max(VIEW_H_PORT, map.ground.length)) * TILE;
-				const height = Math.max(12 * TILE, Math.min(maxHeight, Math.floor(stageH / stageW * vw * TILE)));
+				// Keep the authored 10-tile width. The outdoor frame ends at the
+				// map edge, while unfitted cottage layouts keep their legacy view.
+				const mapHeight = map.id === "home" ? Math.max(VIEW_H_PORT, map.ground.length) : map.ground.length;
+				const maxHeight = Math.min(20, mapHeight) * TILE;
+				const minHeight = Math.min(12 * TILE, maxHeight);
+				const height = Math.max(minHeight, Math.min(maxHeight, Math.floor(stageH / stageW * vw * TILE)));
 				vh = height / TILE;
 			}
 		}
