@@ -5,7 +5,7 @@ import { adjustCamYForHudInset } from "./render/world-camera-safe.ts";
 
 function gameWithCanvas() {
   const game = new ReliquaryGame();
-  const canvas = { width: 0, height: 0 } as HTMLCanvasElement;
+  const canvas = { width: 0, height: 0, getContext: () => null } as unknown as HTMLCanvasElement;
   game.canvas = canvas;
   game.mode = "world";
   return { game, canvas };
