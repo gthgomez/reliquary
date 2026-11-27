@@ -42,7 +42,7 @@ export const VIEWPOINTS = [
   { id: "west-approach", x: 1, y: 10 },
   { id: "grove-arrival", map: "grove", x: 13, y: 7 },
 ];
-const DIALOGUE_NPCS = ["maren", "cael_hall", "guard", "villager", "innkeep", "shopkeep", "goblin_trader"];
+const DIALOGUE_NPCS = [...new Set(Object.values(MAPS).flatMap((map) => map.npcs.map((npc) => npc.id)))];
 const APPROACHES = [
   { dx: 0, dy: -1, key: "KeyS", yaw: 0 },
   { dx: -1, dy: 0, key: "KeyD", yaw: -Math.PI / 2 },
