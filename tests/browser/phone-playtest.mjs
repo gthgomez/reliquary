@@ -65,6 +65,18 @@ async function exercise(width, height, textScale = 1) {
       shots.push(name);
     };
     const advance = page.locator(".dialog-next");
+    const introFrames = {};
+    const introComposition = async () => {
+      const frame = await page.locator(".game-canvas").boundingBox();
+      const panel = await page.locator(".dialog").boundingBox();
+      const action = await advance.boundingBox();
+      assert.ok(frame && panel && action);
+      const scroll = await page.locator(".dialog-content").evaluate((main) => [main.clientHeight, main.scrollHeight]);
+      return {
+        anchors: [frame.x, frame.y, frame.width, frame.height, panel.y, action.y, action.height],
+        textHeight: scroll,
+      };
+    };
     await page.goto(baseUrl, { waitUntil: "networkidle" });
     await waitForGameBoot(page);
     await page.getByRole("button", { name: "Start", exact: true }).click();
@@ -78,9 +90,37 @@ async function exercise(width, height, textScale = 1) {
       assert.ok(action.fullyVisible && action.hitOk, "intro action remains reachable");
       assert.equal(await page.locator(".dialog-name").count(), 0);
     }
+    introFrames["page 1"] = await introComposition();
+    const stableIntro = !baseline && portrait;
+    const checkIntro = async (label) => {
+      const composition = await introComposition();
+      introFrames[label] = composition;
+      if (!stableIntro) return;
+      const start = introFrames["page 1"].anchors;
+      assert.ok(composition.anchors.every((position, index) => Math.abs(position - start[index]) <= 1),
+        `${label}: cottage and dialogue actions remain anchored: ${JSON.stringify(introFrames)}`);
+      const lineHeight = await page.locator(".dialog-text").evaluate((text) => parseFloat(getComputedStyle(text).lineHeight));
+      assert.ok(composition.textHeight[0] >= 2 * lineHeight - 1, `${label}: room for two readable lines`);
+      assert.ok((await measureTargetVisibility(advance)).hitOk, `${label}: dialogue action is reachable`);
+    };
     await capture("01-cottage-intro");
     await advance.click();
+    await checkIntro("page 2");
+    await capture("01b-cottage-intro-story");
+    if (stableIntro) {
+      await page.getByRole("button", { name: "Back", exact: true }).click();
+      await checkIntro("back to page 1");
+      await advance.click();
+    }
     await advance.click();
+    await checkIntro("page 3");
+    await capture("01c-cottage-intro-controls");
+    const [visibleText, totalText] = introFrames["page 3"].textHeight;
+    if (stableIntro && textScale === 2 && totalText > visibleText) {
+      await page.locator(".dialog-content").focus();
+      await page.keyboard.press("End");
+      await page.waitForFunction(() => document.querySelector(".dialog-content")?.scrollTop > 0);
+    }
     if (!baseline) {
       assert.match(await page.locator(".dialog-text").innerText(),
         buildsCandidate ? /Maren beside the village well/ : /Maren near the Chapter House/);
@@ -140,6 +180,10 @@ async function exercise(width, height, textScale = 1) {
         const starter = MAPS.grove.objects.find((object) => object.sprite === species);
         await walk(page, "grove", { x: starter.x, y: starter.y + 1 });
         await faceDirection(page, "KeyW", Math.PI);
+        if (!baseline) {
+          await page.locator(".world-interaction-hint")
+            .filter({ hasText: new RegExp(`Inspect ${species}`, "i") }).waitFor();
+        }
         await page.keyboard.press("KeyZ");
         await page.locator(".dialog-name").waitFor();
         if (!baseline) {
@@ -160,7 +204,7 @@ async function exercise(width, height, textScale = 1) {
       }
     }
     assert.deepEqual(failures, []);
-    records.push({ viewport: [width, height], textScale, browser: context.browser().version(), shots, failures });
+    records.push({ viewport: [width, height], textScale, browser: context.browser().version(), introFrames, shots, failures });
     console.log(`[phone-playtest] ${label} passed`);
   }, {
     context: { viewport: { width, height }, isMobile: phone, hasTouch: phone, reducedMotion: "reduce", serviceWorkers: "allow" },
@@ -172,7 +216,7 @@ try {
   if (artifacts) await mkdir(artifacts, { recursive: true });
   if (process.env.RELIQUARY_PHONE_VIEWPORT) {
     const [width, height] = process.env.RELIQUARY_PHONE_VIEWPORT.split("x").map(Number);
-    await exercise(width, height);
+    await exercise(width, height, Number(process.env.RELIQUARY_PHONE_TEXT_SCALE ?? 1));
   } else {
     for (const [width, height] of cases) await exercise(width, height);
     if (!baseline) await exercise(320, 568, 2);

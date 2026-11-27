@@ -13,7 +13,7 @@ import {
   TEMPERAMENTS,
 } from "../content";
 import type { ReliquaryGame } from "../engine";
-import { ROOT_MENU } from "../engine";
+import { ROOT_MENU, STARTER_PACT_REWARD } from "../engine";
 import type { Beast, DialogView, NamePromptView, Snapshot } from "../types";
 import { OverlayPanel } from "./OverlayPanel";
 import { DialogScene } from "./DialogScene";
@@ -335,9 +335,15 @@ export function DialogBox({ dialog, game }: { dialog: DialogView; game: Reliquar
 }
 
 export function NamePrompt({ game, prompt }: { game: ReliquaryGame; prompt: NamePromptView }) {
-  const [name, setName] = useState(prompt.speciesName);
+  const [name, setName] = useState(prompt.draft);
+  const customName = name.trim() !== "" && name.trim() !== prompt.speciesName;
   const formRef = useRef<HTMLFormElement>(null);
   useOverlayFocusTrap(formRef, true);
+  useLayoutEffect(() => {
+    const form = formRef.current;
+    const target = window.matchMedia("(pointer: coarse)").matches ? form : form?.querySelector("input");
+    target?.focus({ preventScroll: true });
+  }, []);
   useLayoutEffect(() => {
     const form = formRef.current;
     const stage = form?.parentElement;
@@ -372,28 +378,40 @@ export function NamePrompt({ game, prompt }: { game: ReliquaryGame; prompt: Name
       aria-modal="true"
       aria-label="Name your creature"
       aria-describedby="creature-name-instructions"
+      tabIndex={-1}
       onSubmit={(event) => {
         event.preventDefault();
-        if (!name.trim()) return;
+        if (!customName) return;
         game.submitCreatureName(name);
       }}
     >
-      <p id="creature-name-instructions">What will you call {prompt.speciesName}?</p>
+      <div className="name-prompt-companion">
+        <img src={`/game/sprites/${prompt.speciesId}.png`} alt="" draggable={false} />
+        <div>
+          <p id="creature-name-instructions">What will you call <strong>{prompt.speciesName}</strong>?</p>
+          {prompt.kind === "starter" ? (
+            <p className="name-prompt-reward">First pact kept · +{STARTER_PACT_REWARD.sigils} common sigils · +{STARTER_PACT_REWARD.crowns} crowns</p>
+          ) : null}
+        </div>
+      </div>
       <label>
         Creature name
         <input
           aria-label="Creature name"
           value={name}
           maxLength={40}
-          autoFocus
-          onChange={(event) => setName(event.target.value)}
+          onChange={(event) => {
+            const draft = event.target.value;
+            setName(draft);
+            game.updateCreatureNameDraft(draft);
+          }}
         />
       </label>
-      <div className="name-prompt-actions">
-        <button type="submit" className="btn-ghost" disabled={!name.trim()}>
-          Call them this
+      <div className="dialog-actions name-prompt-actions">
+        <button type="submit" className={customName ? "dialog-next" : "dialog-back"} disabled={!customName}>
+          Confirm name
         </button>
-        <button type="button" className="btn-ghost" onClick={() => game.submitCreatureName(null)}>
+        <button type="button" className={customName ? "dialog-back" : "dialog-next"} onClick={() => game.submitCreatureName(null)}>
           Keep {prompt.speciesName}
         </button>
       </div>

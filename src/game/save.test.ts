@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { makeBeast } from "./content.ts";
-import { LEGACY_SAVE_BACKUP, LEGACY_SAVE_KEY, LEGACY_V1_BACKUP, LEGACY_V1_KEY, SAVE_BACKUP, SAVE_FORWARD_KEY, SAVE_KEY, SAVE_VERSION, WORLD_REVISION, findArchivedSave, loadSave, parseSave, serializeSave, writeSave, type SaveStorage } from "./save.ts";
+import { LEGACY_SAVE_BACKUP, LEGACY_SAVE_KEY, LEGACY_V1_BACKUP, LEGACY_V1_KEY, SAVE_BACKUP, SAVE_FORWARD_KEY, SAVE_KEY, SAVE_VERSION, WORLD_REVISION, findArchivedSave, loadSave, parseSave, readNameDraft, serializeSave, writeNameDraft, writeSave, type SaveStorage } from "./save.ts";
 import { MAPS } from "./maps.ts";
 import { isOccupied } from "./world/movement.ts";
 
@@ -25,6 +25,22 @@ class MemoryStorage implements SaveStorage {
   setItem(key: string, value: string) { if (key === this.failOn) throw new Error("storage failure"); this.data.set(key, value); }
   removeItem(key: string) { this.data.delete(key); }
 }
+
+test("a missing, mismatched, or corrupt name draft cannot replace the save or another creature's draft", () => {
+  const storage = new MemoryStorage();
+  assert.equal(writeSave(validSave(), storage), true);
+  const durable = storage.getItem(SAVE_KEY);
+  writeNameDraft("beast-a", "Shale", storage);
+  const key = [...storage.data.keys()].find((slot) => slot !== SAVE_KEY)!;
+  assert.equal(readNameDraft("beast-b", storage), undefined);
+  writeNameDraft("beast-b", null, storage);
+  assert.equal(readNameDraft("beast-a", storage), "Shale");
+  storage.data.set(key, "{");
+  assert.equal(readNameDraft("beast-a", storage), undefined);
+  storage.data.delete(key);
+  assert.equal(readNameDraft("beast-a", storage), undefined);
+  assert.equal(storage.getItem(SAVE_KEY), durable);
+});
 
 function validSave(): GameSave {
   const b = makeBeast("emberkit", 5, { temperament: "calm", ivs: { hp: 8, mp: 8, atk: 8, def: 8, mag: 8, res: 8, spd: 8, lck: 8 } });

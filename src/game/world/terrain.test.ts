@@ -80,3 +80,23 @@ test("the Grove's rounded joins stay inside the walkable clearing and clear of s
     { x: 5, y: 8, dx: 1, dy: -1 },
   ]);
 });
+
+test("woodland terrain marks only active encounter ground and removes square edge accents", () => {
+  const map = {
+    ...MAPS.briar_road!,
+    ground: ["p,.", "p,,"],
+    encounterRegions: [{ id: "safe", x: 2, y: 1, w: 1, h: 1, tiles: [","], rate: 0, encounters: [] }],
+    decorations: [],
+  };
+  const active: number[][] = [];
+  const original: number[][] = [];
+  const overlays: string[] = [];
+  bakeMapTerrain({ map, tileSize: 32,
+    woodlandTerrain: { drawEncounter: (x, y) => active.push([x, y]) },
+    drawTile: () => {}, drawOverlay: (style) => overlays.push(style), drawDecoration: () => {} });
+  bakeMapTerrain({ map, tileSize: 32, drawTile: () => {}, drawOverlay: () => {},
+    drawDecoration: (_sprite, x, y) => original.push([x, y]) });
+  assert.deepEqual(active, [[32, 0], [32, 32]]);
+  assert.deepEqual(original, [[32, 0], [32, 32], [64, 32]]);
+  assert.equal(overlays.includes("edge"), false);
+});

@@ -79,6 +79,9 @@ export const elderhallBase: MapDef = {
 const elderhallCandidate = isElderhallCandidateBuild();
 const elderhall = elderhallCandidate ? makeElderhallCandidate(elderhallBase) : elderhallBase;
 
+// Center the feet near the back of each stone to clear Rowan's head on approach.
+const GROVE_STARTER_VISUAL = { width: 1, height: 1, anchorX: 0.5, anchorY: 1, groundX: 0.5, groundY: 0.7 };
+
 const grove: MapDef = {
   id: "grove",
   name: "Binding Grove",
@@ -108,11 +111,17 @@ const grove: MapDef = {
     tree("g1", 0, 0), tree("g2", 2, 0), tree("g3", 4, 0), tree("g4", 10, 0), tree("g5", 12, 0), tree("g6", 14, 0),
     tree("g7", 0, 3), tree("g8", 12, 3), tree("g9", 0, 6),
     tree("g11", 0, 10), tree("g12", 2, 12), tree("g13", 12, 12),
-    { id: "st_ember", sprite: "emberkit", x: 4, y: 6, w: 1, h: 1, foot: 1, solid: true, interact: "starter_emberkit" },
-    { id: "st_mire", sprite: "mirewhelp", x: 8, y: 5, w: 1, h: 1, foot: 1, solid: true, interact: "starter_mirewhelp" },
-    { id: "st_briar", sprite: "briarling", x: 11, y: 6, w: 1, h: 1, foot: 1, solid: true, interact: "starter_briarling" },
+    { id: "st_ember", sprite: "emberkit", x: 4, y: 6, w: 1, h: 1, foot: 1, solid: true,
+      interact: "starter_emberkit", visual: GROVE_STARTER_VISUAL },
+    { id: "st_mire", sprite: "mirewhelp", x: 8, y: 5, w: 1, h: 1, foot: 1, solid: true,
+      interact: "starter_mirewhelp", visual: GROVE_STARTER_VISUAL },
+    { id: "st_briar", sprite: "briarling", x: 11, y: 6, w: 1, h: 1, foot: 1, solid: true,
+      interact: "starter_briarling", visual: GROVE_STARTER_VISUAL },
     // On the path spur, one tile north of the grass, so the post stays in frame at the crossroads.
     prop("gsign", "sign", 9, 9, "sign_grove_inner"),
+  ],
+  decorations: [
+    { sprite: "grove-ritual", x: 3, y: 4.75, w: 10, h: 3, layer: "ground" },
   ],
   npcs: [],
   warps: [
@@ -153,11 +162,15 @@ function interior(id: string, name: string, w: number, h: number, doorX: number,
 
 const home = interior("home", "Rowan's Cottage", 11, 9, 5, "elderhall", 4, 15, {
   objects: [
-    { id: "bed", sprite: "bed", x: 2, y: 2, w: 1, h: 1, foot: 1, solid: true, interact: "bed" },
-    { id: "table", sprite: "table", x: 5, y: 3, w: 1, h: 1, foot: 1, solid: true },
+    { id: "bed", sprite: "bed", x: 2, y: 2, w: 1, h: 1, foot: 1, solid: true, interact: "bed",
+      visual: { width: 1.5, height: 1.5, anchorX: 0.5, anchorY: 1, groundX: 0.5, groundY: 1 } },
+    { id: "table", sprite: "table", x: 5, y: 3, w: 1, h: 1, foot: 1, solid: true,
+      visual: { width: 1.3, height: 1.3, anchorX: 0.5, anchorY: 1, groundX: 0.5, groundY: 1 } },
     { id: "chair", sprite: "chair", x: 6, y: 3, w: 1, h: 1, foot: 1, solid: true },
-    { id: "books", sprite: "bookshelf", x: 8, y: 1, w: 1, h: 1, foot: 1, solid: true, interact: "books" },
-    { id: "hearth", sprite: "hearth", x: 2, y: 5, w: 1, h: 1, foot: 1, solid: true },
+    { id: "books", sprite: "bookshelf", x: 8, y: 1, w: 1, h: 1, foot: 1, solid: true, interact: "books",
+      visual: { width: 1.35, height: 1.35, anchorX: 0.5, anchorY: 1, groundX: 0.5, groundY: 1 } },
+    { id: "hearth", sprite: "hearth", x: 2, y: 5, w: 1, h: 1, foot: 1, solid: true,
+      visual: { width: 1.45, height: 1.45, anchorX: 0.5, anchorY: 1, groundX: 0.5, groundY: 1 } },
   ],
 });
 

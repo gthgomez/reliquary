@@ -19,7 +19,7 @@ import { resolveNpcPortrait, type PortraitKey } from "./portraits.ts";
 import { FIXED_ENCOUNTERS } from "./encounters.ts";
 import { sfxPlay, startMusic, stopMusic, unlockAudio, isMuted, setMuted } from "./audio.ts";
 import { setSoundMutedStored } from "./ui/ui-chrome.ts";
-import { hasSave, cloneSave, findArchivedSave, findNewerSave, loadSave, parseSave, SAVE_RESUMED_MESSAGE, SAVE_VERSION, serializeSave, WORLD_REVISION, writeSave, type SaveStorage } from "./save.ts";
+import { hasSave, cloneSave, findArchivedSave, findNewerSave, loadSave, parseSave, readNameDraft, SAVE_RESUMED_MESSAGE, SAVE_VERSION, serializeSave, WORLD_REVISION, writeNameDraft, writeSave, type SaveStorage } from "./save.ts";
 import { collectGameAssets, isElderhallCandidateBuild, isEssentialWorldAsset, type AssetEntry } from "./assets.ts";
 import type { BattlePreview } from "./preview/battle-preview.ts";
 import { mathRandom, type RandomSource } from "./rng.ts";
@@ -74,6 +74,7 @@ import {
 } from "./render/world-camera-safe.ts";
 import { clipSoftPath, clipStoneTransition, drawAtlasTile, paintCottageFloor, paintCottageRug, paintOrganicStoneRoadBorder, paintStoneRoadBorder, paintTileAccent, tileAtlasQuadrant } from "./render/tile-surface.ts";
 import { paintDirtPathJunctions } from "./render/road-junctions.ts";
+import { drawWoodlandMaterial, drawWoodlandUndergrowth, drawWoodlandVerge, woodlandPalette } from "./render/woodland-terrain.ts";
 import { snapWorldCameraForPlayer, type WorldCameraSnapState } from "./render/world-transform.ts";
 import { compareWorldDepth, paintActorBehindPost, paintPropWithLocalFade, paintWorldActorShadow, paintWorldPropShadow, PLAYER_HEIGHT_TILES, playerHeadCanvasYForCamera, resolvePlayerDrawFootprint, resolvePlayerScreenFootprint, resolveWorldPropLayout, shouldFadePropForPlayer, worldPropCullBounds, worldPropOverhang } from "./render/world-actors.ts";
 import { elderhallCandidateObject, elderhallGateRenderRegions, elderhallTerrainAtlas, paintCandidateGateFallback, paintCandidateBenchFallback, paintCandidateTerrainJunctions } from "./render/elderhall-visual.ts";
@@ -99,6 +100,12 @@ import type {
 } from "./types.ts";
 
 export const TILE = 32;
+export const STARTER_PACT_REWARD = { sigils: 3, crowns: 40 } as const;
+const STARTER_PACT_LEVEL = 5;
+
+function nameOfferFlag(kind: NamePromptView["kind"], uid: string): string {
+	return `name_offer_${kind}:${uid}`;
+}
 export const VIEW_W = 12;
 export const VIEW_H = 9;
 export const VIEW_W_PORT = 10;
@@ -111,6 +118,7 @@ type Dialog = {
 	pages: string[];
 	index: number;
 	onDone?: () => void;
+	onCancel?: () => void;
 	/** Label for the final page's action when it commits a choice (S13). */
 	doneLabel?: string;
 	npcId: string | null;
@@ -765,6 +773,7 @@ export class ReliquaryGame {
 		this.caught = {};
 		this.battle = null;
 		this.menu = null;
+		this.namePrompt = null;
 		this.moving = false;
 		this.encounterLock = false;
 		this.mode = "world";
@@ -772,7 +781,7 @@ export class ReliquaryGame {
 			...(notice ? [notice] : []),
 			"A lantern ticks on the sill. Morning in Elderhall smells of peat and bread.",
 			"You are Rowan, newly sworn Pactwarden. The Crown of Binding cracked a generation ago — beasts walk feral on the old roads.",
-			`Move with the arrows or WASD; on touch, use the direction pad. Interact with Z or Enter; tap A on touch. Step through the cottage doorway, then follow the westward path to the Binding Grove. Elder Maren ${marenLandmark(isElderhallCandidateBuild())} can offer optional guidance.`
+			`Move with arrows or the D-pad. Use Enter or A to interact. Exit south, then go west to Binding Grove. Elder Maren ${marenLandmark(isElderhallCandidateBuild())} can help.`
 		]);
 	}
 	continueGame(): void {
@@ -789,6 +798,7 @@ export class ReliquaryGame {
 		}
 		this.applySave(s);
 		this.mode = "world";
+		this.restoreNamePrompt(true);
 		this.toastMsg(SAVE_RESUMED_MESSAGE);
 		this.replayEndingIfOwed();
 		this.emit();
@@ -890,6 +900,7 @@ export class ReliquaryGame {
 			return false;
 		}
 		this.applySave(save);
+		this.restoreNamePrompt(false);
 		this.menu = null;
 		this.menuIndex = 0;
 		this.hasSave = true;
@@ -1226,8 +1237,10 @@ export class ReliquaryGame {
 			this.dialogRevision += 1;
 			if (secondary === "Back") this.dialog.index -= 1;
 			else {
+				const onCancel = this.dialog.onCancel;
 				this.dialog = null;
 				if (this.mode === "dialog") this.mode = "world";
+				onCancel?.();
 			}
 			sfxPlay.cancel();
 			this.emit();
@@ -1292,11 +1305,12 @@ export class ReliquaryGame {
 		this.persist();
 		this.emit();
 	}
-	/**
-	 * Settle the naming card. Empty, too long, or unchanged text keeps the
-	 * current nickname. The prompt still closes, and a first pact then hears
-	 * Elder Maren use whatever name was kept.
-	 */
+	updateCreatureNameDraft(value: string): void {
+		if (!this.namePrompt || value.length > 40 || value === this.namePrompt.draft) return;
+		this.namePrompt = { ...this.namePrompt, draft: value };
+		if (this.saveWriteAllowed) writeNameDraft(this.namePrompt.uid, value);
+	}
+	/** Empty, too long, or unchanged text keeps the creature's current name. */
 	submitCreatureName(value: string | null): void {
 		const prompt = this.namePrompt;
 		if (!prompt) return;
@@ -1308,20 +1322,23 @@ export class ReliquaryGame {
 			this.box = this.box.map((item) => item.uid === prompt.uid ? renamed : item);
 		}
 		const nickname = renamed?.nickname ?? beast?.nickname ?? prompt.speciesName;
+		const saved = this.settleNameOffer(prompt.kind, prompt.uid);
 		if (prompt.kind === "starter") {
-			this.persist();
-			this.openDialog("Elder Maren", [
-				`So it is ${nickname}. Keep the name.`,
-				"I have left sigils in your pack. The Briar Road will teach the rest.",
-			], undefined, { npcId: "maren", sprite: "elder" });
+			this.openDialog("Rowan", [
+				`Come on, ${nickname}. Our first road together.`,
+				"East to Elderhall, then north to Briar Road. A sigil works best on a weakened wild beast.",
+			], undefined, undefined, undefined, prompt.speciesId);
 			return;
 		}
-		if (renamed) {
-			this.persist();
-			this.toastMsg(`${renamed.nickname} it is.`);
-			return;
-		}
+		if (renamed && saved) this.toastMsg(`${renamed.nickname} it is.`);
+		this.replayEndingIfOwed();
 		this.emit();
+	}
+	private settleNameOffer(kind: NamePromptView["kind"], uid: string): boolean {
+		delete this.flags[nameOfferFlag(kind, uid)];
+		const saved = this.persist();
+		if (saved) writeNameDraft(uid, null);
+		return saved;
 	}
 	renamePartyCreature(uid: string, value: string): void {
 		if (this.mode !== "world" || (this.menu !== "party" && this.menu !== "storage") || this.battle || this.dialog) return;
@@ -1430,7 +1447,10 @@ export class ReliquaryGame {
 			else if (CHEST_LOOT[id]) action = "Open chest";
 			else {
 				const special = SPECIAL_INTERACTIONS[id];
-				if (special?.kind === "starter") action = this.flags.starter ? "Observe creature" : "Choose a companion";
+				if (special?.kind === "starter") {
+					const name = SPECIES[special.speciesId]?.name ?? "creature";
+					action = `${this.flags.starter ? "Observe" : "Inspect"} ${name}`;
+				}
 				else if (special?.kind === "shrine") action = "Rest and heal";
 				else if (special?.kind === "rest") action = "Rest";
 				else if (special?.kind === "books") action = "Read ledger";
@@ -1561,11 +1581,16 @@ export class ReliquaryGame {
 			this.openDialog(sp.name, [`Your pact is already spoken. ${sp.description}`], undefined, null, undefined, id);
 			return;
 		}
-		const elements = sp.elements.map((element) => ELEMENTS[element].name).join(" / ");
-		const skills = skillsForLevel(sp, 5).map((skill) => SKILLS[skill]?.name ?? skill).join(", ");
+		const skills = skillsForLevel(sp, STARTER_PACT_LEVEL).map((id) => {
+			const skill = SKILLS[id];
+			return skill ? `${skill.name} (${skill.mp} MP)` : id;
+		}).join(", ");
+		const strikeElement = ELEMENTS[sp.elements[0]!];
+		const favored = strikeElement?.strong.map((id) => ELEMENTS[id].name).join(" and ");
+		const matchup = favored ? ` ${strikeElement.name} is strong against ${favored}.` : "";
 		this.openDialog(sp.name, [
 			sp.description,
-			`${elements} · Starting skills: ${skills}.`,
+			`Starting skills: ${skills}.${matchup}`,
 			"Make this your first pact? The other creatures will stay in the grove.",
 		], () => this.bindStarter(id), null, `Bind ${sp.name}`, id);
 	}
@@ -1573,36 +1598,56 @@ export class ReliquaryGame {
 		if (this.flags.starter) return;
 		const sp = SPECIES[id];
 		if (!sp) return;
-		const beast = makeBeast(id, 5, { nickname: sp.name, random: this.random });
+		const beast = makeBeast(id, STARTER_PACT_LEVEL, { nickname: sp.name, random: this.random });
 		this.party = [beast];
 		this.caught[id] = true;
 		this.seen[id] = true;
 		this.flags.starter = true;
 		this.flags[starterPactFlag(id)] = true;
-		this.give("common_sigil", 3);
-		this.gold += 40;
+		this.give("common_sigil", STARTER_PACT_REWARD.sigils);
+		this.gold += STARTER_PACT_REWARD.crowns;
 		sfxPlay.catch();
-		this.namePrompt = { uid: beast.uid, speciesName: sp.name, kind: "starter" };
+		this.flags[nameOfferFlag("starter", beast.uid)] = true;
+		this.showNamePrompt(beast, "starter");
 		this.persist();
+	}
+	private showNamePrompt(beast: Beast, kind: NamePromptView["kind"], draft = beast.nickname): void {
+		this.namePrompt = {
+			uid: beast.uid, speciesId: beast.speciesId, speciesName: SPECIES[beast.speciesId]?.name ?? beast.nickname, kind, draft
+		};
+	}
+	private restoreNamePrompt(recoverDraft: boolean): void {
+		this.namePrompt = null;
+		for (const beast of this.party.concat(this.box)) {
+			const speciesName = SPECIES[beast.speciesId]?.name;
+			if (!this.flags.starter || !speciesName || speciesName !== beast.nickname) continue;
+			const kind = this.flags[nameOfferFlag("starter", beast.uid)] && this.flags[starterPactFlag(beast.speciesId)]
+				? "starter" : this.flags[nameOfferFlag("tame", beast.uid)] ? "tame" : null;
+			if (!kind) continue;
+			if (!recoverDraft && this.saveWriteAllowed) writeNameDraft(beast.uid, null);
+			this.showNamePrompt(beast, kind, recoverDraft ? readNameDraft(beast.uid, this.readOnlySaveSource) : undefined);
+			break;
+		}
 	}
 	private offerCapturedName(uid: string): void {
 		const beast = this.party.concat(this.box).find((item) => item.uid === uid);
 		if (!beast) return;
 		const speciesName = SPECIES[beast.speciesId]?.name ?? beast.nickname;
 		this.openDialog("", [`${beast.nickname} accepts the compact. Give them a name, or leave ${speciesName}.`], () => {
-			this.namePrompt = { uid, speciesName, kind: "tame" };
-		}, undefined, "Give a name");
+			this.showNamePrompt(beast, "tame");
+		}, undefined, "Give a name", undefined, () => this.settleNameOffer("tame", uid));
 	}
 	private give(id: string, n: number): void {
 		this.inventory[id] = (this.inventory[id] ?? 0) + n;
 	}
-	openDialog(speaker: string, pages: string[], onDone?: () => void, npc?: DialogSpeaker | null, doneLabel?: string, speciesId?: string): void {
+	openDialog(speaker: string, pages: string[], onDone?: () => void, npc?: DialogSpeaker | null, doneLabel?: string, speciesId?: string, onCancel?: () => void): void {
 		this.dialogRevision += 1;
 		this.dialog = {
 			speaker,
 			pages,
 			index: 0,
 			onDone,
+			onCancel,
 			doneLabel,
 			speciesId,
 			npcId: npc?.npcId ?? null,
@@ -2195,6 +2240,7 @@ export class ReliquaryGame {
 		this.battleIdlePhase = 0;
 		this.mode = wasTrial && victory && !this.flags.ending ? this.maybeVictory() : "world";
 		this.encounterLock = false;
+		if (capturedUid) this.flags[nameOfferFlag("tame", capturedUid)] = true;
 		this.persist();
 		if (capturedUid && this.mode === "world" && !this.dialog) this.offerCapturedName(capturedUid);
 		this.emit();
@@ -2218,7 +2264,7 @@ export class ReliquaryGame {
 	}
 	/** A skipped epilogue (cancel/reload mid-dialog) is owed on the next load. */
 	private replayEndingIfOwed(): void {
-		if (this.flags.ending && !this.flags.ending_seen && !this.battle && !this.dialog) this.presentEnding();
+		if (this.flags.ending && !this.flags.ending_seen && !this.battle && !this.dialog && !this.namePrompt) this.presentEnding();
 	}
 	private maybeVictory(): Mode {
 		if (this.flags.trial && !this.flags.ending) {
@@ -2551,6 +2597,9 @@ export class ReliquaryGame {
 			const ground = canvas.getContext("2d");
 			if (!ground) return;
 			ground.imageSmoothingEnabled = false;
+			const palette = woodlandPalette(m.id);
+			const woodlandAtlas = this.images.woodland_terrain;
+			const woodland = palette && woodlandAtlas ? { palette, atlas: woodlandAtlas } : null;
 			const candidateDirtAtlas = this.images["tile_elderhall-dirt-atlas"];
 			const candidateGrassAtlas = this.images["tile_elderhall-grass-atlas"];
 			const groveDirt = m.id === "grove" ? this.images.tile_dirt : undefined;
@@ -2563,38 +2612,48 @@ export class ReliquaryGame {
 					ground.drawImage(groveDirt, x * TILE, y * TILE, TILE, TILE);
 				});
 			} else if (cottageExit) {
+				const room = this.images.room_rowan_cottage;
 				finishFloor = () => {
-					paintCottageFloor(ground, TILE, mw, mh, cottageExit.x);
-					paintCottageRug(ground, TILE);
+					if (room) ground.drawImage(room, 0, 0, mw * TILE, mh * TILE);
+					else {
+						paintCottageFloor(ground, TILE, mw, mh, cottageExit.x);
+						paintCottageRug(ground, TILE);
+					}
 				};
 			}
 			bakeMapTerrain({
 				map: m,
 				tileSize: TILE,
 				candidateTerrain: elderhallCandidate,
+				woodlandTerrain: woodland ? { drawEncounter: (x, y) => {
+					drawWoodlandUndergrowth(ground, woodland.atlas, woodland.palette, x, y, TILE);
+				} } : undefined,
 				drawJunctions: finishFloor,
 				drawTile: (name, dx, dy, variant, pathMask, stoneMask) => {
 					const tx = dx / TILE;
 					const ty = dy / TILE;
-						const candidateAtlas = elderhallTerrainAtlas(m.id, name, elderhallCandidate);
+					const candidateAtlas = elderhallTerrainAtlas(m.id, name, elderhallCandidate);
 					const atlas = candidateAtlas ? this.images[candidateAtlas] : this.images[`tile_${name}-2x2`];
-						const base = this.images[`tile_${name}`];
+					const base = this.images[`tile_${name}`];
 					if (pathMask !== undefined) {
 						ground.save();
 						clipSoftPath(ground, dx, dy, TILE, pathMask, elderhallCandidate && m.id === "grove");
 					}
-					if (atlas && (candidateAtlas || variant > 0)) {
-						drawAtlasTile(ground, atlas, dx, dy, TILE, tileAtlasQuadrant(variant, tx, ty));
-					} else if (base) ground.drawImage(base, dx, dy, TILE, TILE);
-					else {
-						ground.fillStyle = name === "water" ? "#3d6e8a" : name === "wall" ? "#3a342e" : "#3d4a38";
-						ground.fillRect(dx, dy, TILE, TILE);
+					const woodlandMaterial = woodland && drawWoodlandMaterial(ground, woodland.atlas, woodland.palette, name, dx, dy, TILE);
+					if (!woodlandMaterial) {
+						if (atlas && (candidateAtlas || variant > 0)) {
+							drawAtlasTile(ground, atlas, dx, dy, TILE, tileAtlasQuadrant(variant, tx, ty));
+						} else if (base) ground.drawImage(base, dx, dy, TILE, TILE);
+						else {
+							ground.fillStyle = name === "water" ? "#3d6e8a" : name === "wall" ? "#3a342e" : "#3d4a38";
+							ground.fillRect(dx, dy, TILE, TILE);
+						}
 					}
 					if (elderhallCandidate && m.id === "grove" && candidateAtlas) {
 						ground.fillStyle = name === "grass" ? "rgba(24,48,32,.22)" : name === "dirt" ? "rgba(63,45,31,.11)" : "rgba(33,42,34,.06)";
 						ground.fillRect(dx, dy, TILE, TILE);
 					}
-					if (variant > 0 && !atlas) {
+					if (!woodlandMaterial && variant > 0 && !atlas) {
 						ground.fillStyle = `rgba(20,17,14,${0.035 * variant})`;
 						ground.fillRect(dx, dy, TILE, TILE);
 					}
@@ -2610,7 +2669,9 @@ export class ReliquaryGame {
 					}
 					if (pathMask !== undefined) {
 						ground.restore();
-						if (m.roadBorder === "stone") {
+						if (woodland && name === "dirt") {
+							drawWoodlandVerge(ground, woodland.atlas, woodland.palette, dx, dy, TILE, pathMask);
+						} else if (m.roadBorder === "stone") {
 							if (elderhallCandidate && m.id === "elderhall") paintOrganicStoneRoadBorder(ground, dx, dy, TILE, pathMask, tx, ty);
 							else paintStoneRoadBorder(ground, dx, dy, TILE, pathMask);
 						}
@@ -2811,7 +2872,7 @@ export class ReliquaryGame {
 		});
 		const geometryBase = computeBattleStageGeometry(cw, ch, layout, b.phase);
 		const bg = this.images[`bg_${b.bg}`] || this.images.bg_grass;
-		paintBattleBackdrop(ctx, cw, ch, layout, b.bg, bg ?? null);
+		paintBattleBackdrop(ctx, cw, ch, layout, b.bg, bg ?? null, this.mapId === "briar_road" ? "roadside" : "scenic");
 		const anchors = { player: layout.player, foe: { cx: layout.foe.cx, cy: layout.foe.cy } };
 		const motion = b.animCue
 			? sampleBattleAnim(b.animCue, b.animElapsedMs, geometryBase.animCorridor, anchors, {

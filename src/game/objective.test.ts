@@ -30,6 +30,7 @@ test("optional directions change with place and progression", () => {
   assert.match(objectiveHint({}, "Binding Grove")!, /face it.*inspect/);
   assert.match(objectiveHint({ starter: true }, "Elderhall")!, /north.*Briar Road/);
   assert.match(objectiveHint({ starter: true }, "Briar Road")!, /north.*Wildwood/);
+  assert.match(objectiveHint({ starter: true }, "Briar Road")!, /Tall grass.*wild.*weaken.*Bind/i);
   assert.equal(objectiveHint({ starter: true, trial: true }, "Elderhall"), null);
 });
 

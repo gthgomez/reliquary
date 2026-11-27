@@ -5,6 +5,41 @@ source-license file was present in the initial repository, and the repository
 has one initial commit. Unresolved entries are retained and flagged rather than
 deleted.
 
+## Rowan's cottage room
+
+`public/game/rooms/rowan-cottage.png` is original project artwork drawn by
+`scripts/draw-rowan-cottage.py` and covered by the repository license. Its
+176 × 144 pixels map to the existing 11 × 9 room at 16 art pixels per
+32-pixel world tile. The room composition uses existing furniture assets,
+whose attribution is recorded elsewhere in this manifest.
+
+## Binding Grove stonework
+
+`public/game/props/grove-ritual.png` is original project artwork drawn by
+`scripts/draw-binding-grove.py` and covered by the repository license. The
+transparent 160 × 48 PNG is a ground decoration aligned to the existing
+starter positions at 16 art pixels per world tile.
+
+## Briar Road and Wildwood terrain
+
+`public/game/tiles/woodland-atlas.png` is original pixel artwork drawn from a
+blank canvas by `scripts/draw-woodland-terrain.py` for Reliquary as part of the
+owner's product quality campaign and covered by the repository license. The
+recipe uses Pillow, fixed seeds, hand-selected colors and authored plant
+geometry. It imports no source art, downloaded texture, or image generation.
+The art was compared against the in-game town and grove for palette and scale.
+
+The 128 × 192 RGBA sheet has four 32 × 32 variants per row. The rows are
+Briar meadow, Wildwood understory, shared dirt, low brambles, ferns, and
+roadside stones and leaves. The first three are opaque materials. Undergrowth
+and verge rows have transparent backgrounds and align within the existing
+walkable tiles. Native encounter regions alone select encounter undergrowth.
+The public asset is included in the ordinary offline build and is optional at
+runtime, where legacy tile artwork remains the fallback.
+
+- Source SHA-256 `8b370b0cc6415d506423dd465e3dc602851c24a4b1ab7229711d05c53029a8e6`
+- Runtime PNG SHA-256 `919c9c9c70bbac2e826a4f312f0cb8365ee9fb834f671937f5c538e8dc61e8aa`
+
 ## Cinematic dialogue synthesis (issue #31, November 2026)
 
 Seven standalone SVGs in `public/game/portraits/` share the game's moss, copper,

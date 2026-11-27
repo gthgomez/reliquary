@@ -779,14 +779,19 @@
 }
 /* On a narrow phone, give the objective its own row so directions can wrap. */
 @container (max-width: 540px) {
+  .hud-chip { row-gap: 0.15rem; }
+  .hud-region,
+  .hud-region-sep,
+  .hud-objective-label { display: none; }
   .hud-stats { order: 2; padding-left: 0; border-left: 0; }
+  .hud-companion-name { max-width: 3.75rem; }
+  .hud-companion-meter { width: 1.4rem; }
   .hud-objective-slot { order: 3; flex-basis: 100%; }
+  .hud-objective-btn { grid-template-columns: minmax(0, 1fr) auto; }
   .hud-objective-preview { overflow-wrap: anywhere; }
 }
 @container (max-width: 300px) {
   .hud-sigil { display: none; }
-  .hud-objective-label { display: none; }
-  .hud-objective-btn { grid-template-columns: minmax(0, 1fr) auto; }
   .hud-menu { padding-inline: 0.35rem; }
 }
 /* The landscape control rail and enlarged text can both limit line length. */
@@ -803,10 +808,14 @@
   .hud-gold { line-height: 1.2; }
   .hud-companion {
     min-width: 0;
-    flex-wrap: wrap;
-    white-space: normal;
   }
-  .hud-companion-name { max-width: 100%; }
+  .hud-companion-name,
+  .hud-companion-meter { display: none; }
+  .hud-companion-alert {
+    min-width: 18px;
+    min-height: 18px;
+    padding-inline: 2px;
+  }
   .hud-companion-hp { white-space: nowrap; }
   .hud-objective-label {
     display: block;
@@ -1610,7 +1619,7 @@
   }
   .game-root.is-cottage .stage {
     --fit-cottage: 1;
-    background: radial-gradient(ellipse at 50% 46%, #362b21, var(--color-ink) 78%);
+    background: radial-gradient(ellipse at 50% 39%, #362b21, var(--color-ink) 82%);
   }
   .game-root.is-cottage .viewport {
     width: 100%;
@@ -1642,9 +1651,14 @@
     filter: drop-shadow(0 5px 10px #0a0807);
   }
   .game-root.is-cottage.is-dialog .viewport {
-    justify-content: center;
+    padding-block-start: clamp(0.5rem, 8dvh, 4.5rem);
+  }
+  .game-root.is-cottage.is-dialog .top-stack {
+    position: absolute;
   }
   .game-root.is-cottage.is-dialog .game-canvas {
+    flex: 0 0 auto;
+    width: min(100%, var(--scene-width), 54dvh, max(60vw, calc(100dvh - 11rem)));
     margin-block: 0;
   }
   .game-root.is-cottage .dialog-scene:not(.dialog-scene-npc) {
@@ -1654,14 +1668,41 @@
     display: flex;
     min-height: 0;
     max-height: 52%;
+    height: min(11rem, 38dvh);
     flex: 0 1 auto;
   }
   .game-root.is-cottage .dialog-scene:not(.dialog-scene-npc) .dialog {
     position: relative;
     inset: auto;
     width: 100%;
+    height: 100%;
     min-height: 0;
     max-height: 100%;
+    gap: min(0.6rem, 12px);
+    padding: clamp(10px, 2.1dvh, 16px);
+  }
+  .game-root.is-cottage .dialog-scene:not(.dialog-scene-npc) .dialog-content {
+    flex: 1 1 auto;
+  }
+  .game-root.is-cottage .dialog-scene:not(.dialog-scene-npc) .dialog-actions {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  }
+  .game-root.is-cottage .dialog-actions button {
+    min-height: max(44px, 2.65em);
+    padding-inline: 0.25rem;
+    line-height: 1.15;
+  }
+  .game-root.is-cottage .dialog-actions .dialog-back {
+    grid-column: 1;
+  }
+  .game-root.is-cottage .dialog-actions .dialog-page-count {
+    grid-column: 2;
+    margin: 0;
+  }
+  .game-root.is-cottage .dialog-actions .dialog-next {
+    grid-column: 3;
+    margin: 0;
   }
 }
 @media (orientation: portrait) and (max-height: 700px) and (max-width: 820px) {
@@ -1785,6 +1826,22 @@ button:disabled {
   margin: 0;
   line-height: 1.4;
 }
+.name-prompt-companion {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr);
+  align-items: center;
+  gap: 0.55rem;
+}
+.name-prompt-companion img {
+  width: 48px;
+  height: 48px;
+  object-fit: contain;
+  image-rendering: pixelated;
+}
+.name-prompt-reward {
+  color: #624229;
+  font-size: 0.86em;
+}
 .name-prompt label {
   display: grid;
   gap: 0.25rem;
@@ -1795,16 +1852,15 @@ button:disabled {
   padding: 0.5rem;
   color: var(--color-ink);
   background: var(--color-cream);
-  border: 1px solid var(--color-ink);
+  border: 1px solid #8d6948;
+  border-radius: 7px;
 }
-.name-prompt-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
+.name-prompt :is(input, button):focus-visible {
+  outline: 2px solid #68452f;
+  outline-offset: 2px;
 }
-.name-prompt .btn-ghost {
-  background: var(--color-ink);
-  color: var(--color-cream);
+.name-prompt-actions .dialog-next {
+  margin-left: 0;
 }
 @media (orientation: landscape) and (max-height: 420px) {
   .name-prompt {
@@ -1815,7 +1871,7 @@ button:disabled {
   }
   .name-prompt p,
   .name-prompt label,
-  .name-prompt .btn-ghost {
+  .name-prompt .dialog-actions button {
     line-height: 1.15;
   }
   .name-prompt label {
@@ -1830,7 +1886,7 @@ button:disabled {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 0.3rem;
   }
-  .name-prompt .btn-ghost {
+  .name-prompt .dialog-actions button {
     padding: 0.22rem 0.3rem;
     overflow-wrap: anywhere;
   }

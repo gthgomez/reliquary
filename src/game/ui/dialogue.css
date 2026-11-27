@@ -91,6 +91,44 @@
 .dialog-scene .dialog-name {
   color: #68452f;
 }
+.dialog-scene-starter .dialog {
+  height: min(16rem, 58dvh);
+}
+.dialog-starter-heading {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding-bottom: 0.3rem;
+  border-bottom: 1px solid #ac8b66;
+}
+.dialog-starter-heading .dialog-species {
+  width: clamp(60px, 22vw, 94px);
+}
+.dialog-starter-heading .dialog-name {
+  margin: 0;
+  font-size: 1.12rem;
+}
+.dialog-scene-starter .dialog-content {
+  flex: 1 1 auto;
+}
+.dialog-scene-starter .dialog-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1.65fr);
+}
+.dialog-scene-starter .dialog-actions button {
+  min-height: max(44px, 3.9em);
+  padding-inline: 0.35rem;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+}
+.dialog-scene-starter .dialog-page-count {
+  margin: 0;
+}
+@media (orientation: landscape) and (max-height: 420px) {
+  .dialog-starter-heading .dialog-species {
+    width: clamp(40px, 14dvh, 60px);
+  }
+}
 .dialog-scene-npc {
   display: grid;
   /* The second column is sized against this stage's inner width, so a wide
@@ -220,6 +258,26 @@
   .dialog-panel .dialog-text {
     font-size: 0.96rem;
     line-height: 1.45;
+  }
+  .dialog-scene-npc:is([data-npc-id="maren"], [data-npc-id="maren2"]) {
+    .dialog-panel {
+      height: min(13rem, 52dvh);
+    }
+    .dialog-content {
+      flex: 1 1 auto;
+    }
+    .dialog-actions {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    }
+    .dialog-page-count {
+      grid-column: 2;
+      margin-inline: 0;
+    }
+    .dialog-actions .dialog-next {
+      grid-column: 3;
+      margin-inline: 0;
+    }
   }
 }
 @media (orientation: landscape) and (max-height: 520px) {

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { KeyboardEvent as ReactKeyboardEvent } from "react";
-import { currentStats } from "../../content.ts";
+import { currentStats, SPECIES } from "../../content.ts";
 import type { ReliquaryGame } from "../../engine.ts";
 import { SAVE_RESUMED_MESSAGE } from "../../save.ts";
 import type { BattleState, Snapshot } from "../../types.ts";
@@ -49,6 +49,7 @@ export function BattleHud({ game, snap }: { game: ReliquaryGame; snap: Snapshot 
   const rootRef = useRef<HTMLDivElement>(null);
   const statusRef = useRef<HTMLDivElement>(null);
   const recapRef = useRef<HTMLElement>(null);
+  const recapReturnRef = useRef<HTMLElement | null>(null);
   const [focusCommand, setFocusCommand] = useState<BattleCommand>(
     () => firstAvailableCommand(slots) ?? "Strike",
   );
@@ -80,11 +81,21 @@ export function BattleHud({ game, snap }: { game: ReliquaryGame; snap: Snapshot 
   }, []);
 
   useEffect(() => {
-    if (!recapOpen) return;
+    if (!recapOpen) {
+      const target = recapReturnRef.current;
+      recapReturnRef.current = null;
+      if (target?.isConnected && !target.matches(":disabled")) target.focus({ preventScroll: true });
+      return;
+    }
     const panel = recapRef.current;
     const target = panel?.querySelector<HTMLElement>(".battle-recap") ?? panel;
     target?.focus({ preventScroll: true });
   }, [recapOpen]);
+
+  const openRecap = useCallback(() => {
+    if (document.activeElement instanceof HTMLElement) recapReturnRef.current = document.activeElement;
+    setRecapOpen(true);
+  }, []);
 
   const phase = b?.phase ?? "command";
   const submenu = SUBMENU_PHASES.has(phase);
@@ -223,7 +234,7 @@ export function BattleHud({ game, snap }: { game: ReliquaryGame; snap: Snapshot 
     if (key === "h") {
       event.preventDefault();
       event.stopPropagation();
-      if (b.recap.length) setRecapOpen((open) => !open);
+      openRecap();
       return;
     }
     if (arrows[key]) {
@@ -242,7 +253,7 @@ export function BattleHud({ game, snap }: { game: ReliquaryGame; snap: Snapshot 
         moveList(arrows[key] === "up" || arrows[key] === "left" ? -1 : 1);
       }
     }
-  }, [b, focusCommand, moveList, recapOpen, selectCommand, slots]);
+  }, [b, focusCommand, moveList, openRecap, recapOpen, selectCommand, slots]);
 
   if (!b) return null;
 
@@ -252,6 +263,7 @@ export function BattleHud({ game, snap }: { game: ReliquaryGame; snap: Snapshot 
   const foeStats = foe ? currentStats(foe) : null;
   const message = b.log[b.log.length - 1] ?? "Choose an action.";
   const hasRecap = b.recap.length > 0;
+  const visibleLog = hasRecap ? b.recap : b.log;
 
   const skillIds = me?.skills ?? [];
   const usableItemIds = game.usableItems();
@@ -267,6 +279,7 @@ export function BattleHud({ game, snap }: { game: ReliquaryGame; snap: Snapshot 
         party: snap.party,
         inventory: snap.inventory,
         skillIds,
+        foeElements: foe ? SPECIES[foe.speciesId]?.elements : undefined,
         usableItemIds,
         bindIds,
         menuIndex: b.menuIndex,
@@ -360,9 +373,8 @@ export function BattleHud({ game, snap }: { game: ReliquaryGame; snap: Snapshot 
         <BattleFooter
           message={message}
           recapOpen={recapOpen}
-          hasRecap={hasRecap}
           canGoBack={showBack}
-          onToggleRecap={() => setRecapOpen((open) => !open)}
+          onToggleRecap={recapOpen ? () => setRecapOpen(false) : openRecap}
         />
       </div>
 
@@ -381,9 +393,9 @@ export function BattleHud({ game, snap }: { game: ReliquaryGame; snap: Snapshot 
               Close
             </button>
           </header>
-          {hasRecap ? (
+          {visibleLog.length ? (
             <ol className="battle-recap" aria-label="This battle so far" tabIndex={0}>
-              {b.recap.map((line, index) => (
+              {visibleLog.map((line, index) => (
                 <li key={`${index}-${line}`}>{line}</li>
               ))}
             </ol>

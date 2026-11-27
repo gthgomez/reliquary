@@ -18,6 +18,7 @@ export const LEGACY_SAVE_KEY = "reliquary.save.v2";
 export const LEGACY_SAVE_BACKUP = "reliquary.save.v2.bak";
 export const LEGACY_V1_KEY = "reliquary.save.v1";
 export const LEGACY_V1_BACKUP = "reliquary.save.v1.bak";
+const NAME_DRAFT_KEY = `reliquary.name-draft.${WORLD_REVISION}`;
 
 const SAVE_SLOTS = [SAVE_KEY, SAVE_BACKUP, LEGACY_SAVE_KEY, LEGACY_SAVE_BACKUP, LEGACY_V1_KEY, LEGACY_V1_BACKUP];
 
@@ -65,6 +66,25 @@ export const GameSaveSchema = z
 function browserStorage(): SaveStorage | null {
   try { return typeof localStorage === "undefined" ? null : localStorage; }
   catch { return null; }
+}
+
+// A draft is local and disposable. The committed save holds the companion's
+// pending-offer flag so an absent, corrupt or mismatched draft cannot retarget it.
+export function readNameDraft(uid: string, source: ReadableSaveStorage | null = browserStorage()): string | undefined {
+  try {
+    const raw = source?.getItem(NAME_DRAFT_KEY);
+    if (!raw) return undefined;
+    const draft = JSON.parse(raw);
+    if (draft?.uid === uid && typeof draft.value === "string" && draft.value.length <= 40) return draft.value;
+  } catch { /* An unavailable draft falls back to the current nickname. */ }
+  return undefined;
+}
+
+export function writeNameDraft(uid: string, value: string | null, target: SaveStorage | null = browserStorage()): void {
+  try {
+    if (value !== null) target?.setItem(NAME_DRAFT_KEY, JSON.stringify({ uid, value }));
+    else if (readNameDraft(uid, target) !== undefined) target?.removeItem(NAME_DRAFT_KEY);
+  } catch { /* Draft storage cannot prevent in-memory naming. */ }
 }
 
 function validateBeasts(save: Omit<GameSave, "version">): boolean {
@@ -274,7 +294,7 @@ export function hasSave(source: ReadableSaveStorage | null = browserStorage()): 
 
 export function clearSave(target: SaveStorage | null = browserStorage()): void {
   if (!target) return;
-  for (const key of [SAVE_KEY, SAVE_BACKUP, SAVE_FORWARD_KEY, LEGACY_SAVE_KEY, LEGACY_SAVE_BACKUP, LEGACY_V1_KEY, LEGACY_V1_BACKUP]) {
+  for (const key of [SAVE_KEY, SAVE_BACKUP, SAVE_FORWARD_KEY, LEGACY_SAVE_KEY, LEGACY_SAVE_BACKUP, LEGACY_V1_KEY, LEGACY_V1_BACKUP, NAME_DRAFT_KEY]) {
     try { target.removeItem(key); } catch { /* storage unavailable */ }
   }
 }

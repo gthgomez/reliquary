@@ -23,13 +23,15 @@ const PLAYER_FRAMES = ["down", "left", "right", "up"] as const;
 const NPC_SPRITES = ["elder", "innkeep", "shopkeep", "warden", "guard", "traveler"] as const;
 const PROP_SPRITES = [
   "tree", "cottage", "inn", "shop", "shrine", "sign", "barrel", "crate", "shrub", "boulder",
-  "well", "hearth", "bed", "bookshelf", "table", "chair", "counter", "pot", "fence", "tallgrass",
+  "well", "hearth", "bed", "bookshelf", "table", "chair", "counter", "pot", "fence", "tallgrass", "grove-ritual",
 ] as const;
 const BG_KEYS = ["grass", "forest", "cave", "marsh", "keep"] as const;
 
 export function collectGameAssets(options: { elderhallCandidate?: boolean } = {}): readonly AssetEntry[] {
   const out: AssetEntry[] = [
     { key: "title", url: "/game/bg/title.jpg", required: true },
+    { key: "room_rowan_cottage", url: "/game/rooms/rowan-cottage.png", required: true },
+    { key: "woodland_terrain", url: "/game/tiles/woodland-atlas.png", required: false },
     { key: "manifest_game", url: "/game/manifest.json", required: false },
   ];
   for (const tile of new Set(Object.values(GROUND_TILE))) {
