@@ -405,6 +405,7 @@ try {
     const foe = page.locator(".battle-status-card.foe");
     if (!(await foe.getAttribute("aria-label")).startsWith(`${species}, level ${level}.`))
       throw new Error(`Unexpected encounter: ${await foe.getAttribute("aria-label")}`);
+    await page.screenshot({ path: join(output, `13-${map}-battle.png`) });
     await seedDraw(0.005);
     await battleCommand("Bind").click();
     await battleRow(/Common Sigil/).click();
@@ -419,9 +420,16 @@ try {
 
   await seedDraw(0.99);
   await requireMap("elderhall", { x: 10, y: 0 }, "briar_road");
+  await requireMap("briar_road", { x: 19, y: 11 }, "mirefen");
+  const bridge = await travel("mirefen", { x: 11, y: 7 }, true);
+  if (bridge.map !== "mirefen" || bridge.x !== 11 || bridge.y !== 7) throw new Error("Did not cross the Mirefen bridge");
+  await page.screenshot({ path: join(output, "13-mirefen-bridge.png") });
+  await requireMap("mirefen", { x: 0, y: 7 }, "briar_road");
   await requireMap("briar_road", { x: 10, y: 0 }, "wildwood");
+  await page.screenshot({ path: join(output, "13-wildwood-entry.png") });
   await captureOnRoute("wildwood", { x: 4, y: 16 }, "Sunhart", 12, 0.83);
   await requireMap("wildwood", { x: 6, y: 1 }, "ashenbarrow");
+  await page.screenshot({ path: join(output, "13-ashenbarrow-entry.png") });
   await captureOnRoute("ashenbarrow", { x: 8, y: 12 }, "Keepdrake", 14, 0.95);
   await requireMap("ashenbarrow", { x: 9, y: 15 }, "wildwood");
   await requireMap("wildwood", { x: 10, y: 0 }, "thornkeep");
@@ -475,12 +483,16 @@ try {
   }
   await dialogue.locator(".dialog-next").click();
   await dialogue.locator(".dialog-next").click();
+  await dialogue.getByText("We'll put your pact to the test inside Warden's Hall.", { exact: true }).waitFor();
+  await page.screenshot({ path: join(output, "14-thornkeep-trial-offer.png") });
   await dialogue.getByRole("button", { name: "Begin the trial", exact: true }).click();
   report.events.push("Accepted Warden Cael's trial through the story dialogue");
 
   const battleControl = page.locator(".battle-controls");
   const currentBeast = page.locator(".battle-status-card.me");
   const opponent = page.locator(".battle-status-card.foe");
+  await opponent.waitFor();
+  await page.screenshot({ path: join(output, "14-thornkeep-trial-arena.png") });
   const trialHealing = { "Field Tonic": 0, "Greater Tonic": 0 };
   const opponents = new Map();
   for (let turn = 0; turn < 60; turn++) {

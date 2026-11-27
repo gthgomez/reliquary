@@ -12,12 +12,33 @@ const ART_TILE = 32;
 const MATERIAL_ROW = { briar: 0, wildwood: 1, dirt: 2 } as const;
 const UNDERGROWTH_ROW = { briar: 3, wildwood: 4 } as const;
 const VERGE_ROW = 5;
+type MaterialRows = Readonly<Record<string, number | undefined>>;
+const ROUTE_ROWS: Readonly<Record<string, MaterialRows | undefined>> = {
+  thornkeep: { grass: 0, dirt: 1, cobble: 2 },
+  ashenbarrow: { cave: 3, wall: 4 },
+  mirefen: { grass: 5, marsh: 6, water: 7, dirt: 8, bridge: 9 },
+};
+
+export function chapterRouteRows(mapId: string): MaterialRows | undefined {
+  return ROUTE_ROWS[mapId];
+}
 
 function drawCell(
   ctx: CanvasRenderingContext2D, atlas: CanvasImageSource, row: number, column: number,
   x: number, y: number, size: number,
 ): void {
   ctx.drawImage(atlas, column * ART_TILE, row * ART_TILE, ART_TILE, ART_TILE, x, y, size, size);
+}
+
+export function drawChapterRouteMaterial(
+  ctx: CanvasRenderingContext2D, atlas: CanvasImageSource, rows: MaterialRows, mapId: string, material: string,
+  x: number, y: number, size: number,
+): boolean {
+  const row = rows[material];
+  if (row === undefined) return false;
+  const column = chooseTileVariant(mapId, x / size, y / size, material, 4);
+  drawCell(ctx, atlas, row, column, x, y, size);
+  return true;
 }
 
 export function drawWoodlandMaterial(

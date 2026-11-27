@@ -43,6 +43,7 @@ export type TerrainBakeContext = {
   drawAccent?: (kind: TileAccentKind, dx: number, dy: number) => void;
   drawJunctions?: () => void;
   candidateTerrain?: boolean;
+  chapterRouteTerrain?: boolean;
   woodlandTerrain?: { drawEncounter: (dx: number, dy: number) => void };
 };
 
@@ -50,7 +51,8 @@ export type TerrainBakeContext = {
 function pathNeighborMask(ground: string[], x: number, y: number, overgrown: Set<string>): number {
   const width = ground[0]?.length ?? 0;
   const isPath = (tx: number, ty: number) =>
-    tx < 0 || ty < 0 || tx >= width || ty >= ground.length || ground[ty]?.[tx] === "p" || ground[ty]?.[tx] === "c" || overgrown.has(`${tx},${ty}`);
+    tx < 0 || ty < 0 || tx >= width || ty >= ground.length || ground[ty]?.[tx] === "p" || ground[ty]?.[tx] === "c" ||
+      ground[ty]?.[tx] === "=" || overgrown.has(`${tx},${ty}`);
   return (isPath(x, y - 1) ? 1 : 0) | (isPath(x + 1, y) ? 2 : 0) |
     (isPath(x, y + 1) ? 4 : 0) | (isPath(x - 1, y) ? 8 : 0) |
     (isPath(x + 1, y - 1) ? 16 : 0) | (isPath(x + 1, y + 1) ? 32 : 0) |
@@ -71,7 +73,8 @@ export function bakeMapTerrain(ctx: TerrainBakeContext): void {
   const mw = map.ground[0]?.length ?? 0;
   const grove = map.id === "grove";
   const woodland = ctx.woodlandTerrain;
-  const softPath = map.terrainPathStyle === "soft" || woodland !== undefined;
+  const authoredTerrain = woodland !== undefined || ctx.chapterRouteTerrain === true;
+  const softPath = map.terrainPathStyle === "soft" || authoredTerrain;
   const cottage = map.id === "home";
   const candidatePalette = !!ctx.candidateTerrain && (map.id === "elderhall" || map.id === "grove");
   const overgrown = new Set((map.overgrownPaths ?? []).map(({ x, y }) => `${x},${y}`));
@@ -90,7 +93,7 @@ export function bakeMapTerrain(ctx: TerrainBakeContext): void {
       } else {
         ctx.drawTile(name, dx, dy, variant);
       }
-      const accent = woodland ? null : chooseTileAccent(map.id, x, y, symbol);
+      const accent = authoredTerrain ? null : chooseTileAccent(map.id, x, y, symbol);
       if (accent && ctx.drawAccent) ctx.drawAccent(accent, dx, dy);
       // Break atlas repetition with sparse, low-contrast dapple patches. The
       // selection is fixed to world coordinates, so the terrain bake is stable.
@@ -108,7 +111,7 @@ export function bakeMapTerrain(ctx: TerrainBakeContext): void {
       const mask = walkableEdgeMask(map.ground, x, y);
       // The village's stone edge replaces the rectangular boundary tint, which
       // otherwise makes isolated dark squares along the outdoor map boundary.
-      if (mask !== 0 && mask !== 15 && !cottage && !grove && !woodland && map.roadBorder !== "stone") {
+      if (mask !== 0 && mask !== 15 && !cottage && !grove && !authoredTerrain && map.roadBorder !== "stone") {
         ctx.drawOverlay("edge", dx, dy, (15 - mask) / 15);
       }
       if ((symbol === "p" || symbol === "c") && !softPath) {
