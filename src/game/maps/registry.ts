@@ -51,8 +51,8 @@ export const elderhallBase: MapDef = {
     prop("sign_w", "sign", 2, 8, "sign_grove"),
     // Service signs sit beside each painted frontage and identify the stop
     // before the player commits to the auto-enter door.
-    { ...prop("inn_sign", "sign", 12, 4, "sign_inn"), solid: false },
-    { ...prop("shop_sign", "sign", 12, 8, "sign_shop"), solid: false },
+    { ...prop("inn_sign", "sign", 19, 4, "sign_inn"), solid: false },
+    { ...prop("shop_sign", "sign", 19, 8, "sign_shop"), solid: false },
     prop("barrel1", "barrel", 19, 9),
     prop("crate1", "crate", 20, 9),
     prop("shrub1", "shrub", 9, 4),

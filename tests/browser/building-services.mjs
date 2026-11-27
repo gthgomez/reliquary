@@ -61,7 +61,7 @@ try {
     await walk("inn_in", 4, 5);
     await north();
     await use();
-    const rest = page.getByRole("button", { name: "Rest for 15 crowns" });
+    const rest = page.getByRole("button", { name: "Rest for 15 crowns", exact: true });
     const beforeRest = await readSave();
     await rest.tap();
     await page.locator(".dialog-text").filter({ hasText: /Sleep/ }).waitFor();
@@ -109,7 +109,9 @@ try {
     await walk("guild_in", 6, 3);
     await north();
     await use();
-    await page.getByRole("status").filter({ hasText: /restore|heal|lantern|shrine/i }).first().waitFor();
+    const shrine = page.getByRole("dialog", { name: "Shrine", exact: true });
+    assert.match(await shrine.innerText(), /Your beasts are whole. The lantern is written/);
+    await shrine.getByRole("button", { name: "Close", exact: true }).tap();
     assert.equal((await walk("guild_in", 6, 10)).map, "elderhall");
     assert.deepEqual(errors, []);
     result = { browser: context.browser().version(), viewport, shots, checked: ["inn cost", "shop buy/sell",
