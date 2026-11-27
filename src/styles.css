@@ -344,9 +344,16 @@
 .title-save-recovery button {
   min-height: 44px;
 }
-.title-opening:has(.title-save-recovery),
-.title-opening:has(.title-confirm) {
-  align-items: safe center;
+.title-opening:has(.title-confirm) .title-copy {
+  width: min(42rem, 100%);
+  padding-block: 0;
+  transform: none;
+}
+.title-opening:has(.title-confirm) :is(.title-word, .title-tag) {
+  display: none;
+}
+.title-opening:has(.title-confirm) .title-confirm {
+  margin: 0 auto;
 }
 @media (orientation: landscape) and (max-height: 420px) {
   .title-opening {
@@ -361,22 +368,7 @@
   .title-opening .title-tag {
     margin: 0.2rem auto 0.8rem;
   }
-  .title-opening:has(.title-confirm) .title-copy {
-    margin-block: 0;
-    width: min(42rem, 100%);
-    padding-block: 0;
-    transform: none;
-  }
-  .title-opening:has(.title-confirm) {
-    align-items: flex-start;
-  }
-  .title-opening:has(.title-confirm) .title-word,
-  .title-opening:has(.title-confirm) .title-tag {
-    display: none;
-  }
   .title-opening .title-confirm {
-    width: min(42rem, 100%);
-    margin: 0 auto;
     padding: 0.65rem 0.85rem;
   }
   .title-opening .title-confirm-heading {
@@ -407,23 +399,6 @@
   .title-opening .title-tag {
     max-width: 31ch;
     margin: 0.7rem auto 1.05rem;
-  }
-  .title-opening:has(.title-confirm) .title-copy {
-    margin-block: 0;
-    width: min(42rem, 100%);
-    padding-block: 0;
-    transform: none;
-  }
-  .title-opening:has(.title-confirm) {
-    align-items: flex-start;
-  }
-  .title-opening:has(.title-confirm) .title-word,
-  .title-opening:has(.title-confirm) .title-tag {
-    display: none;
-  }
-  .title-opening:has(.title-confirm) .title-confirm {
-    width: min(42rem, 100%);
-    margin: 0 auto;
   }
   .title-opening:has(.title-confirm) .title-confirm .title-actions {
     flex-direction: column;
