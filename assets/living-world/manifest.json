@@ -1,0 +1,93 @@
+{
+  "version": 1,
+  "rightsBasis": "Original artwork authored for Reliquary with the repository owner’s delegated authorization.",
+  "approvalStatus": "Candidate awaiting owner acceptance.",
+  "svgRasterization": "ImageMagick: convert -background none source.svg output.png",
+  "portraits": "assets/elderhall-portraits/manifest.json",
+  "paintedRoomSource": {
+    "path": "src/game/render/room-visual.ts",
+    "sha256": "5a09a50b2829e6fcbc8cfd3b72c98135d898b6b9d85ad43b23fde53fdf08b709"
+  },
+  "assets": [
+    {
+      "runtimePath": "public/game/props/quiet-lantern-sign.png",
+      "sha256": "30761b5b44460bae24723876755259938c88b062cc4cb636326a0f0fad7fa35e",
+      "dimensions": [
+        32,
+        64
+      ],
+      "alphaBounds": [
+        11,
+        1,
+        28,
+        63
+      ],
+      "source": "assets/living-world/quiet-lantern-sign.svg",
+      "sourceSha256": "4cf658bd865c27cdfb5fa7e240e1f0de1e9e02e657ade404f3cff2747b279ed6"
+    },
+    {
+      "runtimePath": "public/game/props/calders-stock-awning.png",
+      "sha256": "2ee7e3eda76ac0825229e5b87935d8191f5d2a70e4be8c078890723d7abc97de",
+      "dimensions": [
+        96,
+        32
+      ],
+      "alphaBounds": [
+        3,
+        0,
+        93,
+        28
+      ],
+      "source": "assets/living-world/calders-stock-awning.svg",
+      "sourceSha256": "3afe007ae1f8f09761aa6f515ad16f4a9baf72e2e6368b121694f2c090910014"
+    },
+    {
+      "runtimePath": "public/game/props/cellar-hatch.png",
+      "sha256": "d11c3b1c45b9a837500ad328932ca2e2c9a11b5e42bb2822da9f4ef8dee605cd",
+      "dimensions": [
+        32,
+        32
+      ],
+      "alphaBounds": [
+        0,
+        15,
+        32,
+        32
+      ],
+      "source": "scripts/draw-cellar-hatch.py",
+      "sourceSha256": "b0f33d53f8bc570b68af26ed08bb42a67b2588ccf638f1440dc988ea4a986bd9"
+    },
+    {
+      "runtimePath": "public/game/props/grove-ritual.png",
+      "sha256": "2424f6023e96436eed9df608662cf2fa72fe107330e349ed69f0dad0a785bd35",
+      "dimensions": [
+        160,
+        48
+      ],
+      "alphaBounds": [
+        1,
+        4,
+        160,
+        48
+      ],
+      "source": "scripts/draw-binding-grove.py",
+      "sourceSha256": "063a510b99371cca3fd0e793a6f453d09492ede023f30102fab3d18f495892c0"
+    },
+    {
+      "runtimePath": "public/game/bg/bg_briar_road.webp",
+      "sha256": "51e8ef3242bd02e894d3adb7b05654d4b38d2781cf0f257d0a3192b6f4ba78f0",
+      "dimensions": [
+        960,
+        768
+      ],
+      "alphaBounds": [
+        0,
+        0,
+        960,
+        768
+      ],
+      "source": "scripts/draw-briar-road-arena.py",
+      "sourceSha256": "6368fa4312b7c3bc9947d1e7f0c79b9ef1f7e92d2e2b3457a407384466492a08"
+    }
+  ]
+}
