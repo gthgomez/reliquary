@@ -1606,7 +1606,7 @@
 
 @media (orientation: portrait) and (max-width: 820px),
   (orientation: portrait) and (pointer: coarse) and (max-width: 1100px) {
-  .game-root.is-world:not(.is-cottage) .stage {
+  .game-root:is([data-world-map="elderhall"], [data-world-map="grove"]) .stage {
     align-items: flex-start;
     background: linear-gradient(180deg, var(--color-forest) 55%, var(--color-ink));
   }
