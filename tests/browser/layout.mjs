@@ -45,7 +45,7 @@ async function revealCottageDoorHint(page) {
     await page.waitForTimeout(80);
     await page.evaluate(() => window.__controlsTest.setKeys([]));
     const visible = await page.waitForFunction(() =>
-      document.querySelector(".world-interaction-hint")?.textContent?.startsWith("Enter · Interact:") === true,
+      document.querySelector(".world-interaction-hint")?.textContent?.startsWith("Enter Rowan's Cottage · Interact:") === true,
     null, { timeout: 900 }).then(() => true, () => false);
     if (visible) return x;
     await page.evaluate(() => window.__controlsTest.setKeys([]));
