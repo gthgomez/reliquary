@@ -29,7 +29,7 @@ try {
     };
     const walk = (map, x, y) => walkTo(page, MAPS[map], { x, y });
     const north = () => faceDirection(page, "KeyW", Math.PI);
-    const use = () => page.keyboard.press("KeyZ");
+    const interact = () => page.keyboard.press("KeyZ");
     const position = () => page.evaluate(() => window.__controlsTest.getPos());
     const readSave = () => page.evaluate(() => JSON.parse(localStorage.getItem("reliquary.save.v3")));
     const room = page.locator(".game-canvas");
@@ -43,7 +43,7 @@ try {
     const enter = async (x, y, roomId) => {
       await walk("elderhall", x, y);
       await north();
-      if ((await position()).map === "elderhall") await use();
+      if ((await position()).map === "elderhall") await interact();
       await page.waitForFunction((id) => window.__controlsTest.getPos().map === id, roomId);
       await assertFrame(roomId);
     };
@@ -60,7 +60,7 @@ try {
     await capture("03-quiet-lantern");
     await walk("inn_in", 4, 5);
     await north();
-    await use();
+    await interact();
     const rest = page.getByRole("button", { name: "Rest for 15 crowns", exact: true });
     const beforeRest = await readSave();
     await rest.tap();
@@ -77,7 +77,7 @@ try {
     await capture("06-calders-sundries");
     await walk("shop_in", 4, 5);
     await north();
-    await use();
+    await interact();
     const merchant = page.getByRole("dialog", { name: baseline ? "Chandler" : "Calders' Sundries" });
     await merchant.waitFor();
     if (!baseline) assert.match(await merchant.innerText(), /Calder · \d+ crowns in purse/);
@@ -97,7 +97,7 @@ try {
     await faceDirection(page, "KeyS", 0);
     if (!baseline) assert.match(await page.locator(".world-interaction-hint").innerText(), /Open cellar hatch/);
     await capture("08-cellar-access");
-    await use();
+    await interact();
     await page.waitForFunction(() => window.__controlsTest.getPos().map === "elderhall_cellar");
     await capture("09-cellar");
     const returned = await walk("elderhall_cellar", 7, 11);
@@ -108,7 +108,7 @@ try {
     await capture("10-chapter-house");
     await walk("guild_in", 6, 3);
     await north();
-    await use();
+    await interact();
     const shrine = page.getByRole("dialog", { name: "Shrine", exact: true });
     assert.match(await shrine.innerText(), /Your beasts are whole. The lantern is written/);
     await shrine.getByRole("button", { name: "Close", exact: true }).tap();
