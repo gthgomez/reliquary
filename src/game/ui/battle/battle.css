@@ -286,6 +286,9 @@
   box-shadow: var(--bq-shadow);
   overflow: hidden;
 }
+.battle-detail-expansion {
+  display: none;
+}
 .battle-command-panel {
   display: flex;
   flex-direction: column;
@@ -1051,7 +1054,8 @@
     height: 6px;
   }
   .battle-status-chip {
-    display: none;
+    max-width: 100%;
+    overflow-wrap: anywhere;
   }
   .battle-controls {
     left: 2.8%;
@@ -1067,8 +1071,14 @@
   }
   .battle-details-panel {
     order: -1;
-    max-height: 52px;
-    padding: 2px 9px;
+    flex-direction: row;
+    align-items: center;
+    gap: 6px;
+    padding: 0 5px 0 9px;
+    overflow: visible;
+  }
+  .battle-details-panel > .battle-details {
+    min-width: 0;
     overflow: hidden;
   }
   .battle-details {
@@ -1084,6 +1094,10 @@
     font-size: 0.9rem;
     white-space: nowrap;
   }
+  .battle-details-panel > .battle-details .battle-details-head {
+    max-width: 100%;
+    overflow: hidden;
+  }
   .battle-details-rule,
   .battle-details-meta,
   .battle-details-chips,
@@ -1097,6 +1111,54 @@
     -webkit-line-clamp: 1;
     -webkit-box-orient: vertical;
     overflow: hidden;
+  }
+  .battle-detail-expansion {
+    display: block;
+    flex: 0 0 auto;
+  }
+  .battle-detail-expansion summary {
+    display: grid;
+    place-items: center;
+    min-width: 44px;
+    min-height: 44px;
+    padding-inline: 7px;
+    border-inline-start: 1px solid var(--bq-border);
+    color: var(--bq-ivory);
+    font-size: 0.75rem;
+    cursor: pointer;
+  }
+  .battle-detail-expansion summary::-webkit-details-marker {
+    display: none;
+  }
+  .battle-detail-expansion summary:focus-visible,
+  .battle-detail-expansion-body:focus-visible {
+    outline: 2px solid var(--bq-accent);
+    outline-offset: -2px;
+  }
+  .battle-detail-expansion-body {
+    position: absolute;
+    z-index: 2;
+    inset: auto 0 calc(100% + 5px);
+    max-height: min(28dvh, 14rem);
+    padding: 10px 12px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    border: 1px solid var(--bq-border);
+    border-radius: var(--bq-radius);
+    background: var(--color-forest);
+    box-shadow: var(--bq-shadow);
+  }
+  .battle-detail-expansion-body .battle-details-title {
+    white-space: normal;
+  }
+  .battle-detail-expansion-body .battle-details-copy,
+  .battle-detail-expansion-body .battle-details-note {
+    display: block;
+    font-size: 0.88rem;
+    line-height: 1.35;
+  }
+  .battle-detail-expansion-body .battle-details-meta {
+    display: flex;
   }
   .battle-command-panel {
     padding: 2px;

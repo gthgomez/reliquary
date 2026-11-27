@@ -43,7 +43,7 @@ export function BattleStatusCard({ side, beast, stats, showMana = true }: Battle
   const species = SPECIES[beast.speciesId];
   const displayName = side === "foe" ? species?.name ?? beast.nickname : beast.nickname;
   const elements = species?.elements.map((element) => ELEMENTS[element].name).join(" · ");
-  const [portraitBroken, setPortraitBroken] = useState(false);
+  const [failedPortrait, setFailedPortrait] = useState<string | null>(null);
   const status = beast.status ? STATUS_NAMES[beast.status] : null;
   const low = stats.hp > 0 && beast.hp / stats.hp <= 0.25;
   const label = [
@@ -57,7 +57,7 @@ export function BattleStatusCard({ side, beast, stats, showMana = true }: Battle
   return (
     <article className={`battle-status-card battler ${side === "foe" ? "foe" : "me"}${low ? " is-low-health" : ""}`} aria-label={label}>
       <div className="battle-portrait" aria-hidden>
-        {portraitBroken ? (
+        {failedPortrait === beast.speciesId ? (
           <span className="battle-portrait-fallback">{(displayName[0] ?? "?").toUpperCase()}</span>
         ) : (
           <img
@@ -65,7 +65,7 @@ export function BattleStatusCard({ side, beast, stats, showMana = true }: Battle
             alt=""
             draggable={false}
             onError={() => {
-              setPortraitBroken(true);
+              setFailedPortrait(beast.speciesId);
               console.warn(`[battle] missing portrait for species ${beast.speciesId}`);
             }}
           />

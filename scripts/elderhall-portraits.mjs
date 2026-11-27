@@ -30,7 +30,7 @@ export function validateElderhallPortraits(dir, sourceRoot) {
     const data = readFileSync(path);
     assert.equal(digest(data), asset.sha256, `Portrait hash mismatch: ${asset.file}`);
     const image = pngjs.PNG.sync.read(data, { checkCRC: true });
-    assert.deepEqual([image.width, image.height], [80, 104], `Unexpected native portrait size: ${asset.file}`);
+    assert.deepEqual([image.width, image.height], [240, 312], `Unexpected native portrait size: ${asset.file}`);
     assert.deepEqual([image.width, image.height], asset.dimensions, `Portrait dimensions mismatch: ${asset.file}`);
     const bounds = [image.width, image.height, 0, 0];
     for (let y = 0; y < image.height; y += 1) {

@@ -37,9 +37,9 @@ test("optional directions change with place and progression", () => {
 test("the cottage directs a new player to the actual exit before the larger objective", () => {
   assert.equal(objectivePreview({}, "home"), "Leave the cottage");
   assert.match(currentObjective({})!, /Binding Grove/);
-  assert.equal(objectivePreview({}, "elderhall"), "Find the Binding Grove");
+  assert.equal(objectivePreview({}, "elderhall"), "Go west to Binding Grove");
   assert.equal(objectivePreview({}, "grove"), "Make a pact");
-  assert.equal(objectivePreview({ starter: true }, "grove"), "Return to Elderhall");
+  assert.equal(objectivePreview({ starter: true }, "grove"), "Return east to Elderhall");
   assert.equal(objectivePreview({ starter: true }, "briar_road"), "Continue north to Thornkeep");
   assert.equal(objectivePreview({ starter: true }, "wildwood"), "Continue north to Thornkeep");
   assert.equal(objectivePreview({ starter: true }, "thornkeep"), "Find Warden Cael");

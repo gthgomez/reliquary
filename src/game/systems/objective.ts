@@ -20,12 +20,12 @@ export function currentObjective(flags: ObjectiveFlags): string | null {
 export function objectivePreview(flags: ObjectiveFlags, mapId: string): string | null {
   if (!flags.starter) {
     if (mapId === "home") return "Leave the cottage";
-    if (mapId === "elderhall") return "Find the Binding Grove";
+    if (mapId === "elderhall") return "Go west to Binding Grove";
     if (mapId === "grove") return "Make a pact";
     return "Find the Binding Grove";
   }
   if (!flags.trial) {
-    if (mapId === "grove") return "Return to Elderhall";
+    if (mapId === "grove") return "Return east to Elderhall";
     if (mapId === "thornkeep" || mapId === "warden_hall") return "Find Warden Cael";
     if (mapId === "briar_road" || mapId === "wildwood") return "Continue north to Thornkeep";
     return "Travel north to Thornkeep";

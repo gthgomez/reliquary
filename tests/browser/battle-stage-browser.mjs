@@ -297,6 +297,14 @@ try {
           : [];
       }));
       assert.deepEqual(escaped, [], `${viewport.width}×${viewport.height} portrait HP and MP stay on their own cards at 200% text`);
+      const details = page.locator(".battle-detail-expansion > summary");
+      await details.tap();
+      const panel = page.locator(".battle-detail-expansion[open] .battle-detail-expansion-body");
+      await panel.waitFor({ state: "visible" });
+      assert.match(await panel.innerText(), /physical attack/i);
+      await page.keyboard.press("Escape");
+      await panel.waitFor({ state: "hidden" });
+      assert.equal(await page.locator(".battle-controls").getAttribute("data-battle-phase"), "command");
       await page.screenshot({ path: join(artifactDir, `battle-readouts-${viewport.width}x${viewport.height}-200.png`) });
     }, { textScale: 2, context: { viewport, isMobile: true, hasTouch: true } });
   }

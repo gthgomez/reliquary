@@ -63,6 +63,7 @@
 }
 .dialog-actions button {
   position: static;
+  min-width: 44px;
   min-height: 44px;
   padding: 3px 0.7rem;
   border: 1px solid #745131;
@@ -237,13 +238,9 @@
   .dialog-portrait {
     overflow: hidden;
   }
-  .dialog-scene-pixel[data-npc-id] .dialog-portrait img {
-    width: min(82%, 240px);
-    height: 100%;
-  }
-  .dialog-scene-npc:is([data-npc-id="maren"], [data-npc-id="maren2"]) .dialog-portrait img {
-    width: min(76%, 240px);
-    height: 84%;
+  .dialog-scene-pixel .dialog-portrait img {
+    width: min(68%, 210px);
+    height: min(80%, 270px);
   }
   .dialog-scene-pixel .dialog.dialog-panel {
     max-height: min(52dvh, 20rem);
@@ -259,22 +256,25 @@
     font-size: 0.96rem;
     line-height: 1.45;
   }
-  .dialog-scene-npc:is([data-npc-id="maren"], [data-npc-id="maren2"]) {
+  .dialog-scene-pixel {
     .dialog-panel {
       height: min(13rem, 52dvh);
     }
     .dialog-content {
       flex: 1 1 auto;
     }
-    .dialog-actions {
+    .dialog-actions:has(.dialog-page-count) {
       display: grid;
       grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    }
+    .dialog-actions button {
+      overflow-wrap: anywhere;
     }
     .dialog-page-count {
       grid-column: 2;
       margin-inline: 0;
     }
-    .dialog-actions .dialog-next {
+    .dialog-actions:has(.dialog-page-count) .dialog-next {
       grid-column: 3;
       margin-inline: 0;
     }

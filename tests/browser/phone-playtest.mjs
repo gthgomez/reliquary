@@ -89,6 +89,11 @@ async function exercise(width, height, textScale = 1) {
         `the opening card belongs with the cottage: ${JSON.stringify({ room, narration })}`);
       assert.ok(action.fullyVisible && action.hitOk, "intro action remains reachable");
       assert.equal(await page.locator(".dialog-name").count(), 0);
+      if (buildsCandidate) {
+        assert.equal(await page.getByRole("button", { name: "Next", exact: true }).count(), 1,
+          "the default touch layout has one dialogue advance action");
+        assert.equal(await page.getByRole("button", { name: "A — Next", exact: true }).count(), 0);
+      }
     }
     introFrames["page 1"] = await introComposition();
     const stableIntro = !baseline && portrait;

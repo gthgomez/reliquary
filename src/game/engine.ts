@@ -1323,9 +1323,9 @@ export class ReliquaryGame {
 		const saved = this.settleNameOffer(prompt.kind, prompt.uid);
 		if (prompt.kind === "starter") {
 			this.openDialog("Rowan", [
-				`Come on, ${nickname}. Our first road together.`,
+      `The grove goes still. ${nickname} steps down from the stone and comes to my side. Our first road together.`,
 				"East to Elderhall, then north to Briar Road. A sigil works best on a weakened wild beast.",
-			], undefined, undefined, undefined, prompt.speciesId);
+			], undefined, isElderhallCandidateBuild() ? { npcId: "rowan", sprite: "player" } : undefined, undefined, prompt.speciesId);
 			return;
 		}
 		if (renamed && saved) this.toastMsg(`${renamed.nickname} it is.`);
@@ -1587,10 +1587,16 @@ export class ReliquaryGame {
 		const strikeElement = ELEMENTS[sp.elements[0]!];
 		const favored = strikeElement?.strong.map((id) => ELEMENTS[id].name).join(" and ");
 		const matchup = favored ? ` ${strikeElement.name} is strong against ${favored}.` : "";
+		const threats = (Object.keys(ELEMENTS) as (keyof typeof ELEMENTS)[])
+			.filter((element) => typeMod(element, sp.elements) > 1)
+			.map((element) => ELEMENTS[element].name);
+		const danger = threats.length
+			? ` Incoming ${new Intl.ListFormat("en").format(threats)} ${threats.length === 1 ? "hits" : "hit"} harder.`
+			: "";
 		this.openDialog(sp.name, [
 			sp.description,
-			`Starting skills: ${skills}.${matchup}`,
-			"Make this your first pact? The other creatures will stay in the grove.",
+			`Starting skills: ${skills}.${matchup}${danger}`,
+			`Speak your first pact with ${sp.name}? They will leave the Grove with you. The other two will stay at their stones.`,
 		], () => this.bindStarter(id), null, `Bind ${sp.name}`, id);
 	}
 	private bindStarter(id: string): void {
@@ -2880,8 +2886,9 @@ export class ReliquaryGame {
 			statusBottom: this.battleStatusBottomRatio == null ? undefined : this.battleStatusBottomRatio * ch,
 		});
 		const geometryBase = computeBattleStageGeometry(cw, ch, layout, b.phase);
-		const bg = this.images[`bg_${b.bg}`] || this.images.bg_grass;
-		paintBattleBackdrop(ctx, cw, ch, layout, b.bg, bg ?? null, this.mapId === "briar_road" ? "roadside" : "scenic");
+		const road = this.mapId === "briar_road" ? this.images.bg_briar_road : undefined;
+		const bg = road || this.images[`bg_${b.bg}`] || this.images.bg_grass;
+		paintBattleBackdrop(ctx, cw, ch, layout, b.bg, bg ?? null, road ? "roadside" : "scenic");
 		const anchors = { player: layout.player, foe: { cx: layout.foe.cx, cy: layout.foe.cy } };
 		const motion = b.animCue
 			? sampleBattleAnim(b.animCue, b.animElapsedMs, geometryBase.animCorridor, anchors, {

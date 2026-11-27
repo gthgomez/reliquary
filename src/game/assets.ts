@@ -31,6 +31,7 @@ export function collectGameAssets(options: { elderhallCandidate?: boolean } = {}
   const out: AssetEntry[] = [
     { key: "title", url: "/game/bg/title.jpg", required: true },
     { key: "room_rowan_cottage", url: "/game/rooms/rowan-cottage.png", required: true },
+    { key: "bg_briar_road", url: "/game/bg/bg_briar_road.webp", required: true },
     { key: "woodland_terrain", url: "/game/tiles/woodland-atlas.png", required: false },
     { key: "chapter_route_terrain", url: "/game/tiles/chapter-route-atlas.png", required: false },
     { key: "manifest_game", url: "/game/manifest.json", required: false },

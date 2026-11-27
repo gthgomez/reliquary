@@ -146,7 +146,7 @@ try {
         truncated: el.scrollHeight > el.clientHeight + 1 || el.scrollWidth > el.clientWidth + 1,
       }));
       const inCottage = (await page.locator(".hud-place").innerText()).includes("Cottage");
-      assert.equal(objective.text, inCottage ? "Leave the cottage" : "Find the Binding Grove",
+      assert.equal(objective.text, inCottage ? "Leave the cottage" : "Go west to Binding Grove",
         "the persistent HUD gives a compact, accurate next step for the current map");
       assert.ok(
         objective.compact || (objective.clientHeight > 0 &&

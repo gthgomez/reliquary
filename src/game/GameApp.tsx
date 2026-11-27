@@ -20,6 +20,7 @@ import { registerReliquaryServiceWorker, setUpdateGuard } from "../pwa/register.
 import type { ReliquaryHandle } from "./types.ts";
 import { setMuted } from "./audio.ts";
 import { shouldShowInWorldAssetRecovery } from "./ui/asset-recovery.ts";
+import { isElderhallCandidateBuild } from "./build-flags.ts";
 import { acquireSaveSession } from "./save-session.ts";
 import { attachEconomyProbes } from "reliquary-economy-probes";
 import { attachBattleUiBrowserHooks } from "reliquary-battle-browser-probes";
@@ -205,7 +206,7 @@ export function GameApp() {
   const classicTouch = isClassicTouchEnabled();
   const showHudBar = playing && snap.mode !== "battle";
   const showExplorationTouch = !naming && shouldShowExplorationTouch(snap, classicTouch);
-  const showDialogTouch = !naming && shouldShowDialogTouch(snap, classicTouch);
+  const showDialogTouch = !naming && !isElderhallCandidateBuild() && shouldShowDialogTouch(snap, classicTouch);
   const showTouch = showExplorationTouch || showDialogTouch;
   const mapId = g.mapId;
   const cottage = mapId === "home" && snap.mode === "world";
