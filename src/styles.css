@@ -1600,6 +1600,32 @@
     --fit-cottage: 1;
     background: radial-gradient(ellipse at 50% 39%, #362b21, var(--color-ink) 82%);
   }
+  /* Service interiors use the same complete-room frame as the cottage. The
+     canvas owns its authored aspect ratio so the reception, stock wall, and
+     south threshold stay together instead of leaving a dark lower band. */
+  .game-root.is-interior .stage {
+    --fit-cottage: 1;
+    align-items: flex-start;
+    background: radial-gradient(ellipse at 50% 34%, #362b21, var(--color-ink) 84%);
+  }
+  .game-root.is-interior .viewport {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+    padding-inline: 0.4rem;
+  }
+  .game-root.is-interior .game-canvas {
+    flex: 0 1 auto;
+    align-self: center;
+    width: min(100%, var(--scene-width));
+    height: auto;
+    min-height: 0;
+    object-fit: contain;
+    margin-block: auto;
+    filter: drop-shadow(0 5px 10px #0a0807);
+  }
   .game-root.is-cottage .viewport {
     width: 100%;
     height: 100%;

@@ -171,7 +171,7 @@ async function captureDialogue(page, viewport, npcId) {
   await faceDirection(page, approach.key, approach.yaw);
   await page.keyboard.press("KeyZ");
   const vendor = npc.id === "shopkeep";
-  const dialog = page.getByRole("dialog", { name: vendor ? "Chandler" : npc.name, exact: true });
+  const dialog = page.getByRole("dialog", { name: vendor ? map.name : npc.name, exact: true });
   const img = dialog.locator(vendor ? ".shop-portrait" : ".dialog-portrait img");
   await img.waitFor({ timeout: 8_000 });
   const key = resolveNpcPortrait(npc.id, npc.sprite);

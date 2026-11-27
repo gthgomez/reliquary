@@ -43,6 +43,8 @@ export function makeElderhallCandidate(base: MapDef, geometry?: Record<string, V
       : npc.id === "villager" ? { ...npc, x: 19, y: 11 } : npc),
     decorations: [
       ...(base.decorations ?? []).filter((deco) => deco.sprite !== "elderhall-flowers"),
+      { sprite: "quiet-lantern-sign", x: 17.8, y: 3.05, w: 1, h: 2, layer: "canopy" },
+      { sprite: "calders-stock-awning", x: 16, y: 8.04, w: 3, h: 1, layer: "canopy" },
       // Sparse clusters leave the grass and path silhouettes visible. These
       // are ground dressing, not colliders, and sit outside interaction tiles.
       { sprite: "elderhall-flowers", x: 7.2, y: 7.3, w: 0.8, h: 0.4, layer: "ground" },

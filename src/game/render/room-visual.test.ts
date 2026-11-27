@@ -10,11 +10,9 @@ test("all service rooms share the authored interior contract", () => {
 test("interior pass paints a threshold on the supplied door without changing dimensions", () => {
   const calls: string[] = [];
   const ctx = {
-    fillStyle: "", strokeStyle: "", lineWidth: 1,
+    fillStyle: "",
     fillRect: (...args: number[]) => calls.push(`fill:${args.join(",")}`),
-    beginPath: () => undefined, moveTo: () => undefined, lineTo: () => undefined, stroke: () => undefined,
-    strokeRect: (...args: number[]) => calls.push(`stroke:${args.join(",")}`),
   } as unknown as CanvasRenderingContext2D;
   paintInteriorRoom(ctx, "inn_in", 13, 10, 6, 16);
-  assert.ok(calls.some((call) => call === "fill:99,139,10,5"), "door threshold is painted at x=6 on the south edge");
+  assert.ok(calls.includes("fill:96,144,16,14"), "door threshold is painted at x=6 on the south edge");
 });

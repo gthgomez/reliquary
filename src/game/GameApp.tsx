@@ -21,6 +21,7 @@ import type { ReliquaryHandle } from "./types.ts";
 import { setMuted } from "./audio.ts";
 import { shouldShowInWorldAssetRecovery } from "./ui/asset-recovery.ts";
 import { isElderhallCandidateBuild } from "./build-flags.ts";
+import { isInteriorRoom } from "./render/room-visual.ts";
 import { acquireSaveSession } from "./save-session.ts";
 import { attachEconomyProbes } from "reliquary-economy-probes";
 import { attachBattleUiBrowserHooks } from "reliquary-battle-browser-probes";
@@ -210,6 +211,7 @@ export function GameApp() {
   const showTouch = showExplorationTouch || showDialogTouch;
   const mapId = g.mapId;
   const cottage = mapId === "home" && snap.mode === "world";
+  const interior = (snap.mode === "world" || snap.mode === "shop") && isInteriorRoom(mapId);
   const dialogActive = !!snap.dialog;
   const menuButtonRef = useRef<HTMLButtonElement>(null);
   const objectiveReturnRef = useRef(false);
@@ -270,7 +272,7 @@ export function GameApp() {
 
   return (
     <div
-      className={`game-root${showTouch ? " has-touch" : ""}${showExplorationTouch ? " has-explore-touch" : ""}${showDialogTouch ? " has-dialog-touch" : ""}${classicTouch ? " classic-touch" : ""}${cottage ? " is-cottage" : ""}${uiModal ? " is-ui-modal" : ""}${snap.dialog ? " is-dialog" : ""}${snap.dialog?.portraitKey ? " is-dialog-portrait" : ""}${snap.mode === "battle" ? " is-battle" : ""}${battleSubmenuRootClass(snap.battle?.phase)}`}
+      className={`game-root${showTouch ? " has-touch" : ""}${showExplorationTouch ? " has-explore-touch" : ""}${showDialogTouch ? " has-dialog-touch" : ""}${classicTouch ? " classic-touch" : ""}${cottage ? " is-cottage" : ""}${interior ? " is-interior" : ""}${uiModal ? " is-ui-modal" : ""}${snap.dialog ? " is-dialog" : ""}${snap.dialog?.portraitKey ? " is-dialog-portrait" : ""}${snap.mode === "battle" ? " is-battle" : ""}${battleSubmenuRootClass(snap.battle?.phase)}`}
       data-world-map={snap.mode === "world" ? mapId : undefined}
     >
       <div className="stage" ref={stageRef}>

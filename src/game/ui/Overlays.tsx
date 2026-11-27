@@ -877,6 +877,9 @@ export function Meter({
 
 export function ShopPanel({ game, snap }: { game: ReliquaryGame; snap: Snapshot }) {
   const [portraitFailed, setPortraitFailed] = useState(false);
+  const elderhallVendor = game.mapId === "shop_in";
+  const namedVendor = elderhallVendor || game.mapId === "keep_shop";
+  const vendor = elderhallVendor ? "Calder" : "Chandler";
   const list =
     snap.shopMode === "buy"
       ? snap.shopStock
@@ -887,14 +890,14 @@ export function ShopPanel({ game, snap }: { game: ReliquaryGame; snap: Snapshot 
 
   return (
     <OverlayPanel
-      title="Chandler"
-      subtitle={`${snap.gold} crowns in purse`}
+      title={namedVendor ? snap.mapName : "Chandler"}
+      subtitle={`${namedVendor ? `${vendor} · ` : ""}${snap.gold} crowns in purse`}
       onClose={() => game.cancel()}
       closeLabel="Leave"
     >
       <div className="shop-tabs">
         {isElderhallCandidateBuild() && !portraitFailed ? (
-          <img className="shop-portrait" src={portraitSource("shopkeep", true)} alt=""
+          <img className="shop-portrait" src={portraitSource(elderhallVendor ? "shopkeep" : "chandler", true)} alt=""
             width={40} height={52} onError={() => setPortraitFailed(true)} />
         ) : null}
         <button

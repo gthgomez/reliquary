@@ -49,6 +49,10 @@ export const elderhallBase: MapDef = {
     prop("well", "well", 8, 10),
     prop("sign_n", "sign", 13, 1, "sign_road"),
     prop("sign_w", "sign", 2, 8, "sign_grove"),
+    // Service signs sit beside each painted frontage and identify the stop
+    // before the player commits to the auto-enter door.
+    { ...prop("inn_sign", "sign", 12, 4, "sign_inn"), solid: false },
+    { ...prop("shop_sign", "sign", 12, 8, "sign_shop"), solid: false },
     prop("barrel1", "barrel", 19, 9),
     prop("crate1", "crate", 20, 9),
     prop("shrub1", "shrub", 9, 4),
@@ -188,7 +192,7 @@ const inn_in = interior("inn_in", "The Quiet Lantern", 13, 10, 6, "elderhall", 1
 const shop_in = interior("shop_in", "Calders' Sundries", 11, 9, 5, "elderhall", 16, 9, {
   objects: [
     { id: "counter", sprite: "counter", x: 3, y: 3, w: 1, h: 1, foot: 1, solid: true },
-    prop("cellar_hatch", "crate", 8, 6, "enter_cellar"),
+    prop("cellar_hatch", "cellar-hatch", 8, 6, "enter_cellar"),
     prop("b1", "barrel", 8, 2),
     prop("c1", "crate", 8, 3),
     prop("p1", "pot", 2, 6),
