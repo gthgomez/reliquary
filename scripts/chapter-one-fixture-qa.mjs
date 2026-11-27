@@ -184,11 +184,13 @@ try {
       assert(/Below a dozen, my three run lighter/.test(all), `advisory missing: ${all}`);
       assert(/at a dozen they meet you at full strength/.test(all), `threshold rule missing: ${all}`);
       assert(/Iron\. Chapel\. Drake/.test(all), all);
-      assert(/\(A begin · B later\)/.test(all), all);
+      assert(/inside Warden's Hall\./.test(lines.at(-1)), `trial location missing: ${all}`);
+      await page.getByRole("button", { name: "Begin the trial", exact: true }).waitFor();
       await page.screenshot({ path: join(output, "cael-advisory.png") });
       // B declines on the last page: no battle, no flag.
       await page.keyboard.press("Shift");
-      await page.waitForTimeout(300);
+      await page.locator(".dialog").waitFor({ state: "detached" });
+      assert(!await page.locator(".battle-controls").count(), "declining must not start combat");
       const saved = await page.evaluate(() => JSON.parse(localStorage.getItem("reliquary.save.v3")));
       assert((saved.flags.trial ?? false) === false, "declined trial must not record");
       report.scenarios.push("cael-advisory: telegraph + weakness advice + decline");
