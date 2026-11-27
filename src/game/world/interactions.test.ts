@@ -60,8 +60,14 @@ test("the Warden trial team is real content and honors the advisory promise", ()
 });
 
 test("Cael's advisory changes with party strength", () => {
-  const weak = wardenPages({ flags: { starter: true }, strongestLevel: 7 });
-  const ready = wardenPages({ flags: { starter: true }, strongestLevel: 14 });
+  const weak = wardenPages({ flags: { starter: true }, strongestLevel: 7 }, "square");
+  const ready = wardenPages({ flags: { starter: true }, strongestLevel: 14 }, "square");
   assert.ok(weak.some((line) => line.includes("weathered 7 seasons")), weak.join(" | "));
   assert.ok(ready.every((line) => !line.includes("weathered")), ready.join(" | "));
+});
+
+test("Cael establishes the trial location from either approach", () => {
+  const ctx = { flags: { starter: true }, strongestLevel: 12 };
+  assert.match(wardenPages(ctx, "square").at(-1) ?? "", /inside Warden's Hall/);
+  assert.match(wardenPages(ctx, "hall").at(-1) ?? "", /here in the hall/);
 });

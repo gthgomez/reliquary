@@ -312,7 +312,10 @@ export function GameApp() {
                 }}
               />
             ) : null}
-            <AppStatus showReadyToast={snap.mode === "world" && !uiModal && !dialogActive && !naming} />
+            <AppStatus
+              showReadyToast={snap.mode === "world" && !uiModal && !dialogActive && !naming}
+              showDownloadProgress={snap.mode !== "title"}
+            />
             {shouldShowInWorldAssetRecovery(snap, uiModal) ? (
               <div className="asset-recovery-control" role="status">
                 <span>Some required game art could not be loaded. Your journey is safe.</span>

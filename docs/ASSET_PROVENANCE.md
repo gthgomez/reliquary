@@ -40,6 +40,20 @@ runtime, where legacy tile artwork remains the fallback.
 - Source SHA-256 `8b370b0cc6415d506423dd465e3dc602851c24a4b1ab7229711d05c53029a8e6`
 - Runtime PNG SHA-256 `919c9c9c70bbac2e826a4f312f0cb8365ee9fb834f671937f5c538e8dc61e8aa`
 
+## Thornkeep, Ashenbarrow and Mirefen terrain
+
+`public/game/tiles/chapter-route-atlas.png` is original project artwork from
+`scripts/draw-chapter-route-terrain.py` and is covered by the repository license.
+The fixed-seed Pillow recipe defines its pigments and forms without source images.
+The 128 × 320 RGBA atlas has four 32 × 32 variants per row, with matched edges
+within each material. Thornkeep uses worn lawns, earth and dressed cobbles.
+Ashenbarrow uses low-relief slate and dark basalt faces. Mirefen uses damp moss,
+rooted reeds, water, clay and a plank bridge. The renderer selects these materials
+from existing map symbols. The atlas is precached and the legacy tiles remain
+available if the optional image fails to load.
+
+- Runtime PNG SHA-256 `678a217f3b4a70b2c4c480e9560a95c5b54d1db1b5aae4038d94ebfe71187ab6`
+
 ## Cinematic dialogue synthesis (issue #31, November 2026)
 
 Seven standalone SVGs in `public/game/portraits/` share the game's moss, copper,

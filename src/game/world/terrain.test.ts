@@ -100,3 +100,16 @@ test("woodland terrain marks only active encounter ground and removes square edg
   assert.deepEqual(original, [[32, 0], [32, 32], [64, 32]]);
   assert.equal(overlays.includes("edge"), false);
 });
+
+test("Mirefen's clipped trail joins both ends of the plank bridge", () => {
+  const pathMasks = new Map<number, number>();
+  const overlays: string[] = [];
+  bakeMapTerrain({ map: MAPS.mirefen!, tileSize: 32, chapterRouteTerrain: true,
+    drawTile: (name, x, y, _variant, mask) => {
+      if (name === "dirt" && y === 7 * 32 && mask !== undefined) pathMasks.set(x / 32, mask);
+    },
+    drawOverlay: (style) => overlays.push(style), drawDecoration: () => {} });
+  assert.ok((pathMasks.get(7) ?? 0) & 2, "west trail connects east into the bridge");
+  assert.ok((pathMasks.get(12) ?? 0) & 8, "east trail connects west into the bridge");
+  assert.equal(overlays.includes("edge"), false, "hand-painted shore has no dark square overlay");
+});

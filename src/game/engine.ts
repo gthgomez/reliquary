@@ -74,7 +74,7 @@ import {
 } from "./render/world-camera-safe.ts";
 import { clipSoftPath, clipStoneTransition, drawAtlasTile, paintCottageFloor, paintCottageRug, paintOrganicStoneRoadBorder, paintStoneRoadBorder, paintTileAccent, tileAtlasQuadrant } from "./render/tile-surface.ts";
 import { paintDirtPathJunctions } from "./render/road-junctions.ts";
-import { drawWoodlandMaterial, drawWoodlandUndergrowth, drawWoodlandVerge, woodlandPalette } from "./render/woodland-terrain.ts";
+import { chapterRouteRows, drawChapterRouteMaterial, drawWoodlandMaterial, drawWoodlandUndergrowth, drawWoodlandVerge, woodlandPalette } from "./render/terrain-atlas.ts";
 import { snapWorldCameraForPlayer, type WorldCameraSnapState } from "./render/world-transform.ts";
 import { compareWorldDepth, paintActorBehindPost, paintPropWithLocalFade, paintWorldActorShadow, paintWorldPropShadow, PLAYER_HEIGHT_TILES, playerHeadCanvasYForCamera, resolvePlayerDrawFootprint, resolvePlayerScreenFootprint, resolveWorldPropLayout, shouldFadePropForPlayer, worldPropCullBounds, worldPropOverhang } from "./render/world-actors.ts";
 import { elderhallCandidateObject, elderhallGateRenderRegions, elderhallTerrainAtlas, paintCandidateGateFallback, paintCandidateBenchFallback, paintCandidateTerrainJunctions } from "./render/elderhall-visual.ts";
@@ -1556,7 +1556,8 @@ export class ReliquaryGame {
 					return;
 				}
 				const strongest = this.party.reduce((max, beast) => Math.max(max, beast.level), 0);
-				this.openDialog(name, wardenPages({ flags: this.flags, strongestLevel: strongest }), () => this.startWarden(), npc, "Begin the trial");
+				this.openDialog(name, wardenPages({ flags: this.flags, strongestLevel: strongest }, id === "cael" ? "square" : "hall"),
+					() => this.startWarden(), npc, "Begin the trial");
 			}
 			return;
 		}
@@ -2600,6 +2601,11 @@ export class ReliquaryGame {
 			const palette = woodlandPalette(m.id);
 			const woodlandAtlas = this.images.woodland_terrain;
 			const woodland = palette && woodlandAtlas ? { palette, atlas: woodlandAtlas } : null;
+			const routeAtlas = this.images.chapter_route_terrain;
+			const routeRows = chapterRouteRows(m.id);
+			const drawRouteMaterial = routeAtlas && routeRows
+				? (name: string, x: number, y: number) => drawChapterRouteMaterial(ground, routeAtlas, routeRows, m.id, name, x, y, TILE)
+				: undefined;
 			const candidateDirtAtlas = this.images["tile_elderhall-dirt-atlas"];
 			const candidateGrassAtlas = this.images["tile_elderhall-grass-atlas"];
 			const groveDirt = m.id === "grove" ? this.images.tile_dirt : undefined;
@@ -2625,6 +2631,7 @@ export class ReliquaryGame {
 				map: m,
 				tileSize: TILE,
 				candidateTerrain: elderhallCandidate,
+				chapterRouteTerrain: drawRouteMaterial !== undefined,
 				woodlandTerrain: woodland ? { drawEncounter: (x, y) => {
 					drawWoodlandUndergrowth(ground, woodland.atlas, woodland.palette, x, y, TILE);
 				} } : undefined,
@@ -2639,8 +2646,10 @@ export class ReliquaryGame {
 						ground.save();
 						clipSoftPath(ground, dx, dy, TILE, pathMask, elderhallCandidate && m.id === "grove");
 					}
-					const woodlandMaterial = woodland && drawWoodlandMaterial(ground, woodland.atlas, woodland.palette, name, dx, dy, TILE);
-					if (!woodlandMaterial) {
+					const routeName = m.id === "mirefen" && m.ground[ty]?.[tx] === "=" ? "bridge" : name;
+					const authoredMaterial = drawRouteMaterial?.(routeName, dx, dy) ||
+						(woodland && drawWoodlandMaterial(ground, woodland.atlas, woodland.palette, name, dx, dy, TILE));
+					if (!authoredMaterial) {
 						if (atlas && (candidateAtlas || variant > 0)) {
 							drawAtlasTile(ground, atlas, dx, dy, TILE, tileAtlasQuadrant(variant, tx, ty));
 						} else if (base) ground.drawImage(base, dx, dy, TILE, TILE);
@@ -2653,18 +2662,20 @@ export class ReliquaryGame {
 						ground.fillStyle = name === "grass" ? "rgba(24,48,32,.22)" : name === "dirt" ? "rgba(63,45,31,.11)" : "rgba(33,42,34,.06)";
 						ground.fillRect(dx, dy, TILE, TILE);
 					}
-					if (!woodlandMaterial && variant > 0 && !atlas) {
+					if (!authoredMaterial && variant > 0 && !atlas) {
 						ground.fillStyle = `rgba(20,17,14,${0.035 * variant})`;
 						ground.fillRect(dx, dy, TILE, TILE);
 					}
 					const candidateStoneKey = stoneMask ? elderhallTerrainAtlas(m.id, "cobble", elderhallCandidate) : null;
 					const candidateStone = candidateStoneKey ? this.images[candidateStoneKey] : undefined;
 					const stone = stoneMask ? this.images.tile_cobble : undefined;
-					if (stoneMask && (candidateStone || stone)) {
+					if (stoneMask && (drawRouteMaterial || candidateStone || stone)) {
 						ground.save();
 						clipStoneTransition(ground, dx, dy, TILE, stoneMask);
-						if (candidateStone) drawAtlasTile(ground, candidateStone, dx, dy, TILE, tileAtlasQuadrant(variant, tx, ty));
-						else if (stone) ground.drawImage(stone, dx, dy, TILE, TILE);
+						if (!drawRouteMaterial?.("cobble", dx, dy)) {
+							if (candidateStone) drawAtlasTile(ground, candidateStone, dx, dy, TILE, tileAtlasQuadrant(variant, tx, ty));
+							else if (stone) ground.drawImage(stone, dx, dy, TILE, TILE);
+						}
 						ground.restore();
 					}
 					if (pathMask !== undefined) {

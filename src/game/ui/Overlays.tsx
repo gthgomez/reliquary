@@ -17,7 +17,7 @@ import { ROOT_MENU, STARTER_PACT_REWARD } from "../engine";
 import type { Beast, DialogView, NamePromptView, Snapshot } from "../types";
 import { OverlayPanel } from "./OverlayPanel";
 import { DialogScene } from "./DialogScene";
-import { OfflineMenuStatus } from "./AppStatus";
+import { OfflineMenuStatus, TitleOfflineProgress } from "./AppStatus";
 import { useOverlayFocusTrap } from "./useOverlayFocusTrap.ts";
 import {
   leadActionHint,
@@ -176,6 +176,7 @@ export function TitleScreen({ game, snap }: { game: ReliquaryGame; snap: Snapsho
             )}
           </div>
         )}
+        {!confirmingReplace ? <TitleOfflineProgress worldReady={snap.worldAssetsReady} /> : null}
         {(game.hasNewerSave || game.hasArchivedSave) && !confirmingReplace ? (
           <div className="title-save-recovery">
             {game.hasNewerSave ? <>
