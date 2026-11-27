@@ -187,8 +187,8 @@ try {
       assert(/inside Warden's Hall\./.test(lines.at(-1)), `trial location missing: ${all}`);
       await page.getByRole("button", { name: "Begin the trial", exact: true }).waitFor();
       await page.screenshot({ path: join(output, "cael-advisory.png") });
-      // B declines on the last page: no battle, no flag.
-      await page.keyboard.press("Shift");
+      // The dialogue cancel input declines without starting combat or setting a flag.
+      await page.keyboard.press("KeyX");
       await page.locator(".dialog").waitFor({ state: "detached" });
       assert(!await page.locator(".battle-controls").count(), "declining must not start combat");
       const saved = await page.evaluate(() => JSON.parse(localStorage.getItem("reliquary.save.v3")));
