@@ -1236,6 +1236,14 @@
   }
 }
 
+/* A minimum Details target and six command targets must fit above the log
+   on short phones, including when the root text size is doubled. */
+@media (orientation: portrait) and (max-height: 620px) {
+  .battle-controls {
+    top: 53%;
+  }
+}
+
 /* Portrait tablets share the same dock boundary/anchors as phones; scale the
    card contents back up so they do not look like a phone stretched wide. */
 @media (orientation: portrait) and (min-width: 561px) and (max-width: 1100px) {

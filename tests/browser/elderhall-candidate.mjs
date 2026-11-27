@@ -170,7 +170,7 @@ async function captureDialogue(page, viewport, npcId) {
     { mapId: map.id, x: npc.x + approach.dx, y: npc.y + approach.dy });
   await faceDirection(page, approach.key, approach.yaw);
   await page.keyboard.press("KeyZ");
-  const vendor = npc.id === "shopkeep";
+  const vendor = npc.talk === "shopkeep";
   const dialog = page.getByRole("dialog", { name: vendor ? map.name : npc.name, exact: true });
   const img = dialog.locator(vendor ? ".shop-portrait" : ".dialog-portrait img");
   await img.waitFor({ timeout: 8_000 });
@@ -180,7 +180,7 @@ async function captureDialogue(page, viewport, npcId) {
     await image.decode();
     return { width: image.naturalWidth, height: image.naturalHeight, scale: getComputedStyle(image).imageRendering };
   });
-  assert.deepEqual(decoded, { width: 80, height: 104, scale: "pixelated" });
+  assert.deepEqual(decoded, { width: 240, height: 312, scale: "pixelated" });
   const action = vendor ? dialog.getByRole("button", { name: "Leave", exact: true }) : dialog.locator(".dialog-next");
   await action.waitFor();
   const geometry = await dialog.evaluate((node) => {
