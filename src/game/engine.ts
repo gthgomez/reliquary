@@ -639,17 +639,24 @@ export class ReliquaryGame {
 		cssH = Math.max(1, Math.floor(cssH));
 		const canvas = this.canvas;
 		if (!canvas) return;
-		if (this.viewW === vw && this.viewH === vh && this.cssW === cssW && this.cssH === cssH && canvas.width === vw * TILE && canvas.height === vh * TILE) return;
+		const backingWidth = vw * TILE;
+		const backingHeight = vh * TILE;
+		const backingChanged = canvas.width !== backingWidth || canvas.height !== backingHeight;
+		if (!backingChanged && this.cssW === cssW && this.cssH === cssH) return;
 		this.viewW = vw;
 		this.viewH = vh;
 		this.cssW = cssW;
 		this.cssH = cssH;
 		this.resetWorldCameraRelief();
-		canvas.width = vw * TILE;
-		canvas.height = vh * TILE;
 		if (this.mode === "battle") {
 			this.battleStableReserve = null;
 			this.battleLayoutCanvasKey = null;
+		}
+		if (backingChanged) {
+			canvas.width = backingWidth;
+			canvas.height = backingHeight;
+			// Resizing clears the bitmap. Paint before the browser presents the new stage.
+			this.draw(0);
 		}
 		this.emit();
 	}

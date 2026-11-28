@@ -288,8 +288,6 @@ export function GameApp() {
           <canvas
             ref={canvasRef}
             className={`game-canvas ${snap.mode === "title" || snap.mode === "boot" || snap.mode === "victory" ? "is-hidden" : ""}`}
-            width={snap.viewW * TILE}
-            height={snap.viewH * TILE}
           />
           {uiModal ? (
             <div

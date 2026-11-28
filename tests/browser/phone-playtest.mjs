@@ -48,6 +48,23 @@ async function exercise(width, height, textScale = 1) {
     page.setDefaultTimeout(10_000);
     const failures = [];
     const shots = [];
+    const verifyTransitionFrame = !baseline && buildsCandidate && width === 390 && height === 844;
+    if (verifyTransitionFrame) {
+      await page.addInitScript(() => {
+        window.reliquaryCanvasTransitions = [];
+        new MutationObserver((records) => {
+          const canvas = records.find(({ target }) => target.matches(".game-canvas"))?.target;
+          const map = canvas?.closest(".game-root")?.dataset.worldMap;
+          if (!map) return;
+          const { width, height } = canvas;
+          const context = canvas.getContext("2d");
+          const samplePoints = [[0, 0], [width - 1, 0], [0, height - 1],
+            [width - 1, height - 1], [Math.floor(width / 2), Math.floor(height / 2)]];
+          const minAlpha = Math.min(...samplePoints.map(([x, y]) => context.getImageData(x, y, 1, 1).data[3]));
+          window.reliquaryCanvasTransitions.push({ map, width, height, minAlpha });
+        }).observe(document, { subtree: true, attributes: true, attributeFilter: ["width", "height"] });
+      });
+    }
     page.on("pageerror", (error) => failures.push(error.message));
     page.on("console", (message) => {
       if (message.type() === "error") failures.push(message.text());
@@ -233,7 +250,13 @@ async function exercise(width, height, textScale = 1) {
       }
     }
     assert.deepEqual(failures, []);
-    records.push({ viewport: [width, height], textScale, browser: context.browser().version(), introFrames, shots, failures });
+    const canvasTransitions = verifyTransitionFrame ? await page.evaluate(() => window.reliquaryCanvasTransitions) : [];
+    if (verifyTransitionFrame) {
+      assert.ok(canvasTransitions.some(({ map }) => map === "elderhall"), "observed a resized Elderhall canvas");
+      assert.ok(canvasTransitions.every(({ minAlpha }) => minAlpha === 255),
+        `the resized canvas is painted before the browser can present it: ${JSON.stringify(canvasTransitions)}`);
+    }
+    records.push({ viewport: [width, height], textScale, browser: context.browser().version(), introFrames, shots, failures, canvasTransitions });
     console.log(`[phone-playtest] ${label} passed`);
   }, {
     context: { viewport: { width, height }, isMobile: phone, hasTouch: phone, reducedMotion: "reduce", serviceWorkers: "allow" },
