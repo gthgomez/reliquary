@@ -134,10 +134,14 @@ jobs:
           git fetch --depth=1 origin a6b576b2773bfbae4d1829dc0180cb4756b86340
           git worktree add --detach "$legacy" FETCH_HEAD
           npm ci --prefix "$legacy"
-          (cd "$legacy" && VERCEL_ENV=production npm run build:web)
+          (cd "$legacy" && env -u RELIQUARY_ELDERHALL_CANDIDATE VERCEL_ENV=production npm run build:web)
+          rollback_src="$RUNNER_TEMP/reliquary-r2-rollback-src"
+          git fetch --depth=1 origin d73818adf3519d4cc987dabceda1fbf3ef9b186c
+          git worktree add --detach "$rollback_src" FETCH_HEAD
+          npm ci --prefix "$rollback_src"
+          (cd "$rollback_src" && env -u RELIQUARY_ELDERHALL_CANDIDATE VERCEL_ENV=production npm run build:web)
           rollback="$RUNNER_TEMP/reliquary-r2-rollback"
-          VERCEL_ENV=production npm run build:web
-          cp -a .vercel/output/static "$rollback"
+          cp -a "$rollback_src/.vercel/output/static" "$rollback"
           npm run build:web
           RELIQUARY_LEGACY_STATIC_ROOT="$legacy/.vercel/output/static" \
             RELIQUARY_ROLLBACK_STATIC_ROOT="$rollback" node tests/browser/elderhall-release-transition.mjs
