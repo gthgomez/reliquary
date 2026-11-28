@@ -5,6 +5,8 @@
  * and the Details sheet never changes combat phase.
  */
 import assert from "node:assert/strict";
+import { mkdir } from "node:fs/promises";
+import { join } from "node:path";
 import { startStaticServer, waitForGameBoot, withBrowser } from "./helpers.mjs";
 
 const SAVE = {
@@ -60,6 +62,26 @@ async function bootBattle(page) {
 const phase = (page) => page.locator(".battle-controls").getAttribute("data-battle-phase");
 const title = (page) => page.locator(".battle-details-title").innerText();
 const selected = (page) => page.locator(".battle-action.is-selected").getAttribute("data-command");
+const command = (page, id) => page.locator(`[data-command="${id}"]`);
+
+async function checkVerticalNavigation(page, destination, screenshotName) {
+  await command(page, "Strike").focus();
+  const strike = await command(page, "Strike").boundingBox();
+  const below = await command(page, destination).boundingBox();
+  assert.ok(strike && below, "expected both command buttons to render");
+  assert.ok(Math.abs(strike.x - below.x) <= 1 && below.y > strike.y, `${destination} must appear below Strike`);
+
+  await page.keyboard.press("ArrowDown");
+  const evidence = process.env.RELIQUARY_BROWSER_ARTIFACTS;
+  if (evidence) {
+    await mkdir(evidence, { recursive: true });
+    await page.screenshot({ path: join(evidence, `${screenshotName}.png`) });
+  }
+  assert.equal(await selected(page), destination, `Down from Strike must select ${destination}`);
+  assert.equal(await command(page, destination).evaluate((el) => el === document.activeElement), true);
+  assert.equal(await title(page), destination);
+  assert.equal(await phase(page), "command", "navigation previews without executing an action");
+}
 
 try {
   await withBrowser(async (page) => {
@@ -145,6 +167,29 @@ try {
       return p === "command" || p === "win" || p === "lose";
     }, null, { timeout: 15_000 });
     console.log("[battle-input-parity] ok keyboard grid, preview, disabled slots, details");
+  });
+
+  await withBrowser(async (page) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await bootBattle(page);
+    await checkVerticalNavigation(page, "Item", "battle-command-portrait");
+    await page.keyboard.press("ArrowRight");
+    assert.equal(await selected(page), "Bind", "Right from Item must select Bind in portrait");
+
+    // The same live encounter responds to rotation without a reload.
+    await page.setViewportSize({ width: 844, height: 390 });
+    assert.equal(await selected(page), "Bind", "rotation preserves the selected command identity");
+    await checkVerticalNavigation(page, "Bind", "battle-command-landscape");
+
+    await page.setViewportSize({ width: 320, height: 568 });
+    await page.evaluate(() => window.__reliquary.setBattleRestrictions({ canBind: false, canFlee: false }));
+    await checkVerticalNavigation(page, "Item", "battle-command-narrow-portrait");
+    await page.keyboard.press("ArrowRight");
+    assert.equal(await selected(page), "Bind", "portrait navigation includes unavailable commands");
+    assert.equal(await command(page, "Bind").getAttribute("aria-disabled"), "true");
+    await page.keyboard.press("z");
+    assert.equal(await phase(page), "command", "unavailable Bind remains inert in portrait");
+    console.log("[battle-input-parity] ok portrait and landscape grid, rotation, focus and disabled commands");
   });
 
   // Compact keyboard list navigation must scroll the focused row into view.
