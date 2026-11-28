@@ -15,6 +15,54 @@ test("the committed candidate pack passes hash and identity validation", () => {
   assert.ok(manifest.assets.length >= 33, "the existing catalog is present and may grow");
 });
 
+test("registered original landmarks require their recorded pack version and truthful art role", () => {
+  const dir = mkdtempSync(join(tmpdir(), "elderhall-original-role-"));
+  try {
+    cpSync(source, dir, { recursive: true });
+    const path = join(dir, "manifest.json");
+    const original = JSON.parse(readFileSync(path, "utf8"));
+    const cases = [
+      [/reference/, (manifest) => { manifest.version = "0.4.1"; }],
+      [/cottage-reference/, (_, landmark) => { landmark.placeholder = true; }],
+      [/cottage-reference/, (_, landmark) => { landmark.provenance.review_status = "temporary stand-in"; }],
+      [/cottage-reference/, (_, landmark) => {
+        Object.assign(landmark.provenance, {
+          source_type: "reference_conditioned",
+          source_sha256: "1".repeat(64),
+          reference_sha256: "2".repeat(64),
+          reference_attestation: "Synthetic attestation for a misclassified original.",
+        });
+      }],
+    ];
+    for (const [message, mutate] of cases) {
+      const manifest = structuredClone(original);
+      mutate(manifest, manifest.assets.find((asset) => asset.id === "elderhall.cottage-reference"));
+      writeFileSync(path, JSON.stringify(manifest));
+      assert.throws(() => validateElderhallPack(dir), message);
+    }
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+test("malformed runtime and provenance metadata is rejected before packaging", () => {
+  const dir = mkdtempSync(join(tmpdir(), "elderhall-manifest-fields-"));
+  try {
+    cpSync(source, dir, { recursive: true });
+    const path = join(dir, "manifest.json");
+    const original = JSON.parse(readFileSync(path, "utf8"));
+    const cases = [
+      [/provenance repair/i, (_, landmark) => { landmark.provenance.repair = "paint fix"; }],
+      [/depth baseline/i, (_, landmark) => { landmark.depth_baseline = landmark.dimensions[1] + 1; }],
+      [/art_direction\.generator/i, (manifest) => { manifest.art_direction.generator = "image generator"; }],
+    ];
+    for (const [message, mutate] of cases) {
+      const manifest = structuredClone(original);
+      mutate(manifest, manifest.assets.find((asset) => asset.id === "elderhall.gate-reference"));
+      writeFileSync(path, JSON.stringify(manifest));
+      assert.throws(() => validateElderhallPack(dir), message);
+    }
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
 test("rejects missing or malformed provenance on selected and unselected assets before copying", () => {
   const dir = mkdtempSync(join(tmpdir(), "elderhall-lineage-"));
   try {

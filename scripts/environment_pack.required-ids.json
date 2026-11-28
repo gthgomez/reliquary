@@ -1,0 +1,148 @@
+{
+  "schema_version": "ages.environment-pack/1",
+  "contract_revision": 3,
+  "description": "Shared AGES and Reliquary contract for ages.environment-pack/1. A required landmark slot accepts explicit stand-ins where allowed, reference-conditioned art with reference and source lineage, or original art registered by pack version, slot and digest. The original Elderhall 0.4.0 entries come from Reliquary commit 2fd17305f83d23e2a0b9d14f002ab99d49d86139; known stand-in digests come from AGES tests/fixtures/environment-pack. Structural validation does not grant licensing, rights or release approval.",
+  "asset_id_pattern": "^elderhall\\.[a-z0-9-]+$",
+  "allowed_fields": {
+    "manifest": [
+      "art_direction",
+      "assets",
+      "id",
+      "schema_version",
+      "tile_size",
+      "version"
+    ],
+    "art_direction": [
+      "generator",
+      "lighting",
+      "palette",
+      "perspective",
+      "reference_use"
+    ],
+    "generator": [
+      "name",
+      "pillow",
+      "python",
+      "version",
+      "zlib"
+    ],
+    "asset": [
+      "anchor",
+      "atlas",
+      "collision",
+      "depth_baseline",
+      "dimensions",
+      "file",
+      "id",
+      "interaction_anchor",
+      "kind",
+      "logical_footprint",
+      "placeholder",
+      "provenance",
+      "render_size_tiles",
+      "sha256",
+      "shadow"
+    ],
+    "provenance": [
+      "authorization",
+      "license",
+      "license_evidence",
+      "method",
+      "reference_attestation",
+      "reference_sha256",
+      "repair",
+      "review_status",
+      "rights_holder",
+      "source_sha256",
+      "source_type"
+    ],
+    "repair": [
+      "alpha_below",
+      "bottom_margin",
+      "canvas",
+      "crop_bbox",
+      "opaque_at_or_above",
+      "resampling"
+    ]
+  },
+  "profiles": {
+    "reliquary.elderhall": {
+      "tile_size": 32,
+      "required": [
+        "grass-atlas",
+        "dirt-atlas",
+        "stone-atlas",
+        "well-reference",
+        "cottage-reference",
+        "guild-reference",
+        "shop-reference",
+        "tree-reference",
+        "gate-reference",
+        "bench",
+        "flowers"
+      ],
+      "optional": [
+        "grass-0",
+        "grass-1",
+        "grass-2",
+        "grass-3",
+        "dirt-0",
+        "dirt-1",
+        "dirt-2",
+        "dirt-3",
+        "stone-0",
+        "stone-1",
+        "stone-2",
+        "stone-3",
+        "barrel",
+        "fence",
+        "guild",
+        "inn",
+        "lantern",
+        "shop",
+        "sign",
+        "tree",
+        "well",
+        "cottage",
+        "gate"
+      ],
+      "placeholder_ok": [
+        "well-reference",
+        "cottage-reference",
+        "guild-reference",
+        "shop-reference",
+        "tree-reference",
+        "gate-reference"
+      ],
+      "original_landmarks": {
+        "0.4.0": {
+          "well-reference": "6be363f78a32e70b41ad8c9832cdc8cddf9233cc5a7d3f695621efa385dc5f6e",
+          "cottage-reference": "1e4cc56b6595a864a43ce354e59fc83c5ea1c7b4c1cf8c2d4c47a933059ea0dd",
+          "guild-reference": "c881df7c907aaf6c528080b690f05871317b8dce882b6faa3d0c93c29a481957",
+          "shop-reference": "33ce5f36a2a02442fd1fdf7ec7216ac53059a58dbb78d18984578315d35144ae",
+          "tree-reference": "1ea03ac18625b4ea002ed453bc51cb5957a775094b5a8bb8b5afebf1def96e57",
+          "gate-reference": "5a9b0e1431c6c22f1bcb3bace0147efd9e1fcb3a8aad4bbf8366b4e07f2582f7"
+        }
+      },
+      "legacy_art_reference_sha256": {
+        "0.2.0": "04ac8efeb1b52dd63f026c222dceb4427ab2514f54741561813ddbfb90f967c5"
+      },
+      "known_stand_in_sha256": [
+        "f56b9045621644fe1589b9eec13bc930779f00e37e4e92d92a19c9e644bc160f",
+        "3a6d4f446a3a3c6b5f635ae28bccf9f09b02f47fa067d5d4492ddf7042d0699c",
+        "d03912c25527f07d08a7427d1553e7e403e9120a423416018b20680584e4ab6b",
+        "f514ec95da4ed0951bfb7bd81c28b0e1740d07cf39f7e53eb905301e1c2411eb",
+        "9f7f63174fec9309d091be7b13b1fd105802e02bc1f678b39af2e7721bce6a2a",
+        "bfe00830ef7717fd4f9c2b1bf557ce21d0b463a317009d8bafdf65e97159395c"
+      ],
+      "known_stand_in_rgba8_sha256": [
+        "f49f9dba11e3a114516558b91fd75ed9e62ea9925f4f36350c75814b48a9e3dc",
+        "d4756964060a33f4f32c4b38721697bd04be301dea818bd8f879ee6ce3931ab1",
+        "36884617b6fac46203535799b5015779c6ba7e7fc04fa92cf37f8e78fbf68f95",
+        "6798ee3bb85c5c0c7e3de7cc4412ba020f58c28807124ff9bcfea172f280b703",
+        "0b160bcbadb0745cabd221108eca6f3b38bcf2c31f765f372558f21f88f4d645",
+        "8f2119cdc6eee86cde53ed2aa9cc2e14cead5bbd3ea4d2ae33110e1b5e4b57fd"
+      ]
+    }
+  }
+}
