@@ -7,7 +7,7 @@
  * the sound, and writes the battle log. Log strings are produced HERE so the
  * battle record is part of the tested resolution, not scattered call sites.
  */
-import { currentStats, SPECIES } from "../content.ts";
+import { currentStats, SKILLS, SPECIES, typeMod } from "../content.ts";
 import {
   applyCombatContextModifiers,
   healAmount,
@@ -119,4 +119,55 @@ export function applySkillEvents(atk: Beast, def: Beast, skill: Skill, events: S
   }
   void skill;
   return log;
+}
+
+export function basicStrike(b: Beast): Skill {
+  return {
+    id: "strike",
+    name: "Strike",
+    element: SPECIES[b.speciesId]!.elements[0]!,
+    kind: "strike",
+    power: 45,
+    accuracy: 100,
+    mp: 0,
+    desc: "A plain blow.",
+  };
+}
+
+/**
+ * Shared tactical skill selector used by both live combat (`engine.foeTurn`)
+ * and headless balance evaluation so simulation and gameplay never diverge.
+ */
+export function chooseFoeSkill(
+  foe: Beast,
+  target: Beast,
+  opts?: { allowHeal?: boolean; allowStatus?: boolean; healThreshold?: number },
+): Skill {
+  const allowHeal = opts?.allowHeal ?? true;
+  const allowStatus = opts?.allowStatus ?? true;
+  const healThreshold = opts?.healThreshold ?? 0.36;
+  const skills = foe.skills.map((id) => SKILLS[id]).filter((s): s is Skill => Boolean(s));
+  const foeStats = currentStats(foe);
+  if (allowHeal && foe.hp < foeStats.hp * healThreshold) {
+    const heal = skills.find((s) => s.kind === "heal" && foe.mp >= s.mp);
+    if (heal) return heal;
+  }
+  const atkElements = SPECIES[foe.speciesId]?.elements ?? [];
+  const defElements = SPECIES[target.speciesId]?.elements ?? [];
+  let best = basicStrike(foe);
+  const baseStab = atkElements.includes(best.element) ? 1.25 : 1;
+  let bestScore = best.power * baseStab * typeMod(best.element, defElements);
+  for (const s of skills) {
+    if (s.mp > foe.mp || s.kind === "heal") continue;
+    if (s.kind === "ward" && (!allowStatus || foe.status !== null)) continue;
+    if (s.power === 0 && (!allowStatus || !s.status || target.status !== null)) continue;
+    const stab = atkElements.includes(s.element) ? 1.25 : 1;
+    const statusBonus = s.status && target.status === null ? 22 : 0;
+    const score = (s.power > 0 ? s.power * stab * typeMod(s.element, defElements) : 0) + (s.kind === "ward" ? 18 : statusBonus);
+    if (score > bestScore) {
+      bestScore = score;
+      best = s;
+    }
+  }
+  return best;
 }

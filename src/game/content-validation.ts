@@ -31,9 +31,12 @@ function validateEncounterEntries(
   for (const encounter of encounters) {
     if (
       !speciesTable[encounter.species] ||
+      !Number.isInteger(encounter.min) ||
+      !Number.isInteger(encounter.max) ||
       encounter.min < 1 ||
       encounter.max < encounter.min ||
       (checkMaxCap && encounter.max > MAX_LEVEL) ||
+      !Number.isFinite(encounter.w) ||
       encounter.w <= 0
     ) {
       errors.push(`${locationLabel}`);
@@ -43,10 +46,26 @@ function validateEncounterEntries(
     if (sp.collection === "legend") {
       errors.push(`${locationLabel}: legend/boss species "${encounter.species}" cannot appear in wild encounter tables`);
     }
+  }
+  let underLevelShareSum = 0;
+  for (const encounter of encounters) {
+    if (
+      !speciesTable[encounter.species] ||
+      !Number.isInteger(encounter.min) ||
+      !Number.isInteger(encounter.max) ||
+      encounter.min < 1 ||
+      encounter.max < encounter.min ||
+      (checkMaxCap && encounter.max > MAX_LEVEL) ||
+      !Number.isFinite(encounter.w) ||
+      encounter.w <= 0
+    ) {
+      continue;
+    }
     const derived = derivedEntries[encounter.species];
     if (derived && encounter.min < derived.minAttainableLevel) {
       const ex = encounter.exceptionalUnderLevel;
       const share = totalWeight > 0 ? encounter.w / totalWeight : 1;
+      underLevelShareSum += share;
       if (
         !ex ||
         !ex.reason.trim() ||
@@ -61,6 +80,11 @@ function validateEncounterEntries(
       }
     }
   }
+  if (underLevelShareSum > MAX_EXCEPTIONAL_UNDER_LEVEL_SHARE) {
+    errors.push(
+      `${locationLabel}: combined below-threshold encounter weight share (${(underLevelShareSum * 100).toFixed(2)}%) exceeds ${(MAX_EXCEPTIONAL_UNDER_LEVEL_SHARE * 100).toFixed(0)}% cap`,
+    );
+  }
 }
 
 export function validateContent(tables: ContentTables = { ELEMENTS, SPECIES, SKILLS, ITEMS, MAPS, FIXED_ENCOUNTERS }): string[] {
@@ -68,8 +92,30 @@ export function validateContent(tables: ContentTables = { ELEMENTS, SPECIES, SKI
   const errors: string[] = [];
   const speciesIds = new Set(Object.keys(speciesTable));
   const skillIds = new Set(Object.keys(skillsTable));
+  const collectionNumbers = new Set<number>();
   for (const [id, species] of Object.entries(speciesTable)) {
     if (id !== species.id) errors.push(`species ${id}: id mismatch`);
+    if (!Number.isInteger(species.collectionNumber) || species.collectionNumber < 1) {
+      errors.push(`species ${id}: invalid collectionNumber`);
+    } else if (collectionNumbers.has(species.collectionNumber)) {
+      errors.push(`species ${id}: duplicate collectionNumber ${species.collectionNumber}`);
+    } else {
+      collectionNumbers.add(species.collectionNumber);
+    }
+    if (!species.combatRole || !species.combatRole.trim()) {
+      errors.push(`species ${id}: missing combatRole`);
+    }
+    const dim = species.dimensions;
+    if (
+      !dim ||
+      (dim.measurement !== "height" && dim.measurement !== "length") ||
+      !Number.isFinite(dim.typicalSizeCm) ||
+      dim.typicalSizeCm <= 0 ||
+      !Number.isFinite(dim.typicalWeightKg) ||
+      dim.typicalWeightKg <= 0
+    ) {
+      errors.push(`species ${id}: invalid dimensions`);
+    }
     if (species.elements.length === 0 || species.elements.some((element) => !elements[element])) errors.push(`species ${id}: invalid elements`);
     if (Object.values(species.base).some((value) => !Number.isFinite(value) || value <= 0)) errors.push(`species ${id}: invalid base stats`);
     if (species.catchRate <= 0 || species.catchRate > 255 || species.expYield <= 0) errors.push(`species ${id}: invalid catch/exp values`);
@@ -96,8 +142,8 @@ export function validateContent(tables: ContentTables = { ELEMENTS, SPECIES, SKI
     if (id !== map.id || !mapIsRectangular(map) || !canStandAt(map, map.spawn.x, map.spawn.y)) errors.push(`map ${id}: invalid shape or spawn`);
     validateEncounterEntries(`map ${id}: invalid encounter`, map.encounters, speciesTable, graph.entries, errors, true);
     for (const region of map.encounterRegions ?? []) {
-      if (region.w <= 0 || region.h <= 0 || region.x < 0 || region.y < 0) errors.push(`map ${id}: invalid encounter region ${region.id}`);
-      validateEncounterEntries(`map ${id}: invalid encounter region ${region.id}`, region.encounters, speciesTable, graph.entries, errors, false);
+      if (region.w <= 0 || region.h <= 0 || region.x < 0 || region.y < 0 || !Number.isFinite(region.rate) || region.rate < 0) errors.push(`map ${id}: invalid encounter region ${region.id}`);
+      validateEncounterEntries(`map ${id}: invalid encounter region ${region.id}`, region.encounters, speciesTable, graph.entries, errors, true);
     }
     for (const warp of map.warps) {
       const destination = mapsTable[warp.to];

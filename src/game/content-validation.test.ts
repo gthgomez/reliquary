@@ -180,4 +180,19 @@ test("wild encounter tables reject below-threshold evolutions and legendaries un
       line.includes("legend/boss"),
     ),
   );
+
+  // Aggregate below-threshold exception share across multiple entries must not exceed 1%.
+  const combinedOverBudget = {
+    ...briar,
+    encounters: [
+      { species: "dewslime", min: 3, max: 5, w: 98.4 },
+      { species: "bogslime", min: 9, max: 11, w: 0.8, exceptionalUnderLevel: { reason: "Storm surge", maxShare: 0.01 } },
+      { species: "gravegnaw", min: 9, max: 11, w: 0.8, exceptionalUnderLevel: { reason: "Stray", maxShare: 0.01 } },
+    ],
+  };
+  assert.ok(
+    validateContent(tablesWith({ MAPS: { ...MAPS, briar_road: combinedOverBudget } })).some((line) =>
+      line.includes("combined below-threshold"),
+    ),
+  );
 });

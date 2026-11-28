@@ -6,7 +6,6 @@
  */
 import { writeFileSync } from "node:fs";
 import {
-  SKILLS,
   SPECIES,
   ITEMS,
   PRACTICE_COST,
@@ -21,7 +20,8 @@ import { MAPS } from "../src/game/maps.ts";
 import { FIXED_ENCOUNTERS } from "../src/game/encounters.ts";
 import { captureChance } from "../src/game/systems/capture.ts";
 import { playerActsFirst, spendSkillMp } from "../src/game/systems/combat.ts";
-import { applySkillEvents, resolveSkillUse } from "../src/game/systems/battle-engine.ts";
+import { applySkillEvents, basicStrike, chooseFoeSkill, resolveSkillUse } from "../src/game/systems/battle-engine.ts";
+import { generateMorphology } from "../src/game/systems/morphology.ts";
 import { awardExperience } from "../src/game/systems/progression.ts";
 import { analyzeEvolutionGraph } from "../src/game/systems/species-progression.ts";
 import { dazeFumbles, tickStatus } from "../src/game/systems/status.ts";
@@ -40,43 +40,13 @@ function createSeededRandom(seed) {
 const ivs = { hp: 8, mp: 8, atk: 8, def: 8, mag: 8, res: 8, spd: 8, lck: 8 };
 const graph = analyzeEvolutionGraph(SPECIES);
 
-function basicStrike(b) {
-  return {
-    id: "strike",
-    name: "Strike",
-    element: SPECIES[b.speciesId].elements[0],
-    kind: "strike",
-    power: 45,
-    accuracy: 100,
-    mp: 0,
-    desc: "Plain blow",
-  };
-}
-
-function chooseBestAttackSkill(atk, def, allowStatusHeal = true) {
-  const spDef = SPECIES[def.speciesId];
-  const skills = atk.skills.map((id) => SKILLS[id]).filter(Boolean);
-  if (allowStatusHeal) {
-    const maxHp = currentStats(atk).hp;
-    if (atk.hp < maxHp * 0.38) {
-      const heal = skills.find((s) => s.kind === "heal" && atk.mp >= s.mp);
-      if (heal) return heal;
-    }
-  }
-  let best = basicStrike(atk);
-  let bestScore = best.power * typeMod(best.element, spDef.elements) * (SPECIES[atk.speciesId].elements.includes(best.element) ? 1.25 : 1);
-  for (const s of skills) {
-    if (s.mp > atk.mp || s.kind === "heal" || s.kind === "ward") continue;
-    if (s.power === 0 && !allowStatusHeal) continue;
-    const stab = SPECIES[atk.speciesId].elements.includes(s.element) ? 1.25 : 1;
-    const score = (s.power || (s.status ? 25 : 0)) * stab * typeMod(s.element, spDef.elements);
-    if (score > bestScore) {
-      bestScore = score;
-      best = s;
-    }
-  }
-  return best;
-}
+// Shared combat AI helper directly imported from src/game/systems/battle-engine.ts.
+const chooseEvalSkill = (atk, def, allowStatusHeal = true) =>
+  chooseFoeSkill(atk, def, {
+    allowHeal: allowStatusHeal,
+    allowStatus: allowStatusHeal,
+    healThreshold: 0.36,
+  });
 
 function simulateDuel(teamA, teamB, seed = 1337, opts = {}) {
   const rng = createSeededRandom(seed);
@@ -104,7 +74,7 @@ function simulateDuel(teamA, teamB, seed = 1337, opts = {}) {
         if (bestIdx >= 0) {
           idxA = bestIdx;
           const switched = partyA[idxA];
-          const foeMove = chooseBestAttackSkill(b, switched, true);
+          const foeMove = chooseEvalSkill(b, switched, true);
           if (foeMove.mp) spendSkillMp(b, foeMove);
           applySkillEvents(b, switched, foeMove, resolveSkillUse(b, switched, foeMove, rng));
           if (switched.hp > 0) tickStatus(switched);
@@ -129,7 +99,7 @@ function simulateDuel(teamA, teamB, seed = 1337, opts = {}) {
       }
       if (dazeFumbles(atk, rng)) return;
       const move = allowTonic === false || !opts.casualStrikeOnly
-        ? chooseBestAttackSkill(atk, def, !opts.casualStrikeOnly)
+        ? chooseEvalSkill(atk, def, !opts.casualStrikeOnly)
         : basicStrike(atk);
       if (move.mp) spendSkillMp(atk, move);
       applySkillEvents(atk, def, move, resolveSkillUse(atk, def, move, rng));
@@ -426,16 +396,56 @@ const regionalBattles = [
   ),
 ];
 
+// 6. Morphology parity & starter vs single-stage checks
+const morphologyChecks = ["emberkit", "mirewhelp", "briarling"].map((st) =>
+  evalMatchup(
+    `morphParity(${st} miniature vs colossal Lv12)`,
+    () => [makeBeast(st, 12, { temperament: "calm", ivs, morphology: generateMorphology(createSeededRandom(11), { tier: "miniature" }) })],
+    () => [makeBeast(st, 12, { temperament: "calm", ivs, morphology: generateMorphology(createSeededRandom(22), { tier: "colossal" }) })],
+  ),
+);
+
+const starterVsSingleChecks = ["emberkit", "mirewhelp", "briarling"].flatMap((st) =>
+  ["gravepup", "mothwisp", "pebblet"].map((sg) =>
+    evalMatchup(
+      `starterVsSingle(${st} vs ${sg} Lv10)`,
+      () => [makeBeast(st, 10, { temperament: "calm", ivs })],
+      () => [makeBeast(sg, 10, { temperament: "calm", ivs })],
+    ),
+  ),
+);
+
+// 7. Weighted encounter sampling check (verifies distribution matches weights)
+const briarMap = MAPS.briar_road;
+const sampleRng = createSeededRandom(9001);
+const sampleCounts = {};
+for (let i = 0; i < 4000; i += 1) {
+  const roll = (() => {
+    const encs = briarMap.encounters;
+    const total = encs.reduce((s, e) => s + e.w, 0);
+    let r = sampleRng() * total;
+    for (const e of encs) {
+      r -= e.w;
+      if (r <= 0) return e.species;
+    }
+    return encs[encs.length - 1].species;
+  })();
+  sampleCounts[roll] = (sampleCounts[roll] ?? 0) + 1;
+}
+
 const report = {
   graphErrors: graph.errors,
   categorySummary,
   belowThresholdViolations,
   encounterSummary,
+  weightedBriarSample: sampleCounts,
   milestones,
   captureReport,
   bossStrategies,
   fixedEncounterChecks,
   regionalBattles,
+  morphologyChecks,
+  starterVsSingleChecks,
 };
 
 console.log(JSON.stringify(report, null, 2));

@@ -337,12 +337,13 @@ export function drawBattleFoeSprite(
   img: CanvasImageSource | undefined,
   layout: BattleLayout,
   shakeX: number,
-  offset: { dx?: number; dy?: number } = {},
+  offset: { dx?: number; dy?: number; scaleFactor?: number } = {},
   paint?: BattleSpritePaint,
   bounds?: SpriteAlphaBounds,
 ): void {
   const dx = offset.dx ?? 0;
   const dy = offset.dy ?? 0;
+  const scaleFactor = Math.max(0.88, Math.min(1.12, offset.scaleFactor ?? 1));
   const opaque = bounds ?? FULL_SPRITE_BOUNDS;
   const src = img as { naturalWidth?: number; naturalHeight?: number };
   const srcW = src?.naturalWidth || layout.foe.w;
@@ -350,7 +351,7 @@ export function drawBattleFoeSprite(
   const anchorX = layout.foe.cx + shakeX + dx;
   const feetY = layout.foe.feetY + dy;
   const targetHeight = fitBattleSpriteHeight(
-    layout.foe.targetHeight, srcW, srcH, opaque, layout.spriteLimits?.foeWidth, layout.spriteLimits?.height,
+    layout.foe.targetHeight * scaleFactor, srcW, srcH, opaque, layout.spriteLimits?.foeWidth, layout.spriteLimits?.height,
   );
   const placement = placeSpriteOnGround({
     srcW,
@@ -376,12 +377,13 @@ export function drawBattlePlayerSprite(
   ctx: CanvasRenderingContext2D,
   img: CanvasImageSource | undefined,
   layout: BattleLayout,
-  offset: { dx?: number; dy?: number } = {},
+  offset: { dx?: number; dy?: number; scaleFactor?: number } = {},
   paint?: BattleSpritePaint,
   bounds?: SpriteAlphaBounds,
 ): void {
   const dx = offset.dx ?? 0;
   const dy = offset.dy ?? 0;
+  const scaleFactor = Math.max(0.88, Math.min(1.12, offset.scaleFactor ?? 1));
   const opaque = bounds ?? FULL_SPRITE_BOUNDS;
   const src = img as { naturalWidth?: number; naturalHeight?: number };
   const srcW = src?.naturalWidth || layout.player.size;
@@ -389,7 +391,7 @@ export function drawBattlePlayerSprite(
   const anchorX = layout.player.cx + dx;
   const feetY = layout.player.feetY + dy;
   const targetHeight = fitBattleSpriteHeight(
-    layout.player.targetHeight, srcW, srcH, opaque, layout.spriteLimits?.playerWidth, layout.spriteLimits?.height,
+    layout.player.targetHeight * scaleFactor, srcW, srcH, opaque, layout.spriteLimits?.playerWidth, layout.spriteLimits?.height,
   );
   const placement = placeSpriteOnGround({
     srcW,

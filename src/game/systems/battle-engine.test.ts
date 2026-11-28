@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { SKILLS, SPECIES, makeBeast, currentStats } from "../content.ts";
+import { SKILLS, makeBeast, currentStats } from "../content.ts";
 import { sequenceRandom } from "../rng.ts";
 import { applyStatus } from "./status.ts";
-import { resolveSkillUse, applySkillEvents } from "./battle-engine.ts";
+import { applySkillEvents, basicStrike, chooseFoeSkill, resolveSkillUse } from "./battle-engine.ts";
 
 function pair() {
   return { atk: makeBeast("emberkit", 12), def: makeBeast("mothwisp", 12) };
@@ -71,4 +71,23 @@ test("a lethal strike gates the status roll on the defender surviving", () => {
   assert.equal(def.hp, 0);
   assert.equal(event.status, null);
   assert.equal(def.status, null);
+});
+
+test("shared battle AI chooses low-HP heal, STAB type advantage, or basic strike deterministically", () => {
+  const river = makeBeast("riverguard", 15);
+  const ember = makeBeast("emberkit", 15);
+  const picked = chooseFoeSkill(river, ember);
+  assert.equal(picked.id, "stonefist");
+  assert.equal(picked.element, "stone");
+
+  river.skills = ["torrent", "nip"];
+  assert.equal(chooseFoeSkill(river, ember).id, "torrent");
+
+  river.hp = Math.floor(currentStats(river).hp * 0.25);
+  river.skills = ["lickwounds", "torrent"];
+  assert.equal(chooseFoeSkill(river, ember).id, "lickwounds");
+
+  river.hp = currentStats(river).hp;
+  river.mp = 0;
+  assert.equal(chooseFoeSkill(river, ember).id, basicStrike(river).id);
 });

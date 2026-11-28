@@ -58,3 +58,54 @@ test("older-revision saves clamp HP/MP above current stat caps without dropping 
   assert.ok(restored.party[0]!.hp < previous.party[0]!.hp);
   assert.ok(restored.party[0]!.mp < previous.party[0]!.mp);
 });
+
+test("historical v1, v2, and v3 saves without morphology migrate cleanly while preserving XP, level, HP, and MP", () => {
+  const save = validSave();
+  const { morphology: _m, ...legacyBeast } = save.party[0]!;
+  legacyBeast.level = 9;
+  legacyBeast.exp = 142;
+  legacyBeast.hp = 23;
+  legacyBeast.mp = 14;
+  const { worldRevision: _wr, ...v1Fields } = save;
+  const baseBody = { ...v1Fields, party: [legacyBeast] };
+
+  for (const raw of [
+    { ...baseBody, version: 1 },
+    { ...baseBody, version: 2 },
+    { ...baseBody, version: 3, worldRevision: 2 },
+  ]) {
+    const migrated = parseSave(JSON.stringify(raw));
+    assert.ok(migrated);
+    assert.equal(migrated.version, SAVE_VERSION);
+    assert.equal(migrated.worldRevision, WORLD_REVISION);
+    assert.deepEqual(migrated.party[0]!.morphology, { size: 1, mass: 1 });
+    assert.equal(migrated.party[0]!.level, 9);
+    assert.equal(migrated.party[0]!.exp, 142);
+    assert.equal(migrated.party[0]!.hp, 23);
+    assert.equal(migrated.party[0]!.mp, 14);
+  }
+});
+
+test("v4 saves round-trip morphology, records, habitats, and milestones, and reject corrupt morphology", () => {
+  const save = validSave();
+  save.party[0]!.morphology = { size: 1.18, mass: 1.46 };
+  save.habitats = { emberkit: ["Briar Road"] };
+  save.records = { emberkit: { boundCount: 1, smallestCm: 57, largestCm: 57 } };
+  save.milestones = { bound_5: false };
+
+  const restored = parseSave(JSON.stringify(save));
+  assert.ok(restored);
+  assert.deepEqual(restored.party[0]!.morphology, { size: 1.18, mass: 1.46 });
+  assert.deepEqual(restored.habitats?.emberkit, ["Briar Road"]);
+  assert.equal(restored.records?.emberkit?.boundCount, 1);
+
+  const store = new MemoryStorage();
+  assert.equal(writeSave(restored, store), true);
+
+  const corruptMorph = structuredClone(save);
+  corruptMorph.party[0]!.morphology = { size: 3.5, mass: 1.0 };
+  assert.equal(parseSave(JSON.stringify(corruptMorph)), null);
+
+  const badHabitatSpecies = { ...save, habitats: { missing_mon: ["Elderhall"] } };
+  assert.equal(parseSave(JSON.stringify(badHabitatSpecies)), null);
+});

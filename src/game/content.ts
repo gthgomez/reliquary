@@ -1,13 +1,17 @@
 import type {
   Beast,
+  CombatRole,
+  CreatureMorphology,
   ElementId,
   ItemDef,
   Skill,
   Species,
+  SpeciesDimensions,
   Stats,
   Temperament,
 } from "./types.ts";
 import { mathRandom, type RandomSource } from "./rng.ts";
+import { NEUTRAL_MORPHOLOGY, generateMorphology, morphologyStatMultipliers } from "./systems/morphology.ts";
 
 /** Progression/economy tunables — single source for engine, UI copy, validation, and save schema. */
 export const MAX_LEVEL = 40;
@@ -104,146 +108,204 @@ const S = (
   expYield: number,
   description: string,
   learnset: { level: number; skill: string }[],
-  evolves?: { level: number; into: string },
-  extra?: { collection?: "pact" | "legend"; variantOf?: string; progressionRole?: "exceptional" },
-): Species => ({
-  id,
-  name,
-  epithet,
-  elements,
-  base,
-  catchRate,
-  expYield,
-  description,
-  learnset,
-  evolves,
-  ...(extra ?? {}),
-});
+  evolves: { level: number; into: string } | undefined,
+  meta: {
+    collectionNumber: number;
+    combatRole: CombatRole;
+    dimensions: SpeciesDimensions;
+    collection?: "pact" | "legend";
+    variantOf?: string;
+    progressionRole?: "exceptional";
+  },
+): Species => {
+  const { collectionNumber, combatRole, dimensions, ...extra } = meta;
+  return {
+    id,
+    collectionNumber,
+    name,
+    epithet,
+    elements,
+    combatRole,
+    dimensions,
+    base,
+    catchRate,
+    expYield,
+    description,
+    learnset,
+    evolves,
+    ...extra,
+  };
+};
 
 export const SPECIES: Record<string, Species> = {
   emberkit: S("emberkit", "Emberkit", "Fox-drake", ["ember"],
     { hp: 41, mp: 43, atk: 48, def: 38, mag: 54, res: 39, spd: 62, lck: 50 },
     45, 64, "A russet fox-drake whose tail holds a coal that never quite dies. Loyal once the pact is spoken.",
     [{ level: 1, skill: "nip" }, { level: 1, skill: "cinder" }, { level: 7, skill: "scorch" }, { level: 11, skill: "slash" }, { level: 18, skill: "flare" }, { level: 24, skill: "howl" }, { level: 30, skill: "crownfire" }],
-    { level: 14, into: "pyrefox" }),
+    { level: 14, into: "pyrefox" },
+    { collectionNumber: 1, combatRole: "Swift attacker", dimensions: { measurement: "height", typicalSizeCm: 48, typicalWeightKg: 8.5 } }),
   pyrefox: S("pyrefox", "Pyrefox", "Ember fox-drake", ["ember"],
     { hp: 60, mp: 56, atk: 66, def: 52, mag: 74, res: 54, spd: 78, lck: 58 },
     24, 142, "The coal along its spine has become a ridge of living fire. It runs the old roads at dusk.",
     [{ level: 1, skill: "nip" }, { level: 1, skill: "cinder" }, { level: 7, skill: "scorch" }, { level: 11, skill: "slash" }, { level: 14, skill: "keepfire" }, { level: 18, skill: "flare" }, { level: 24, skill: "howl" }, { level: 30, skill: "crownfire" }],
-    { level: 28, into: "crownwyrm" }),
+    { level: 28, into: "crownwyrm" },
+    { collectionNumber: 2, combatRole: "Swift attacker", dimensions: { measurement: "height", typicalSizeCm: 88, typicalWeightKg: 26 } }),
   crownwyrm: S("crownwyrm", "Crownwyrm", "Horn-flame wyrm", ["ember", "gale"],
     { hp: 78, mp: 70, atk: 84, def: 68, mag: 98, res: 72, spd: 92, lck: 70 },
     8, 240, "A compact wyrm crowned in horn-flame. Old songs say one sat at the Binding King's left hand.",
-    [{ level: 1, skill: "flare" }, { level: 1, skill: "slash" }, { level: 24, skill: "howl" }, { level: 28, skill: "tempest" }, { level: 34, skill: "crownfire" }]),
+    [{ level: 1, skill: "flare" }, { level: 1, skill: "slash" }, { level: 24, skill: "howl" }, { level: 28, skill: "tempest" }, { level: 34, skill: "crownfire" }],
+    undefined,
+    { collectionNumber: 3, combatRole: "Mystic", dimensions: { measurement: "length", typicalSizeCm: 235, typicalWeightKg: 118 } }),
   mirewhelp: S("mirewhelp", "Mirewhelp", "River-newt", ["tide"],
     { hp: 52, mp: 42, atk: 42, def: 54, mag: 50, res: 52, spd: 40, lck: 42 },
     45, 64, "A river-newt with a lily-pad crest. It drinks from any stream and remembers every crossing.",
     [{ level: 1, skill: "nip" }, { level: 1, skill: "torrent" }, { level: 7, skill: "soak" }, { level: 11, skill: "lickwounds" }, { level: 18, skill: "tideburst" }, { level: 24, skill: "wardveil" }, { level: 30, skill: "deepcurrent" }],
-    { level: 14, into: "riverguard" }),
+    { level: 14, into: "riverguard" },
+    { collectionNumber: 4, combatRole: "Support", dimensions: { measurement: "length", typicalSizeCm: 62, typicalWeightKg: 11 } }),
   riverguard: S("riverguard", "Riverguard", "Stone-backed newt", ["tide", "stone"],
     { hp: 72, mp: 54, atk: 58, def: 80, mag: 66, res: 74, spd: 46, lck: 48 },
     24, 148, "River-stone plates have grown along its back. Ferrymen leave out fish for it still.",
     [{ level: 1, skill: "nip" }, { level: 1, skill: "torrent" }, { level: 11, skill: "lickwounds" }, { level: 14, skill: "stonefist" }, { level: 18, skill: "tideburst" }, { level: 24, skill: "wardveil" }, { level: 30, skill: "deepcurrent" }],
-    { level: 28, into: "tidemark" }),
+    { level: 28, into: "tidemark" },
+    { collectionNumber: 5, combatRole: "Bulwark", dimensions: { measurement: "length", typicalSizeCm: 128, typicalWeightKg: 58 } }),
   tidemark: S("tidemark", "Tidemark", "Wave-crest guardian", ["tide", "stone"],
     { hp: 96, mp: 70, atk: 74, def: 100, mag: 84, res: 96, spd: 52, lck: 56 },
     8, 244, "Where it walks, the waterline follows. A patient, unkillable kindness.",
-    [{ level: 1, skill: "tideburst" }, { level: 1, skill: "stonefist" }, { level: 24, skill: "wardveil" }, { level: 28, skill: "quake" }, { level: 34, skill: "deepcurrent" }]),
+    [{ level: 1, skill: "tideburst" }, { level: 1, skill: "stonefist" }, { level: 24, skill: "wardveil" }, { level: 28, skill: "quake" }, { level: 34, skill: "deepcurrent" }],
+    undefined,
+    { collectionNumber: 6, combatRole: "Bulwark", dimensions: { measurement: "length", typicalSizeCm: 210, typicalWeightKg: 165 } }),
   briarling: S("briarling", "Briarling", "Thorn-sprite", ["verdant"],
     { hp: 42, mp: 44, atk: 50, def: 44, mag: 50, res: 44, spd: 50, lck: 55 },
     45, 64, "A walking thicket-child. Berry-clusters for hair, and a temper like a bramble patch.",
     [{ level: 1, skill: "nip" }, { level: 1, skill: "rootgrasp" }, { level: 8, skill: "thornlash" }, { level: 11, skill: "mossmend" }, { level: 18, skill: "bloom" }, { level: 24, skill: "bless" }, { level: 30, skill: "elderwrath" }],
-    { level: 14, into: "thornback" }),
+    { level: 14, into: "thornback" },
+    { collectionNumber: 7, combatRole: "Controller", dimensions: { measurement: "height", typicalSizeCm: 54, typicalWeightKg: 9.2 } }),
   thornback: S("thornback", "Thornback", "Briar mantle", ["verdant"],
     { hp: 62, mp: 58, atk: 72, def: 64, mag: 68, res: 60, spd: 64, lck: 62 },
     24, 146, "A living mantle of briar. Hedge-wards use their shed thorns as fence-nails.",
     [{ level: 1, skill: "rootgrasp" }, { level: 1, skill: "thornlash" }, { level: 11, skill: "mossmend" }, { level: 14, skill: "shade" }, { level: 18, skill: "bloom" }, { level: 24, skill: "bless" }, { level: 30, skill: "elderwrath" }],
-    { level: 28, into: "elderbramble" }),
+    { level: 28, into: "elderbramble" },
+    { collectionNumber: 8, combatRole: "Balanced companion", dimensions: { measurement: "height", typicalSizeCm: 108, typicalWeightKg: 41 } }),
   elderbramble: S("elderbramble", "Elderbramble", "Thicket-guardian", ["verdant", "umbra"],
     { hp: 84, mp: 74, atk: 90, def: 86, mag: 88, res: 80, spd: 72, lck: 70 },
     8, 242, "An old walking wood. Villages that keep one never lose a child to the forest.",
-    [{ level: 1, skill: "bloom" }, { level: 1, skill: "thornlash" }, { level: 24, skill: "bless" }, { level: 28, skill: "shadowclaw" }, { level: 34, skill: "elderwrath" }]),
+    [{ level: 1, skill: "bloom" }, { level: 1, skill: "thornlash" }, { level: 24, skill: "bless" }, { level: 28, skill: "shadowclaw" }, { level: 34, skill: "elderwrath" }],
+    undefined,
+    { collectionNumber: 9, combatRole: "Balanced companion", dimensions: { measurement: "height", typicalSizeCm: 195, typicalWeightKg: 148 } }),
   mothwisp: S("mothwisp", "Mothwisp", "Lantern moth", ["light"],
     { hp: 56, mp: 76, atk: 34, def: 46, mag: 82, res: 72, spd: 86, lck: 72 },
     58, 76, "A cream-winged moth that lights its own belly. Shepherds follow them home in fog.",
-    [{ level: 1, skill: "gleam" }, { level: 1, skill: "gust" }, { level: 9, skill: "lumen" }, { level: 16, skill: "hallow" }, { level: 24, skill: "wardveil" }]),
+    [{ level: 1, skill: "gleam" }, { level: 1, skill: "gust" }, { level: 9, skill: "lumen" }, { level: 16, skill: "hallow" }, { level: 24, skill: "wardveil" }],
+    undefined,
+    { collectionNumber: 10, combatRole: "Support", dimensions: { measurement: "height", typicalSizeCm: 42, typicalWeightKg: 3.4 } }),
   gravepup: S("gravepup", "Gravepup", "Bone hound", ["umbra"],
     { hp: 66, mp: 50, atk: 86, def: 56, mag: 64, res: 54, spd: 88, lck: 66 },
     48, 82, "A hound of pale bone and brass grave-charms. It will not cross a threshold uninvited.",
-    [{ level: 1, skill: "nip" }, { level: 1, skill: "shade" }, { level: 10, skill: "shadowclaw" }, { level: 18, skill: "howl" }, { level: 26, skill: "voidhowl" }]),
+    [{ level: 1, skill: "nip" }, { level: 1, skill: "shade" }, { level: 10, skill: "shadowclaw" }, { level: 18, skill: "howl" }, { level: 26, skill: "voidhowl" }],
+    undefined,
+    { collectionNumber: 11, combatRole: "Swift attacker", dimensions: { measurement: "height", typicalSizeCm: 74, typicalWeightKg: 22 } }),
   pebblet: S("pebblet", "Pebblet", "Living cobble", ["stone"],
     { hp: 86, mp: 44, atk: 82, def: 108, mag: 42, res: 82, spd: 34, lck: 46 },
     52, 78, "A dog-sized cobble that decided to walk. Mason-wards leave them in walls as luck.",
-    [{ level: 1, skill: "ram" }, { level: 1, skill: "pebble" }, { level: 12, skill: "stonefist" }, { level: 20, skill: "wardveil" }, { level: 28, skill: "quake" }]),
+    [{ level: 1, skill: "ram" }, { level: 1, skill: "pebble" }, { level: 12, skill: "stonefist" }, { level: 20, skill: "wardveil" }, { level: 28, skill: "quake" }],
+    undefined,
+    { collectionNumber: 12, combatRole: "Bulwark", dimensions: { measurement: "height", typicalSizeCm: 64, typicalWeightKg: 78 } }),
   galeskip: S("galeskip", "Galeskip", "Storm hare", ["gale"],
     { hp: 54, mp: 54, atk: 68, def: 42, mag: 66, res: 50, spd: 104, lck: 88 },
     54, 76, "A hare with storm-grey pinions. It is gone before the grass springs back.",
-    [{ level: 1, skill: "nip" }, { level: 1, skill: "gust" }, { level: 10, skill: "galepeck" }, { level: 18, skill: "tempest" }, { level: 26, skill: "howl" }]),
+    [{ level: 1, skill: "nip" }, { level: 1, skill: "gust" }, { level: 10, skill: "galepeck" }, { level: 18, skill: "tempest" }, { level: 26, skill: "howl" }],
+    undefined,
+    { collectionNumber: 13, combatRole: "Swift attacker", dimensions: { measurement: "height", typicalSizeCm: 58, typicalWeightKg: 11.5 } }),
   ironnewt: S("ironnewt", "Ironnewt", "Plate newt", ["steel"],
     { hp: 76, mp: 46, atk: 86, def: 106, mag: 50, res: 76, spd: 46, lck: 50 },
     45, 88, "A newt that grew a smith's leftover iron. Slow, and extremely unwilling to die.",
-    [{ level: 1, skill: "nip" }, { level: 1, skill: "ram" }, { level: 11, skill: "ironbite" }, { level: 19, skill: "sparksteel" }, { level: 27, skill: "stonefist" }]),
+    [{ level: 1, skill: "nip" }, { level: 1, skill: "ram" }, { level: 11, skill: "ironbite" }, { level: 19, skill: "sparksteel" }, { level: 27, skill: "stonefist" }],
+    undefined,
+    { collectionNumber: 14, combatRole: "Bulwark", dimensions: { measurement: "length", typicalSizeCm: 115, typicalWeightKg: 84 } }),
   bogwallow: S("bogwallow", "Bogwallow", "Marsh toad", ["tide", "verdant"],
     { hp: 102, mp: 56, atk: 66, def: 76, mag: 72, res: 74, spd: 36, lck: 50 },
     48, 84, "A fat toad of bog-moss and patience. Its croak is a weather-sign in Mirefen.",
-    [{ level: 1, skill: "torrent" }, { level: 1, skill: "rootgrasp" }, { level: 12, skill: "soak" }, { level: 20, skill: "tideburst" }, { level: 28, skill: "bloom" }]),
+    [{ level: 1, skill: "torrent" }, { level: 1, skill: "rootgrasp" }, { level: 12, skill: "soak" }, { level: 20, skill: "tideburst" }, { level: 28, skill: "bloom" }],
+    undefined,
+    { collectionNumber: 15, combatRole: "Bulwark", dimensions: { measurement: "height", typicalSizeCm: 86, typicalWeightKg: 64 } }),
   hollowowl: S("hollowowl", "Hollowowl", "Umbra owl", ["umbra", "gale"],
     { hp: 62, mp: 68, atk: 54, def: 52, mag: 88, res: 68, spd: 88, lck: 58 },
     42, 92, "An owl with a hollow where a heart should be. It hunts by listening to regrets.",
-    [{ level: 1, skill: "gust" }, { level: 1, skill: "shade" }, { level: 12, skill: "galepeck" }, { level: 20, skill: "drowse" }, { level: 28, skill: "voidhowl" }]),
+    [{ level: 1, skill: "gust" }, { level: 1, skill: "shade" }, { level: 12, skill: "galepeck" }, { level: 20, skill: "drowse" }, { level: 28, skill: "voidhowl" }],
+    undefined,
+    { collectionNumber: 16, combatRole: "Mystic", dimensions: { measurement: "height", typicalSizeCm: 72, typicalWeightKg: 14.2 } }),
   chapelite: S("chapelite", "Chapelite", "Glass gargoyle", ["light", "steel"],
     { hp: 74, mp: 64, atk: 66, def: 86, mag: 82, res: 90, spd: 44, lck: 42 },
     36, 102, "A small gargoyle of chapel glass. Sun through it becomes a weapon.",
-    [{ level: 1, skill: "gleam" }, { level: 1, skill: "ram" }, { level: 12, skill: "sparksteel" }, { level: 20, skill: "hallow" }, { level: 28, skill: "lumen" }]),
+    [{ level: 1, skill: "gleam" }, { level: 1, skill: "ram" }, { level: 12, skill: "sparksteel" }, { level: 20, skill: "hallow" }, { level: 28, skill: "lumen" }],
+    undefined,
+    { collectionNumber: 17, combatRole: "Bulwark", dimensions: { measurement: "height", typicalSizeCm: 105, typicalWeightKg: 72 } }),
   rootwight: S("rootwight", "Rootwight", "Knotted wood", ["verdant", "umbra"],
     { hp: 84, mp: 62, atk: 88, def: 80, mag: 78, res: 68, spd: 42, lck: 42 },
     38, 96, "Black wood and pale fungi. It walks when the compact is broken, and sits when it is kept.",
-    [{ level: 1, skill: "rootgrasp" }, { level: 1, skill: "shade" }, { level: 12, skill: "thornlash" }, { level: 20, skill: "bloom" }, { level: 28, skill: "voidhowl" }]),
+    [{ level: 1, skill: "rootgrasp" }, { level: 1, skill: "shade" }, { level: 12, skill: "thornlash" }, { level: 20, skill: "bloom" }, { level: 28, skill: "voidhowl" }],
+    undefined,
+    { collectionNumber: 18, combatRole: "Striker", dimensions: { measurement: "height", typicalSizeCm: 155, typicalWeightKg: 92 } }),
   keepdrake: S("keepdrake", "Keepdrake", "Castle wyrm", ["steel", "ember"],
     { hp: 82, mp: 62, atk: 90, def: 84, mag: 82, res: 74, spd: 60, lck: 48 },
     10, 200, "A keep given a pulse. Ember runs in the seams of its iron-grey hide. Warden-beasts of the old crown.",
     [{ level: 1, skill: "ironbite" }, { level: 1, skill: "cinder" }, { level: 14, skill: "sparksteel" }, { level: 20, skill: "keepfire" }, { level: 28, skill: "flare" }, { level: 36, skill: "quake" }],
-    undefined, { progressionRole: "exceptional" }),
+    undefined,
+    { collectionNumber: 19, combatRole: "Striker", dimensions: { measurement: "length", typicalSizeCm: 275, typicalWeightKg: 220 }, progressionRole: "exceptional" }),
   sunhart: S("sunhart", "Sunhart", "Lantern stag", ["light", "verdant"],
     { hp: 72, mp: 64, atk: 64, def: 58, mag: 88, res: 74, spd: 76, lck: 64 },
     22, 165, "A woodland stag with a lantern caught between its antlers. Rare, and unwilling to be hurried.",
-    [{ level: 1, skill: "gleam" }, { level: 1, skill: "ram" }, { level: 12, skill: "bloom" }, { level: 20, skill: "sunlance" }, { level: 28, skill: "bless" }]),
+    [{ level: 1, skill: "gleam" }, { level: 1, skill: "ram" }, { level: 12, skill: "bloom" }, { level: 20, skill: "sunlance" }, { level: 28, skill: "bless" }],
+    undefined,
+    { collectionNumber: 20, combatRole: "Mystic", dimensions: { measurement: "height", typicalSizeCm: 162, typicalWeightKg: 88 } }),
   fenwitch: S("fenwitch", "Fenwitch", "Marsh spirit", ["tide", "umbra"],
     { hp: 62, mp: 88, atk: 42, def: 50, mag: 102, res: 82, spd: 72, lck: 58 },
     24, 165, "Peat-dark water walking. Reed-hair and two pale lantern eyes. It bargains, then it binds.",
-    [{ level: 1, skill: "torrent" }, { level: 1, skill: "shade" }, { level: 12, skill: "soak" }, { level: 20, skill: "fenwork" }, { level: 28, skill: "drowse" }]),
+    [{ level: 1, skill: "torrent" }, { level: 1, skill: "shade" }, { level: 12, skill: "soak" }, { level: 20, skill: "fenwork" }, { level: 28, skill: "drowse" }],
+    undefined,
+    { collectionNumber: 21, combatRole: "Controller", dimensions: { measurement: "height", typicalSizeCm: 138, typicalWeightKg: 34 } }),
   dewslime: S("dewslime", "Dewslime", "Roadside ooze", ["tide"],
     { hp: 46, mp: 42, atk: 38, def: 44, mag: 46, res: 44, spd: 32, lck: 38 },
     135, 52, "A bead of marsh-water that learned to hop the Briar verge after rain.",
     [{ level: 1, skill: "soak" }, { level: 5, skill: "rootgrasp" }, { level: 8, skill: "torrent" }, { level: 12, skill: "tideburst" }],
-    { level: 12, into: "bogslime" }),
+    { level: 12, into: "bogslime" },
+    { collectionNumber: 22, combatRole: "Controller", dimensions: { measurement: "height", typicalSizeCm: 36, typicalWeightKg: 6.8 } }),
   bogslime: S("bogslime", "Bogslime", "Basin ooze", ["tide", "verdant"],
     { hp: 82, mp: 58, atk: 60, def: 74, mag: 72, res: 68, spd: 42, lck: 48 },
     45, 118, "Crownpool slime grown heavy with relic silt and lily roots.",
-    [{ level: 1, skill: "torrent" }, { level: 1, skill: "soak" }, { level: 12, skill: "tideburst" }, { level: 18, skill: "bloom" }]),
+    [{ level: 1, skill: "torrent" }, { level: 1, skill: "soak" }, { level: 12, skill: "tideburst" }, { level: 18, skill: "bloom" }],
+    undefined,
+    { collectionNumber: 23, combatRole: "Support", dimensions: { measurement: "height", typicalSizeCm: 84, typicalWeightKg: 46 } }),
   slime_king: S("slime_king", "Slime King", "Relic colony", ["tide", "light"],
     { hp: 96, mp: 82, atk: 68, def: 75, mag: 88, res: 84, spd: 44, lck: 55 },
     30, 220, "Many slimes wearing one crown of glass. Seen, not bound.",
-    [{ level: 1, skill: "torrent" }, { level: 1, skill: "tideburst" }], undefined, { collection: "legend" }),
+    [{ level: 1, skill: "torrent" }, { level: 1, skill: "tideburst" }],
+    undefined,
+    { collectionNumber: 28, combatRole: "Mystic", dimensions: { measurement: "height", typicalSizeCm: 168, typicalWeightKg: 195 }, collection: "legend" }),
   gutterrat: S("gutterrat", "Gutterrat", "Cellar scrapper", ["steel", "umbra"],
     { hp: 42, mp: 34, atk: 54, def: 38, mag: 34, res: 36, spd: 60, lck: 46 },
     125, 56, "A rat that nests in pact-cellars and gnaws sigil-stones for the salt.",
     [{ level: 1, skill: "nip" }, { level: 1, skill: "shade" }, { level: 8, skill: "slash" }, { level: 12, skill: "shadowclaw" }],
-    { level: 12, into: "gravegnaw" }),
+    { level: 12, into: "gravegnaw" },
+    { collectionNumber: 24, combatRole: "Striker", dimensions: { measurement: "length", typicalSizeCm: 52, typicalWeightKg: 5.4 } }),
   gravegnaw: S("gravegnaw", "Gravegnaw", "Bone gnawer", ["steel", "umbra"],
     { hp: 68, mp: 46, atk: 90, def: 56, mag: 54, res: 54, spd: 84, lck: 56 },
     40, 124, "Brass charms and sharper teeth. Goblin pacts favor it for night work.",
-    [{ level: 1, skill: "slash" }, { level: 1, skill: "shadowclaw" }, { level: 14, skill: "ironbite" }, { level: 20, skill: "voidhowl" }]),
+    [{ level: 1, skill: "slash" }, { level: 1, skill: "shadowclaw" }, { level: 14, skill: "ironbite" }, { level: 20, skill: "voidhowl" }],
+    undefined,
+    { collectionNumber: 25, combatRole: "Striker", dimensions: { measurement: "length", typicalSizeCm: 92, typicalWeightKg: 24.5 } }),
   blighted_gravepup: S("blighted_gravepup", "Blighted Gravepup", "Relic hound", ["umbra", "verdant"],
     { hp: 70, mp: 54, atk: 90, def: 60, mag: 76, res: 54, spd: 86, lck: 58 },
     32, 118, "Grave-charms cracked open. Thorn-rot and bone in equal measure.",
     [{ level: 1, skill: "shade" }, { level: 1, skill: "thornlash" }, { level: 12, skill: "shadowclaw" }, { level: 18, skill: "voidhowl" }],
-    undefined, { variantOf: "gravepup" }),
+    undefined,
+    { collectionNumber: 26, combatRole: "Striker", dimensions: { measurement: "height", typicalSizeCm: 78, typicalWeightKg: 25 }, variantOf: "gravepup" }),
   ashforged_ironnewt: S("ashforged_ironnewt", "Ashforged Ironnewt", "Vitrified newt", ["steel", "ember"],
     { hp: 78, mp: 48, atk: 90, def: 112, mag: 66, res: 80, spd: 36, lck: 42 },
     30, 122, "Ore-pocket heat fused its plates. Slow, and spiteful when cornered.",
     [{ level: 1, skill: "ram" }, { level: 1, skill: "cinder" }, { level: 11, skill: "ironbite" }, { level: 19, skill: "sparksteel" }],
-    undefined, { variantOf: "ironnewt" }),
+    undefined,
+    { collectionNumber: 27, combatRole: "Bulwark", dimensions: { measurement: "length", typicalSizeCm: 122, typicalWeightKg: 98 }, variantOf: "ironnewt" }),
 };
 
 export const ITEMS: Record<string, ItemDef> = {
@@ -288,8 +350,15 @@ export function randomTemperament(random: RandomSource = mathRandom): Temperamen
   return keys[Math.floor(random() * keys.length)]!;
 }
 
-export function calcStats(species: Species, level: number, ivs: Stats, temperament: Temperament): Stats {
+export function calcStats(
+  species: Species,
+  level: number,
+  ivs: Stats,
+  temperament: Temperament,
+  morphology?: CreatureMorphology,
+): Stats {
   const t = TEMPERAMENTS[temperament];
+  const m: Partial<Record<keyof Stats, number>> = morphologyStatMultipliers(morphology ?? NEUTRAL_MORPHOLOGY);
   const out = {} as Stats;
   for (const k of STAT_KEYS) {
     const base = species.base[k];
@@ -300,6 +369,8 @@ export function calcStats(species: Species, level: number, ivs: Stats, temperame
     else v = Math.floor(((base + iv) * 2 * level) / 50) + 5;
     if (k === t.up) v = Math.floor(v * 1.12);
     if (k === t.down) v = Math.floor(v * 0.9);
+    const morphMul = m[k];
+    if (morphMul !== undefined) v = Math.floor(v * morphMul);
     out[k] = Math.max(1, v);
   }
   return out;
@@ -314,13 +385,24 @@ export function skillsForLevel(species: Species, level: number): string[] {
   return learned.slice(-4);
 }
 
-export function makeBeast(speciesId: string, level: number, opts?: { temperament?: Temperament; ivs?: Stats; nickname?: string; random?: RandomSource }): Beast {
+export function makeBeast(
+  speciesId: string,
+  level: number,
+  opts?: {
+    temperament?: Temperament;
+    ivs?: Stats;
+    nickname?: string;
+    morphology?: CreatureMorphology;
+    random?: RandomSource;
+  },
+): Beast {
   const sp = SPECIES[speciesId];
   if (!sp) throw new Error(`Unknown species ${speciesId}`);
   const random = opts?.random ?? mathRandom;
   const ivs = opts?.ivs ?? rollIvs(random);
   const temperament = opts?.temperament ?? randomTemperament(random);
-  const stats = calcStats(sp, level, ivs, temperament);
+  const morphology = opts?.morphology ?? generateMorphology(random);
+  const stats = calcStats(sp, level, ivs, temperament, morphology);
   return {
     uid: nextUid(),
     speciesId,
@@ -331,6 +413,7 @@ export function makeBeast(speciesId: string, level: number, opts?: { temperament
     mp: stats.mp,
     ivs,
     temperament,
+    morphology,
     skills: skillsForLevel(sp, level),
     status: null,
     statusTurns: 0,
@@ -338,7 +421,7 @@ export function makeBeast(speciesId: string, level: number, opts?: { temperament
 }
 
 export function currentStats(b: Beast): Stats {
-  return calcStats(SPECIES[b.speciesId]!, b.level, b.ivs, b.temperament);
+  return calcStats(SPECIES[b.speciesId]!, b.level, b.ivs, b.temperament, b.morphology);
 }
 
 export function healFull(b: Beast): void {
