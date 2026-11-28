@@ -217,22 +217,22 @@ export function knownTalkIds(): Set<string> {
  * real), a prepared party meets the full 12/13/15 line.
  */
 export const WARDEN_TRIAL_TEAM: { speciesId: string; level: number }[] = [
-  { speciesId: "ironnewt", level: 12 },
-  { speciesId: "chapelite", level: 13 },
-  { speciesId: "keepdrake", level: 15 },
+  { speciesId: "ironnewt", level: 10 },
+  { speciesId: "chapelite", level: 11 },
+  { speciesId: "keepdrake", level: 12 },
 ];
 
 export function wardenTeamLevels(strongestLevel: number): number[] {
-  const adjust = strongestLevel < 12 ? -2 : 0;
+  const adjust = strongestLevel < 10 ? -1 : 0;
   return WARDEN_TRIAL_TEAM.map((foe) => Math.max(1, foe.level + adjust));
 }
 
 /** Cael's advisory pages, kept here so the content stays in the content layer. */
 export function wardenPages(ctx: DialogContext, approach: "square" | "hall"): string[] {
 	const pages = ["Warden Cael. I keep Thornkeep's road."];
-	if (ctx.strongestLevel < 12) {
+	if (ctx.strongestLevel < 10) {
 		pages.push(
-			`Your beast has weathered ${ctx.strongestLevel} season${ctx.strongestLevel === 1 ? "" : "s"}. Below a dozen, my three run lighter; at a dozen they meet you at full strength. As you like — three of mine against yours: Iron. Chapel. Drake.`,
+			`Your beast has weathered ${ctx.strongestLevel} season${ctx.strongestLevel === 1 ? "" : "s"}. Below ten, my three hold back a step; from ten onward they meet you at full strength. As you like — three of mine against yours: Iron. Chapel. Drake.`,
 		);
 	} else {
 		pages.push("Show me the compact is not a hobby. Three of mine against yours — Iron. Chapel. Drake. Bind or break.");

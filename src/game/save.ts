@@ -87,19 +87,34 @@ export function writeNameDraft(uid: string, value: string | null, target: SaveSt
   } catch { /* Draft storage cannot prevent in-memory naming. */ }
 }
 
-function validateBeasts(save: Omit<GameSave, "version">): boolean {
+function normalizeBeasts(
+  save: GameSave,
+  clampOverflow: boolean,
+): { party: GameSave["party"]; box: GameSave["box"] } | null {
   const ids = new Set<string>();
-  for (const beast of [...save.party, ...save.box]) {
-    if (ids.has(beast.uid) || !SPECIES[beast.speciesId]) return false;
-    ids.add(beast.uid);
-    if (beast.skills.some((skill) => !SKILLS[skill])) return false;
-    if (beast.pendingSkills?.some((skill) => !SKILLS[skill])) return false;
-    const stats = currentStats(beast);
-    if (beast.hp > stats.hp || beast.mp > stats.mp) return false;
-  }
-  if (Object.keys(save.inventory).some((id) => !ITEMS[id])) return false;
-  if (Object.keys(save.seen).some((id) => !SPECIES[id]) || Object.keys(save.caught).some((id) => !SPECIES[id])) return false;
-  return true;
+  const normalizeList = (list: GameSave["party"]): GameSave["party"] | null => {
+    const out: GameSave["party"] = [];
+    for (const beast of list) {
+      if (ids.has(beast.uid) || !SPECIES[beast.speciesId]) return null;
+      ids.add(beast.uid);
+      if (beast.skills.some((skill) => !SKILLS[skill])) return null;
+      if (beast.pendingSkills?.some((skill) => !SKILLS[skill])) return null;
+      const stats = currentStats(beast);
+      if (beast.hp > stats.hp || beast.mp > stats.mp) {
+        if (!clampOverflow) return null;
+        out.push({ ...beast, hp: Math.min(beast.hp, stats.hp), mp: Math.min(beast.mp, stats.mp) });
+      } else {
+        out.push(beast);
+      }
+    }
+    return out;
+  };
+  const party = normalizeList(save.party);
+  const box = party ? normalizeList(save.box) : null;
+  if (!party || !box) return null;
+  if (Object.keys(save.inventory).some((id) => !ITEMS[id])) return null;
+  if (Object.keys(save.seen).some((id) => !SPECIES[id]) || Object.keys(save.caught).some((id) => !SPECIES[id])) return null;
+  return { party, box };
 }
 
 /**
@@ -112,9 +127,10 @@ function validateBeasts(save: Omit<GameSave, "version">): boolean {
 function validateSemantics(save: GameSave, options: { migrate?: "none" | "legacy" | "relocated" }): GameSave | null {
   const map = MAPS[save.mapId];
   if (!map) return null;
-  if (!validateBeasts(save)) return null;
-  let { x, y } = save;
   const migrate = options.migrate ?? "none";
+  const normalizedBeasts = normalizeBeasts(save, migrate !== "none");
+  if (!normalizedBeasts) return null;
+  let { x, y } = save;
   if (migrate === "legacy") {
     if (!isLegacyCoordinateValid(map, x, y)) return null;
     ({ x, y } = resolveSafeSpawn(map, { x, y }, save.flags));
@@ -125,7 +141,7 @@ function validateSemantics(save: GameSave, options: { migrate?: "none" | "legacy
   } else if (isOccupied(map, save.flags, x, y)) {
     return null;
   }
-  return { ...save, x, y, version: SAVE_VERSION, worldRevision: WORLD_REVISION };
+  return { ...save, ...normalizedBeasts, x, y, version: SAVE_VERSION, worldRevision: WORLD_REVISION };
 }
 
 function migrateParsed(value: unknown): GameSave | null {

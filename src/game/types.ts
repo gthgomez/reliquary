@@ -80,6 +80,10 @@ export interface Species {
   description: string;
   learnset: { level: number; skill: string }[];
   evolves?: { level: number; into: string };
+  /** Regional or corrupted form linked to a canonical base species. */
+  variantOf?: string;
+  /** Explicit progression role exception for non-legend boss/rare aces (e.g. Keepdrake). */
+  progressionRole?: "exceptional";
   /** Seen-only legends do not count toward bind completion. */
   collection?: "pact" | "legend";
 }
@@ -164,6 +168,14 @@ export interface Encounter {
   min: number;
   max: number;
   w: number;
+  /**
+   * Explicit exception allowing an evolved species below its evolution threshold
+   * in a single rare habitat (must stay within `maxShare <= 0.01` of table weight).
+   */
+  exceptionalUnderLevel?: {
+    reason: string;
+    maxShare: number;
+  };
 }
 
 export interface EncounterRegion {
@@ -257,6 +269,8 @@ export interface BattleState {
   canFlee: boolean;
   canBind: boolean;
   encounterId?: string;
+  /** Party beast UIDs that took the field and qualify for shared experience. */
+  participants?: string[];
 }
 
 export interface GameSave {

@@ -427,7 +427,7 @@ try {
   await requireMap("mirefen", { x: 0, y: 7 }, "briar_road");
   await requireMap("briar_road", { x: 10, y: 0 }, "wildwood");
   await page.screenshot({ path: join(output, "13-wildwood-entry.png") });
-  await captureOnRoute("wildwood", { x: 4, y: 16 }, "Sunhart", 12, 0.83);
+  await captureOnRoute("wildwood", { x: 4, y: 16 }, "Sunhart", 11, 0.95);
   await requireMap("wildwood", { x: 6, y: 1 }, "ashenbarrow");
   await page.screenshot({ path: join(output, "13-ashenbarrow-entry.png") });
   await captureOnRoute("ashenbarrow", { x: 8, y: 12 }, "Keepdrake", 14, 0.95);

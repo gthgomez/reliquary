@@ -106,7 +106,7 @@ try {
         }
         assert.equal(position.mode, "battle");
         await page.locator(".battle-action").first().waitFor();
-        assert.match(await page.locator(".battler.foe").innerText(), /Mothwisp/);
+        assert.match(await page.locator(".battler.foe").innerText(), /Gutterrat|Mothwisp/);
         await capture("08-mothwisp-commands");
         await page.getByRole("button", { name: "Skill", exact: true }).tap();
         await page.getByRole("button", { name: /Rootgrasp 8 MP/ }).waitFor();

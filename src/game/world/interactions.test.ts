@@ -53,10 +53,12 @@ test("the Warden trial team is real content and honors the advisory promise", ()
     assert.ok(SPECIES[foe.speciesId], `unknown trial species ${foe.speciesId}`);
     assert.ok(foe.level >= 1 && foe.level <= 40, `${foe.speciesId}: level`);
   }
-  // Below the advised dozen the trio goes lighter; at/above it, full strength.
-  assert.deepEqual(wardenTeamLevels(7), [10, 11, 13]);
-  assert.deepEqual(wardenTeamLevels(12), [12, 13, 15]);
-  assert.deepEqual(wardenTeamLevels(20), [12, 13, 15]);
+  // Below ten seasons the trio holds back a step; from ten onward, fixed full strength (no Lv11->12 cliff).
+  assert.deepEqual(wardenTeamLevels(7), [9, 10, 11]);
+  assert.deepEqual(wardenTeamLevels(10), [10, 11, 12]);
+  assert.deepEqual(wardenTeamLevels(11), [10, 11, 12]);
+  assert.deepEqual(wardenTeamLevels(12), [10, 11, 12]);
+  assert.deepEqual(wardenTeamLevels(20), [10, 11, 12]);
 });
 
 test("Cael's advisory changes with party strength", () => {

@@ -101,3 +101,83 @@ test("a fixed encounter on an unknown map is rejected", () => {
   const broken = { ...FIXED_ENCOUNTERS, [firstKey!]: { ...base, mapId: "not-a-map" } };
   assert.ok(validateContent(tablesWith({ FIXED_ENCOUNTERS: broken })).some((line) => line.includes("unknown map")));
 });
+
+test("evolution graph rejects cycles, multiple parents, and classification conflicts", () => {
+  const pyre = SPECIES.pyrefox!;
+  const cyclic = {
+    ...SPECIES,
+    pyrefox: { ...pyre, evolves: { level: 22, into: "emberkit" } },
+  };
+  assert.ok(
+    validateContent(tablesWith({ SPECIES: cyclic })).some((line) => line.includes("cycle")),
+    "evolution cycle must be rejected",
+  );
+
+  const conflicting = {
+    ...SPECIES,
+    blighted_gravepup: {
+      ...SPECIES.blighted_gravepup!,
+      evolves: { level: 16, into: "pyrefox" },
+    },
+  };
+  const conflictErrors = validateContent(tablesWith({ SPECIES: conflicting }));
+  assert.ok(conflictErrors.some((line) => line.includes("classification conflict")), conflictErrors.join("\n"));
+  assert.ok(conflictErrors.some((line) => line.includes("multiple incoming")), conflictErrors.join("\n"));
+});
+
+test("wild encounter tables reject below-threshold evolutions and legendaries unless validly excepted", () => {
+  const briar = MAPS.briar_road!;
+  const illegalEvolved = {
+    ...briar,
+    encounters: [...briar.encounters, { species: "bogslime", min: 9, max: 11, w: 1 }],
+  };
+  assert.ok(
+    validateContent(tablesWith({ MAPS: { ...MAPS, briar_road: illegalEvolved } })).some((line) =>
+      line.includes("below evolution threshold"),
+    ),
+  );
+
+  const overBudgetException = {
+    ...briar,
+    encounters: [
+      { species: "dewslime", min: 3, max: 5, w: 50 },
+      {
+        species: "bogslime",
+        min: 9,
+        max: 11,
+        w: 1,
+        exceptionalUnderLevel: { reason: "Rare mutated ooze", maxShare: 0.01 },
+      },
+    ],
+  };
+  assert.ok(
+    validateContent(tablesWith({ MAPS: { ...MAPS, briar_road: overBudgetException } })).some((line) =>
+      line.includes("below evolution threshold"),
+    ),
+  );
+
+  const validRareException = {
+    ...briar,
+    encounters: [
+      { species: "dewslime", min: 3, max: 5, w: 199 },
+      {
+        species: "bogslime",
+        min: 9,
+        max: 11,
+        w: 1,
+        exceptionalUnderLevel: { reason: "Extreme storm surge from Crownpool", maxShare: 0.01 },
+      },
+    ],
+  };
+  assert.equal(validateContent(tablesWith({ MAPS: { ...MAPS, briar_road: validRareException } })).length, 0);
+
+  const wildLegend = {
+    ...briar,
+    encounters: [...briar.encounters, { species: "slime_king", min: 12, max: 12, w: 1 }],
+  };
+  assert.ok(
+    validateContent(tablesWith({ MAPS: { ...MAPS, briar_road: wildLegend } })).some((line) =>
+      line.includes("legend/boss"),
+    ),
+  );
+});
