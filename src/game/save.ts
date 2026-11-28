@@ -1,12 +1,13 @@
 import { z } from "zod";
 import { currentStats, ITEMS, MAX_LEVEL, SKILLS, SPECIES } from "./content.ts";
 import { MAPS } from "./maps.ts";
-import type { GameSave } from "./types.ts";
+import { MORPHOLOGY_MASS_MAX, MORPHOLOGY_MASS_MIN, MORPHOLOGY_SIZE_MAX, MORPHOLOGY_SIZE_MIN, NEUTRAL_MORPHOLOGY } from "./systems/morphology.ts";
+import type { Beast, GameSave } from "./types.ts";
 import { isOccupied } from "./world/movement.ts";
 import { isLegacyCoordinateValid, resolveSafeSpawn } from "./world/reachability.ts";
 import { ELDERHALL_WORLD_REVISION } from "./build-flags.ts";
 
-export const SAVE_VERSION = 3;
+export const SAVE_VERSION = 4;
 export const SAVE_RESUMED_MESSAGE = "The lantern remembers.";
 // Preview gate posts change collision; a preview save must not be silently
 // mistaken for a compatible production-world save.
@@ -37,7 +38,23 @@ const statSchema = z.object({
   spd: z.number().finite().positive(), lck: z.number().finite().positive(),
 }).strict();
 
-const beastSchema = z.object({
+const morphologySchema = z.object({
+  size: z.number().finite().min(MORPHOLOGY_SIZE_MIN).max(MORPHOLOGY_SIZE_MAX),
+  mass: z.number().finite().min(MORPHOLOGY_MASS_MIN).max(MORPHOLOGY_MASS_MAX),
+}).strict();
+
+const speciesRecordSchema = z.object({
+  smallestCm: z.number().finite().positive().optional(),
+  largestCm: z.number().finite().positive().optional(),
+  lightestKg: z.number().finite().positive().optional(),
+  heaviestKg: z.number().finite().positive().optional(),
+  encounteredMinCm: z.number().finite().positive().optional(),
+  encounteredMaxCm: z.number().finite().positive().optional(),
+  boundCount: z.number().int().nonnegative().optional(),
+  defeatedCount: z.number().int().nonnegative().optional(),
+}).strict();
+
+const baseBeastFields = {
   uid: z.string().min(1), speciesId: z.string().min(1), nickname: z.string().min(1).max(40),
   level: z.number().int().min(1).max(MAX_LEVEL), exp: z.number().finite().nonnegative(),
   hp: z.number().finite().nonnegative(), mp: z.number().finite().nonnegative(),
@@ -46,6 +63,11 @@ const beastSchema = z.object({
   pendingSkills: z.array(z.string().min(1)).max(16).optional(),
   status: z.enum(["burn", "soak", "bind", "daze", "ward", "bless"]).nullable(),
   statusTurns: z.number().int().nonnegative(),
+};
+
+const beastSchema = z.object({
+  ...baseBeastFields,
+  morphology: morphologySchema.optional(),
 }).strict();
 
 const saveFields = {
@@ -59,8 +81,16 @@ const saveFields = {
 
 export const GameSaveV1Schema = z.object({ version: z.literal(1), ...saveFields }).strict();
 export const GameSaveV2Schema = z.object({ version: z.literal(2), ...saveFields }).strict();
+export const GameSaveV3Schema = z.object({ version: z.literal(3), worldRevision: z.number().int(), ...saveFields }).strict();
 export const GameSaveSchema = z
-  .object({ version: z.literal(SAVE_VERSION), worldRevision: z.number().int(), ...saveFields })
+  .object({
+    version: z.literal(SAVE_VERSION),
+    worldRevision: z.number().int(),
+    ...saveFields,
+    habitats: z.record(z.string().min(1), z.array(z.string().min(1))).optional(),
+    records: z.record(z.string().min(1), speciesRecordSchema).optional(),
+    milestones: z.record(z.string().min(1), z.boolean()).optional(),
+  })
   .strict();
 
 function browserStorage(): SaveStorage | null {
@@ -99,12 +129,14 @@ function normalizeBeasts(
       ids.add(beast.uid);
       if (beast.skills.some((skill) => !SKILLS[skill])) return null;
       if (beast.pendingSkills?.some((skill) => !SKILLS[skill])) return null;
-      const stats = currentStats(beast);
-      if (beast.hp > stats.hp || beast.mp > stats.mp) {
+      const morphology = beast.morphology ?? { ...NEUTRAL_MORPHOLOGY };
+      const normalizedBeast: Beast = { ...beast, morphology };
+      const stats = currentStats(normalizedBeast);
+      if (normalizedBeast.hp > stats.hp || normalizedBeast.mp > stats.mp) {
         if (!clampOverflow) return null;
-        out.push({ ...beast, hp: Math.min(beast.hp, stats.hp), mp: Math.min(beast.mp, stats.mp) });
+        out.push({ ...normalizedBeast, hp: Math.min(normalizedBeast.hp, stats.hp), mp: Math.min(normalizedBeast.mp, stats.mp) });
       } else {
-        out.push(beast);
+        out.push(normalizedBeast);
       }
     }
     return out;
@@ -114,6 +146,8 @@ function normalizeBeasts(
   if (!party || !box) return null;
   if (Object.keys(save.inventory).some((id) => !ITEMS[id])) return null;
   if (Object.keys(save.seen).some((id) => !SPECIES[id]) || Object.keys(save.caught).some((id) => !SPECIES[id])) return null;
+  if (save.habitats && Object.keys(save.habitats).some((id) => !SPECIES[id])) return null;
+  if (save.records && Object.keys(save.records).some((id) => !SPECIES[id])) return null;
   return { party, box };
 }
 
@@ -155,6 +189,14 @@ function migrateParsed(value: unknown): GameSave | null {
     // solidified: relocate it like the legacy paths instead of discarding it.
     const worldChanged = parsed.data.worldRevision < WORLD_REVISION;
     return validateSemantics(parsed.data as GameSave, { migrate: worldChanged ? "relocated" : "none" });
+  }
+  if (version === 3) {
+    const parsed = GameSaveV3Schema.safeParse(value);
+    if (!parsed.success) return null;
+    if (parsed.data.worldRevision > WORLD_REVISION) return null;
+    const worldChanged = parsed.data.worldRevision < WORLD_REVISION;
+    const draft = { ...parsed.data, version: SAVE_VERSION, worldRevision: WORLD_REVISION } as GameSave;
+    return validateSemantics(draft, { migrate: worldChanged ? "relocated" : "none" });
   }
   if (version === 2) {
     const parsed = GameSaveV2Schema.safeParse(value);

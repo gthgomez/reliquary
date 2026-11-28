@@ -69,10 +69,61 @@ export interface Skill {
   drain?: number;
 }
 
+export type MeasurementKind = "height" | "length";
+
+export type CombatRole =
+  | "Striker"
+  | "Bulwark"
+  | "Mystic"
+  | "Support"
+  | "Controller"
+  | "Swift attacker"
+  | "Balanced companion";
+
+export interface SpeciesDimensions {
+  measurement: MeasurementKind;
+  typicalSizeCm: number;
+  typicalWeightKg: number;
+}
+
+export interface CreatureMorphology {
+  /** Relative length/height ratio around 1.0 (typical ~0.90-1.10, extremes ~0.78-1.24). */
+  size: number;
+  /** Relative mass/weight ratio around 1.0, correlated with size^2.5. */
+  mass: number;
+}
+
+export interface SpeciesRecord {
+  smallestCm?: number;
+  largestCm?: number;
+  lightestKg?: number;
+  heaviestKg?: number;
+  encounteredMinCm?: number;
+  encounteredMaxCm?: number;
+  boundCount?: number;
+  defeatedCount?: number;
+}
+
+export interface EvolutionNotice {
+  uid: string;
+  nickname: string;
+  fromSpeciesId: string;
+  toSpeciesId: string;
+  level: number;
+  beforeStats: Stats;
+  afterStats: Stats;
+  learnedSkills: string[];
+  queuedSkills: string[];
+  unlockedReliquary: boolean;
+}
+
 export interface Species {
   id: string;
   name: string;
   epithet: string;
+  collectionNumber: number;
+  combatRole: CombatRole;
+  dimensions: SpeciesDimensions;
   elements: ElementId[];
   base: Stats;
   catchRate: number;
@@ -98,6 +149,7 @@ export interface Beast {
   mp: number;
   ivs: Stats;
   temperament: Temperament;
+  morphology?: CreatureMorphology;
   skills: string[];
   pendingSkills?: string[];
   status: StatusId | null;
@@ -289,6 +341,12 @@ export interface GameSave {
   flags: Record<string, boolean>;
   seen: Record<string, boolean>;
   caught: Record<string, boolean>;
+  /** Map names where each species has been legitimately encountered. */
+  habitats?: Record<string, string[]>;
+  /** Collection physical & encounter/bind records keyed by speciesId. */
+  records?: Record<string, SpeciesRecord>;
+  /** Claimed Reliquary collection milestones. */
+  milestones?: Record<string, boolean>;
 }
 
 export interface DialogView {
@@ -386,10 +444,15 @@ export interface Snapshot {
   battle: BattleState | null;
   toast: string | null;
   namePrompt: NamePromptView | null;
+  evolutionNotice: EvolutionNotice | null;
   selectedUid: string | null;
   shopIndex: number;
   shopMode: "buy" | "sell";
   shopStock: string[];
+  playTime: number;
+  habitats: Record<string, string[]>;
+  records: Record<string, SpeciesRecord>;
+  milestones: Record<string, boolean>;
   hasSave: boolean;
   importTicket: number;
   /** True when the in-game sound control has muted output (S16). */

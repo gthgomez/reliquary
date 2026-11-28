@@ -1,16 +1,12 @@
-import type { MouseEvent, PointerEvent, ReactNode, RefObject } from "react";
+import type { MouseEvent, PointerEvent, RefObject } from "react";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
   currentStats,
-  expToNext,
-  ELEMENTS,
   ITEMS,
-  MAX_LEVEL,
   PRACTICE_COST,
   PRACTICE_LORE,
   SKILLS,
   SPECIES,
-  TEMPERAMENTS,
 } from "../content";
 import type { ReliquaryGame } from "../engine";
 import { ROOT_MENU, STARTER_PACT_REWARD } from "../engine";
@@ -19,27 +15,15 @@ import { OverlayPanel } from "./OverlayPanel";
 import { DialogScene } from "./DialogScene";
 import { OfflineMenuStatus, TitleOfflineProgress } from "./AppStatus";
 import { useOverlayFocusTrap } from "./useOverlayFocusTrap.ts";
-import {
-  leadActionHint,
-  practiceActionHint,
-  practiceEnabledHint,
-} from "./party-actions.ts";
 import { shopBuyAffordability } from "./ui-chrome.ts";
 import { objectiveHint, objectivePreview } from "../systems/objective.ts";
 import { clearTouchHolds, requestAccessibleStep, updateTouchHold, type HoldId } from "./touch-hold.ts";
 import { shouldShowTitleWorldRetry } from "./asset-recovery.ts";
 import { isElderhallCandidateBuild } from "../build-flags.ts";
-import {
-  analyzeEvolutionGraph,
-  CATEGORY_LABELS,
-  elementMatchups,
-  formatEvolutionLine,
-  speciesHabitats,
-} from "../systems/species-progression.ts";
-import { MAPS } from "../maps.ts";
 import { portraitSource } from "../portraits.ts";
-
-const PROGRESSION_ENTRIES = analyzeEvolutionGraph(SPECIES, MAX_LEVEL).entries;
+import { BestiaryPanel } from "./components/BestiaryPanel.tsx";
+import { CompanionDetailOverlay, PartyPanel, StoragePanel } from "./components/CompanionPanels.tsx";
+import { FiligreeSurface, PortraitCrest } from "./components/ReliquaryPrimitives.tsx";
 
 export function TitleScreen({ game, snap }: { game: ReliquaryGame; snap: Snapshot }) {
   const [confirmingReplace, setConfirmingReplace] = useState(false);
@@ -434,67 +418,117 @@ export function NamePrompt({ game, prompt }: { game: ReliquaryGame; prompt: Name
 }
 
 export function MenuPanel({ game, snap, onImportActivate }: { game: ReliquaryGame; snap: Snapshot; onImportActivate?: () => void }) {
+  const [bestiaryLink, setBestiaryLink] = useState<{
+    speciesId: string;
+    returnMenu: "party" | "storage";
+    uid: string;
+    label: string;
+  } | null>(null);
+
   if (!snap.menu) return null;
-  const actionLabels: Record<string, (nickname: string) => string> = {
-    lead: (n) => `Make ${n} lead`,
-    practice: () => `Practice · ${PRACTICE_COST} cr`,
-    learn: () => "Learn a new skill",
-    rename: () => "Rename",
-    store: (n) => `Store ${n}`,
-    in: (n) => `Add ${n} to the party`,
-  };
+
   if ((snap.menu === "party" || snap.menu === "storage") && snap.cardMenu) {
-    const beast = [...snap.party, ...snap.box].find((b) => b.uid === snap.cardMenu!.uid);
+    const returnMenu = snap.menu;
+    const cardBeast = [...snap.party, ...snap.box].find((b) => b.uid === snap.cardMenu!.uid);
+    const cardSp = cardBeast ? SPECIES[cardBeast.speciesId] : null;
+    if (!cardBeast || !cardSp) return null;
     return (
-      <OverlayPanel title={snap.cardMenu.nickname} onClose={() => game.cancel()}>
-        <p className="sheet-sub">Choose an action.</p>
-        <ul className="menu-list">
-          {snap.cardMenu.actions.map((action, i) => (
-            <li key={action}>
-              <button
-                type="button"
-                className={i === snap.menuIndex ? "active" : ""}
-                onClick={() => game.chooseMenu(i)}
-              >
-                {actionLabels[action]?.(beast?.nickname ?? "") ?? action}
-              </button>
-            </li>
-          ))}
-        </ul>
+      <OverlayPanel
+        wide
+        title={cardBeast.nickname}
+        subtitle={`#${String(cardSp.collectionNumber).padStart(3, "0")} ${cardSp.name} · Lv ${cardBeast.level} · ${cardSp.combatRole}`}
+        onClose={() => game.cancel()}
+      >
+        <CompanionDetailOverlay
+          game={game}
+          snap={snap}
+          onViewInReliquary={(speciesId, uid) => {
+            setBestiaryLink({
+              speciesId,
+              returnMenu,
+              uid,
+              label: `Back to ${cardBeast.nickname}`,
+            });
+            game.openMenuSection("reliquary", null);
+          }}
+        />
       </OverlayPanel>
     );
   }
+
   if (snap.menu === "root") {
+    const totalSpecies = Object.keys(SPECIES).length;
+    const boundCount = Object.values(snap.caught).filter(Boolean).length;
+    const itemCount = Object.values(snap.inventory).reduce((sum, q) => sum + (q > 0 ? q : 0), 0);
+    const lead = snap.party[0];
+    const leadStats = lead ? currentStats(lead) : null;
+    const destinationMeta: Record<string, string> = {
+      Party: `${snap.party.length}/4 active`,
+      Storage: `${snap.box.length} stored`,
+      Reliquary: `${boundCount}/${totalSpecies} bound`,
+      Pack: `${itemCount} carried`,
+      Save: "Write record",
+      Export: "JSON backup",
+      Import: "Load JSON",
+      Sound: snap.soundOff ? "Muted" : "Audible",
+    };
     return (
       <OverlayPanel
+        wide
         title="Lantern"
         subtitle={snap.objective
           ? `Objective — ${snap.objective}${objectiveHint(snap.flags, snap.mapName) ? `\n\n${objectiveHint(snap.flags, snap.mapName)}` : ""}`
           : undefined}
         closeLabel="Close"
-        onClose={() => game.chooseMenu(ROOT_MENU.length - 1)}
+        onClose={() => {
+          setBestiaryLink(null);
+          game.chooseMenu(ROOT_MENU.length - 1);
+        }}
         onCloseFocus={() => { game.setMenuIndex(ROOT_MENU.length - 1); game.emitPublic(); }}
       >
-        <OfflineMenuStatus />
-        <ul className="menu-list">
-          {ROOT_MENU.slice(0, -1).map((it, i) => (
-            <li key={it}>
-              <button
-                type="button"
-                className={i === snap.menuIndex ? "active" : ""}
-                onFocus={() => { game.setMenuIndex(i); game.emitPublic(); }}
-                onClick={() => {
-                  // Open the picker inside this gesture (Safari-safe); the
-                  // engine ticket effect stays as the fallback path.
-                  if (it === "Import") onImportActivate?.();
-                  game.chooseMenu(i);
-                }}
-              >
-                {it === "Sound" ? (snap.soundOff ? "Sound: off" : "Sound: on") : it}
-              </button>
-            </li>
-          ))}
+        <FiligreeSurface className="rq-lantern-summary">
+          <div className="rq-lantern-meta">
+            <div>
+              <span className="rq-lantern-place">{snap.mapName}</span>
+              <strong className="rq-lantern-purse">{snap.gold} crowns</strong>
+            </div>
+            {lead && leadStats ? (
+              <div className="rq-lantern-lead">
+                <PortraitCrest speciesId={lead.speciesId} alt="" size="sm" />
+                <div>
+                  <span className="rq-lantern-lead-name">{lead.nickname} · Lv {lead.level}</span>
+                  <span className="rq-lantern-lead-hp">HP {lead.hp}/{leadStats.hp} · MP {lead.mp}/{leadStats.mp}</span>
+                </div>
+              </div>
+            ) : null}
+          </div>
+        </FiligreeSurface>
+        <ul className="menu-list rq-lantern-grid">
+          {ROOT_MENU.slice(0, -1).map((it, i) => {
+            const label = it === "Sound" ? (snap.soundOff ? "Sound: off" : "Sound: on") : it;
+            return (
+              <li key={it}>
+                <button
+                  type="button"
+                  aria-label={label}
+                  className={i === snap.menuIndex ? "active" : ""}
+                  onFocus={() => { game.setMenuIndex(i); game.emitPublic(); }}
+                  onClick={() => {
+                    setBestiaryLink(null);
+                    // Open the picker inside this gesture (Safari-safe); the
+                    // engine ticket effect stays as the fallback path.
+                    if (it === "Import") onImportActivate?.();
+                    game.chooseMenu(i);
+                  }}
+                >
+                  <span className="rq-menu-title">{label}</span>
+                  <em>{destinationMeta[it] ?? ""}</em>
+                </button>
+              </li>
+            );
+          })}
         </ul>
+        <OfflineMenuStatus />
       </OverlayPanel>
     );
   }
@@ -549,58 +583,7 @@ export function MenuPanel({ game, snap, onImportActivate }: { game: ReliquaryGam
         subtitle={`Lead walks first in battle. Practice costs ${PRACTICE_COST} cr and grants ${PRACTICE_LORE} lore (XP).`}
         onClose={() => game.cancel()}
       >
-        <div className="party-grid">
-          {snap.party.map((b, index) => (
-            <BeastCard key={b.uid} beast={b} selected={index === snap.menuIndex}>
-              {b.pendingSkills?.length ? (
-                <button
-                  type="button"
-                  className="btn-ghost"
-                  onClick={() => game.openLearnMenu(b.uid)}
-                  aria-label={`Teach ${b.nickname} ${SKILLS[b.pendingSkills[0]!]?.name ?? b.pendingSkills[0]}`}
-                >
-                  Learn {SKILLS[b.pendingSkills[0]!]?.name ?? b.pendingSkills[0]}
-                  {b.pendingSkills.length > 1 ? ` (${b.pendingSkills.length})` : ""}
-                </button>
-              ) : null}
-              <div className="action-with-hint">
-                <button
-                  type="button"
-                  className={index === 0 ? "btn-lead-active" : "btn-ghost"}
-                  disabled={index !== 0 && b.hp <= 0}
-                  aria-pressed={index === 0}
-                  onClick={() => {
-                    if (index !== 0 && b.hp > 0) game.setLead(b.uid);
-                  }}
-                  aria-label={`Make ${b.nickname} lead`}
-                  aria-describedby={`lead-hint-${b.uid}`}
-                >
-                  {index === 0 ? "Party lead" : "Make lead"}
-                </button>
-                <p id={`lead-hint-${b.uid}`} className="action-hint" role="note">
-                  {leadActionHint(index, b) ?? "Send this companion to the front of the party and into battle first."}
-                </p>
-              </div>
-              <RenameCreature game={game} beast={b} />
-              <div className="action-with-hint">
-                <button
-                  type="button"
-                  className="btn-ghost"
-                  disabled={b.hp <= 0 || b.level >= MAX_LEVEL || snap.gold < PRACTICE_COST}
-                  onClick={() => game.trainCreature(b.uid)}
-                  aria-label={`Practice with ${b.nickname} for ${PRACTICE_COST} crowns`}
-                  aria-describedby={`practice-hint-${b.uid}`}
-                >
-                  Practice · {PRACTICE_COST} cr
-                </button>
-                <p id={`practice-hint-${b.uid}`} className="action-hint" role="note">
-                  {practiceActionHint(b, snap.gold) ?? practiceEnabledHint()}
-                </p>
-              </div>
-            </BeastCard>
-          ))}
-          {snap.party.length === 0 ? <p className="empty">No pact spoken yet.</p> : null}
-        </div>
+        <PartyPanel game={game} snap={snap} renderRename={(beast) => <RenameCreature game={game} beast={beast} />} />
       </OverlayPanel>
     );
   }
@@ -612,51 +595,41 @@ export function MenuPanel({ game, snap, onImportActivate }: { game: ReliquaryGam
         subtitle={`Party ${snap.party.length}/4 · Stored ${snap.box.length}`}
         onClose={() => game.cancel()}
       >
-        <h3 className="sheet-section">Travelling companions</h3>
-        <div className="party-grid">
-          {snap.party.map((b, index) => (
-            <BeastCard key={b.uid} beast={b} selected={index === snap.menuIndex}>
-              <button
-                type="button"
-                className="btn-ghost"
-                onClick={() => game.transferBeast(b.uid, "box")}
-                aria-label={`Store ${b.nickname}`}
-              >
-                Store
-              </button>
-            </BeastCard>
-          ))}
-        </div>
-        <h3 className="sheet-section">Stored creatures</h3>
-        <div className="party-grid">
-          {snap.box.map((b, boxIndex) => (
-            <BeastCard key={b.uid} beast={b} selected={snap.party.length + boxIndex === snap.menuIndex}>
-              <div className="action-with-hint">
-                <button
-                  type="button"
-                  className="btn-ghost"
-                  disabled={snap.party.length >= 4}
-                  onClick={() => game.transferBeast(b.uid, "party")}
-                  aria-label={`Add ${b.nickname} to party`}
-                  aria-describedby={`store-in-hint-${b.uid}`}
-                >
-                  Add to party
-                </button>
-                {snap.party.length >= 4 ? (
-                  <p id={`store-in-hint-${b.uid}`} className="action-hint" role="note">
-                    Party is full (4/4). Store a traveller first.
-                  </p>
-                ) : null}
-              </div>
-            </BeastCard>
-          ))}
-          {snap.box.length === 0 ? <p className="empty">No creatures in storage yet.</p> : null}
-        </div>
+        <StoragePanel game={game} snap={snap} />
       </OverlayPanel>
     );
   }
   if (snap.menu === "reliquary") {
-    return <ReliquaryPanel snap={snap} onClose={() => game.cancel()} />;
+    const allSpecies = Object.values(SPECIES);
+    const boundCount = allSpecies.filter((sp) => Boolean(snap.caught[sp.id])).length;
+    const seenCount = allSpecies.filter((sp) => Boolean(snap.seen[sp.id]) || Boolean(snap.caught[sp.id])).length;
+    const progressPct = allSpecies.length ? Math.round((boundCount / allSpecies.length) * 100) : 0;
+    return (
+      <OverlayPanel
+        wide
+        title="Reliquary"
+        subtitle={`Bound ${boundCount}/${allSpecies.length} · Seen ${seenCount}/${allSpecies.length} (${progressPct}% complete)`}
+        onClose={() => {
+          setBestiaryLink(null);
+          game.cancel();
+        }}
+      >
+        <BestiaryPanel
+          snap={snap}
+          initialSpeciesId={bestiaryLink?.speciesId ?? null}
+          returnLabel={bestiaryLink?.label ?? null}
+          onReturn={
+            bestiaryLink
+              ? () => {
+                  const target = bestiaryLink;
+                  setBestiaryLink(null);
+                  game.openMenuSection(target.returnMenu, target.uid);
+                }
+              : undefined
+          }
+        />
+      </OverlayPanel>
+    );
   }
   if (snap.packTarget) {
     return (
@@ -770,157 +743,6 @@ function RenameCreature({ game, beast }: { game: ReliquaryGame; beast: Beast }) 
         Cancel
       </button>
     </form>
-  );
-}
-
-function ReliquaryPanel({ snap, onClose }: { snap: Snapshot; onClose: () => void }) {
-  const ids = Object.keys(SPECIES);
-  const firstKnown = ids.find((id) => snap.caught[id] || snap.seen[id]) ?? null;
-  const [selectedId, setSelectedId] = useState<string | null>(firstKnown);
-  const activeId = selectedId && (snap.caught[selectedId] || snap.seen[selectedId]) ? selectedId : firstKnown;
-  const activeSp = activeId ? SPECIES[activeId] : null;
-  const activeProg = activeId ? PROGRESSION_ENTRIES[activeId] : null;
-  const activeHabitats = activeId ? speciesHabitats(activeId, MAPS) : [];
-  const activeMatchups = activeSp ? elementMatchups(activeSp.elements) : null;
-
-  return (
-    <OverlayPanel
-      wide
-      title="Reliquary"
-      subtitle={`Bound ${Object.keys(snap.caught).length} · Seen ${Object.keys(snap.seen).length} of ${ids.length} · ? unheard · —— spotted only`}
-      onClose={onClose}
-    >
-      {activeSp && activeProg ? (
-        <section className="reliq-detail" aria-label={`${activeSp.name} lore and progression`}>
-          <div className="reliq-detail-head">
-            <strong>{activeSp.name}</strong>
-            <span className="muted">
-              {activeSp.epithet} · {CATEGORY_LABELS[activeProg.category]}
-            </span>
-          </div>
-          <p className="skills">
-            Lineage: {formatEvolutionLine(activeSp.id, SPECIES, PROGRESSION_ENTRIES)}
-          </p>
-          <p className="skills">
-            {activeHabitats.length
-              ? `Habitats: ${activeHabitats.join(", ")}`
-              : activeProg.category === "exceptional"
-                ? "Habitat: Fixed shrine encounter"
-                : activeProg.evolvedFrom
-                  ? `Obtained via evolution from ${SPECIES[activeProg.evolvedFrom.id]?.name ?? activeProg.evolvedFrom.id}`
-                  : "Habitat: Binding Grove pact"}
-            {activeMatchups && (activeMatchups.strongAgainst.length || activeMatchups.weakAgainst.length)
-              ? ` · Strong vs ${activeMatchups.strongAgainst.join(", ") || "none"} · Weak to ${activeMatchups.weakAgainst.join(", ") || "none"}`
-              : ""}
-          </p>
-          <p className="muted">{activeSp.description}</p>
-        </section>
-      ) : null}
-      <div className="reliq-grid" role="list">
-        {ids.map((id) => {
-          const sp = SPECIES[id]!;
-          const caught = Boolean(snap.caught[id]);
-          const seen = Boolean(snap.seen[id]);
-          const known = seen || caught;
-          const isSelected = activeId === id;
-          const stateLabel = caught
-            ? `${sp.name} — bound to your compact`
-            : seen
-              ? `${sp.name} — seen in the wild, not yet bound`
-              : "Unheard of — bind one to learn its name";
-          return (
-            <div
-              key={id}
-              role="listitem"
-              aria-label={known ? undefined : stateLabel}
-              className={`reliq-cell ${caught ? "have" : ""}${seen && !caught ? " seen" : ""}${isSelected ? " selected" : ""}`}
-              title={stateLabel}
-            >
-              {known ? (
-                <button
-                  type="button"
-                  className="reliq-btn"
-                  aria-label={stateLabel}
-                  aria-pressed={isSelected}
-                  onClick={() => setSelectedId(id)}
-                >
-                  <img src={`/game/sprites/${id}.png`} alt="" />
-                  <span>{sp.name}</span>
-                </button>
-              ) : (
-                <>
-                  <span className="unknown" aria-hidden="true">
-                    ?
-                  </span>
-                  <span>——</span>
-                </>
-              )}
-            </div>
-          );
-        })}
-      </div>
-    </OverlayPanel>
-  );
-}
-
-function BeastCard({ beast, children, selected }: { beast: Beast; children?: ReactNode; selected?: boolean }) {
-  const sp = SPECIES[beast.speciesId]!;
-  const st = currentStats(beast);
-  const t = TEMPERAMENTS[beast.temperament];
-  const prog = PROGRESSION_ENTRIES[beast.speciesId];
-  const matchups = elementMatchups(sp.elements);
-  return (
-    <article className={`beast-card${selected ? " beast-card-active" : ""}`}>
-      <img src={`/game/sprites/${beast.speciesId}.png`} alt="" />
-      <div>
-        <h3>
-          <span className="beast-name">{beast.nickname}</span> <small>Lv {beast.level}</small>
-        </h3>
-        <p className="els">
-          {sp.elements.map((e) => (
-            <span key={e} className={`el el-${e}`}>
-              {ELEMENTS[e].name}
-            </span>
-          ))}
-        </p>
-        <Meter label="HP" value={beast.hp} max={st.hp} kind="hp" />
-        <Meter label="MP" value={beast.mp} max={st.mp} kind="mp" />
-        {beast.level < MAX_LEVEL ? (
-          <Meter
-            label="Lore"
-            value={beast.exp}
-            max={expToNext(beast.level)}
-            kind="mp"
-            longLabel="Lore (experience to next level)"
-          />
-        ) : (
-          <p className="skills">Level cap reached</p>
-        )}
-        <p className="skills">
-          {prog ? `${CATEGORY_LABELS[prog.category]} · ` : ""}
-          {sp.evolves
-            ? `Evolves into ${SPECIES[sp.evolves.into]?.name} at Lv ${sp.evolves.level}`
-            : prog?.evolvedFrom
-              ? `Final evolved stage`
-              : "Mature form"}
-        </p>
-        <p className="muted">
-          {t.name} (+{t.up.toUpperCase()} / -{t.down.toUpperCase()}) · {sp.epithet}
-        </p>
-        <p className="beast-stats-line">
-          ATK {st.atk} · DEF {st.def} · MAG {st.mag} · RES {st.res} · SPD {st.spd} · LCK {st.lck}
-        </p>
-        {matchups.strongAgainst.length || matchups.weakAgainst.length ? (
-          <p className="beast-matchups">
-            {matchups.strongAgainst.length ? `Strong vs ${matchups.strongAgainst.join(", ")}` : ""}
-            {matchups.strongAgainst.length && matchups.weakAgainst.length ? " · " : ""}
-            {matchups.weakAgainst.length ? `Weak to ${matchups.weakAgainst.join(", ")}` : ""}
-          </p>
-        ) : null}
-        <p className="skills">{beast.skills.map((s) => SKILLS[s]?.name ?? s).join(" · ")}</p>
-        {children ? <div className="beast-actions">{children}</div> : null}
-      </div>
-    </article>
   );
 }
 

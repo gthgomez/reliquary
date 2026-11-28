@@ -81,23 +81,33 @@ import { compareWorldDepth, paintActorBehindPost, paintPropWithLocalFade, paintW
 import { elderhallCandidateObject, elderhallGateRenderRegions, elderhallTerrainAtlas, paintCandidateGateFallback, paintCandidateBenchFallback, paintCandidateTerrainJunctions } from "./render/elderhall-visual.ts";
 import { captureChance, captureSucceeds, storeCapturedBeast } from "./systems/capture.ts";
 import { healBeast, playerActsFirst, spendSkillMp } from "./systems/combat.ts";
-import { applySkillEvents, resolveSkillUse } from "./systems/battle-engine.ts";
+import { applySkillEvents, basicStrike, chooseFoeSkill, resolveSkillUse } from "./systems/battle-engine.ts";
+import {
+  describeMorphology,
+  morphologyVisualScale,
+  recordSpeciesBind,
+  recordSpeciesDefeat,
+  recordSpeciesEncounter,
+  recordSpeciesHabitat,
+} from "./systems/morphology.ts";
 
 import { purchaseItem, sellItem } from "./systems/economy.ts";
 import { awardExperience } from "./systems/progression.ts";
 import { moveToLead, renameCreature, transferBeast } from "./systems/party.ts";
 import { currentObjective, marenLandmark } from "./systems/objective.ts";
-import { STATUS_ADJECTIVES, applyStatus, dazeFumbles, tickStatus as tickBeastStatus } from "./systems/status.ts";
+import { dazeFumbles, tickStatus as tickBeastStatus } from "./systems/status.ts";
 import type {
   BattleState,
   Beast,
   Dir,
+  EvolutionNotice,
   GameSave,
   MapDef,
   Mode,
   Skill,
   NamePromptView,
   Snapshot,
+  SpeciesRecord,
 } from "./types.ts";
 
 export const TILE = 32;
@@ -205,6 +215,10 @@ export class ReliquaryGame {
 	flags: Record<string, boolean> = {};
 	seen: Record<string, boolean> = {};
 	caught: Record<string, boolean> = {};
+	habitats: Record<string, string[]> = {};
+	records: Record<string, SpeciesRecord> = {};
+	milestones: Record<string, boolean> = {};
+	private evolutionQueue: EvolutionNotice[] = [];
 	dialog: Dialog | null = null;
 	private dialogRevision = 0;
 	menu: string | null = null;
@@ -314,12 +328,17 @@ export class ReliquaryGame {
 			objective: currentObjective(this.flags),
 			interactionHint: this.currentInteractionHint(),
 			gold: this.gold,
+			playTime: this.playTime,
 			party: this.party,
 			box: this.box,
 			inventory: this.inventory,
 			flags: this.flags,
 			seen: this.seen,
 			caught: this.caught,
+			habitats: this.habitats,
+			records: this.records,
+			milestones: this.milestones,
+			evolutionNotice: this.evolutionQueue[0] ?? null,
 			dialog: this.dialog ? {
 				revision: this.dialogRevision,
 				speaker: this.dialog.speaker,
@@ -793,6 +812,10 @@ export class ReliquaryGame {
 		this.flags = {};
 		this.seen = {};
 		this.caught = {};
+		this.habitats = {};
+		this.records = {};
+		this.milestones = {};
+		this.evolutionQueue = [];
 		this.battle = null;
 		this.menu = null;
 		this.namePrompt = null;
@@ -841,6 +864,10 @@ export class ReliquaryGame {
 		this.flags = s.flags;
 		this.seen = s.seen;
 		this.caught = s.caught;
+		this.habitats = s.habitats ? { ...s.habitats } : {};
+		this.records = s.records ? { ...s.records } : {};
+		this.milestones = s.milestones ? { ...s.milestones } : {};
+		this.evolutionQueue = [];
 	}
 	/** The live state as a save. Single source of truth for persisting and exporting. */
 	currentSave(): GameSave {
@@ -859,7 +886,10 @@ export class ReliquaryGame {
 			inventory: this.inventory,
 			flags: this.flags,
 			seen: this.seen,
-			caught: this.caught
+			caught: this.caught,
+			...(Object.keys(this.habitats).length ? { habitats: this.habitats } : {}),
+			...(Object.keys(this.records).length ? { records: this.records } : {}),
+			...(Object.keys(this.milestones).length ? { milestones: this.milestones } : {}),
 		};
 	}
 	exportGame(): boolean {
@@ -1636,8 +1666,8 @@ export class ReliquaryGame {
 		if (!sp) return;
 		const beast = makeBeast(id, STARTER_PACT_LEVEL, { nickname: sp.name, random: this.random });
 		this.party = [beast];
-		this.caught[id] = true;
-		this.seen[id] = true;
+		this.recordSeenBeast(beast);
+		this.recordBoundBeast(beast);
 		this.flags.starter = true;
 		this.flags[starterPactFlag(id)] = true;
 		this.give("common_sigil", STARTER_PACT_REWARD.sigils);
@@ -1709,7 +1739,7 @@ export class ReliquaryGame {
 	private startWildFrom(speciesId: string, level: number): void {
 		this.resetWorldCameraRelief();
 		const foe = makeBeast(speciesId, level, { random: this.random });
-		this.seen[speciesId] = true;
+		this.recordSeenBeast(foe, this.map().name);
 		this.encounterLock = true;
 		this.persistBattleCheckpoint();
 		sfxPlay.encounter();
@@ -1751,7 +1781,7 @@ export class ReliquaryGame {
 		if (this.flags[def.onceFlag]) return false;
 		const foes = def.foes.map((f) => makeBeast(f.speciesId, f.level, { random: this.random }));
 		foes.forEach((f) => {
-			this.seen[f.speciesId] = true;
+			this.recordSeenBeast(f);
 		});
 		this.persistBattleCheckpoint();
 		sfxPlay.encounter();
@@ -1789,7 +1819,7 @@ export class ReliquaryGame {
 		const levels = wardenTeamLevels(strongest);
 		const foes = WARDEN_TRIAL_TEAM.map((foe, i) => makeBeast(foe.speciesId, levels[i]!, { random: this.random }));
 		foes.forEach((f) => {
-			this.seen[f.speciesId] = true;
+			this.recordSeenBeast(f);
 		});
 		this.persistBattleCheckpoint();
 		sfxPlay.encounter();
@@ -2075,41 +2105,63 @@ export class ReliquaryGame {
 		return null;
 	}
 	private foeTurn(foe: Beast, me: Beast): BattleAnimCue | null {
-		const skills = foe.skills.map((id) => SKILLS[id]).filter(Boolean);
-		const foS = currentStats(foe);
 		if (dazeFumbles(foe, this.random)) {
 			this.logBattle(`${foe.nickname}'s grip fumbles — it cannot find its line.`);
 			return null;
 		}
-		if (foe.hp < foS.hp * .35) {
-			const heal = skills.find((s) => s.kind === "heal" && foe.mp >= s.mp);
-			if (heal) {
-				foe.mp -= heal.mp;
-				return this.useSkill(foe, foe, true, heal, true);
-			}
-		}
-		const myEls = SPECIES[me.speciesId].elements;
-		let best = basicStrike(foe);
-		let bestS = -1;
-		for (const s of skills) {
-			if (s.mp > foe.mp || s.kind === "heal") continue;
-			const score = s.power * typeMod(s.element, myEls);
-			if (score > bestS) {
-				bestS = score;
-				best = s;
-			}
-		}
+		const best = chooseFoeSkill(foe, me);
 		if (best.mp) foe.mp = Math.max(0, foe.mp - best.mp);
-		return this.useSkill(foe, me, true, best, true);
+		return this.useSkill(foe, best.kind === "heal" || best.kind === "ward" ? foe : me, true, best, true);
 	}
 	private tickStatus(b: Beast): void {
 		if (!b.status) return;
 		tickBeastStatus(b);
 	}
+	private recordSeenBeast(beast: Beast, wildMapName?: string): void {
+		this.seen[beast.speciesId] = true;
+		const sp = SPECIES[beast.speciesId];
+		if (sp) {
+			const sizeCm = describeMorphology(beast, sp).sizeCm;
+			this.records = recordSpeciesEncounter(this.records, beast.speciesId, sizeCm);
+		}
+		if (wildMapName) {
+			this.habitats = recordSpeciesHabitat(this.habitats, beast.speciesId, wildMapName);
+		}
+	}
+	private recordBoundBeast(beast: Beast): void {
+		this.caught[beast.speciesId] = true;
+		this.seen[beast.speciesId] = true;
+		const sp = SPECIES[beast.speciesId];
+		if (sp) this.records = recordSpeciesBind(this.records, beast, sp);
+		this.checkCollectionMilestones();
+	}
+	private checkCollectionMilestones(): void {
+		const boundCount = Object.values(this.caught).filter(Boolean).length;
+		const rewards: { key: string; count: number; item: string; qty: number; gold: number; label: string }[] = [
+			{ key: "bound_5", count: 5, item: "thorn_sigil", qty: 1, gold: 40, label: "5 pacts kept — gained 1 Thorn Sigil and 40 crowns!" },
+			{ key: "bound_10", count: 10, item: "relic_sigil", qty: 1, gold: 90, label: "10 pacts kept — gained 1 Relic Sigil and 90 crowns!" },
+			{ key: "bound_15", count: 15, item: "etherdrop", qty: 2, gold: 140, label: "15 pacts kept — gained 2 Etherdrops and 140 crowns!" },
+		];
+		for (const r of rewards) {
+			if (boundCount >= r.count && !this.milestones[r.key]) {
+				this.milestones[r.key] = true;
+				this.give(r.item, r.qty);
+				this.gold += r.gold;
+				this.toastMsg(r.label);
+			}
+		}
+	}
+	dismissEvolutionNotice(): void {
+		if (!this.evolutionQueue.length) return;
+		this.evolutionQueue.shift();
+		this.persist();
+		this.emit();
+	}
 	private foeDown(): void {
 		const b = this.battle!;
 		const foe = b.foes[b.foeIndex]!;
 		const sp = SPECIES[foe.speciesId];
+		this.records = recordSpeciesDefeat(this.records, foe.speciesId);
 		sfxPlay.faint();
 		const xpNotes = this.distributeBattleExp(foe, 1);
 		const next = b.foes.findIndex((f, i) => i > b.foeIndex && f.hp > 0);
@@ -2150,14 +2202,24 @@ export class ReliquaryGame {
 		const active = this.party[b.playerIndex];
 		const participants = new Set(b.participants ?? []);
 		if (active?.uid) participants.add(active.uid);
-		const notes: string[] = [];
-		const toastNotes: string[] = [];
+		const recipients: { beast: Beast; weight: number }[] = [];
 		for (let i = 0; i < this.party.length; i += 1) {
 			const beast = this.party[i]!;
 			if (beast.hp <= 0) continue;
 			const isActive = i === b.playerIndex;
 			if (!isActive && !participants.has(beast.uid)) continue;
-			const share = isActive ? baseXp : Math.max(1, Math.floor(baseXp * 0.5));
+			recipients.push({ beast, weight: isActive ? 1.5 : 1 });
+		}
+		if (!recipients.length) return [];
+		const pool = Math.max(
+			1,
+			Math.round(baseXp * (1 + Math.min(0.25, 0.1 * (recipients.length - 1)))),
+		);
+		const totalWeight = recipients.reduce((sum, item) => sum + item.weight, 0);
+		const notes: string[] = [];
+		const toastNotes: string[] = [];
+		for (const { beast, weight } of recipients) {
+			const share = recipients.length === 1 ? baseXp : Math.max(1, Math.round((pool * weight) / totalWeight));
 			notes.push(`${beast.nickname} gains ${share} lore.`);
 			const events = this.grantXp(beast, share, false);
 			notes.push(...events);
@@ -2182,6 +2244,7 @@ export class ReliquaryGame {
 		this.emit();
 	}
 	private grantXp(b: Beast, xp: number, showToast = true): string[] {
+		const oldStats = currentStats(b);
 		const progression = awardExperience(b, xp);
 		const notices: string[] = [];
 		for (const skill of progression.learnedSkills) {
@@ -2191,11 +2254,30 @@ export class ReliquaryGame {
 			notices.push(`${b.nickname} remembers ${SKILLS[skill]?.name} — open the Party card to decide.`);
 		}
 		if (progression.evolvedFrom && progression.evolvedInto) {
+			const fromSp = SPECIES[progression.evolvedFrom];
+			const toSp = SPECIES[progression.evolvedInto];
+			const unlockedReliquary = !this.caught[progression.evolvedInto];
+			if (fromSp && toSp && b.nickname === fromSp.name) {
+				b.nickname = toSp.name;
+			}
 			for (const speciesId of progression.evolvedStages) {
 				this.caught[speciesId] = true;
 				this.seen[speciesId] = true;
 			}
-			notices.push(`${SPECIES[progression.evolvedFrom]?.name} becomes ${SPECIES[progression.evolvedInto]?.name}!`);
+			this.recordBoundBeast(b);
+			this.evolutionQueue.push({
+				uid: b.uid,
+				nickname: b.nickname,
+				fromSpeciesId: progression.evolvedFrom,
+				toSpeciesId: progression.evolvedInto,
+				level: b.level,
+				beforeStats: oldStats,
+				afterStats: currentStats(b),
+				learnedSkills: progression.learnedSkills,
+				queuedSkills: progression.queuedSkills,
+				unlockedReliquary,
+			});
+			notices.push(`${fromSp?.name} becomes ${toSp?.name}!`);
 		}
 		if (showToast && notices.length > 0) this.toastMsg(notices.join(" "));
 		if (progression.levelsGained > 0) sfxPlay.level();
@@ -2229,8 +2311,7 @@ export class ReliquaryGame {
 			if (n < shakes) this.after(.45, () => step(n + 1));
 			else if (succeed) {
 				const xpNotes = this.distributeBattleExp(foe, 0.5);
-				this.caught[foe.speciesId] = true;
-				this.seen[foe.speciesId] = true;
+				this.recordBoundBeast(foe);
 				const stored = storeCapturedBeast(this.party, this.box, foe);
 				this.party = stored.party;
 				this.box = stored.box;
@@ -2431,6 +2512,22 @@ export class ReliquaryGame {
 		}
 		actions.push("rename");
 		return actions;
+	}
+	openCardMenu(uid: string): void {
+		if (this.mode !== "world" || (this.menu !== "party" && this.menu !== "storage") || this.battle || this.dialog) return;
+		if (!this.party.concat(this.box).some((item) => item.uid === uid)) return;
+		this.cardAction = { uid };
+		this.menuIndex = 0;
+		sfxPlay.menu();
+		this.emit();
+	}
+	openMenuSection(section: "party" | "storage" | "reliquary" | "items", cardUid?: string | null): void {
+		if (this.mode !== "world" || this.battle || this.dialog || this.namePrompt) return;
+		this.menu = section;
+		this.cardAction = cardUid ? { uid: cardUid } : null;
+		this.menuIndex = cardUid ? 0 : (cardUid === null ? 0 : this.menuIndex);
+		sfxPlay.menu();
+		this.emit();
 	}
 	requestRename(uid: string): void {
 		this.selectedUid = uid;
@@ -2996,7 +3093,15 @@ export class ReliquaryGame {
 			const paint = preview?.sprite("foe", foe.speciesId);
 			const bounds = measureSpriteAlphaBounds(img) ?? undefined;
 			if (img || paint) {
-				drawBattleFoeSprite(ctx, img, layout, catchShake, foeCosmetic, paint, bounds);
+				drawBattleFoeSprite(
+					ctx,
+					img,
+					layout,
+					catchShake,
+					{ ...foeCosmetic, scaleFactor: morphologyVisualScale(foe.morphology) },
+					paint,
+					bounds,
+				);
 			}
 		}
 		const me = this.party[b.playerIndex]!;
@@ -3004,24 +3109,21 @@ export class ReliquaryGame {
 			const img = this.images[`sprite_${me.speciesId}`];
 			const paint = preview?.sprite("player", me.speciesId);
 			const bounds = measureSpriteAlphaBounds(img) ?? undefined;
-			if (img || paint) drawBattlePlayerSprite(ctx, img, layout, playerCosmetic, paint, bounds);
+			if (img || paint) {
+				drawBattlePlayerSprite(
+					ctx,
+					img,
+					layout,
+					{ ...playerCosmetic, scaleFactor: morphologyVisualScale(me.morphology) },
+					paint,
+					bounds,
+				);
+			}
 		}
 		if (motion.projectile) paintGustProjectile(ctx, motion.projectile);
 		preview?.overlay(ctx, layout);
 	}
 };
-function basicStrike(b: Beast): Skill {
-	return {
-		id: "strike",
-		name: "Strike",
-		element: SPECIES[b.speciesId]!.elements[0]!,
-		kind: "strike",
-		power: 45,
-		accuracy: 100,
-		mp: 0,
-		desc: "A plain blow."
-	};
-}
 function collectPaths(): [string, string][] {
 	return collectGameAssets().map((entry) => [entry.key, entry.url]);
 }

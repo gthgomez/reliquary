@@ -212,20 +212,31 @@ export function analyzeEvolutionGraph(
 export function elementMatchups(
   elements: readonly ElementId[],
   elementTable: typeof ELEMENTS = ELEMENTS,
-): { strongAgainst: string[]; weakAgainst: string[] } {
+): { strongAgainst: string[]; weakAgainst: string[]; resistsAgainst: string[] } {
   const strongSet = new Set<string>();
   const weakSet = new Set<string>();
+  const resistsSet = new Set<string>();
   for (const el of elements) {
     const def = elementTable[el];
     if (!def) continue;
     for (const target of def.strong) strongSet.add(elementTable[target]?.name ?? target);
   }
-  for (const candidate of Object.values(elementTable)) {
-    if (elements.some((el) => candidate.strong.includes(el))) {
-      weakSet.add(candidate.name);
+  // Defensive matchup uses multiplicative combination across all creature elements
+  // so dual-type strengths/resistances cannot over-claim a single-type weakness.
+  for (const [candidateId, candidate] of Object.entries(elementTable)) {
+    let mod = 1;
+    for (const defEl of elements) {
+      if (candidate.strong.includes(defEl)) mod *= 1.5;
+      else if (candidate.weak.includes(defEl)) mod *= 0.65;
     }
+    if (mod > 1.05) weakSet.add(candidate.name);
+    else if (mod < 0.95) resistsSet.add(elementTable[candidateId as ElementId]?.name ?? candidate.name);
   }
-  return { strongAgainst: [...strongSet], weakAgainst: [...weakSet] };
+  return {
+    strongAgainst: [...strongSet],
+    weakAgainst: [...weakSet],
+    resistsAgainst: [...resistsSet],
+  };
 }
 
 export function speciesHabitats(
