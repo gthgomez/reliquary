@@ -11,6 +11,7 @@ import {
   TouchPad,
   VictoryScreen,
 } from "./ui/Overlays";
+import { EvolutionModal } from "./ui/components/EvolutionModal.tsx";
 import { BattleHud } from "./ui/battle/BattleHud.tsx";
 import { AppStatus } from "./ui/AppStatus";
 import { battleSubmenuRootClass } from "./ui/battle-chrome.ts";
@@ -410,6 +411,9 @@ export function GameApp() {
           {uiModal && snap.toast ? <Toast text={snap.toast} className="toast-modal" /> : null}
         </div>
         {snap.namePrompt ? <NamePrompt key={snap.namePrompt.uid} game={g} prompt={snap.namePrompt} /> : null}
+        {snap.evolutionNotice && snap.mode !== "battle" && !snap.dialog && !snap.namePrompt ? (
+          <EvolutionModal notice={snap.evolutionNotice} onDismiss={() => g.dismissEvolutionNotice()} />
+        ) : null}
         {snap.mode === "title" ? <TitleScreen game={g} snap={snap} /> : null}
         {snap.mode === "victory" ? <VictoryScreen game={g} /> : null}
         <input
