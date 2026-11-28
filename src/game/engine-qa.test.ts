@@ -1215,8 +1215,8 @@ test("Cael telegraphs the trial, advises a weak party, and only begins on confir
     game.party = [makeBeast("emberkit", 5)];
     talk("cael", "Warden Cael");
     game.confirm();
-    assert.match(game.getSnapshot().dialog!.text, /Below ten, my three hold back a step/);
-    assert.match(game.getSnapshot().dialog!.text, /from ten onward they meet you at full strength/);
+    assert.match(game.getSnapshot().dialog!.text, /Below ten, my three ease off/);
+    assert.match(game.getSnapshot().dialog!.text, /from ten, full strength/);
     assert.match(game.getSnapshot().dialog!.text, /Iron\. Chapel\. Drake/);
     game.cancel();
     assert.match(game.getSnapshot().dialog!.text, /I keep Thornkeep/);

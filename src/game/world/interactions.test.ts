@@ -64,7 +64,7 @@ test("the Warden trial team is real content and honors the advisory promise", ()
 test("Cael's advisory changes with party strength", () => {
   const weak = wardenPages({ flags: { starter: true }, strongestLevel: 7 }, "square");
   const ready = wardenPages({ flags: { starter: true }, strongestLevel: 14 }, "square");
-  assert.ok(weak.some((line) => line.includes("weathered 7 seasons")), weak.join(" | "));
+  assert.ok(weak.some((line) => line.includes("Below ten, my three ease off")), weak.join(" | "));
   assert.ok(ready.every((line) => !line.includes("weathered")), ready.join(" | "));
 });
 

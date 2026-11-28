@@ -181,8 +181,8 @@ try {
         if (i < 2) await page.locator(".dialog-next").click({ delay: 30 });
       }
       const all = lines.join(" | ");
-      assert(/Below ten, my three hold back a step/.test(all), `advisory missing: ${all}`);
-      assert(/from ten onward they meet you at full strength/.test(all), `threshold rule missing: ${all}`);
+      assert(/Below ten, my three ease off/.test(all), `advisory missing: ${all}`);
+      assert(/from ten, full strength/.test(all), `threshold rule missing: ${all}`);
       assert(/Iron\. Chapel\. Drake/.test(all), all);
       assert(/inside Warden's Hall\./.test(lines.at(-1)), `trial location missing: ${all}`);
       await page.getByRole("button", { name: "Begin the trial", exact: true }).waitFor();

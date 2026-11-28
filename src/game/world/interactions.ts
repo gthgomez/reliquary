@@ -232,7 +232,7 @@ export function wardenPages(ctx: DialogContext, approach: "square" | "hall"): st
 	const pages = ["Warden Cael. I keep Thornkeep's road."];
 	if (ctx.strongestLevel < 10) {
 		pages.push(
-			`Your beast has weathered ${ctx.strongestLevel} season${ctx.strongestLevel === 1 ? "" : "s"}. Below ten, my three hold back a step; from ten onward they meet you at full strength. As you like — three of mine against yours: Iron. Chapel. Drake.`,
+			`Your beast has weathered ${ctx.strongestLevel} season${ctx.strongestLevel === 1 ? "" : "s"}. Below ten, my three ease off; from ten, full strength. As you like — three of mine against yours: Iron. Chapel. Drake.`,
 		);
 	} else {
 		pages.push("Show me the compact is not a hobby. Three of mine against yours — Iron. Chapel. Drake. Bind or break.");
