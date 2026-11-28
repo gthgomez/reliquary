@@ -24,7 +24,7 @@ import { hasSave, cloneSave, findArchivedSave, findNewerSave, loadSave, parseSav
 import { collectGameAssets, isElderhallCandidateBuild, isEssentialWorldAsset, type AssetEntry } from "./assets.ts";
 import type { BattlePreview } from "./preview/battle-preview.ts";
 import { mathRandom, type RandomSource } from "./rng.ts";
-import { BATTLE_SIGILS, battleCommands, encounterAt, rollEncounter, type BattleCommand } from "./world/encounters.ts";
+import { BATTLE_SIGILS, battleCommands, encounterAt, pickWeightedEncounter, rollEncounter, type BattleCommand } from "./world/encounters.ts";
 import { isOccupied } from "./world/movement.ts";
 import { pickInteractObject, selectInteractionTarget } from "./world/interaction.ts";
 import { starterPactFlag, visibleObjects } from "./world/object-state.ts";
@@ -222,6 +222,8 @@ export class ReliquaryGame {
 	toastT = 0;
 	quietBell = 0;
 	selectedUid: string | null = null;
+	/** Distinguishes returning from menu via Cancel/Close vs Save/Export/Import or M-toggle. */
+	menuCloseKind: "dismiss" | "action" | "toggle" = "dismiss";
 	shopIndex = 0;
 	shopMode: "buy" | "sell" = "buy";
 	images: Record<string, HTMLImageElement> = {};
@@ -674,12 +676,23 @@ export class ReliquaryGame {
 		// the legacy cancel shortcut closes the panel before Tab can wrap focus.
 		if (e.code === "ShiftLeft" && (this.dialog || this.namePrompt ||
 			(target instanceof HTMLElement && target.closest("[role='dialog']")))) return;
-		if (target instanceof HTMLElement && target.closest("button") && (e.code === "Enter" || e.code === "Space")) {
+		const button = target instanceof HTMLElement ? target.closest("button") : null;
+		const worldExploration = this.mode === "world" && !this.menu && !this.dialog && !this.battle && !this.namePrompt;
+		// Restored pointer-opened HUD trigger focus must not hijack Enter into reopening the menu while exploring.
+		const yieldPassiveHudEnter = Boolean(
+			button && worldExploration && e.code === "Enter" && button.dataset?.hudFocusMode === "passive",
+		);
+		if (button && (e.code === "Enter" || e.code === "Space") && !yieldPassiveHudEnter) {
 			if (e.repeat) e.preventDefault();
 			return;
 		}
 		if (CONTROL_KEYS.has(e.code)) e.preventDefault();
 		this.keys.add(e.code);
+		if (worldExploration && ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "KeyW", "KeyA", "KeyS", "KeyD"].includes(e.code)) {
+			if (button && this.canvas && typeof this.canvas.focus === "function") {
+				this.canvas.focus({ preventScroll: true });
+			}
+		}
 		if (e.repeat && ["KeyZ", "Enter", "Space", "KeyX", "Escape", "ShiftLeft", "KeyM", "KeyC"].includes(e.code)) return;
 		if (e.code === "KeyZ" || e.code === "Enter" || e.code === "Space") this.confirm();
 		if (e.code === "KeyX" || e.code === "Escape" || e.code === "ShiftLeft") this.cancel();
@@ -1266,13 +1279,17 @@ export class ReliquaryGame {
 			return;
 		}
 		if (this.mode === "shop") {
+			this.menuCloseKind = "dismiss";
 			this.mode = "world";
 			sfxPlay.cancel();
 			this.emit();
 			return;
 		}
 		if (this.menu) {
-			if (this.menu === "root") this.menu = null;
+			if (this.menu === "root") {
+				this.menuCloseKind = "dismiss";
+				this.menu = null;
+			}
 			else if (this.menu === "learn") this.menu = this.learnOrigin;
 			else if (this.cardAction && (this.menu === "party" || this.menu === "storage")) {
 				const uid = this.cardAction.uid;
@@ -1294,6 +1311,7 @@ export class ReliquaryGame {
 	toggleMenu = (): void => {
 		if (this.mode !== "world" || this.dialog || this.battle || this.namePrompt) return;
 		if (this.menu) {
+			this.menuCloseKind = "toggle";
 			this.menu = null;
 			this.cardAction = null;
 			this.learnMenu = null;
@@ -1678,6 +1696,16 @@ export class ReliquaryGame {
 		this.toastT = 2.2;
 		this.emit();
 	}
+	private firstParticipantList(idx: number): string[] {
+		const uid = this.party[idx]?.uid;
+		return uid ? [uid] : [];
+	}
+	private recordParticipant(b: BattleState, idx: number): void {
+		const uid = this.party[idx]?.uid;
+		if (!uid) return;
+		if (!b.participants) b.participants = [uid];
+		else if (!b.participants.includes(uid)) b.participants.push(uid);
+	}
 	private startWildFrom(speciesId: string, level: number): void {
 		this.resetWorldCameraRelief();
 		const foe = makeBeast(speciesId, level, { random: this.random });
@@ -1685,10 +1713,11 @@ export class ReliquaryGame {
 		this.encounterLock = true;
 		this.persistBattleCheckpoint();
 		sfxPlay.encounter();
+		const leadIdx = this.firstAble();
 		this.battle = {
 			kind: "wild",
 			bg: this.map().battleBg,
-			playerIndex: this.firstAble(),
+			playerIndex: leadIdx,
 			foes: [foe],
 			foeIndex: 0,
 			log: [`A wild ${SPECIES[speciesId].name} steps from the ${this.map().battleBg}.`],
@@ -1702,26 +1731,16 @@ export class ReliquaryGame {
 			escaped: false,
 			canFlee: true,
 			canBind: true,
+			participants: this.firstParticipantList(leadIdx),
 		};
 		this.mode = "battle";
 		this.menuIndex = 0;
 		this.emit();
 	}
 	private startWild(): void {
-		const table = this.map().encounters;
-		if (!table.length) return;
-		const total = table.reduce((s, e) => s + e.w, 0);
-		let r = this.random() * total;
-		let pick = table[0]!;
-		for (const e of table) {
-			r -= e.w;
-			if (r <= 0) {
-				pick = e;
-				break;
-			}
-		}
-		const level = pick.min + Math.floor(this.random() * (pick.max - pick.min + 1));
-		this.startWildFrom(pick.species, level);
+		const pick = pickWeightedEncounter(this.map().encounters, this.random);
+		if (!pick) return;
+		this.startWildFrom(pick.species, pick.level);
 	}
 	startEncounter(id: string): boolean {
 		if (this.mode !== "world" || this.battle) return false;
@@ -1738,10 +1757,11 @@ export class ReliquaryGame {
 		sfxPlay.encounter();
 		const trainer =
 			id === "goblin_scout" ? "Goblin Scout" : id === "goblin_king" ? "Goblin King" : undefined;
+		const leadIdx = this.firstAble();
 		this.battle = {
 			kind: "fixed",
 			bg: this.map().battleBg,
-			playerIndex: this.firstAble(),
+			playerIndex: leadIdx,
 			foes,
 			foeIndex: 0,
 			trainerName: trainer,
@@ -1757,6 +1777,7 @@ export class ReliquaryGame {
 			canFlee: def.canFlee,
 			canBind: def.canBind,
 			encounterId: id,
+			participants: this.firstParticipantList(leadIdx),
 		};
 		this.mode = "battle";
 		this.menuIndex = 0;
@@ -1772,10 +1793,11 @@ export class ReliquaryGame {
 		});
 		this.persistBattleCheckpoint();
 		sfxPlay.encounter();
+		const leadIdx = this.firstAble();
 		this.battle = {
 			kind: "trial",
 			bg: "keep",
-			playerIndex: this.firstAble(),
+			playerIndex: leadIdx,
 			foes,
 			foeIndex: 0,
 			trainerName: "Warden Cael",
@@ -1790,6 +1812,7 @@ export class ReliquaryGame {
 			escaped: false,
 			canFlee: false,
 			canBind: false,
+			participants: this.firstParticipantList(leadIdx),
 		};
 		this.mode = "battle";
 		this.emit();
@@ -1897,6 +1920,7 @@ export class ReliquaryGame {
 			if (!this.party[idx] || this.party[idx].hp <= 0 || idx === b.playerIndex) return;
 			if (this.party[b.playerIndex]!.hp <= 0) {
 				b.playerIndex = idx;
+				this.recordParticipant(b, idx);
 				b.phase = "command";
 				b.menuIndex = this.menuIndex = 0;
 				this.logBattle(`${this.party[idx]!.nickname} steps forward.`);
@@ -1976,6 +2000,7 @@ export class ReliquaryGame {
 			else if (act.type === "bind") this.tryCatch(act.item!);
 			else if (act.type === "switch") {
 				b.playerIndex = act.index!;
+				this.recordParticipant(b, act.index!);
 				me = this.party[b.playerIndex]!;
 				this.logBattle(`${this.party[b.playerIndex]!.nickname} steps forward.`);
 				b.animCue = null;
@@ -2086,15 +2111,12 @@ export class ReliquaryGame {
 		const foe = b.foes[b.foeIndex]!;
 		const sp = SPECIES[foe.speciesId];
 		sfxPlay.faint();
-		const me = this.party[b.playerIndex]!;
-		const xp = Math.floor(sp.expYield * foe.level / 5);
-		this.logBattle(`${sp.name} falls. ${me.nickname} gains ${xp} lore.`);
-		this.grantXp(me, xp);
+		const xpNotes = this.distributeBattleExp(foe, 1);
 		const next = b.foes.findIndex((f, i) => i > b.foeIndex && f.hp > 0);
 		if (next >= 0) {
 			b.foeIndex = next;
 			const nsp = SPECIES[b.foes[next].speciesId];
-			this.logBattle(`${sp.name} falls.`, `${b.trainerName ?? "The foe"} sends ${nsp.name}.`);
+			this.logBattle(...xpNotes, `${sp.name} falls.`, `${b.trainerName ?? "The foe"} sends ${nsp.name}.`);
 			b.animCue = null;
 			b.animElapsedMs = 0;
 			b.phase = "command";
@@ -2105,7 +2127,7 @@ export class ReliquaryGame {
 			? FIXED_ENCOUNTERS[b.encounterId]?.rewards.gold ?? 0
 			: 8 + foe.level * 3 + (b.kind === "trial" ? 80 : 0);
 		this.gold += gold;
-		this.logBattle(`${sp.name} falls. The road yields ${gold} crowns.`);
+		this.logBattle(...xpNotes, `${sp.name} falls. The road yields ${gold} crowns.`);
 		b.phase = "win";
 		if (b.kind === "trial") {
 			this.flags.trial = true;
@@ -2119,6 +2141,30 @@ export class ReliquaryGame {
 			}
 		}
 		this.emit();
+	}
+	private distributeBattleExp(foe: Beast, shareMultiplier: number): string[] {
+		const b = this.battle;
+		if (!b) return [];
+		const sp = SPECIES[foe.speciesId];
+		const baseXp = Math.max(1, Math.floor((sp.expYield * foe.level * shareMultiplier) / 5));
+		const active = this.party[b.playerIndex];
+		const participants = new Set(b.participants ?? []);
+		if (active?.uid) participants.add(active.uid);
+		const notes: string[] = [];
+		const toastNotes: string[] = [];
+		for (let i = 0; i < this.party.length; i += 1) {
+			const beast = this.party[i]!;
+			if (beast.hp <= 0) continue;
+			const isActive = i === b.playerIndex;
+			if (!isActive && !participants.has(beast.uid)) continue;
+			const share = isActive ? baseXp : Math.max(1, Math.floor(baseXp * 0.5));
+			notes.push(`${beast.nickname} gains ${share} lore.`);
+			const events = this.grantXp(beast, share, false);
+			notes.push(...events);
+			toastNotes.push(...events);
+		}
+		if (toastNotes.length > 0) this.toastMsg(toastNotes.join(" "));
+		return notes;
 	}
 	private playerDown(): void {
 		const b = this.battle!;
@@ -2135,19 +2181,25 @@ export class ReliquaryGame {
 		b.phase = "lose";
 		this.emit();
 	}
-	private grantXp(b: Beast, xp: number): void {
+	private grantXp(b: Beast, xp: number, showToast = true): string[] {
 		const progression = awardExperience(b, xp);
-		for (const skill of progression.learnedSkills) this.toastMsg(`${b.nickname} learned ${SKILLS[skill]?.name}.`);
-		for (const skill of progression.queuedSkills)
-			this.toastMsg(`${b.nickname} remembers ${SKILLS[skill]?.name} — open the Party card to decide.`);
+		const notices: string[] = [];
+		for (const skill of progression.learnedSkills) {
+			notices.push(`${b.nickname} learned ${SKILLS[skill]?.name}.`);
+		}
+		for (const skill of progression.queuedSkills) {
+			notices.push(`${b.nickname} remembers ${SKILLS[skill]?.name} — open the Party card to decide.`);
+		}
 		if (progression.evolvedFrom && progression.evolvedInto) {
 			for (const speciesId of progression.evolvedStages) {
 				this.caught[speciesId] = true;
 				this.seen[speciesId] = true;
 			}
-			this.toastMsg(`${SPECIES[progression.evolvedFrom]?.name} becomes ${SPECIES[progression.evolvedInto]?.name}!`);
+			notices.push(`${SPECIES[progression.evolvedFrom]?.name} becomes ${SPECIES[progression.evolvedInto]?.name}!`);
 		}
+		if (showToast && notices.length > 0) this.toastMsg(notices.join(" "));
 		if (progression.levelsGained > 0) sfxPlay.level();
+		return notices;
 	}
 	private tryCatch(stone: string): void {
 		const b = this.battle!;
@@ -2176,6 +2228,7 @@ export class ReliquaryGame {
 			this.emit();
 			if (n < shakes) this.after(.45, () => step(n + 1));
 			else if (succeed) {
+				const xpNotes = this.distributeBattleExp(foe, 0.5);
 				this.caught[foe.speciesId] = true;
 				this.seen[foe.speciesId] = true;
 				const stored = storeCapturedBeast(this.party, this.box, foe);
@@ -2183,7 +2236,10 @@ export class ReliquaryGame {
 				this.box = stored.box;
 				healFull(foe);
 				this.pendingCaptureNameUid = foe.uid;
-				this.logBattle(`${sp.name} accepts the compact.`);
+				const bindSummary = xpNotes.length
+					? `${sp.name} accepts the compact. ${xpNotes[0]}`
+					: `${sp.name} accepts the compact.`;
+				this.logBattle(...xpNotes.slice(1), bindSummary);
 				this.battle.phase = "win";
 				sfxPlay.catch();
 				this.emit();
@@ -2393,11 +2449,14 @@ export class ReliquaryGame {
 					sfxPlay.save();
 					this.toastMsg("The lantern is written.");
 				}
+				this.menuCloseKind = "action";
 				this.menu = null;
 			} else if (c === "Export") {
 				this.exportGame();
+				this.menuCloseKind = "action";
 				this.menu = null;
 			} else if (c === "Import") {
+				this.menuCloseKind = "action";
 				this.menu = null;
 				this.requestImport();
 			} else if (c === "Sound") {
@@ -2407,6 +2466,7 @@ export class ReliquaryGame {
 				setMuted(next);
 				setSoundMutedStored(next);
 			} else if (c === "Close") {
+				this.menuCloseKind = "dismiss";
 				this.menu = null;
 			}
 			// The Sound toggle stays highlighted on its own row so repeated

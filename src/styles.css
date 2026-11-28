@@ -1095,6 +1095,26 @@
   margin: 0.2rem 0 0;
   font-size: 0.75rem;
 }
+.beast-stats-line,
+.beast-matchups {
+  margin: 0.18rem 0 0;
+  font-size: 0.7rem;
+  line-height: 1.35;
+  color: color-mix(in oklab, var(--color-ink) 80%, transparent);
+}
+.reliq-detail {
+  background: var(--color-cream);
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-md);
+  padding: 0.6rem 0.7rem;
+  margin-bottom: 0.7rem;
+}
+.reliq-detail-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.45rem;
+}
 .reliq-cell {
   display: flex;
   flex-direction: column;
@@ -1106,11 +1126,33 @@
   padding: 0.3rem;
   min-height: 88px;
 }
+.reliq-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.reliq-btn:focus-visible {
+  outline: 2px solid var(--color-copper);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
 .reliq-cell.have {
   outline: 1px solid var(--color-copper);
 }
 .reliq-cell.seen {
   outline: 1px dashed color-mix(in oklab, var(--color-copper) 55%, transparent);
+}
+.reliq-cell.selected {
+  box-shadow: 0 0 0 2px var(--color-ink);
 }
 .unknown {
   width: 72px;

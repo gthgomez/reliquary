@@ -190,6 +190,46 @@ test("focused buttons keep native activation but suppress held Enter", async () 
   });
 });
 
+test("passive restored HUD focus yields Enter to world interact and restores canvas focus on movement", async () => {
+  await withGame((game, _frame, events) => {
+    game.mode = "world";
+    game.mapId = "elderhall";
+    const maren = MAPS.elderhall.npcs.find((npc) => npc.id === "maren")!;
+    game.tx = maren.x;
+    game.ty = maren.y + 1;
+    game.dir = 3;
+    let canvasFocused = 0;
+    (game.canvas as unknown as { focus?: (opts?: { preventScroll?: boolean }) => void }).focus = () => {
+      canvasFocused += 1;
+    };
+    const passiveHud = Object.assign(new HTMLElement(), {
+      dataset: { hudFocusMode: "passive" },
+      closest: (selector: string) => (selector === "button" ? passiveHud : null),
+    });
+    let prevented = 0;
+    events.get("keydown")!({
+      target: passiveHud,
+      code: "ArrowLeft",
+      repeat: false,
+      preventDefault() {
+        prevented++;
+      },
+    } as unknown as Event);
+    assert.equal(canvasFocused, 1, "directional movement shifts focus from HUD button to world canvas");
+    assert.equal(prevented, 1);
+    events.get("keydown")!({
+      target: passiveHud,
+      code: "Enter",
+      repeat: false,
+      preventDefault() {
+        prevented++;
+      },
+    } as unknown as Event);
+    assert.equal(game.menu, null, "Enter must not open menu when HUD button is passively restored");
+    assert.equal(game.getSnapshot().dialog?.speaker, "Elder Maren", "Enter interacts with faced NPC");
+  });
+});
+
 test("arrow navigation moves focus to the selected menu button", async () => {
   await withGame((game, _frame, events) => {
     game.mode = "world";
@@ -1175,8 +1215,8 @@ test("Cael telegraphs the trial, advises a weak party, and only begins on confir
     game.party = [makeBeast("emberkit", 5)];
     talk("cael", "Warden Cael");
     game.confirm();
-    assert.match(game.getSnapshot().dialog!.text, /Below a dozen, my three run lighter/);
-    assert.match(game.getSnapshot().dialog!.text, /at a dozen they meet you at full strength/);
+    assert.match(game.getSnapshot().dialog!.text, /Below ten, my three hold back a step/);
+    assert.match(game.getSnapshot().dialog!.text, /from ten onward they meet you at full strength/);
     assert.match(game.getSnapshot().dialog!.text, /Iron\. Chapel\. Drake/);
     game.cancel();
     assert.match(game.getSnapshot().dialog!.text, /I keep Thornkeep/);
@@ -1486,5 +1526,46 @@ test("wild capture naming flow: capture offer, nickname submit, and cancel to ke
     game.submitCreatureName(null);
     assert.equal(game.namePrompt, null);
     assert.equal(game.party.find((b) => b.uid === wildGale.uid)?.nickname, "Galeskip", "default name retained when naming declined");
+  });
+});
+
+test("switching in battle shares participation lore without reviving fainted members and records bind lore", async () => {
+  await withGame((game) => {
+    game.mode = "world";
+    const lead = makeBeast("emberkit", 5);
+    const reserve = makeBeast("mirewhelp", 5);
+    const fainted = makeBeast("briarling", 5);
+    fainted.hp = 0;
+    game.party = [lead, reserve, fainted];
+
+    // 1. Switch participation awards 50% share to co-fighter on KO and skips fainted ally.
+    (game as unknown as { startWildFrom(id: string, lvl: number): void }).startWildFrom("dewslime", 4);
+    assert.deepEqual(game.battle?.participants, [lead.uid]);
+    game.battle!.phase = "party";
+    game.battle!.menuIndex = 1;
+    game.confirm();
+    assert.equal(game.battle!.playerIndex, 1);
+    assert.ok(game.battle!.participants?.includes(reserve.uid));
+
+    game.battle!.foes[0]!.hp = 0;
+    (game as unknown as { foeDown(): void }).foeDown();
+    assert.ok(reserve.exp > 0, "active finisher earned full lore");
+    assert.ok(lead.exp > 0 && lead.exp < reserve.exp, "co-participant earned half share");
+    assert.equal(fainted.hp, 0);
+    assert.equal(fainted.exp, 0);
+    assert.ok(game.battle!.recap.some((line) => line.includes("gains") && line.includes("lore")));
+
+    // 2. Granting XP that simultaneously teaches a skill and evolves merges toast notices instead of dropping skills.
+    const almostEvo = makeBeast("emberkit", 13);
+    game.party = [almostEvo];
+    const grantXp = (b: Beast, xp: number) => (game as unknown as { grantXp(b: Beast, xp: number): string[] }).grantXp(b, xp);
+    almostEvo.exp = 0;
+    const needed = 1000;
+    grantXp(almostEvo, needed);
+    assert.equal(almostEvo.speciesId, "pyrefox");
+    assert.ok(
+      game.toast?.includes("remembers") && game.toast?.includes("becomes"),
+      `merged toast: ${game.toast}`,
+    );
   });
 });

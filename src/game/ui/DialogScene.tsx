@@ -38,7 +38,11 @@ export function DialogScene({ dialog, onAdvance, onBack }: {
     primary.current?.focus({ preventScroll: true });
     return () => {
       if (previousFocus instanceof HTMLElement && previousFocus.isConnected && document.activeElement === document.body) {
-        previousFocus.focus({ preventScroll: true });
+        if (previousFocus.closest(".hud, .touch")) {
+          document.querySelector<HTMLElement>(".game-canvas")?.focus({ preventScroll: true });
+        } else {
+          previousFocus.focus({ preventScroll: true });
+        }
       }
     };
   }, []);
