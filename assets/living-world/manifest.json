@@ -88,6 +88,54 @@
       ],
       "source": "scripts/draw-briar-road-arena.py",
       "sourceSha256": "6368fa4312b7c3bc9947d1e7f0c79b9ef1f7e92d2e2b3457a407384466492a08"
+    },
+    {
+      "runtimePath": "public/game/rooms/rowan-cottage.png",
+      "sha256": "3c5de9b5d3bd81fcae1e958a21a8bccc7391dd5fd2ec2ab87d498c3ed52ae613",
+      "dimensions": [
+        176,
+        144
+      ],
+      "alphaBounds": [
+        0,
+        0,
+        176,
+        144
+      ],
+      "source": "scripts/draw-rowan-cottage.py",
+      "sourceSha256": "e7d35ea2dddd50f35e7f959a0b82be3d06eb287e1f1b5fa42fd1a73f3313cc58"
+    },
+    {
+      "runtimePath": "public/game/props/elderhall-verge-grass.png",
+      "sha256": "30b69a4e9b56ce007888abc5660e3701f4cdef6d2f506ede0918fe5d588ac5ef",
+      "dimensions": [
+        64,
+        32
+      ],
+      "alphaBounds": [
+        0,
+        0,
+        64,
+        27
+      ],
+      "source": "scripts/draw-elderhall-verges.py",
+      "sourceSha256": "a3512c527a35cd1dd64bd79a118d90c44d78a87bcc8b638d7dca174d7beb9bb3"
+    },
+    {
+      "runtimePath": "public/game/props/elderhall-road-wear.png",
+      "sha256": "279014abd14cd7d062d4ad02d197d1e38f15a5fd09542b07dd559106eba217a1",
+      "dimensions": [
+        64,
+        27
+      ],
+      "alphaBounds": [
+        3,
+        4,
+        62,
+        21
+      ],
+      "source": "scripts/draw-elderhall-verges.py",
+      "sourceSha256": "a3512c527a35cd1dd64bd79a118d90c44d78a87bcc8b638d7dca174d7beb9bb3"
     }
   ]
 }

@@ -25,6 +25,7 @@ const PROP_SPRITES = [
   "tree", "cottage", "inn", "shop", "shrine", "sign", "barrel", "crate", "shrub", "boulder",
   "well", "hearth", "bed", "bookshelf", "table", "chair", "counter", "pot", "fence", "tallgrass", "grove-ritual", "cellar-hatch",
   "quiet-lantern-sign", "calders-stock-awning",
+  "elderhall-verge-grass", "elderhall-road-wear",
 ] as const;
 const BG_KEYS = ["grass", "forest", "cave", "marsh", "keep"] as const;
 
