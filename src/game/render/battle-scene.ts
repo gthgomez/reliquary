@@ -200,7 +200,7 @@ export function paintBattleBackdrop(
   image?: CanvasImageSource | null,
   framing: "scenic" | "roadside" = "scenic",
 ): void {
-  if (image) paintCover(ctx, image, cw, ch, framing);
+  if (image) paintCover(ctx, image, cw, ch, framing === "roadside" ? layout.groundY : null);
   else {
     ctx.fillStyle = bgKey === "cave" ? "#1b1b26" : "#2c3d32";
     ctx.fillRect(0, 0, cw, ch);
@@ -265,7 +265,7 @@ function paintCover(
   image: CanvasImageSource,
   cw: number,
   ch: number,
-  framing: "scenic" | "roadside",
+  footingY: number | null,
 ): void {
   const src = image as { naturalWidth?: number; naturalHeight?: number };
   const sw = src.naturalWidth ?? 0;
@@ -274,17 +274,13 @@ function paintCover(
     ctx.drawImage(image, 0, 0, cw, ch);
     return;
   }
-  if (framing === "roadside") {
-    // The lower part of the meadow plate contains the continuous dirt track.
-    // The original landscape remains available for the other grass arenas.
-    const vergeTop = sh * 0.58;
-    const vergeHeight = sh - vergeTop;
-    const aspect = cw / ch;
-    const width = Math.min(sw, vergeHeight * aspect);
-    const height = Math.min(vergeHeight, sw / aspect);
-    const x = (sw - width) * 0.37;
-    const y = vergeTop + (vergeHeight - height) * 0.33;
-    ctx.drawImage(image, x, y, width, height, 0, 0, cw, ch);
+  if (footingY !== null) {
+    // The authored plate reserves a quiet band across the near dirt verge.
+    // Keep that band under the feet using a uniform scale in every orientation.
+    const sourceFooting = sh * 432 / 768;
+    const scale = Math.max(cw / sw, footingY / sourceFooting, (ch - footingY) / (sh - sourceFooting));
+    const dw = sw * scale;
+    ctx.drawImage(image, (cw - dw) / 2, footingY - sourceFooting * scale, dw, sh * scale);
     return;
   }
   const scale = Math.max(cw / sw, ch / sh);

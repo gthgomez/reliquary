@@ -116,6 +116,17 @@ jobs:
           RELIQUARY_QA_CHANNEL: chrome
           VITE_ELDERHALL_CANDIDATE: '1'
           RELIQUARY_QA_EVIDENCE: qa-evidence/elderhall-candidate-journeys
+      - name: Verify candidate building services and all three pacts
+        if: ${{ !cancelled() && matrix.os == 'ubuntu-latest' && steps.elderhall_candidate_build.outcome == 'success' }}
+        run: |
+          node tests/browser/building-services.mjs
+          node tests/browser/chapter-one-pact-scenes.mjs
+        env:
+          RELIQUARY_QA_CHANNEL: chrome
+          VITE_ELDERHALL_CANDIDATE: '1'
+          RELIQUARY_QA_SHA: ${{ github.sha }}
+          RELIQUARY_BUILDING_EVIDENCE: qa-evidence/elderhall-candidate-services
+          RELIQUARY_PACT_SCENES: qa-evidence/elderhall-candidate-pacts
       - name: Exercise same-origin upgrade, rollback and recovery
         if: ${{ !cancelled() && matrix.os == 'ubuntu-latest' && steps.elderhall_candidate_build.outcome == 'success' }}
         run: |

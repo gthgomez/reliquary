@@ -10,12 +10,14 @@ test("placed NPC identities resolve independently of names and shared scripts/sp
   for (const id of ["cael", "cael_hall"])
     assert.equal(resolveNpcPortrait(id, "warden"), "warden-cael");
   assert.equal(resolveNpcPortrait("goblin_trader", "shopkeep"), "patch");
-  assert.equal(resolveNpcPortrait("keep_shop", "shopkeep"), "shopkeep");
-  assert.equal(resolveNpcPortrait("keep_innkeep", "innkeep"), "innkeep");
+  assert.notEqual(resolveNpcPortrait("keep_shop", "shopkeep"), resolveNpcPortrait("shopkeep", "shopkeep"));
+  assert.notEqual(resolveNpcPortrait("keep_innkeep", "innkeep"), resolveNpcPortrait("innkeep", "innkeep"));
+  assert.equal(new Set(["villager", "road_traveler", "fen_walker"]
+    .map((id) => resolveNpcPortrait(id, "traveler"))).size, 3);
 });
 
 test("only explicit placed identity can use a safe role fallback", () => {
-  assert.equal(resolveNpcPortrait("future-guard", "guard"), "guard");
+  assert.equal(resolveNpcPortrait("future-guard", "guard"), null);
   assert.equal(resolveNpcPortrait("future-elder", "elder"), null);
   assert.equal(resolveNpcPortrait("future-warden", "warden"), null);
   assert.equal(resolveNpcPortrait("unknown", "unknown"), null);
@@ -27,16 +29,11 @@ test("only explicit placed identity can use a safe role fallback", () => {
 
 test("all current placed NPCs resolve to shipped art; registry has no ambiguous identities", () => {
   const ids = new Set<string>();
-  const sprites = new Set<string>();
   for (const portrait of Object.values(PORTRAITS)) {
-    assert.ok(existsSync(new URL(`../../public${portrait.src}`, import.meta.url)), portrait.src);
+    if (portrait.src) assert.ok(existsSync(new URL(`../../public${portrait.src}`, import.meta.url)), portrait.src);
     for (const id of portrait.npcIds) {
       assert.ok(!ids.has(id), id);
       ids.add(id);
-    }
-    for (const sprite of portrait.sprites) {
-      assert.ok(!sprites.has(sprite), sprite);
-      sprites.add(sprite);
     }
   }
   for (const map of Object.values(MAPS)) {
@@ -51,6 +48,6 @@ test("candidate portraits have one distinct URL per role and leave the normal bu
   assert.equal(pixelUrls.size, keys.length);
   for (const key of keys) {
     assert.equal(portraitSource(key, false), PORTRAITS[key].src);
-    assert.match(portraitSource(key, true), /^\/game\/elderhall\/portraits\/[a-z]+\.png$/);
+    assert.match(portraitSource(key, true), /^\/game\/elderhall\/portraits\/[a-z_]+\.png$/);
   }
 });

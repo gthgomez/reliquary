@@ -478,7 +478,7 @@ try {
           ["briar_camp", 4, 6, "patch", "Patch"],
           ["guild_in", 6, 7, "elder-maren", "Elder Maren"],
           ["warden_hall", 7, 5, "warden-cael", "Warden Cael"],
-          ["keep_inn", 4, 5, "innkeep", "Innmother"],
+          ["keep_inn", 4, 5, "keep-innkeep", "Innmother"],
         ]) {
           await speak(page, map, x, y);
           const m = await checkLayout(
@@ -488,7 +488,7 @@ try {
           );
           assert.equal(m.portraitKey, key);
           assert.equal(m.nameContent, name);
-          if (key === "innkeep") {
+          if (key === "keep-innkeep") {
             await page.locator(".dialog-next").evaluate((button) => {
               button.click();
               button.click();

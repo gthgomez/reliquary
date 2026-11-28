@@ -91,7 +91,7 @@ try {
 
   let position = await travel("home", { x: 5, y: 8 });
   if (position.map !== "elderhall") throw new Error("Home exit failed");
-  await objectiveAt(/Find the Binding Grove/, /Speak a pact at the Binding Grove/, /opening beside the grove sign/);
+  await objectiveAt(/Go west to Binding Grove/, /Speak a pact at the Binding Grove/, /opening beside the grove sign/);
   const maren = MAPS.elderhall.npcs.find((npc) => npc.id === "maren");
   if (!maren) throw new Error("Elder Maren is missing from Elderhall");
   await travel("elderhall", { x: maren.x, y: maren.y + 1 });
@@ -110,7 +110,7 @@ try {
   await faceNorth();
   await press("KeyZ");
   await finishStarterPact(page, { nickname: "Kindling" });
-  await objectiveAt(/Return to Elderhall/, /Wildwood/, /Return east to Elderhall/);
+  await objectiveAt(/Return east to Elderhall/, /Wildwood/, /Return east to Elderhall/);
   report.events.push("Pact spoken with Emberkit, named Kindling; objective advanced to Thornkeep");
 
   // Back to Elderhall, then Briar Road for the first wild encounter.

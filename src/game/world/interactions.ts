@@ -41,6 +41,8 @@ export const SIGN_TEXTS: Record<string, string> = {
 	sign_road: "BRIAR ROAD — north to Wildwood, east to Mirefen. Bind what you must.",
 	sign_grove: "BINDING GROVE — first pacts are spoken here.",
 	sign_grove_inner: "Choose with care. A first pact is a first name.",
+	sign_inn: "THE QUIET LANTERN — warm beds, a whole lantern, fifteen crowns.",
+	sign_shop: "CALDER'S SUNDRIES — tonics, sigils, and road gear. Ask for Calder.",
 	sign_briar: "Keep to the path after dusk. The grass remembers hunger.",
 	sign_wildwood: "WILDWOOD — Ashenbarrow in the stone. Thornkeep beyond the trees.",
 	sign_mire: "MIREFEN — watch your step. The peat is older than the keep.",

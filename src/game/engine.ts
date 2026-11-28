@@ -17,6 +17,7 @@ import {
 import { MAPS } from "./maps.ts";
 import { resolveNpcPortrait, type PortraitKey } from "./portraits.ts";
 import { FIXED_ENCOUNTERS } from "./encounters.ts";
+import { isInteriorRoom, paintInteriorRoom } from "./render/room-visual.ts";
 import { sfxPlay, startMusic, stopMusic, unlockAudio, isMuted, setMuted } from "./audio.ts";
 import { setSoundMutedStored } from "./ui/ui-chrome.ts";
 import { hasSave, cloneSave, findArchivedSave, findNewerSave, loadSave, parseSave, readNameDraft, SAVE_RESUMED_MESSAGE, SAVE_VERSION, serializeSave, WORLD_REVISION, writeNameDraft, writeSave, type SaveStorage } from "./save.ts";
@@ -609,12 +610,15 @@ export class ReliquaryGame {
 		const portrait = presentation === "portrait" ||
 			(!inBattle && stageW > 0 && stageH > stageW * 1.05 && stageW < 920);
 		const battleSize = presentation ? battleViewportForStage(presentation, stageW, stageH) : null;
-		const cottage = frameCottage && this.mode === "world" && this.mapId === "home" ? this.map() : null;
-		const vw = cottage?.ground[0]?.length ?? battleSize?.viewW ?? (portrait ? VIEW_W_PORT : VIEW_W);
-		let vh = cottage?.ground.length ?? battleSize?.viewH ?? (portrait ? VIEW_H_PORT : VIEW_H);
+		const room = (this.mode === "world" || this.mode === "shop") && isInteriorRoom(this.mapId) ? this.map() : null;
+		// Keep the service room and its exit in frame while a shop is open.
+		// The cottage's full-room composition uses the responsive shell flag.
+		const framedRoom = room && (this.mapId !== "home" || frameCottage) ? room : null;
+		const vw = framedRoom?.ground[0]?.length ?? battleSize?.viewW ?? (portrait ? VIEW_W_PORT : VIEW_W);
+		let vh = framedRoom?.ground.length ?? battleSize?.viewH ?? (portrait ? VIEW_H_PORT : VIEW_H);
 		// Dialogue stays on the exploration view. Snapping back to the short
 		// canvas made the playfield jump inward whenever a sign or conversation opened.
-		if (!cottage && portrait && devicePortrait && this.mode === "world" && !this.menu) {
+		if (!framedRoom && portrait && devicePortrait && this.mode === "world" && !this.menu) {
 			const map = this.map();
 			if ((map.ground[0]?.length ?? 0) >= VIEW_W_PORT) {
 				// Frame the Grove at the edge of its authored clearing.
@@ -1323,9 +1327,9 @@ export class ReliquaryGame {
 		const saved = this.settleNameOffer(prompt.kind, prompt.uid);
 		if (prompt.kind === "starter") {
 			this.openDialog("Rowan", [
-				`Come on, ${nickname}. Our first road together.`,
+      `The grove goes still. ${nickname} steps down from the stone and comes to my side. Our first road together.`,
 				"East to Elderhall, then north to Briar Road. A sigil works best on a weakened wild beast.",
-			], undefined, undefined, undefined, prompt.speciesId);
+			], undefined, isElderhallCandidateBuild() ? { npcId: "rowan", sprite: "player" } : undefined, undefined, prompt.speciesId);
 			return;
 		}
 		if (renamed && saved) this.toastMsg(`${renamed.nickname} it is.`);
@@ -1440,7 +1444,9 @@ export class ReliquaryGame {
 		if (target.kind === "npc") action = `Talk to ${target.name}`;
 		else {
 			const id = target.object.interact!;
-			if (WARP_TABLE[id]) action = "Enter";
+			const warp = WARP_TABLE[id];
+			if (id === "enter_cellar") action = "Open cellar hatch";
+			else if (warp) action = `Enter ${MAPS[warp.to]?.name ?? "building"}`;
 			else if (SIGN_TEXTS[id]) action = "Read sign";
 			else if (CHEST_LOOT[id]) action = "Open chest";
 			else {
@@ -1587,10 +1593,16 @@ export class ReliquaryGame {
 		const strikeElement = ELEMENTS[sp.elements[0]!];
 		const favored = strikeElement?.strong.map((id) => ELEMENTS[id].name).join(" and ");
 		const matchup = favored ? ` ${strikeElement.name} is strong against ${favored}.` : "";
+		const threats = (Object.keys(ELEMENTS) as (keyof typeof ELEMENTS)[])
+			.filter((element) => typeMod(element, sp.elements) > 1)
+			.map((element) => ELEMENTS[element].name);
+		const danger = threats.length
+			? ` Incoming ${new Intl.ListFormat("en").format(threats)} ${threats.length === 1 ? "hits" : "hit"} harder.`
+			: "";
 		this.openDialog(sp.name, [
 			sp.description,
-			`Starting skills: ${skills}.${matchup}`,
-			"Make this your first pact? The other creatures will stay in the grove.",
+			`Starting skills: ${skills}.${matchup}${danger}`,
+			`Speak your first pact with ${sp.name}? They will leave the Grove with you. The other two will stay at their stones.`,
 		], () => this.bindStarter(id), null, `Bind ${sp.name}`, id);
 	}
 	private bindStarter(id: string): void {
@@ -2624,6 +2636,10 @@ export class ReliquaryGame {
 						paintCottageRug(ground, TILE);
 					}
 				};
+			} else if (isInteriorRoom(m.id)) {
+				const roomId = m.id;
+				const door = m.warps.find((warp) => warp.y === mh - 1);
+				if (door) finishFloor = () => paintInteriorRoom(ground, roomId, mw, mh, door.x, TILE);
 			}
 			bakeMapTerrain({
 				map: m,
@@ -2759,7 +2775,7 @@ export class ReliquaryGame {
 								dest.y + dest.height * part.revealBottom, source);
 						}
 					} });
-				}
+					}
 				continue;
 			}
 			const overhang = worldPropOverhang(art.sprite, visual);
@@ -2880,8 +2896,9 @@ export class ReliquaryGame {
 			statusBottom: this.battleStatusBottomRatio == null ? undefined : this.battleStatusBottomRatio * ch,
 		});
 		const geometryBase = computeBattleStageGeometry(cw, ch, layout, b.phase);
-		const bg = this.images[`bg_${b.bg}`] || this.images.bg_grass;
-		paintBattleBackdrop(ctx, cw, ch, layout, b.bg, bg ?? null, this.mapId === "briar_road" ? "roadside" : "scenic");
+		const road = this.mapId === "briar_road" ? this.images.bg_briar_road : undefined;
+		const bg = road || this.images[`bg_${b.bg}`] || this.images.bg_grass;
+		paintBattleBackdrop(ctx, cw, ch, layout, b.bg, bg ?? null, road ? "roadside" : "scenic");
 		const anchors = { player: layout.player, foe: { cx: layout.foe.cx, cy: layout.foe.cy } };
 		const motion = b.animCue
 			? sampleBattleAnim(b.animCue, b.animElapsedMs, geometryBase.animCorridor, anchors, {

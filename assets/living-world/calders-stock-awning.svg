@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="96" height="32" viewBox="0 0 96 32" shape-rendering="crispEdges">
+  <title>Calder's Sundries merchant awning and stock emblem</title>
+  <rect width="96" height="32" fill="none"/>
+  <!-- timber rail mounted below the shop roof -->
+  <rect x="3" y="2" width="90" height="5" fill="#382b25"/>
+  <rect x="5" y="7" width="86" height="3" fill="#b47742"/>
+  <!-- three canvas drops echo the village's muted green and rust palette -->
+  <path fill="#6e7659" d="M5 10h29v8l-4 5-4-5-4 5-4-5-4 5-4-5-5 5z"/>
+  <path fill="#a95c3b" d="M34 10h28v8l-4 5-4-5-4 5-4-5-4 5-4-5-4 5z"/>
+  <path fill="#6e7659" d="M62 10h29v8l-4 5-4-5-4 5-4-5-4 5-4-5-5 5z"/>
+  <path fill="#d8b36c" d="M7 11h25v3H7zM36 11h24v3H36zM64 11h25v3H64z"/>
+  <!-- centered stock mark: a brass crate with a leaf, readable at 3x scale -->
+  <rect x="40" y="3" width="16" height="10" fill="#3a2922"/>
+  <rect x="42" y="5" width="12" height="6" fill="#c68b45"/>
+  <path fill="#f0c36a" d="M43 6h10v2H43zM47 5h2v6h-2z"/>
+  <path fill="#788b5f" d="M49 3h3v2h-3zM51 1h3v2h-3zM53 0h3v2h-3z"/>
+  <rect x="39" y="25" width="18" height="3" fill="#3a2922"/>
+</svg>

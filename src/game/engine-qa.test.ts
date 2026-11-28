@@ -1312,10 +1312,10 @@ test("starter confirmation flow: inspect, cancel, confirm, naming, Rowan follow-
     game.cancel();
     assert.equal(game.party.length, 0, "cancel leaves party empty");
 
-    for (const [id, signature, cost, matchup] of [
-      ["emberkit", "Cinder", 6, /Ember.*Verdant and Steel/],
-      ["mirewhelp", "Torrent", 6, /Tide.*Ember and Stone/],
-      ["briarling", "Rootgrasp", 8, /Verdant.*Tide and Stone/],
+    for (const [id, signature, cost, matchup, danger] of [
+      ["emberkit", "Cinder", 6, /Ember.*Verdant and Steel/, /Incoming Tide and Stone hit harder/],
+      ["mirewhelp", "Torrent", 6, /Tide.*Ember and Stone/, /Incoming Verdant hits harder/],
+      ["briarling", "Rootgrasp", 8, /Verdant.*Tide and Stone/, /Incoming Ember, Gale, and Umbra hit harder/],
     ] as const) {
       chooseStarter(id);
       game.confirm();
@@ -1323,6 +1323,7 @@ test("starter confirmation flow: inspect, cancel, confirm, naming, Rowan follow-
       assert.match(details, /Nip \(0 MP\)/);
       assert.ok(details.includes(`${signature} (${cost} MP)`));
       assert.match(details, matchup);
+      assert.match(details, danger);
       game.cancel();
       game.cancel();
       assert.equal(game.party.length, 0, "comparing skills does not make a pact");
@@ -1365,7 +1366,7 @@ test("starter confirmation flow: inspect, cancel, confirm, naming, Rowan follow-
     assert.equal(game.party[0].nickname, "Ignis", "nickname applied");
     assert.equal(game.namePrompt, null, "namePrompt closed");
     assert.equal(game.getSnapshot().dialog?.speaker, "Rowan", "the player speaks from the Grove");
-    assert.match(game.getSnapshot().dialog!.text, /Come on, Ignis\. Our first road together\./);
+    assert.match(game.getSnapshot().dialog!.text, /Ignis steps down from the stone.*Our first road together\./);
 
     // 6. Dismiss Rowan's dialogue
     game.confirm();

@@ -119,22 +119,21 @@ function recordingContext(): {
   return { ctx, drawImage };
 }
 
-test("Briar Road frames the tall grass and dirt without stretching the battle plate", () => {
-  const image = { naturalWidth: 1792, naturalHeight: 1008 } as HTMLImageElement;
+test("Briar Road keeps the authored verge and creature footing aligned without stretching", () => {
+  const image = { naturalWidth: 960, naturalHeight: 768 } as HTMLImageElement;
   for (const [width, height] of [[390, 844], [640, 320]]) {
     const layout = computeBattleLayout(width, height, stableBattleUiReserveTop(width, height));
     const { ctx, drawImage } = recordingContext();
     paintBattleBackdrop(ctx, width, height, layout, "grass", image, "roadside");
     assert.equal(drawImage.length, 1);
-    const [source, x, y, sourceWidth, sourceHeight, ...destination] = drawImage[0] as [
+    const [source, x, y, drawnWidth, drawnHeight] = drawImage[0] as [
       HTMLImageElement, number, number, number, number, ...number[],
     ];
     assert.equal(source, image);
-    assert.ok(y >= image.naturalHeight * 0.57, "the roadside frame excludes the settlement and skyline");
-    assert.ok(x >= 0 && x + sourceWidth <= image.naturalWidth);
-    assert.ok(y + sourceHeight <= image.naturalHeight + 0.001);
-    assert.ok(Math.abs(sourceWidth / sourceHeight - width / height) < 0.001);
-    assert.deepEqual(destination, [0, 0, width, height]);
+    assert.ok(x <= 0 && x + drawnWidth >= width - 0.001);
+    assert.ok(y <= 0 && y + drawnHeight >= height - 0.001);
+    assert.ok(Math.abs(drawnWidth / drawnHeight - image.naturalWidth / image.naturalHeight) < 0.001);
+    assert.ok(Math.abs(y + drawnHeight * (432 / 768) - layout.groundY) < 0.001);
   }
 
   const { ctx, drawImage } = recordingContext();

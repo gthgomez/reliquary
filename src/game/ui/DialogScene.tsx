@@ -17,7 +17,8 @@ export function DialogScene({ dialog, onAdvance, onBack }: {
   const [failedPortrait, setFailedPortrait] = useState<string | null>(null);
   const candidatePortrait = isElderhallCandidateBuild() && dialog.portraitKey
     ? portraitSource(dialog.portraitKey, true) : null;
-  const pixelPortrait = candidatePortrait && candidatePortrait !== failedPortrait ? candidatePortrait : null;
+  const portraitUrl = candidatePortrait ?? portrait?.src;
+  const showPortrait = portraitUrl && portraitUrl !== failedPortrait;
   const duplicateNonCommittingClose = !dialog.commits
     && dialog.primaryLabel === "Close"
     && dialog.secondaryLabel === "Close";
@@ -53,18 +54,17 @@ export function DialogScene({ dialog, onAdvance, onBack }: {
 
   return (
     <div
-      className={`dialog-scene${portrait ? " dialog-scene-npc" : ""}${pixelPortrait ? " dialog-scene-pixel" : ""}${starterInspection ? " dialog-scene-starter" : ""}`}
+      className={`dialog-scene${showPortrait ? " dialog-scene-npc" : ""}${showPortrait && candidatePortrait ? " dialog-scene-pixel" : ""}${starterInspection ? " dialog-scene-starter" : ""}`}
       data-npc-id={dialog.npcId ?? undefined}
       role="dialog"
       aria-label={dialog.speaker || "Story"}
     >
-      {portrait ? (
+      {showPortrait ? (
         <div className="dialog-portrait" aria-hidden="true">
-          <img src={pixelPortrait ?? portrait.src} alt="" draggable={false}
-            onError={pixelPortrait ? () => setFailedPortrait(pixelPortrait) : undefined} />
+          <img src={portraitUrl} alt="" draggable={false} onError={() => setFailedPortrait(portraitUrl)} />
         </div>
       ) : null}
-      <div className={`dialog${portrait ? " dialog-panel" : ""}`} data-portrait={dialog.portraitKey ?? "none"}>
+      <div className={`dialog${showPortrait ? " dialog-panel" : ""}`} data-portrait={dialog.portraitKey ?? "none"}>
         {starterInspection ? <div className="dialog-starter-heading">{speciesArt}{nameplate}</div> : null}
         <div
           className="dialog-content"

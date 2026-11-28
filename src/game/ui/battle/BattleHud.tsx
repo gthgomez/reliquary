@@ -54,6 +54,7 @@ export function BattleHud({ game, snap }: { game: ReliquaryGame; snap: Snapshot 
     () => firstAvailableCommand(slots) ?? "Strike",
   );
   const [recapOpen, setRecapOpen] = useState(false);
+  const [detailsPhase, setDetailsPhase] = useState<BattleState["phase"] | null>(null);
   const [touchInput, setTouchInput] = useState(false);
 
   useLayoutEffect(() => {
@@ -183,6 +184,14 @@ export function BattleHud({ game, snap }: { game: ReliquaryGame; snap: Snapshot 
     if (!b) return;
     const key = event.key.toLowerCase();
     if (event.target instanceof HTMLElement && event.target.closest(".battle-details-panel")) {
+      const details = event.target.closest<HTMLDetailsElement>(".battle-detail-expansion[open]");
+      if (key === "escape" && details) {
+        event.preventDefault();
+        event.stopPropagation();
+        details.open = false;
+        details.querySelector("summary")?.focus();
+        return;
+      }
       // Leave reading keys to the native scroller and Escape to battle cancel.
       if (key !== "escape") event.stopPropagation();
       return;
@@ -367,6 +376,14 @@ export function BattleHud({ game, snap }: { game: ReliquaryGame; snap: Snapshot 
 
           <section className="battle-details-panel" aria-label="Action details" tabIndex={0}>
             <BattleActionDetails details={details} />
+            <details className="battle-detail-expansion" key={phase} onToggle={(event) => {
+              setDetailsPhase(event.currentTarget.open ? phase : null);
+            }}>
+              <summary>Details</summary>
+              {detailsPhase === phase ? <div className="battle-detail-expansion-body" tabIndex={0}>
+                <BattleActionDetails details={details} />
+              </div> : null}
+            </details>
           </section>
         </div>
 

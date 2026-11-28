@@ -25,6 +25,29 @@ def slate(brush, x, y, width, height, top, notch=2):
 
 def paint_grove(brush):
     rng = Random(192)
+    # A worn earth apron merges with the approach rather than ending at a
+    # rectangular stamp. The center stays open for all three approach routes.
+    brush.polygon([(1, 31), (15, 20), (31, 18), (43, 10), (64, 8), (80, 4),
+                   (104, 10), (118, 19), (141, 21), (157, 29), (153, 35),
+                   (139, 40), (118, 38), (102, 43), (80, 47), (61, 42),
+                   (37, 44), (23, 40), (6, 36)], fill=(126, 102, 65, 132))
+    for _ in range(116):
+        x, y = rng.randrange(4, 156), rng.randrange(7, 46)
+        if ((x - 80) / 75) ** 2 + ((y - 26) / 20) ** 2 < 1:
+            brush.line((x, y, x + rng.randrange(1, 4), y),
+                       fill=rng.choice(("#998260", "#756244", "#83704e", "#948259")))
+
+    # Visible roots and old masonry on the edges. Footing and all colliders
+    # stay with the map, so these shallow ground marks never stop movement.
+    for roots in [
+        [(1, 15), (15, 22), (28, 21), (42, 29)],
+        [(3, 31), (16, 33), (31, 29), (47, 33)],
+        [(156, 16), (144, 21), (129, 19), (117, 23)],
+        [(159, 35), (146, 32), (131, 36), (120, 34)],
+    ]:
+        brush.line(roots, fill="#514b32", width=3)
+        brush.line([(x, y - 1) for x, y in roots], fill="#867252")
+
     # Wide seams and breaks leave the actual road through the clearing readable.
     for i in range(28):
         angle = i * 2 * pi / 28
@@ -42,12 +65,18 @@ def paint_grove(brush):
         brush.line((x - 7, y + 1, x + 7, y + 1), fill=accent, width=2)
         brush.point((x - 4, y - 3), fill="#cabf97")
         brush.point((x + 5, y - 2), fill="#5f6951")
+        brush.line((x - 5, y - 1, x - 2, y - 3, x + 2, y - 3, x + 5, y - 1), fill="#6c644d")
 
     # A small inlaid knot at the center of the worn ring.
-    brush.ellipse((65, 25, 95, 42), outline=(63, 76, 51, 197), width=2)
-    brush.ellipse((68, 28, 92, 39), outline="#ac9e75")
+    brush.ellipse((61, 23, 99, 45), fill=(33, 39, 28, 96))
+    brush.polygon([(63, 32), (68, 26), (79, 24), (90, 26), (96, 32), (94, 39),
+                   (82, 44), (69, 42)], fill="#6d6b51")
+    brush.line((64, 32, 69, 27, 79, 25, 89, 27, 95, 32), fill="#baac80")
+    brush.ellipse((68, 28, 92, 40), outline="#9e9370")
     brush.polygon([(80, 28), (85, 33), (80, 38), (75, 33)], outline="#d3bf8f")
     brush.line((79, 33, 81, 33), fill="#c6b186")
+    for x, y in [(69, 33), (73, 29), (87, 29), (92, 33), (87, 38), (73, 38)]:
+        brush.line((x - 1, y, x, y - 1, x + 1, y), fill="#c4b183")
 
     # Moss and a few leaf-litter pixels feather the edges into the grass.
     for x, y in [(15, 25), (33, 6), (50, 11), (127, 16), (146, 24), (25, 44), (112, 45), (134, 42)]:

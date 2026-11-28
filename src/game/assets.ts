@@ -23,7 +23,8 @@ const PLAYER_FRAMES = ["down", "left", "right", "up"] as const;
 const NPC_SPRITES = ["elder", "innkeep", "shopkeep", "warden", "guard", "traveler"] as const;
 const PROP_SPRITES = [
   "tree", "cottage", "inn", "shop", "shrine", "sign", "barrel", "crate", "shrub", "boulder",
-  "well", "hearth", "bed", "bookshelf", "table", "chair", "counter", "pot", "fence", "tallgrass", "grove-ritual",
+  "well", "hearth", "bed", "bookshelf", "table", "chair", "counter", "pot", "fence", "tallgrass", "grove-ritual", "cellar-hatch",
+  "quiet-lantern-sign", "calders-stock-awning",
 ] as const;
 const BG_KEYS = ["grass", "forest", "cave", "marsh", "keep"] as const;
 
@@ -31,6 +32,7 @@ export function collectGameAssets(options: { elderhallCandidate?: boolean } = {}
   const out: AssetEntry[] = [
     { key: "title", url: "/game/bg/title.jpg", required: true },
     { key: "room_rowan_cottage", url: "/game/rooms/rowan-cottage.png", required: true },
+    { key: "bg_briar_road", url: "/game/bg/bg_briar_road.webp", required: true },
     { key: "woodland_terrain", url: "/game/tiles/woodland-atlas.png", required: false },
     { key: "chapter_route_terrain", url: "/game/tiles/chapter-route-atlas.png", required: false },
     { key: "manifest_game", url: "/game/manifest.json", required: false },

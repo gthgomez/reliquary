@@ -169,12 +169,12 @@ test("goblin trader Patch resolves by npc id, not his reused shopkeep sprite", a
   });
 });
 
-test("unlisted npc id falls back to the sprite kind; unknown identity is text-only", async () => {
+test("unlisted npc identities keep the speaker name without borrowing a portrait", async () => {
   await withGame((game) => {
     game.mode = "world";
-    // Known talk script, unknown placement id: the sprite kind decides the sigil.
+    // A known talk script and shared sprite do not establish who is speaking.
     talk(game, "guard", "Mystery Guard", { npcId: "mystery", sprite: "guard" });
-    assert.equal(game.getSnapshot().dialog!.portraitKey, "guard");
+    assert.equal(game.getSnapshot().dialog!.portraitKey, null);
     assert.equal(game.getSnapshot().dialog!.npcId, "mystery");
     game.cancel(); // one-page guard information closes without confirming
 
@@ -311,7 +311,7 @@ test("alternate placements preserve identity, including inn success and insuffic
       game.confirm();
       assert.equal(game.getSnapshot().dialog!.speaker, "Innmother");
       assert.equal(game.getSnapshot().dialog!.npcId, "keep_innkeep");
-      assert.equal(game.getSnapshot().dialog!.portraitKey, "innkeep");
+      assert.equal(game.getSnapshot().dialog!.portraitKey, "keep-innkeep");
       assert.equal(game.gold, gold ? gold - 15 : 0);
       game.confirm();
       assert.equal(game.getSnapshot().dialog, null);
