@@ -18,6 +18,7 @@ export const LEGACY_SAVE_KEY = "reliquary.save.v2";
 export const LEGACY_SAVE_BACKUP = "reliquary.save.v2.bak";
 export const LEGACY_V1_KEY = "reliquary.save.v1";
 export const LEGACY_V1_BACKUP = "reliquary.save.v1.bak";
+const NAME_DRAFT_KEY = `reliquary.name-draft.${WORLD_REVISION}`;
 
 const SAVE_SLOTS = [SAVE_KEY, SAVE_BACKUP, LEGACY_SAVE_KEY, LEGACY_SAVE_BACKUP, LEGACY_V1_KEY, LEGACY_V1_BACKUP];
 
@@ -67,19 +68,53 @@ function browserStorage(): SaveStorage | null {
   catch { return null; }
 }
 
-function validateBeasts(save: Omit<GameSave, "version">): boolean {
+// A draft is local and disposable. The committed save holds the companion's
+// pending-offer flag so an absent, corrupt or mismatched draft cannot retarget it.
+export function readNameDraft(uid: string, source: ReadableSaveStorage | null = browserStorage()): string | undefined {
+  try {
+    const raw = source?.getItem(NAME_DRAFT_KEY);
+    if (!raw) return undefined;
+    const draft = JSON.parse(raw);
+    if (draft?.uid === uid && typeof draft.value === "string" && draft.value.length <= 40) return draft.value;
+  } catch { /* An unavailable draft falls back to the current nickname. */ }
+  return undefined;
+}
+
+export function writeNameDraft(uid: string, value: string | null, target: SaveStorage | null = browserStorage()): void {
+  try {
+    if (value !== null) target?.setItem(NAME_DRAFT_KEY, JSON.stringify({ uid, value }));
+    else if (readNameDraft(uid, target) !== undefined) target?.removeItem(NAME_DRAFT_KEY);
+  } catch { /* Draft storage cannot prevent in-memory naming. */ }
+}
+
+function normalizeBeasts(
+  save: GameSave,
+  clampOverflow: boolean,
+): { party: GameSave["party"]; box: GameSave["box"] } | null {
   const ids = new Set<string>();
-  for (const beast of [...save.party, ...save.box]) {
-    if (ids.has(beast.uid) || !SPECIES[beast.speciesId]) return false;
-    ids.add(beast.uid);
-    if (beast.skills.some((skill) => !SKILLS[skill])) return false;
-    if (beast.pendingSkills?.some((skill) => !SKILLS[skill])) return false;
-    const stats = currentStats(beast);
-    if (beast.hp > stats.hp || beast.mp > stats.mp) return false;
-  }
-  if (Object.keys(save.inventory).some((id) => !ITEMS[id])) return false;
-  if (Object.keys(save.seen).some((id) => !SPECIES[id]) || Object.keys(save.caught).some((id) => !SPECIES[id])) return false;
-  return true;
+  const normalizeList = (list: GameSave["party"]): GameSave["party"] | null => {
+    const out: GameSave["party"] = [];
+    for (const beast of list) {
+      if (ids.has(beast.uid) || !SPECIES[beast.speciesId]) return null;
+      ids.add(beast.uid);
+      if (beast.skills.some((skill) => !SKILLS[skill])) return null;
+      if (beast.pendingSkills?.some((skill) => !SKILLS[skill])) return null;
+      const stats = currentStats(beast);
+      if (beast.hp > stats.hp || beast.mp > stats.mp) {
+        if (!clampOverflow) return null;
+        out.push({ ...beast, hp: Math.min(beast.hp, stats.hp), mp: Math.min(beast.mp, stats.mp) });
+      } else {
+        out.push(beast);
+      }
+    }
+    return out;
+  };
+  const party = normalizeList(save.party);
+  const box = party ? normalizeList(save.box) : null;
+  if (!party || !box) return null;
+  if (Object.keys(save.inventory).some((id) => !ITEMS[id])) return null;
+  if (Object.keys(save.seen).some((id) => !SPECIES[id]) || Object.keys(save.caught).some((id) => !SPECIES[id])) return null;
+  return { party, box };
 }
 
 /**
@@ -92,9 +127,10 @@ function validateBeasts(save: Omit<GameSave, "version">): boolean {
 function validateSemantics(save: GameSave, options: { migrate?: "none" | "legacy" | "relocated" }): GameSave | null {
   const map = MAPS[save.mapId];
   if (!map) return null;
-  if (!validateBeasts(save)) return null;
-  let { x, y } = save;
   const migrate = options.migrate ?? "none";
+  const normalizedBeasts = normalizeBeasts(save, migrate !== "none");
+  if (!normalizedBeasts) return null;
+  let { x, y } = save;
   if (migrate === "legacy") {
     if (!isLegacyCoordinateValid(map, x, y)) return null;
     ({ x, y } = resolveSafeSpawn(map, { x, y }, save.flags));
@@ -105,7 +141,7 @@ function validateSemantics(save: GameSave, options: { migrate?: "none" | "legacy
   } else if (isOccupied(map, save.flags, x, y)) {
     return null;
   }
-  return { ...save, x, y, version: SAVE_VERSION, worldRevision: WORLD_REVISION };
+  return { ...save, ...normalizedBeasts, x, y, version: SAVE_VERSION, worldRevision: WORLD_REVISION };
 }
 
 function migrateParsed(value: unknown): GameSave | null {
@@ -274,7 +310,7 @@ export function hasSave(source: ReadableSaveStorage | null = browserStorage()): 
 
 export function clearSave(target: SaveStorage | null = browserStorage()): void {
   if (!target) return;
-  for (const key of [SAVE_KEY, SAVE_BACKUP, SAVE_FORWARD_KEY, LEGACY_SAVE_KEY, LEGACY_SAVE_BACKUP, LEGACY_V1_KEY, LEGACY_V1_BACKUP]) {
+  for (const key of [SAVE_KEY, SAVE_BACKUP, SAVE_FORWARD_KEY, LEGACY_SAVE_KEY, LEGACY_SAVE_BACKUP, LEGACY_V1_KEY, LEGACY_V1_BACKUP, NAME_DRAFT_KEY]) {
     try { target.removeItem(key); } catch { /* storage unavailable */ }
   }
 }

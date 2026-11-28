@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="32" height="64" viewBox="0 0 32 64" shape-rendering="crispEdges">
+  <title>Quiet Lantern hanging façade accent</title>
+  <rect width="32" height="64" fill="none"/>
+  <!-- dark iron bracket against the warm inn timber -->
+  <path fill="#2b211d" d="M16 1h11v4H20v9h-4zM17 13h3v4h-3z"/>
+  <path fill="#6a432d" d="M18 3h8v2h-6v10h-2z"/>
+  <!-- brass cap, glass chamber, and warm pixel glow -->
+  <path fill="#b87935" d="M13 16h11v4h2v22h-2v4H13v-4h-2V20h2z"/>
+  <path fill="#f0b84f" d="M15 18h7v3h2v17h-2v4h-7v-4h-2V21h2z"/>
+  <path fill="#ffe39a" d="M16 22h6v15h-6z"/>
+  <path fill="#d28a35" d="M13 21h2v18h-2zM22 21h2v18h-2zM15 39h7v3h-7z"/>
+  <path fill="#3e2a22" d="M11 42h15v3H11zM14 45h9v3h-9z"/>
+  <path fill="#9b6331" d="M16 48h5v12h-5z"/>
+  <path fill="#3a2922" d="M15 60h7v3h-7z"/>
+</svg>

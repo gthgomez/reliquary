@@ -13,11 +13,11 @@ import {
   TEMPERAMENTS,
 } from "../content";
 import type { ReliquaryGame } from "../engine";
-import { ROOT_MENU } from "../engine";
+import { ROOT_MENU, STARTER_PACT_REWARD } from "../engine";
 import type { Beast, DialogView, NamePromptView, Snapshot } from "../types";
 import { OverlayPanel } from "./OverlayPanel";
 import { DialogScene } from "./DialogScene";
-import { OfflineMenuStatus } from "./AppStatus";
+import { OfflineMenuStatus, TitleOfflineProgress } from "./AppStatus";
 import { useOverlayFocusTrap } from "./useOverlayFocusTrap.ts";
 import {
   leadActionHint,
@@ -29,7 +29,17 @@ import { objectiveHint, objectivePreview } from "../systems/objective.ts";
 import { clearTouchHolds, requestAccessibleStep, updateTouchHold, type HoldId } from "./touch-hold.ts";
 import { shouldShowTitleWorldRetry } from "./asset-recovery.ts";
 import { isElderhallCandidateBuild } from "../build-flags.ts";
+import {
+  analyzeEvolutionGraph,
+  CATEGORY_LABELS,
+  elementMatchups,
+  formatEvolutionLine,
+  speciesHabitats,
+} from "../systems/species-progression.ts";
+import { MAPS } from "../maps.ts";
 import { portraitSource } from "../portraits.ts";
+
+const PROGRESSION_ENTRIES = analyzeEvolutionGraph(SPECIES, MAX_LEVEL).entries;
 
 export function TitleScreen({ game, snap }: { game: ReliquaryGame; snap: Snapshot }) {
   const [confirmingReplace, setConfirmingReplace] = useState(false);
@@ -176,6 +186,7 @@ export function TitleScreen({ game, snap }: { game: ReliquaryGame; snap: Snapsho
             )}
           </div>
         )}
+        {!confirmingReplace ? <TitleOfflineProgress worldReady={snap.worldAssetsReady} /> : null}
         {(game.hasNewerSave || game.hasArchivedSave) && !confirmingReplace ? (
           <div className="title-save-recovery">
             {game.hasNewerSave ? <>
@@ -244,13 +255,15 @@ export function Hud({
   mapId,
   onMenu,
   onObjectiveMenu,
+  onHudFocus,
   menuButtonRef,
   dormant = false,
 }: {
   snap: Snapshot;
   mapId: string;
-  onMenu: () => void;
-  onObjectiveMenu: () => void;
+  onMenu: (event: MouseEvent<HTMLButtonElement>) => void;
+  onObjectiveMenu: (event: MouseEvent<HTMLButtonElement>) => void;
+  onHudFocus?: (button: HTMLButtonElement) => void;
   menuButtonRef?: RefObject<HTMLButtonElement | null>;
   dormant?: boolean;
 }) {
@@ -289,6 +302,7 @@ export function Hud({
                 className="hud-objective-btn"
                 aria-haspopup="dialog"
                 aria-label={`Objective: ${preview}. Open full directions in Lantern`}
+                onFocus={(event) => onHudFocus?.(event.currentTarget)}
                 onClick={onObjectiveMenu}
               >
                 <span className="hud-objective-label">Objective</span>
@@ -318,7 +332,7 @@ export function Hud({
             )}
           </div>
         </div>
-        <button type="button" className="hud-menu" ref={menuButtonRef} onClick={onMenu} aria-label="Menu">
+        <button type="button" className="hud-menu" ref={menuButtonRef} onFocus={(event) => onHudFocus?.(event.currentTarget)} onClick={onMenu} aria-label="Menu">
           <span className="hud-menu-icon" aria-hidden="true">☰</span><span className="hud-menu-label">Menu</span>
         </button>
       </div>
@@ -335,9 +349,15 @@ export function DialogBox({ dialog, game }: { dialog: DialogView; game: Reliquar
 }
 
 export function NamePrompt({ game, prompt }: { game: ReliquaryGame; prompt: NamePromptView }) {
-  const [name, setName] = useState(prompt.speciesName);
+  const [name, setName] = useState(prompt.draft);
+  const customName = name.trim() !== "" && name.trim() !== prompt.speciesName;
   const formRef = useRef<HTMLFormElement>(null);
   useOverlayFocusTrap(formRef, true);
+  useLayoutEffect(() => {
+    const form = formRef.current;
+    const target = window.matchMedia("(pointer: coarse)").matches ? form : form?.querySelector("input");
+    target?.focus({ preventScroll: true });
+  }, []);
   useLayoutEffect(() => {
     const form = formRef.current;
     const stage = form?.parentElement;
@@ -372,28 +392,40 @@ export function NamePrompt({ game, prompt }: { game: ReliquaryGame; prompt: Name
       aria-modal="true"
       aria-label="Name your creature"
       aria-describedby="creature-name-instructions"
+      tabIndex={-1}
       onSubmit={(event) => {
         event.preventDefault();
-        if (!name.trim()) return;
+        if (!customName) return;
         game.submitCreatureName(name);
       }}
     >
-      <p id="creature-name-instructions">What will you call {prompt.speciesName}?</p>
+      <div className="name-prompt-companion">
+        <img src={`/game/sprites/${prompt.speciesId}.png`} alt="" draggable={false} />
+        <div>
+          <p id="creature-name-instructions">What will you call <strong>{prompt.speciesName}</strong>?</p>
+          {prompt.kind === "starter" ? (
+            <p className="name-prompt-reward">First pact kept · +{STARTER_PACT_REWARD.sigils} common sigils · +{STARTER_PACT_REWARD.crowns} crowns</p>
+          ) : null}
+        </div>
+      </div>
       <label>
         Creature name
         <input
           aria-label="Creature name"
           value={name}
           maxLength={40}
-          autoFocus
-          onChange={(event) => setName(event.target.value)}
+          onChange={(event) => {
+            const draft = event.target.value;
+            setName(draft);
+            game.updateCreatureNameDraft(draft);
+          }}
         />
       </label>
-      <div className="name-prompt-actions">
-        <button type="submit" className="btn-ghost" disabled={!name.trim()}>
-          Call them this
+      <div className="dialog-actions name-prompt-actions">
+        <button type="submit" className={customName ? "dialog-next" : "dialog-back"} disabled={!customName}>
+          Confirm name
         </button>
-        <button type="button" className="btn-ghost" onClick={() => game.submitCreatureName(null)}>
+        <button type="button" className={customName ? "dialog-back" : "dialog-next"} onClick={() => game.submitCreatureName(null)}>
           Keep {prompt.speciesName}
         </button>
       </div>
@@ -624,41 +656,7 @@ export function MenuPanel({ game, snap, onImportActivate }: { game: ReliquaryGam
     );
   }
   if (snap.menu === "reliquary") {
-    const ids = Object.keys(SPECIES);
-    return (
-      <OverlayPanel
-        wide
-        title="Reliquary"
-        subtitle={`Bound ${Object.keys(snap.caught).length} · Seen ${Object.keys(snap.seen).length} of ${ids.length} · ? unheard · —— spotted only`}
-        onClose={() => game.cancel()}
-      >
-        <div className="reliq-grid" role="list">
-          {ids.map((id) => {
-            const sp = SPECIES[id]!;
-            const caught = Boolean(snap.caught[id]);
-            const seen = Boolean(snap.seen[id]);
-            const known = seen || caught;
-            const stateLabel = caught
-              ? `${sp.name} — bound to your compact`
-              : seen
-                ? `${sp.name} — seen in the wild, not yet bound`
-                : "Unheard of — bind one to learn its name";
-            return (
-              <div key={id} role="listitem" aria-label={stateLabel} className={`reliq-cell ${caught ? "have" : ""}${seen && !caught ? " seen" : ""}`} title={stateLabel}>
-                {known ? (
-                  <img src={`/game/sprites/${id}.png`} alt="" />
-                ) : (
-                  <span className="unknown" aria-hidden="true">
-                    ?
-                  </span>
-                )}
-                <span>{caught || seen ? sp.name : "——"}</span>
-              </div>
-            );
-          })}
-        </div>
-      </OverlayPanel>
-    );
+    return <ReliquaryPanel snap={snap} onClose={() => game.cancel()} />;
   }
   if (snap.packTarget) {
     return (
@@ -775,10 +773,102 @@ function RenameCreature({ game, beast }: { game: ReliquaryGame; beast: Beast }) 
   );
 }
 
+function ReliquaryPanel({ snap, onClose }: { snap: Snapshot; onClose: () => void }) {
+  const ids = Object.keys(SPECIES);
+  const firstKnown = ids.find((id) => snap.caught[id] || snap.seen[id]) ?? null;
+  const [selectedId, setSelectedId] = useState<string | null>(firstKnown);
+  const activeId = selectedId && (snap.caught[selectedId] || snap.seen[selectedId]) ? selectedId : firstKnown;
+  const activeSp = activeId ? SPECIES[activeId] : null;
+  const activeProg = activeId ? PROGRESSION_ENTRIES[activeId] : null;
+  const activeHabitats = activeId ? speciesHabitats(activeId, MAPS) : [];
+  const activeMatchups = activeSp ? elementMatchups(activeSp.elements) : null;
+
+  return (
+    <OverlayPanel
+      wide
+      title="Reliquary"
+      subtitle={`Bound ${Object.keys(snap.caught).length} · Seen ${Object.keys(snap.seen).length} of ${ids.length} · ? unheard · —— spotted only`}
+      onClose={onClose}
+    >
+      {activeSp && activeProg ? (
+        <section className="reliq-detail" aria-label={`${activeSp.name} lore and progression`}>
+          <div className="reliq-detail-head">
+            <strong>{activeSp.name}</strong>
+            <span className="muted">
+              {activeSp.epithet} · {CATEGORY_LABELS[activeProg.category]}
+            </span>
+          </div>
+          <p className="skills">
+            Lineage: {formatEvolutionLine(activeSp.id, SPECIES, PROGRESSION_ENTRIES)}
+          </p>
+          <p className="skills">
+            {activeHabitats.length
+              ? `Habitats: ${activeHabitats.join(", ")}`
+              : activeProg.category === "exceptional"
+                ? "Habitat: Fixed shrine encounter"
+                : activeProg.evolvedFrom
+                  ? `Obtained via evolution from ${SPECIES[activeProg.evolvedFrom.id]?.name ?? activeProg.evolvedFrom.id}`
+                  : "Habitat: Binding Grove pact"}
+            {activeMatchups && (activeMatchups.strongAgainst.length || activeMatchups.weakAgainst.length)
+              ? ` · Strong vs ${activeMatchups.strongAgainst.join(", ") || "none"} · Weak to ${activeMatchups.weakAgainst.join(", ") || "none"}`
+              : ""}
+          </p>
+          <p className="muted">{activeSp.description}</p>
+        </section>
+      ) : null}
+      <div className="reliq-grid" role="list">
+        {ids.map((id) => {
+          const sp = SPECIES[id]!;
+          const caught = Boolean(snap.caught[id]);
+          const seen = Boolean(snap.seen[id]);
+          const known = seen || caught;
+          const isSelected = activeId === id;
+          const stateLabel = caught
+            ? `${sp.name} — bound to your compact`
+            : seen
+              ? `${sp.name} — seen in the wild, not yet bound`
+              : "Unheard of — bind one to learn its name";
+          return (
+            <div
+              key={id}
+              role="listitem"
+              aria-label={known ? undefined : stateLabel}
+              className={`reliq-cell ${caught ? "have" : ""}${seen && !caught ? " seen" : ""}${isSelected ? " selected" : ""}`}
+              title={stateLabel}
+            >
+              {known ? (
+                <button
+                  type="button"
+                  className="reliq-btn"
+                  aria-label={stateLabel}
+                  aria-pressed={isSelected}
+                  onClick={() => setSelectedId(id)}
+                >
+                  <img src={`/game/sprites/${id}.png`} alt="" />
+                  <span>{sp.name}</span>
+                </button>
+              ) : (
+                <>
+                  <span className="unknown" aria-hidden="true">
+                    ?
+                  </span>
+                  <span>——</span>
+                </>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </OverlayPanel>
+  );
+}
+
 function BeastCard({ beast, children, selected }: { beast: Beast; children?: ReactNode; selected?: boolean }) {
   const sp = SPECIES[beast.speciesId]!;
   const st = currentStats(beast);
   const t = TEMPERAMENTS[beast.temperament];
+  const prog = PROGRESSION_ENTRIES[beast.speciesId];
+  const matchups = elementMatchups(sp.elements);
   return (
     <article className={`beast-card${selected ? " beast-card-active" : ""}`}>
       <img src={`/game/sprites/${beast.speciesId}.png`} alt="" />
@@ -807,13 +897,26 @@ function BeastCard({ beast, children, selected }: { beast: Beast; children?: Rea
           <p className="skills">Level cap reached</p>
         )}
         <p className="skills">
+          {prog ? `${CATEGORY_LABELS[prog.category]} · ` : ""}
           {sp.evolves
-            ? `Evolution: ${SPECIES[sp.evolves.into]?.name} at Lv ${sp.evolves.level}`
-            : "Mature form"}
+            ? `Evolves into ${SPECIES[sp.evolves.into]?.name} at Lv ${sp.evolves.level}`
+            : prog?.evolvedFrom
+              ? `Final evolved stage`
+              : "Mature form"}
         </p>
         <p className="muted">
-          {t.name} · {sp.epithet}
+          {t.name} (+{t.up.toUpperCase()} / -{t.down.toUpperCase()}) · {sp.epithet}
         </p>
+        <p className="beast-stats-line">
+          ATK {st.atk} · DEF {st.def} · MAG {st.mag} · RES {st.res} · SPD {st.spd} · LCK {st.lck}
+        </p>
+        {matchups.strongAgainst.length || matchups.weakAgainst.length ? (
+          <p className="beast-matchups">
+            {matchups.strongAgainst.length ? `Strong vs ${matchups.strongAgainst.join(", ")}` : ""}
+            {matchups.strongAgainst.length && matchups.weakAgainst.length ? " · " : ""}
+            {matchups.weakAgainst.length ? `Weak to ${matchups.weakAgainst.join(", ")}` : ""}
+          </p>
+        ) : null}
         <p className="skills">{beast.skills.map((s) => SKILLS[s]?.name ?? s).join(" · ")}</p>
         {children ? <div className="beast-actions">{children}</div> : null}
       </div>
@@ -858,6 +961,9 @@ export function Meter({
 
 export function ShopPanel({ game, snap }: { game: ReliquaryGame; snap: Snapshot }) {
   const [portraitFailed, setPortraitFailed] = useState(false);
+  const elderhallVendor = game.mapId === "shop_in";
+  const namedVendor = elderhallVendor || game.mapId === "keep_shop";
+  const vendor = elderhallVendor ? "Calder" : "Chandler";
   const list =
     snap.shopMode === "buy"
       ? snap.shopStock
@@ -868,14 +974,14 @@ export function ShopPanel({ game, snap }: { game: ReliquaryGame; snap: Snapshot 
 
   return (
     <OverlayPanel
-      title="Chandler"
-      subtitle={`${snap.gold} crowns in purse`}
+      title={namedVendor ? snap.mapName : "Chandler"}
+      subtitle={`${namedVendor ? `${vendor} · ` : ""}${snap.gold} crowns in purse`}
       onClose={() => game.cancel()}
       closeLabel="Leave"
     >
       <div className="shop-tabs">
         {isElderhallCandidateBuild() && !portraitFailed ? (
-          <img className="shop-portrait" src={portraitSource("shopkeep", true)} alt=""
+          <img className="shop-portrait" src={portraitSource(elderhallVendor ? "shopkeep" : "chandler", true)} alt=""
             width={40} height={52} onError={() => setPortraitFailed(true)} />
         ) : null}
         <button
@@ -1058,11 +1164,13 @@ export function TouchPad({ game, variant = "full", dialog }: {
       <div className="ab">
         {(!dialogActive || dialog?.secondaryLabel) ? (
           <button type="button" className="b-btn" aria-label={`B — ${dialog ? dialog.secondaryLabel : "Cancel"}`}
+            onPointerDown={(e) => e.preventDefault()}
             onClick={() => game.activateDialogueAction(dialog?.revision ?? null, "cancel")}>
             B
           </button>
         ) : <span className="b-btn-placeholder" aria-hidden="true" />}
         <button type="button" className="a-btn" aria-label={`A — ${dialog?.primaryLabel ?? "Interact"}`}
+          onPointerDown={(e) => e.preventDefault()}
           onClick={() => game.activateDialogueAction(dialog?.revision ?? null, "confirm")}>
           A
         </button>

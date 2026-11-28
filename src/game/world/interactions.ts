@@ -41,6 +41,8 @@ export const SIGN_TEXTS: Record<string, string> = {
 	sign_road: "BRIAR ROAD — north to Wildwood, east to Mirefen. Bind what you must.",
 	sign_grove: "BINDING GROVE — first pacts are spoken here.",
 	sign_grove_inner: "Choose with care. A first pact is a first name.",
+	sign_inn: "THE QUIET LANTERN — warm beds, a whole lantern, fifteen crowns.",
+	sign_shop: "CALDER'S SUNDRIES — tonics, sigils, and road gear. Ask for Calder.",
 	sign_briar: "Keep to the path after dusk. The grass remembers hunger.",
 	sign_wildwood: "WILDWOOD — Ashenbarrow in the stone. Thornkeep beyond the trees.",
 	sign_mire: "MIREFEN — watch your step. The peat is older than the keep.",
@@ -215,27 +217,29 @@ export function knownTalkIds(): Set<string> {
  * real), a prepared party meets the full 12/13/15 line.
  */
 export const WARDEN_TRIAL_TEAM: { speciesId: string; level: number }[] = [
-  { speciesId: "ironnewt", level: 12 },
-  { speciesId: "chapelite", level: 13 },
-  { speciesId: "keepdrake", level: 15 },
+  { speciesId: "ironnewt", level: 10 },
+  { speciesId: "chapelite", level: 11 },
+  { speciesId: "keepdrake", level: 12 },
 ];
 
 export function wardenTeamLevels(strongestLevel: number): number[] {
-  const adjust = strongestLevel < 12 ? -2 : 0;
+  const adjust = strongestLevel < 10 ? -1 : 0;
   return WARDEN_TRIAL_TEAM.map((foe) => Math.max(1, foe.level + adjust));
 }
 
 /** Cael's advisory pages, kept here so the content stays in the content layer. */
-export function wardenPages(ctx: DialogContext): string[] {
+export function wardenPages(ctx: DialogContext, approach: "square" | "hall"): string[] {
 	const pages = ["Warden Cael. I keep Thornkeep's road."];
-	if (ctx.strongestLevel < 12) {
+	if (ctx.strongestLevel < 10) {
 		pages.push(
-			`Your beast has weathered ${ctx.strongestLevel} season${ctx.strongestLevel === 1 ? "" : "s"}. Below a dozen, my three run lighter; at a dozen they meet you at full strength. As you like — three of mine against yours: Iron. Chapel. Drake.`,
+			`Your beast has weathered ${ctx.strongestLevel} season${ctx.strongestLevel === 1 ? "" : "s"}. Below ten, my three ease off; from ten, full strength. As you like — three of mine against yours: Iron. Chapel. Drake.`,
 		);
 	} else {
 		pages.push("Show me the compact is not a hobby. Three of mine against yours — Iron. Chapel. Drake. Bind or break.");
 	}
-	pages.push("(A begin · B later)");
+	pages.push(approach === "square"
+		? "We'll put your pact to the test inside Warden's Hall."
+		: "When you're ready, we'll begin here in the hall.");
 	return pages;
 }
 

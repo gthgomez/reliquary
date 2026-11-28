@@ -188,9 +188,8 @@ const SUNSET_GRADE: Record<
 };
 
 /**
- * Draw the battle plate with cover cropping (never stretched), then grade the
- * plate toward the reference's sunset atmosphere. The original asset stays
- * untouched on disk; the grade is presentation only.
+ * Fill the arena with the authored plate. On Briar Road, frame the grass verge
+ * and the near path so the creatures enter combat at the edge of the road.
  */
 export function paintBattleBackdrop(
   ctx: CanvasRenderingContext2D,
@@ -199,17 +198,19 @@ export function paintBattleBackdrop(
   layout: BattleLayout,
   bgKey: BattleBg,
   image?: CanvasImageSource | null,
+  framing: "scenic" | "roadside" = "scenic",
 ): void {
-  if (image) paintCover(ctx, image, cw, ch);
+  if (image) paintCover(ctx, image, cw, ch, framing === "roadside" ? layout.groundY : null);
   else {
     ctx.fillStyle = bgKey === "cave" ? "#1b1b26" : "#2c3d32";
     ctx.fillRect(0, 0, cw, ch);
   }
 
-  const grade = SUNSET_GRADE[bgKey] ?? SUNSET_GRADE.grass;
-  // The meadow plate is graded with multiply (reference purple dusk); other
-  // maps use soft-light so cave/marsh keep their authored mood.
-  if (typeof ctx.createLinearGradient === "function") {
+  if (framing === "roadside") {
+    ctx.fillStyle = "rgba(81, 105, 91, 0.22)";
+    ctx.fillRect(0, 0, cw, ch);
+  } else if (typeof ctx.createLinearGradient === "function") {
+    const grade = SUNSET_GRADE[bgKey] ?? SUNSET_GRADE.grass;
     ctx.save();
     ctx.globalCompositeOperation = grade.blend;
     const sky = ctx.createLinearGradient(0, 0, 0, ch * 0.62);
@@ -264,12 +265,22 @@ function paintCover(
   image: CanvasImageSource,
   cw: number,
   ch: number,
+  footingY: number | null,
 ): void {
   const src = image as { naturalWidth?: number; naturalHeight?: number };
   const sw = src.naturalWidth ?? 0;
   const sh = src.naturalHeight ?? 0;
   if (sw <= 0 || sh <= 0) {
     ctx.drawImage(image, 0, 0, cw, ch);
+    return;
+  }
+  if (footingY !== null) {
+    // The authored plate reserves a quiet band across the near dirt verge.
+    // Keep that band under the feet using a uniform scale in every orientation.
+    const sourceFooting = sh * 432 / 768;
+    const scale = Math.max(cw / sw, footingY / sourceFooting, (ch - footingY) / (sh - sourceFooting));
+    const dw = sw * scale;
+    ctx.drawImage(image, (cw - dw) / 2, footingY - sourceFooting * scale, dw, sh * scale);
     return;
   }
   const scale = Math.max(cw / sw, ch / sh);

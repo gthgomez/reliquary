@@ -106,26 +106,33 @@ export function paintCandidateWellApron(ctx: CanvasRenderingContext2D, map: MapD
     return (h ^ (h >>> 16)) >>> 0;
   };
   ctx.save();
-  // A muted earthen edge sits below the pavers, bridging the road texture.
-  ctx.fillStyle = "rgba(70,56,39,.1)";
+  // Packed soil between the stones carries the road color to the well.
+  ctx.fillStyle = "rgba(70,56,39,.14)";
   traceApron(1.04, 1); ctx.fill();
-  ctx.fillStyle = "#7b796d";
+  ctx.fillStyle = "rgba(104,84,60,.31)";
   traceApron(1); ctx.fill();
   ctx.save();
   traceApron(.97); ctx.clip();
-  // Staggered shallow joints give the paving a hand-laid scale without a
-  // hard tile grid. Every mark is a pure function of its world coordinate.
+  // Leave gaps at the rim where the hand-laid slabs meet the dirt road.
   const stepX = Math.max(8, Math.round(size / 3));
   const stepY = Math.max(7, Math.round(size / 3));
+  const limestone = ["#a2977e", "#908875", "#9d9c88", "#aca082", "#989576"];
   for (let row = 0, y = cy - ry + 2; y < cy + ry; row++, y += stepY) {
     for (let column = 0, x = cx - rx + 2 + (row % 2) * Math.round(stepX / 2); x < cx + rx; column++, x += stepX) {
       const variation = seed(column + row * 7, row);
-      ctx.fillStyle = ["#858274", "#777568", "#817e71", "#898574"][variation % 4]!;
-      ctx.fillRect(Math.round(x), Math.round(y), stepX - 2 - (variation % 3), Math.max(1, stepY - 2 - ((variation >>> 3) % 2)));
-      ctx.fillStyle = "rgba(226,216,192,.17)";
-      ctx.fillRect(Math.round(x) + 1, Math.round(y), Math.max(1, stepX - 5), 1);
-      ctx.fillStyle = "rgba(47,43,36,.13)";
-      ctx.fillRect(Math.round(x), Math.round(y) + stepY - 3, Math.max(1, stepX - 3), 1);
+      const distance = ((x + stepX / 2 - cx) / rx) ** 2 + ((y + stepY / 2 - cy) / ry) ** 2;
+      if (distance > .8 && variation % 3 === 0) continue;
+      const left = Math.round(x) + (variation % 2);
+      const top = Math.round(y) + ((variation >>> 2) % 2);
+      const width = stepX - 1 - ((variation >>> 4) % 3);
+      const height = stepY - 2 - ((variation >>> 7) % 2);
+      ctx.globalAlpha = distance > .72 ? .65 : 1;
+      ctx.fillStyle = limestone[variation % limestone.length]!;
+      ctx.fillRect(left, top, width, height);
+      ctx.fillStyle = "rgba(239,222,181,.31)";
+      ctx.fillRect(left + 1, top, width - 2, 1);
+      ctx.fillStyle = "rgba(53,44,34,.34)";
+      ctx.fillRect(left, top + height, width, 1);
     }
   }
   ctx.restore();
@@ -133,7 +140,7 @@ export function paintCandidateWellApron(ctx: CanvasRenderingContext2D, map: MapD
   traceApron(.995, -1);
   ctx.setLineDash([Math.max(2, size / 10), Math.max(4, size / 5)]);
   ctx.lineWidth = 1;
-  ctx.strokeStyle = "rgba(76,71,60,.2)"; ctx.stroke();
+  ctx.strokeStyle = "rgba(100,81,55,.26)"; ctx.stroke();
   traceApron(.97, -2);
   ctx.lineWidth = 1; ctx.strokeStyle = "rgba(230,220,194,.18)"; ctx.stroke();
   ctx.setLineDash([]);

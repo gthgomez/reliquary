@@ -17,17 +17,32 @@ export function DialogScene({ dialog, onAdvance, onBack }: {
   const [failedPortrait, setFailedPortrait] = useState<string | null>(null);
   const candidatePortrait = isElderhallCandidateBuild() && dialog.portraitKey
     ? portraitSource(dialog.portraitKey, true) : null;
-  const pixelPortrait = candidatePortrait && candidatePortrait !== failedPortrait ? candidatePortrait : null;
+  const portraitUrl = candidatePortrait ?? portrait?.src;
+  const showPortrait = portraitUrl && portraitUrl !== failedPortrait;
   const duplicateNonCommittingClose = !dialog.commits
     && dialog.primaryLabel === "Close"
     && dialog.secondaryLabel === "Close";
   const secondaryLabel = duplicateNonCommittingClose ? null : dialog.secondaryLabel;
+  const starterInspection = Boolean(dialog.speciesId && dialog.commits);
+  const speciesArt = dialog.speciesId
+    ? <img className="dialog-species" src={`/game/sprites/${dialog.speciesId}.png`} alt="" draggable={false} />
+    : null;
+  const nameplate = portrait || dialog.speaker ? (
+    <div className="dialog-nameplate">
+      {portrait ? <span className="dialog-role">{portrait.role}</span> : null}
+      {dialog.speaker ? <span className="dialog-name">{dialog.speaker}</span> : null}
+    </div>
+  ) : null;
   useEffect(() => {
     const previousFocus = document.activeElement;
     primary.current?.focus({ preventScroll: true });
     return () => {
       if (previousFocus instanceof HTMLElement && previousFocus.isConnected && document.activeElement === document.body) {
-        previousFocus.focus({ preventScroll: true });
+        if (previousFocus.closest(".hud, .touch")) {
+          document.querySelector<HTMLElement>(".game-canvas")?.focus({ preventScroll: true });
+        } else {
+          previousFocus.focus({ preventScroll: true });
+        }
       }
     };
   }, []);
@@ -43,18 +58,18 @@ export function DialogScene({ dialog, onAdvance, onBack }: {
 
   return (
     <div
-      className={`dialog-scene${portrait ? " dialog-scene-npc" : ""}${pixelPortrait ? " dialog-scene-pixel" : ""}`}
+      className={`dialog-scene${showPortrait ? " dialog-scene-npc" : ""}${showPortrait && candidatePortrait ? " dialog-scene-pixel" : ""}${starterInspection ? " dialog-scene-starter" : ""}`}
       data-npc-id={dialog.npcId ?? undefined}
       role="dialog"
       aria-label={dialog.speaker || "Story"}
     >
-      {portrait ? (
+      {showPortrait ? (
         <div className="dialog-portrait" aria-hidden="true">
-          <img src={pixelPortrait ?? portrait.src} alt="" draggable={false}
-            onError={pixelPortrait ? () => setFailedPortrait(pixelPortrait) : undefined} />
+          <img src={portraitUrl} alt="" draggable={false} onError={() => setFailedPortrait(portraitUrl)} />
         </div>
       ) : null}
-      <div className={`dialog${portrait ? " dialog-panel" : ""}`} data-portrait={dialog.portraitKey ?? "none"}>
+      <div className={`dialog${showPortrait ? " dialog-panel" : ""}`} data-portrait={dialog.portraitKey ?? "none"}>
+        {starterInspection ? <div className="dialog-starter-heading">{speciesArt}{nameplate}</div> : null}
         <div
           className="dialog-content"
           ref={content}
@@ -63,14 +78,9 @@ export function DialogScene({ dialog, onAdvance, onBack }: {
             if (["ArrowUp", "ArrowDown", "PageUp", "PageDown", "Home", "End", " "].includes(event.key)) event.stopPropagation();
           }}
         >
-          {dialog.speciesId ? <img className="dialog-species" src={`/game/sprites/${dialog.speciesId}.png`} alt="" draggable={false} /> : null}
+          {starterInspection ? null : speciesArt}
           <div className="dialog-copy">
-            {portrait || dialog.speaker ? (
-              <div className="dialog-nameplate">
-                {portrait ? <span className="dialog-role">{portrait.role}</span> : null}
-                {dialog.speaker ? <span className="dialog-name">{dialog.speaker}</span> : null}
-              </div>
-            ) : null}
+            {starterInspection ? null : nameplate}
             <p className="dialog-text" id={textId} aria-live="polite" aria-atomic="true">{dialog.text}</p>
           </div>
         </div>

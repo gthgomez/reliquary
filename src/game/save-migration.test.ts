@@ -46,3 +46,15 @@ test("an existing save beside the Elderhall well restores its original position"
   assert.equal(restored.gold, 223);
   assert.equal(restored.party[0]!.speciesId, "emberkit");
 });
+
+test("older-revision saves clamp HP/MP above current stat caps without dropping the save", () => {
+  const previous = validSave();
+  previous.worldRevision = WORLD_REVISION - 1;
+  previous.party[0]!.hp += 25;
+  previous.party[0]!.mp += 15;
+  const restored = parseSave(JSON.stringify(previous));
+  assert.ok(restored);
+  assert.equal(restored.worldRevision, WORLD_REVISION);
+  assert.ok(restored.party[0]!.hp < previous.party[0]!.hp);
+  assert.ok(restored.party[0]!.mp < previous.party[0]!.mp);
+});

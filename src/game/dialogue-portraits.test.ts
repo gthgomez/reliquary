@@ -169,12 +169,12 @@ test("goblin trader Patch resolves by npc id, not his reused shopkeep sprite", a
   });
 });
 
-test("unlisted npc id falls back to the sprite kind; unknown identity is text-only", async () => {
+test("unlisted npc identities keep the speaker name without borrowing a portrait", async () => {
   await withGame((game) => {
     game.mode = "world";
-    // Known talk script, unknown placement id: the sprite kind decides the sigil.
+    // A known talk script and shared sprite do not establish who is speaking.
     talk(game, "guard", "Mystery Guard", { npcId: "mystery", sprite: "guard" });
-    assert.equal(game.getSnapshot().dialog!.portraitKey, "guard");
+    assert.equal(game.getSnapshot().dialog!.portraitKey, null);
     assert.equal(game.getSnapshot().dialog!.npcId, "mystery");
     game.cancel(); // one-page guard information closes without confirming
 
@@ -226,7 +226,7 @@ test("gateward warp warning carries the guard portrait", async () => {
   });
 });
 
-test("starter pact follow-up reopens as Elder Maren with her portrait", async () => {
+test("starter pact follow-up is Rowan addressing the chosen creature", async () => {
   await withGame((game) => {
     game.mode = "world";
     const open = () => (game as unknown as { chooseStarter(id: string): void }).chooseStarter("emberkit");
@@ -258,10 +258,11 @@ test("starter pact follow-up reopens as Elder Maren with her portrait", async ()
     assert.equal(naming.party[0]!.nickname, "Emberkit");
     game.submitCreatureName("Cinder");
     const after = game.getSnapshot().dialog;
-    assert.ok(after, "Maren speaks after the name");
-    assert.equal(after!.speaker, "Elder Maren");
-    assert.equal(after!.npcId, "maren");
-    assert.equal(after!.portraitKey, "elder-maren");
+    assert.ok(after, "Rowan speaks to the chosen creature after naming");
+    assert.equal(after!.speaker, "Rowan");
+    assert.equal(after!.npcId, null);
+    assert.equal(after!.portraitKey, null);
+    assert.equal(after!.speciesId, "emberkit");
     assert.match(after!.text, /Cinder/);
     assert.equal(game.flags.starter, true);
     assert.equal(game.party[0]!.nickname, "Cinder");
@@ -310,7 +311,7 @@ test("alternate placements preserve identity, including inn success and insuffic
       game.confirm();
       assert.equal(game.getSnapshot().dialog!.speaker, "Innmother");
       assert.equal(game.getSnapshot().dialog!.npcId, "keep_innkeep");
-      assert.equal(game.getSnapshot().dialog!.portraitKey, "innkeep");
+      assert.equal(game.getSnapshot().dialog!.portraitKey, "keep-innkeep");
       assert.equal(game.gold, gold ? gold - 15 : 0);
       game.confirm();
       assert.equal(game.getSnapshot().dialog, null);

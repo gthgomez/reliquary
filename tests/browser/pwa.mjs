@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
 import { startStaticServer, withBrowser, waitForGameBoot } from "./helpers.mjs";
 
-const { server, baseUrl } = await startStaticServer(0);
+let releaseWorldArt;
+const worldArtGate = new Promise((resolve) => { releaseWorldArt = resolve; });
+const { server, baseUrl } = await startStaticServer(0, {
+  beforeResponse: (path) => path === "/game/props/bed.png" ? worldArtGate : undefined,
+});
 
 async function installControls(page) {
   await page.addInitScript(() => {
@@ -23,7 +27,7 @@ async function installControls(page) {
     };
     window.offlineStatusHistory = [];
     new MutationObserver(() => {
-      const text = document.querySelector(".app-status")?.textContent?.trim();
+      const text = document.querySelector(".app-status, .title-offline-progress")?.textContent?.trim();
       if (text && text !== window.offlineStatusHistory.at(-1)) window.offlineStatusHistory.push(text);
     }).observe(document, { subtree: true, childList: true, characterData: true });
   });
@@ -51,8 +55,20 @@ try {
     await page.goto(baseUrl, { waitUntil: "domcontentloaded" });
     await waitForGameBoot(page);
     const status = page.locator(".app-status");
-    await status.filter({ hasText: /Caching for offline/ }).waitFor();
-    await page.getByRole("button", { name: "Start", exact: true }).click();
+    const start = page.getByRole("button", { name: "Start", exact: true });
+    const preparation = page.locator(".title-copy").getByRole("status").filter({ hasText: "Preparing offline play…" });
+    await start.waitFor();
+    assert.equal(await start.isEnabled(), false, "Start waits for required world art");
+    releaseWorldArt();
+    await preparation.waitFor({ state: "visible" });
+    assert.equal(await start.isEnabled(), true, "Start is available while optional installation is held");
+    assert.equal(await page.evaluate(() => navigator.serviceWorker.controller), null,
+      "Start became available before the optional installation completed");
+    const startBox = await start.boundingBox();
+    const statusBox = await preparation.boundingBox();
+    assert.ok(startBox && statusBox && statusBox.y >= startBox.y + startBox.height,
+      "offline setup stays below Start");
+    await start.click();
     for (let i = 0; i < 3; i += 1) await page.locator(".dialog-next").click();
 
     await page.evaluate(() => window.releaseOfflineInstall());
@@ -101,8 +117,9 @@ try {
     assert.equal(await warning.getAttribute("role"), "status");
     await page.waitForTimeout(4_200);
     assert.equal(await warning.isVisible(), true, "incomplete cache warning persists");
-  }, { context: { serviceWorkers: "allow" } });
+  }, { context: { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, serviceWorkers: "allow" } });
 } finally {
+  releaseWorldArt();
   server.close();
 }
 

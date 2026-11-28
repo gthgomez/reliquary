@@ -88,10 +88,10 @@ test("new-run introduction presents the westward Grove as the goal and Maren as 
     game.confirm();
     game.confirm();
     const intro = game.getSnapshot().dialog?.text ?? "";
-    assert.match(intro, /arrows or WASD.*touch.*direction pad/i);
-    assert.match(intro, /Z or Enter; tap A on touch/i);
-    assert.match(intro, /westward path to the Binding Grove/i);
-    assert.match(intro, /Maren.*optional guidance/i);
+    assert.match(intro, /arrows or the D-pad/i);
+    assert.match(intro, /Enter or A to interact/i);
+    assert.match(intro, /south, then go west to Binding Grove/i);
+    assert.match(intro, /Maren.*can help/i);
     assert.doesNotMatch(intro, /Find Elder Maren/i);
   });
 });

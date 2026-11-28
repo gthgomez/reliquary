@@ -31,11 +31,14 @@ try {
       });
       // Keep the critical-hit/outcome text deterministic: a longer real log
       // line wraps on small screens and must not squeeze the recap away.
-      await page.addInitScript(() => { Math.random = () => 0.01; });
+      await page.addInitScript((save) => {
+        Math.random = () => 0.01;
+        if (!localStorage.getItem("reliquary.save.v3")) {
+          localStorage.setItem("reliquary.save.v3", JSON.stringify(save));
+        }
+      }, savedRun);
       await page.setViewportSize(viewport);
       await page.goto(baseUrl, { waitUntil: "load" });
-      await page.evaluate((save) => localStorage.setItem("reliquary.save.v3", JSON.stringify(save)), savedRun);
-      await page.reload({ waitUntil: "load" });
       await waitForGameBoot(page);
       await page.getByRole("button", { name: "Continue", exact: true }).click();
       await page.evaluate(() => window.__controlsTest.startWild());

@@ -1,9 +1,9 @@
-import type { MapDef } from "../types.ts";
+import type { Encounter, MapDef } from "../types.ts";
 import type { RandomSource } from "../rng.ts";
 
 export interface EncounterDefinition {
   rate: number;
-  encounters: { species: string; min: number; max: number; w: number }[];
+  encounters: Encounter[];
 }
 
 export interface EncounterRegion {
@@ -14,7 +14,7 @@ export interface EncounterRegion {
   h: number;
   tiles: string[];
   rate: number;
-  encounters: { species: string; min: number; max: number; w: number }[];
+  encounters: Encounter[];
 }
 
 function inRegion(region: EncounterRegion, x: number, y: number): boolean {
@@ -35,16 +35,16 @@ export function encounterAt(map: MapDef, x: number, y: number): EncounterDefinit
   return { rate: map.encounterRate, encounters: map.encounters };
 }
 
-export function rollEncounter(
-  def: EncounterDefinition,
+export function pickWeightedEncounter(
+  encounters: readonly Encounter[],
   random: RandomSource,
 ): { species: string; level: number } | null {
-  if (def.rate <= 0 || def.encounters.length === 0) return null;
-  if (random() >= def.rate) return null;
-  const total = def.encounters.reduce((s, e) => s + e.w, 0);
+  if (encounters.length === 0) return null;
+  const total = encounters.reduce((s, e) => s + e.w, 0);
+  if (total <= 0) return null;
   let r = random() * total;
-  let pick = def.encounters[0]!;
-  for (const e of def.encounters) {
+  let pick = encounters[encounters.length - 1]!;
+  for (const e of encounters) {
     r -= e.w;
     if (r <= 0) {
       pick = e;
@@ -53,6 +53,15 @@ export function rollEncounter(
   }
   const level = pick.min + Math.floor(random() * (pick.max - pick.min + 1));
   return { species: pick.species, level };
+}
+
+export function rollEncounter(
+  def: EncounterDefinition,
+  random: RandomSource,
+): { species: string; level: number } | null {
+  if (def.rate <= 0 || def.encounters.length === 0) return null;
+  if (random() >= def.rate) return null;
+  return pickWeightedEncounter(def.encounters, random);
 }
 
 export type BattleCommand = "Strike" | "Skill" | "Item" | "Bind" | "Party" | "Flee";

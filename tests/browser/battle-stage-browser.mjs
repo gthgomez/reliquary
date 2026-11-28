@@ -297,6 +297,14 @@ try {
           : [];
       }));
       assert.deepEqual(escaped, [], `${viewport.width}×${viewport.height} portrait HP and MP stay on their own cards at 200% text`);
+      const details = page.locator(".battle-detail-expansion > summary");
+      await details.tap();
+      const panel = page.locator(".battle-detail-expansion[open] .battle-detail-expansion-body");
+      await panel.waitFor({ state: "visible" });
+      assert.match(await panel.innerText(), /physical attack/i);
+      await page.keyboard.press("Escape");
+      await panel.waitFor({ state: "hidden" });
+      assert.equal(await page.locator(".battle-controls").getAttribute("data-battle-phase"), "command");
       await page.screenshot({ path: join(artifactDir, `battle-readouts-${viewport.width}x${viewport.height}-200.png`) });
     }, { textScale: 2, context: { viewport, isMobile: true, hasTouch: true } });
   }
@@ -375,6 +383,12 @@ try {
       assert.equal(geometry.foeName, "Galeskip", `${vp.name}: live foe name`);
       assert.match(geometry.playerHp ?? "", /^\d+ \/ \d+$/, `${vp.name}: live HP readout`);
       assert.equal(geometry.actions.length, 6, `${vp.name}: six command slots`);
+      if (vp.name === "390x844") {
+        assert.ok(geometry.controls.h <= geometry.canvas.h * 0.41,
+          `${vp.name}: the dock must leave room for the arena (${geometry.controls.h}px of ${geometry.canvas.h}px)`);
+        assert.ok(geometry.playerCard.y >= geometry.canvas.y + 35,
+          `${vp.name}: the status cards should sit closer to the tall arena's creatures`);
+      }
       for (const action of geometry.actions) {
         assert.ok(action.h >= 44, `${vp.name}: ${action.text} height ${action.h}`);
         assert.ok(action.w >= 44, `${vp.name}: ${action.text} width ${action.w}`);

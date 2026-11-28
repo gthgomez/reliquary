@@ -72,11 +72,11 @@ test("status, healing, MP costs, and shop economy keep their invariants", () => 
 });
 
 test("experience awards level up, learnset changes, and evolution while preserving state", () => {
-  const ember = beast("emberkit", 15);
+  const ember = beast("emberkit", 13);
   const beforeHp = ember.hp;
-  const result = awardExperience(ember, expToNext(15));
+  const result = awardExperience(ember, expToNext(13));
   assert.equal(result.levelsGained, 1);
-  assert.equal(ember.level, 16);
+  assert.equal(ember.level, 14);
   assert.equal(result.evolvedInto, "pyrefox");
   assert.equal(ember.speciesId, "pyrefox");
   assert.ok(ember.hp >= beforeHp);

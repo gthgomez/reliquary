@@ -20,6 +20,8 @@ import { registerReliquaryServiceWorker, setUpdateGuard } from "../pwa/register.
 import type { ReliquaryHandle } from "./types.ts";
 import { setMuted } from "./audio.ts";
 import { shouldShowInWorldAssetRecovery } from "./ui/asset-recovery.ts";
+import { isElderhallCandidateBuild } from "./build-flags.ts";
+import { isInteriorRoom } from "./render/room-visual.ts";
 import { acquireSaveSession } from "./save-session.ts";
 import { attachEconomyProbes } from "reliquary-economy-probes";
 import { attachBattleUiBrowserHooks } from "reliquary-battle-browser-probes";
@@ -205,14 +207,46 @@ export function GameApp() {
   const classicTouch = isClassicTouchEnabled();
   const showHudBar = playing && snap.mode !== "battle";
   const showExplorationTouch = !naming && shouldShowExplorationTouch(snap, classicTouch);
-  const showDialogTouch = !naming && shouldShowDialogTouch(snap, classicTouch);
+  const showDialogTouch = !naming && !isElderhallCandidateBuild() && shouldShowDialogTouch(snap, classicTouch);
   const showTouch = showExplorationTouch || showDialogTouch;
   const mapId = g.mapId;
   const cottage = mapId === "home" && snap.mode === "world";
+  const interior = (snap.mode === "world" || snap.mode === "shop") && isInteriorRoom(mapId);
   const dialogActive = !!snap.dialog;
   const menuButtonRef = useRef<HTMLButtonElement>(null);
-  const objectiveReturnRef = useRef(false);
+  const modalTriggerRef = useRef<"menu-btn" | "objective-btn" | "shortcut" | null>(null);
+  const modalKeyboardTriggerRef = useRef(false);
+  const restoringPassiveHudRef = useRef(false);
+  const pointerHudFocusRef = useRef(false);
   const wasUiModal = useRef(false);
+  const prevPlayModeRef = useRef(snap.mode);
+
+  const focusExplorationSurface = () => {
+    canvasRef.current?.focus({ preventScroll: true });
+  };
+
+  useEffect(() => {
+    const onPointer = (event: PointerEvent) => {
+      const target = event.target;
+      pointerHudFocusRef.current = target instanceof HTMLElement && Boolean(target.closest(".hud"));
+      if (target instanceof HTMLElement && target.closest(".hud") == null) {
+        const menuBtn = menuButtonRef.current;
+        const objBtn = document.querySelector<HTMLButtonElement>(".hud-objective-btn");
+        if (menuBtn) menuBtn.dataset.hudFocusMode = "passive";
+        if (objBtn) objBtn.dataset.hudFocusMode = "passive";
+      }
+    };
+    const onTab = (event: KeyboardEvent) => {
+      if (event.key !== "Tab") return;
+      pointerHudFocusRef.current = false;
+    };
+    document.addEventListener("pointerdown", onPointer, true);
+    document.addEventListener("keydown", onTab, true);
+    return () => {
+      document.removeEventListener("pointerdown", onPointer, true);
+      document.removeEventListener("keydown", onTab, true);
+    };
+  }, []);
 
   // Stage padding and adaptive eligibility change with the current screen and
   // map, even when the stage's outer border box does not resize.
@@ -222,7 +256,11 @@ export function GameApp() {
 
   useEffect(() => {
     if (uiModal) {
-      const openedFromObjective = !wasUiModal.current && objectiveReturnRef.current;
+      const openedFromObjective = !wasUiModal.current && modalTriggerRef.current === "objective-btn";
+      if (!wasUiModal.current && !modalTriggerRef.current) {
+        modalTriggerRef.current = "shortcut";
+        modalKeyboardTriggerRef.current = false;
+      }
       wasUiModal.current = true;
       requestAnimationFrame(() => {
         // Opening from the objective should leave the directions at the top
@@ -246,17 +284,40 @@ export function GameApp() {
       });
       return;
     }
-    if (!wasUiModal.current) return;
+    if (!wasUiModal.current) {
+      if (prevPlayModeRef.current === "battle" && snap.mode === "world" && !dialogActive && !naming) {
+        requestAnimationFrame(() => focusExplorationSurface());
+      }
+      prevPlayModeRef.current = snap.mode;
+      return;
+    }
     wasUiModal.current = false;
+    prevPlayModeRef.current = snap.mode;
+    const trigger = modalTriggerRef.current;
+    const keyboardOpened = modalKeyboardTriggerRef.current;
+    const closeKind = g.menuCloseKind;
+    modalTriggerRef.current = null;
+    modalKeyboardTriggerRef.current = false;
     requestAnimationFrame(() => {
-      if (objectiveReturnRef.current) {
-        objectiveReturnRef.current = false;
-        document.querySelector<HTMLButtonElement>(".hud-objective-btn")?.focus({ preventScroll: true });
-      } else menuButtonRef.current?.focus({ preventScroll: true });
+      if (trigger === "shortcut" || closeKind === "action" || closeKind === "toggle") {
+        focusExplorationSurface();
+        return;
+      }
+      const target = trigger === "objective-btn"
+        ? document.querySelector<HTMLButtonElement>(".hud-objective-btn")
+        : menuButtonRef.current;
+      if (!target) {
+        focusExplorationSurface();
+        return;
+      }
+      restoringPassiveHudRef.current = !keyboardOpened;
+      target.dataset.hudFocusMode = keyboardOpened ? "active" : "passive";
+      target.focus({ preventScroll: true });
+      restoringPassiveHudRef.current = false;
     });
   // cardMenu?.uid: a nested sheet swaps panels without changing menu/mode,
   // so focus would fall to <body> between the unmount and the next Tab.
-  }, [uiModal, snap.menu, snap.mode, snap.cardMenu?.uid]);
+  }, [uiModal, snap.menu, snap.mode, snap.cardMenu?.uid, dialogActive, naming, g]);
 
   useEffect(() => {
     const stage = stageRef.current;
@@ -269,7 +330,8 @@ export function GameApp() {
 
   return (
     <div
-      className={`game-root${showTouch ? " has-touch" : ""}${showExplorationTouch ? " has-explore-touch" : ""}${showDialogTouch ? " has-dialog-touch" : ""}${classicTouch ? " classic-touch" : ""}${cottage ? " is-cottage" : ""}${uiModal ? " is-ui-modal" : ""}${snap.dialog ? " is-dialog" : ""}${snap.dialog?.portraitKey ? " is-dialog-portrait" : ""}${snap.mode === "battle" ? " is-battle" : ""}${battleSubmenuRootClass(snap.battle?.phase)}`}
+      className={`game-root${showTouch ? " has-touch" : ""}${showExplorationTouch ? " has-explore-touch" : ""}${showDialogTouch ? " has-dialog-touch" : ""}${classicTouch ? " classic-touch" : ""}${cottage ? " is-cottage" : ""}${interior ? " is-interior" : ""}${uiModal ? " is-ui-modal" : ""}${snap.dialog ? " is-dialog" : ""}${snap.dialog?.portraitKey ? " is-dialog-portrait" : ""}${snap.mode === "battle" ? " is-battle" : ""}${battleSubmenuRootClass(snap.battle?.phase)}`}
+      data-world-map={snap.mode === "world" ? mapId : undefined}
     >
       <div className="stage" ref={stageRef}>
         <div
@@ -283,9 +345,11 @@ export function GameApp() {
         >
           <canvas
             ref={canvasRef}
+            tabIndex={-1}
             className={`game-canvas ${snap.mode === "title" || snap.mode === "boot" || snap.mode === "victory" ? "is-hidden" : ""}`}
-            width={snap.viewW * TILE}
-            height={snap.viewH * TILE}
+            onPointerDown={() => {
+              if (snap.mode === "world" && !uiModal && !dialogActive && !naming) focusExplorationSurface();
+            }}
           />
           {uiModal ? (
             <div
@@ -305,14 +369,29 @@ export function GameApp() {
                 mapId={mapId}
                 menuButtonRef={menuButtonRef}
                 dormant={uiModal || dialogActive || naming}
-                onMenu={() => g.toggleMenu()}
-                onObjectiveMenu={() => {
-                  objectiveReturnRef.current = true;
+                onHudFocus={(button) => {
+                  if (restoringPassiveHudRef.current || pointerHudFocusRef.current) {
+                    button.dataset.hudFocusMode = "passive";
+                  } else {
+                    button.dataset.hudFocusMode = "active";
+                  }
+                }}
+                onMenu={(event) => {
+                  modalTriggerRef.current = "menu-btn";
+                  modalKeyboardTriggerRef.current = event.detail === 0 || event.currentTarget.dataset.hudFocusMode === "active";
+                  g.toggleMenu();
+                }}
+                onObjectiveMenu={(event) => {
+                  modalTriggerRef.current = "objective-btn";
+                  modalKeyboardTriggerRef.current = event.detail === 0 || event.currentTarget.dataset.hudFocusMode === "active";
                   g.toggleMenu();
                 }}
               />
             ) : null}
-            <AppStatus showReadyToast={snap.mode === "world" && !uiModal && !dialogActive && !naming} />
+            <AppStatus
+              showReadyToast={snap.mode === "world" && !uiModal && !dialogActive && !naming}
+              showDownloadProgress={snap.mode !== "title"}
+            />
             {shouldShowInWorldAssetRecovery(snap, uiModal) ? (
               <div className="asset-recovery-control" role="status">
                 <span>Some required game art could not be loaded. Your journey is safe.</span>

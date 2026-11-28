@@ -9,6 +9,8 @@ import { makeElderhallCandidate } from "./maps/elderhall-candidate.ts";
 import { chooseTileVariant } from "./world/terrain.ts";
 import { tileAtlasQuadrant } from "./render/tile-surface.ts";
 import { resolveWorldPropLayout } from "./render/world-actors.ts";
+import { isOccupied } from "./world/movement.ts";
+import { visibleObjects } from "./world/object-state.ts";
 import type { Beast } from "./types.ts";
 
 async function withGame(
@@ -188,6 +190,46 @@ test("focused buttons keep native activation but suppress held Enter", async () 
   });
 });
 
+test("passive restored HUD focus yields Enter to world interact and restores canvas focus on movement", async () => {
+  await withGame((game, _frame, events) => {
+    game.mode = "world";
+    game.mapId = "elderhall";
+    const maren = MAPS.elderhall.npcs.find((npc) => npc.id === "maren")!;
+    game.tx = maren.x;
+    game.ty = maren.y + 1;
+    game.dir = 3;
+    let canvasFocused = 0;
+    (game.canvas as unknown as { focus?: (opts?: { preventScroll?: boolean }) => void }).focus = () => {
+      canvasFocused += 1;
+    };
+    const passiveHud = Object.assign(new HTMLElement(), {
+      dataset: { hudFocusMode: "passive" },
+      closest: (selector: string) => (selector === "button" ? passiveHud : null),
+    });
+    let prevented = 0;
+    events.get("keydown")!({
+      target: passiveHud,
+      code: "ArrowLeft",
+      repeat: false,
+      preventDefault() {
+        prevented++;
+      },
+    } as unknown as Event);
+    assert.equal(canvasFocused, 1, "directional movement shifts focus from HUD button to world canvas");
+    assert.equal(prevented, 1);
+    events.get("keydown")!({
+      target: passiveHud,
+      code: "Enter",
+      repeat: false,
+      preventDefault() {
+        prevented++;
+      },
+    } as unknown as Event);
+    assert.equal(game.menu, null, "Enter must not open menu when HUD button is passively restored");
+    assert.equal(game.getSnapshot().dialog?.speaker, "Elder Maren", "Enter interacts with faced NPC");
+  });
+});
+
 test("arrow navigation moves focus to the selected menu button", async () => {
   await withGame((game, _frame, events) => {
     game.mode = "world";
@@ -300,7 +342,14 @@ test("foe retaliation targets the incoming beast on a voluntary switch", async (
 
 test("a caught beast can take a nickname, and declining leaves the species name", async () => {
   await withGame((game, frame) => {
+    const stored = new Map<string, string>();
+    (globalThis as Record<string, unknown>).localStorage = {
+      getItem: (key: string) => stored.get(key) ?? null,
+      setItem: (key: string, value: string) => stored.set(key, value),
+      removeItem: (key: string) => stored.delete(key),
+    };
     game.party = [makeBeast("emberkit", 5)];
+    game.flags.starter = true;
     (game as unknown as { random: () => number }).random = () => 0;
     let ts = 100;
     const catchOne = () => {
@@ -319,12 +368,18 @@ test("a caught beast can take a nickname, and declining leaves the species name"
     const kept = game.party[1]!.nickname;
     game.cancel();
     assert.equal(game.getSnapshot().namePrompt, null);
+    game.continueGame();
+    assert.equal(game.namePrompt, null, "declining the capture offer is durable");
     assert.equal(game.party[1]!.nickname, kept);
 
     catchOne();
     game.confirm();
     assert.equal(game.getSnapshot().namePrompt?.kind, "tame");
     const beforeBlank = game.party[2]!.nickname;
+    game.updateCreatureNameDraft("");
+    game.namePrompt = null;
+    game.continueGame();
+    assert.equal(game.getSnapshot().namePrompt?.draft, "", "an empty draft does not restore the default text");
     game.submitCreatureName("   ");
     assert.equal(game.getSnapshot().namePrompt, null);
     assert.equal(game.party[2]!.nickname, beforeBlank);
@@ -338,9 +393,17 @@ test("a caught beast can take a nickname, and declining leaves the species name"
     while (game.party.length < 4) game.party.push(makeBeast("mirewhelp", 5));
     catchOne();
     game.confirm();
-    game.submitCreatureName("Moss");
-    assert.ok(game.box.some((beast) => beast.nickname === "Moss"));
-    assert.equal(game.party.some((beast) => beast.nickname === "Moss"), false);
+    const boxed = game.box.at(-1)!;
+    game.updateCreatureNameDraft("Moss".repeat(10));
+    game.updateCreatureNameDraft("Moss".repeat(11));
+    game.namePrompt = null;
+    game.continueGame();
+    assert.equal(game.getSnapshot().namePrompt?.uid, boxed.uid);
+    assert.equal(game.getSnapshot().namePrompt?.draft, "Moss".repeat(10));
+    game.submitCreatureName("Moss".repeat(10));
+    assert.equal(game.box.find((beast) => beast.uid === boxed.uid)?.nickname, "Moss".repeat(10));
+    game.continueGame();
+    assert.equal(game.namePrompt, null, "confirmed captured companion never reopens the offer");
   });
 });
 
@@ -842,11 +905,13 @@ test("terrain is reused between frames and rebuilt when the map changes", async 
   await withGame((game, frame) => {
     let terrainDraws = 0;
     let visibleDraws = 0;
+    let vergeRotations = 0;
     const ground = {
       drawImage() {
         terrainDraws++;
       },
       fillRect() {}, ellipse() {}, fill() {},
+      translate() {}, rotate() { vergeRotations++; },
       save() {}, restore() {}, beginPath() {}, moveTo() {}, lineTo() {}, quadraticCurveTo() {}, closePath() {}, rect() {}, clip() {},
     };
     const canvas = { getContext: () => ground, width: 0, height: 0 };
@@ -868,6 +933,7 @@ test("terrain is reused between frames and rebuilt when the map changes", async 
     window.__controlsTest!.warp!("wildwood", 8, 10);
     frame(48);
     assert.ok(terrainDraws > first);
+    assert.ok(vergeRotations > 0, "the Wildwood bake draws the rotated path shoulders");
   });
 });
 
@@ -1149,8 +1215,8 @@ test("Cael telegraphs the trial, advises a weak party, and only begins on confir
     game.party = [makeBeast("emberkit", 5)];
     talk("cael", "Warden Cael");
     game.confirm();
-    assert.match(game.getSnapshot().dialog!.text, /Below a dozen, my three run lighter/);
-    assert.match(game.getSnapshot().dialog!.text, /at a dozen they meet you at full strength/);
+    assert.match(game.getSnapshot().dialog!.text, /Below ten, my three ease off/);
+    assert.match(game.getSnapshot().dialog!.text, /from ten, full strength/);
     assert.match(game.getSnapshot().dialog!.text, /Iron\. Chapel\. Drake/);
     game.cancel();
     assert.match(game.getSnapshot().dialog!.text, /I keep Thornkeep/);
@@ -1263,7 +1329,7 @@ test("dialogue cancel navigates backwards or dismisses without confirming", asyn
   });
 });
 
-test("starter confirmation flow: inspect, cancel, confirm, naming, Elder Maren follow-up", async () => {
+test("starter confirmation flow: inspect, cancel, confirm, naming, Rowan follow-up", async () => {
   await withGame((game) => {
     game.mode = "world";
     const chooseStarter = (id: string) =>
@@ -1285,6 +1351,23 @@ test("starter confirmation flow: inspect, cancel, confirm, naming, Elder Maren f
     // 2. Cancelling leaves the player with no starter
     game.cancel();
     assert.equal(game.party.length, 0, "cancel leaves party empty");
+
+    for (const [id, signature, cost, matchup, danger] of [
+      ["emberkit", "Cinder", 6, /Ember.*Verdant and Steel/, /Incoming Tide and Stone hit harder/],
+      ["mirewhelp", "Torrent", 6, /Tide.*Ember and Stone/, /Incoming Verdant hits harder/],
+      ["briarling", "Rootgrasp", 8, /Verdant.*Tide and Stone/, /Incoming Ember, Gale, and Umbra hit harder/],
+    ] as const) {
+      chooseStarter(id);
+      game.confirm();
+      const details = game.getSnapshot().dialog!.text;
+      assert.match(details, /Nip \(0 MP\)/);
+      assert.ok(details.includes(`${signature} (${cost} MP)`));
+      assert.match(details, matchup);
+      assert.match(details, danger);
+      game.cancel();
+      game.cancel();
+      assert.equal(game.party.length, 0, "comparing skills does not make a pact");
+    }
 
     // 3. Inspecting again and confirming advances to pact confirmation
     chooseStarter("emberkit");
@@ -1322,21 +1405,87 @@ test("starter confirmation flow: inspect, cancel, confirm, naming, Elder Maren f
     game.submitCreatureName("Ignis");
     assert.equal(game.party[0].nickname, "Ignis", "nickname applied");
     assert.equal(game.namePrompt, null, "namePrompt closed");
-    // Elder Maren speaks using the nickname
-    assert.ok(game.getSnapshot().dialog, "Elder Maren follow-up dialog opens");
-    assert.match(game.getSnapshot().dialog!.text, /So it is Ignis\. Keep the name\./);
+    assert.equal(game.getSnapshot().dialog?.speaker, "Rowan", "the player speaks from the Grove");
+    assert.match(game.getSnapshot().dialog!.text, /Ignis steps down from the stone.*Our first road together\./);
 
-    // 6. Dismiss Elder Maren dialog
+    // 6. Dismiss Rowan's dialogue
     game.confirm();
     game.confirm();
     assert.equal(game.getSnapshot().dialog, null, "dialog closed");
 
     // 7. Attempting to inspect another starter does not bind or duplicate
     chooseStarter("mirewhelp");
-    assert.match(game.getSnapshot().dialog!.text, /The grove is quiet\. Your pact is already spoken\./);
+    assert.match(game.getSnapshot().dialog!.text, /Your pact is already spoken\./);
     assert.equal(game.party.length, 1, "party still contains only original starter");
     assert.equal(game.party[0].nickname, "Ignis");
   });
+});
+
+test("each Grove pact removes only the chosen beast and pays once across reload", async () => {
+  const grove = MAPS.grove!;
+  const starters = grove.objects.filter((object) => object.id.startsWith("st_"));
+  assert.equal(starters.length, 3);
+  assert.equal(visibleObjects(grove.objects, { starter: true }).some((object) => starters.includes(object)), false,
+    "legacy saves keep the Grove layout they were written with");
+  for (const chosen of starters) {
+    await withGame((game) => {
+      const stored = new Map<string, string>();
+      (globalThis as Record<string, unknown>).localStorage = {
+        getItem: (key: string) => stored.get(key) ?? null,
+        setItem: (key: string, value: string) => stored.set(key, value),
+        removeItem: (key: string) => stored.delete(key),
+      };
+      const initialGold = game.gold;
+      const initialSigils = game.inventory.common_sigil ?? 0;
+      game.mode = "world";
+      game.mapId = grove.id;
+      game.tx = chosen.x;
+      game.ty = chosen.y + 1;
+      game.dir = 3;
+      for (let i = 0; i < 4; i += 1) game.confirm();
+      assert.equal(game.party[0]?.speciesId, chosen.sprite, "ordinary confirmation binds the approached species");
+      const uid = game.party[0]!.uid;
+      assert.equal(loadSave()?.party[0]?.uid, uid, "commit is durable before naming");
+      game.namePrompt = null;
+      game.continueGame();
+      assert.equal(game.getSnapshot().namePrompt?.uid, uid, "reload before editing resumes the same pact");
+      game.updateCreatureNameDraft("Bracken");
+      game.namePrompt = null;
+      game.continueGame();
+      assert.equal(game.getSnapshot().namePrompt?.draft, "Bracken", "reload preserves the unsent name");
+      assert.equal(game.party[0]?.nickname, game.getSnapshot().namePrompt?.speciesName, "draft is still optional");
+      game.setSaveWriteAllowed(false);
+      game.updateCreatureNameDraft("Unsaved tab");
+      game.continueGame();
+      assert.equal(game.getSnapshot().namePrompt?.draft, "Bracken", "read-only naming cannot write the draft");
+      game.setSaveWriteAllowed(true);
+      game.confirm();
+      assert.equal(game.gold, initialGold + 40);
+      assert.equal(game.inventory.common_sigil, initialSigils + 3);
+      game.submitCreatureName(null);
+      game.confirm();
+      game.confirm();
+      game.continueGame();
+      assert.equal(game.namePrompt, null, "settled naming stays closed after reload");
+
+      const remaining = starters.filter((object) => object !== chosen);
+      assert.deepEqual(visibleObjects(grove.objects, game.flags).filter((object) => starters.includes(object)),
+        remaining, "only the chosen beast leaves the Grove");
+      assert.equal(isOccupied(grove, game.flags, chosen.x, chosen.y), false, "chosen beast does not leave a phantom collider");
+      for (const other of remaining) {
+        assert.equal(isOccupied(grove, game.flags, other.x, other.y), true, "a visible beast keeps its collision");
+        game.tx = other.x;
+        game.ty = other.y + 1;
+        game.dir = 3;
+        game.confirm();
+        assert.match(game.getSnapshot().dialog?.text ?? "", /already spoken/i);
+        game.confirm();
+      }
+      assert.deepEqual(game.party.map((beast) => beast.uid), [uid]);
+      assert.equal(game.gold, initialGold + 40);
+      assert.equal(game.inventory.common_sigil, initialSigils + 3);
+    });
+  }
 });
 
 test("wild capture naming flow: capture offer, nickname submit, and cancel to keep default name", async () => {
@@ -1377,5 +1526,46 @@ test("wild capture naming flow: capture offer, nickname submit, and cancel to ke
     game.submitCreatureName(null);
     assert.equal(game.namePrompt, null);
     assert.equal(game.party.find((b) => b.uid === wildGale.uid)?.nickname, "Galeskip", "default name retained when naming declined");
+  });
+});
+
+test("switching in battle shares participation lore without reviving fainted members and records bind lore", async () => {
+  await withGame((game) => {
+    game.mode = "world";
+    const lead = makeBeast("emberkit", 5);
+    const reserve = makeBeast("mirewhelp", 5);
+    const fainted = makeBeast("briarling", 5);
+    fainted.hp = 0;
+    game.party = [lead, reserve, fainted];
+
+    // 1. Switch participation awards 50% share to co-fighter on KO and skips fainted ally.
+    (game as unknown as { startWildFrom(id: string, lvl: number): void }).startWildFrom("dewslime", 4);
+    assert.deepEqual(game.battle?.participants, [lead.uid]);
+    game.battle!.phase = "party";
+    game.battle!.menuIndex = 1;
+    game.confirm();
+    assert.equal(game.battle!.playerIndex, 1);
+    assert.ok(game.battle!.participants?.includes(reserve.uid));
+
+    game.battle!.foes[0]!.hp = 0;
+    (game as unknown as { foeDown(): void }).foeDown();
+    assert.ok(reserve.exp > 0, "active finisher earned full lore");
+    assert.ok(lead.exp > 0 && lead.exp < reserve.exp, "co-participant earned half share");
+    assert.equal(fainted.hp, 0);
+    assert.equal(fainted.exp, 0);
+    assert.ok(game.battle!.recap.some((line) => line.includes("gains") && line.includes("lore")));
+
+    // 2. Granting XP that simultaneously teaches a skill and evolves merges toast notices instead of dropping skills.
+    const almostEvo = makeBeast("emberkit", 13);
+    game.party = [almostEvo];
+    const grantXp = (b: Beast, xp: number) => (game as unknown as { grantXp(b: Beast, xp: number): string[] }).grantXp(b, xp);
+    almostEvo.exp = 0;
+    const needed = 1000;
+    grantXp(almostEvo, needed);
+    assert.equal(almostEvo.speciesId, "pyrefox");
+    assert.ok(
+      game.toast?.includes("remembers") && game.toast?.includes("becomes"),
+      `merged toast: ${game.toast}`,
+    );
   });
 });

@@ -8,7 +8,8 @@ const dirs = [
 ];
 
 /** Plan a walking route without crossing unintended warp tiles. */
-export function pathFor(map, start, target, starterChosen) {
+export function pathFor(map, start, target, starterState) {
+  const flags = typeof starterState === "boolean" ? { starter: starterState } : starterState;
   const key = (x, y) => `${x},${y}`;
   const todo = [{ ...start, path: [] }];
   const seen = new Set([key(start.x, start.y)]);
@@ -22,7 +23,7 @@ export function pathFor(map, start, target, starterChosen) {
       const warp = map.warps.some((item) => item.x === x && item.y === y);
       if (warp && (x !== target.x || y !== target.y)) continue;
       // Use gameplay collision, including split post footprints on an arch.
-      if (!warp && isOccupied(map, { starter: starterChosen }, x, y)) continue;
+      if (!warp && isOccupied(map, flags, x, y)) continue;
       seen.add(key(x, y));
       todo.push({ x, y, path: [...point.path, { x, y, key: dir.key, warp }] });
     }

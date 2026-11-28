@@ -6,7 +6,7 @@ import assert from "node:assert/strict";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { startStaticServer, withBrowser, waitForGameBoot } from "./helpers.mjs";
+import { measureTargetVisibility, startStaticServer, withBrowser, waitForGameBoot } from "./helpers.mjs";
 
 const artifactDir = process.env.RELIQUARY_BROWSER_ARTIFACTS
   ?? fileURLToPath(new URL("../../artifacts/browser/", import.meta.url));
@@ -98,6 +98,11 @@ try {
       assert.equal(commandProbe.foeHudVsControls, false, `${vp.name} foe overlaps controls`);
       assert.ok(commandProbe.gapPx >= 2, `${vp.name} foe/controls gap ${commandProbe.gapPx}px`);
       await assertTouchTargets(page, `${vp.name} command`);
+      for (const control of await page.locator(".battle-action, .battle-details-toggle").all()) {
+        const geometry = await measureTargetVisibility(control);
+        assert.ok(geometry.fullyVisible && geometry.hitOk,
+          `${vp.name} command cut off: ${await control.innerText()} ${JSON.stringify(geometry)}`);
+      }
       await assertDockStable(page, vp.name);
 
       await page.getByRole("button", { name: "Skill", exact: true }).click();

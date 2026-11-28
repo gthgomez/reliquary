@@ -53,15 +53,23 @@ test("the Warden trial team is real content and honors the advisory promise", ()
     assert.ok(SPECIES[foe.speciesId], `unknown trial species ${foe.speciesId}`);
     assert.ok(foe.level >= 1 && foe.level <= 40, `${foe.speciesId}: level`);
   }
-  // Below the advised dozen the trio goes lighter; at/above it, full strength.
-  assert.deepEqual(wardenTeamLevels(7), [10, 11, 13]);
-  assert.deepEqual(wardenTeamLevels(12), [12, 13, 15]);
-  assert.deepEqual(wardenTeamLevels(20), [12, 13, 15]);
+  // Below ten seasons the trio holds back a step; from ten onward, fixed full strength (no Lv11->12 cliff).
+  assert.deepEqual(wardenTeamLevels(7), [9, 10, 11]);
+  assert.deepEqual(wardenTeamLevels(10), [10, 11, 12]);
+  assert.deepEqual(wardenTeamLevels(11), [10, 11, 12]);
+  assert.deepEqual(wardenTeamLevels(12), [10, 11, 12]);
+  assert.deepEqual(wardenTeamLevels(20), [10, 11, 12]);
 });
 
 test("Cael's advisory changes with party strength", () => {
-  const weak = wardenPages({ flags: { starter: true }, strongestLevel: 7 });
-  const ready = wardenPages({ flags: { starter: true }, strongestLevel: 14 });
-  assert.ok(weak.some((line) => line.includes("weathered 7 seasons")), weak.join(" | "));
+  const weak = wardenPages({ flags: { starter: true }, strongestLevel: 7 }, "square");
+  const ready = wardenPages({ flags: { starter: true }, strongestLevel: 14 }, "square");
+  assert.ok(weak.some((line) => line.includes("Below ten, my three ease off")), weak.join(" | "));
   assert.ok(ready.every((line) => !line.includes("weathered")), ready.join(" | "));
+});
+
+test("Cael establishes the trial location from either approach", () => {
+  const ctx = { flags: { starter: true }, strongestLevel: 12 };
+  assert.match(wardenPages(ctx, "square").at(-1) ?? "", /inside Warden's Hall/);
+  assert.match(wardenPages(ctx, "hall").at(-1) ?? "", /here in the hall/);
 });

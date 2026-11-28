@@ -5,7 +5,7 @@ import { adjustCamYForHudInset } from "./render/world-camera-safe.ts";
 
 function gameWithCanvas() {
   const game = new ReliquaryGame();
-  const canvas = { width: 0, height: 0 } as HTMLCanvasElement;
+  const canvas = { width: 0, height: 0, getContext: () => null } as unknown as HTMLCanvasElement;
   game.canvas = canvas;
   game.mode = "world";
   return { game, canvas };
@@ -58,6 +58,24 @@ test("the portrait cottage frame shows the whole room without canvas padding", (
   game.layout(320, 190, true, true);
   assert.deepEqual([canvas.width, canvas.height, game.cssW, game.cssH], [352, 288, 232, 190]);
   assert.deepEqual(game.currentSave(), save);
+});
+
+test("the tall portrait Grove ends at the map edge at the Elderhall tile scale", () => {
+  const { game, canvas } = gameWithCanvas();
+  game.layout(390, 712, true);
+  const worldWidth = canvas.width;
+  const cssWidth = game.cssW;
+
+  game.mapId = "grove";
+  game.layout(390, 712, true);
+  assert.equal(canvas.width, worldWidth);
+  assert.equal(game.cssW, cssWidth);
+  assert.equal(canvas.height, 14 * TILE);
+  assert.equal(game.cssH, 546);
+
+  game.dialog = { speaker: "", pages: [""], index: 0, npcId: null, portraitKey: null };
+  game.layout(390, 756, true);
+  assert.equal(game.cssH, 546, "a dialogue can use available shell space while the world frame holds still");
 });
 
 test("exploration, menu and dialogue keep their camera sizes; battles get a fitted stage", () => {

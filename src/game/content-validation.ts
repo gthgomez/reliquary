@@ -1,11 +1,14 @@
 import { ELEMENTS, ITEMS, MAX_LEVEL, SKILLS, SPECIES } from "./content.ts";
 import { FIXED_ENCOUNTERS } from "./encounters.ts";
 import { MAPS } from "./maps.ts";
+import { analyzeEvolutionGraph, type DerivedSpeciesProgression } from "./systems/species-progression.ts";
 import { mapIsRectangular, canStandAt } from "./systems/world.ts";
+import type { Encounter } from "./types.ts";
 import { validateInteractions } from "./world/interactions.ts";
 
 const SKILL_KINDS = new Set(["strike", "spell", "heal", "ward", "hex"]);
 const ITEM_KINDS = new Set(["heal", "ether", "status", "revive", "field", "sigil", "key"]);
+const MAX_EXCEPTIONAL_UNDER_LEVEL_SHARE = 0.01;
 
 export type ContentTables = {
   ELEMENTS: typeof ELEMENTS;
@@ -15,6 +18,50 @@ export type ContentTables = {
   MAPS: typeof MAPS;
   FIXED_ENCOUNTERS: typeof FIXED_ENCOUNTERS;
 };
+
+function validateEncounterEntries(
+  locationLabel: string,
+  encounters: readonly Encounter[],
+  speciesTable: ContentTables["SPECIES"],
+  derivedEntries: Record<string, DerivedSpeciesProgression>,
+  errors: string[],
+  checkMaxCap: boolean,
+): void {
+  const totalWeight = encounters.reduce((sum, entry) => sum + (entry.w > 0 ? entry.w : 0), 0);
+  for (const encounter of encounters) {
+    if (
+      !speciesTable[encounter.species] ||
+      encounter.min < 1 ||
+      encounter.max < encounter.min ||
+      (checkMaxCap && encounter.max > MAX_LEVEL) ||
+      encounter.w <= 0
+    ) {
+      errors.push(`${locationLabel}`);
+      continue;
+    }
+    const sp = speciesTable[encounter.species]!;
+    if (sp.collection === "legend") {
+      errors.push(`${locationLabel}: legend/boss species "${encounter.species}" cannot appear in wild encounter tables`);
+    }
+    const derived = derivedEntries[encounter.species];
+    if (derived && encounter.min < derived.minAttainableLevel) {
+      const ex = encounter.exceptionalUnderLevel;
+      const share = totalWeight > 0 ? encounter.w / totalWeight : 1;
+      if (
+        !ex ||
+        !ex.reason.trim() ||
+        !Number.isFinite(ex.maxShare) ||
+        ex.maxShare <= 0 ||
+        ex.maxShare > MAX_EXCEPTIONAL_UNDER_LEVEL_SHARE ||
+        share > ex.maxShare
+      ) {
+        errors.push(
+          `${locationLabel}: ${encounter.species} min level ${encounter.min} is below evolution threshold ${derived.minAttainableLevel} (weight share ${(share * 100).toFixed(2)}%)`,
+        );
+      }
+    }
+  }
+}
 
 export function validateContent(tables: ContentTables = { ELEMENTS, SPECIES, SKILLS, ITEMS, MAPS, FIXED_ENCOUNTERS }): string[] {
   const { ELEMENTS: elements, SPECIES: speciesTable, SKILLS: skillsTable, ITEMS: itemsTable, MAPS: mapsTable, FIXED_ENCOUNTERS: fixedEncounters } = tables;
@@ -33,6 +80,8 @@ export function validateContent(tables: ContentTables = { ELEMENTS, SPECIES, SKI
     }
     if (species.evolves && (!speciesIds.has(species.evolves.into) || species.evolves.level < 1 || species.evolves.level > MAX_LEVEL)) errors.push(`species ${id}: invalid evolution`);
   }
+  const graph = analyzeEvolutionGraph(speciesTable, MAX_LEVEL);
+  errors.push(...graph.errors);
   for (const [id, skill] of Object.entries(skillsTable)) {
     if (id !== skill.id) errors.push(`skill ${id}: id mismatch`);
     if (!elements[skill.element] || !SKILL_KINDS.has(skill.kind) || skill.power < 0 || skill.mp < 0 || skill.accuracy <= 0 || skill.accuracy > 100) errors.push(`skill ${id}: invalid values`);
@@ -45,16 +94,10 @@ export function validateContent(tables: ContentTables = { ELEMENTS, SPECIES, SKI
   }
   for (const [id, map] of Object.entries(mapsTable)) {
     if (id !== map.id || !mapIsRectangular(map) || !canStandAt(map, map.spawn.x, map.spawn.y)) errors.push(`map ${id}: invalid shape or spawn`);
-    for (const encounter of map.encounters) {
-      if (!speciesIds.has(encounter.species) || encounter.min < 1 || encounter.max < encounter.min || encounter.max > MAX_LEVEL || encounter.w <= 0) errors.push(`map ${id}: invalid encounter`);
-    }
+    validateEncounterEntries(`map ${id}: invalid encounter`, map.encounters, speciesTable, graph.entries, errors, true);
     for (const region of map.encounterRegions ?? []) {
       if (region.w <= 0 || region.h <= 0 || region.x < 0 || region.y < 0) errors.push(`map ${id}: invalid encounter region ${region.id}`);
-      for (const encounter of region.encounters) {
-        if (!speciesIds.has(encounter.species) || encounter.min < 1 || encounter.max < encounter.min || encounter.w <= 0) {
-          errors.push(`map ${id}: invalid encounter region ${region.id}`);
-        }
-      }
+      validateEncounterEntries(`map ${id}: invalid encounter region ${region.id}`, region.encounters, speciesTable, graph.entries, errors, false);
     }
     for (const warp of map.warps) {
       const destination = mapsTable[warp.to];

@@ -1,12 +1,14 @@
 """Rasterize the original Elderhall portrait drawings at their native scale."""
 
+import argparse
 import hashlib
 import json
 from pathlib import Path
 
-from PIL import Image, ImageDraw
+from PIL import Image, ImageColor, ImageDraw
 
-SIZE = (80, 104)
+UNIT = 3
+SIZE = (80 * UNIT, 104 * UNIT)
 OUT = Path(__file__).resolve().parents[1] / "assets" / "elderhall-portraits"
 INK = "#211b20"
 GOLD = ("#68452d", "#ad783e", "#e6ad52", "#f7d68a")
@@ -19,6 +21,8 @@ TEAL = ("#202e30", "#344344", "#495e56", "#688276", "#90a18b")
 OCHRE = ("#342a24", "#594231", "#796142", "#a48353", "#c1a271")
 STEEL = ("#2c303b", "#434a52", "#616b71", "#89918d", "#b2b5a3")
 SILVER = ("#4b4146", "#746a68", "#b3aaa0", "#dfd4be", "#fff1d4")
+PLUM = ("#292632", "#3d3544", "#584659", "#745c70", "#938196")
+NAVY = ("#20242e", "#303849", "#3b4857", "#576479", "#838d97")
 
 
 class Portrait:
@@ -27,13 +31,17 @@ class Portrait:
         self.draw = ImageDraw.Draw(self.image)
 
     def shape(self, color, *points):
-        self.draw.polygon(points, fill=color)
+        self.draw.polygon(self.coordinates(points), fill=color)
 
     def line(self, color, *points, width=1):
-        self.draw.line(points, fill=color, width=width)
+        self.draw.line(self.coordinates(points), fill=color, width=max(1, round(width * UNIT)))
 
     def dots(self, color, *points):
-        self.draw.point(points, fill=color)
+        self.draw.point(self.coordinates(points), fill=color)
+
+    @staticmethod
+    def coordinates(points):
+        return [(round(x * (SIZE[0] - 1) / 79), round(y * (SIZE[1] - 1) / 103)) for x, y in points]
 
     def mantle(self, cloth, shoulders=0, collar=0):
         self.shape(
@@ -123,7 +131,9 @@ class Portrait:
 
 def maren():
     p = Portrait()
-    p.mantle(MOSS, 3)
+    p.mantle(NAVY, 3)
+    p.shape(MOSS[2], (10, 100), (16, 90), (28, 81), (34, 85), (25, 91), (21, 103))
+    p.shape(MOSS[1], (56, 83), (67, 82), (74, 91), (77, 103), (67, 103), (65, 93))
     p.shape(INK, (16, 61), (19, 30), (26, 21), (31, 21), (34, 12),
             (43, 7), (50, 9), (54, 14), (53, 21), (62, 28), (66, 40),
             (64, 66), (60, 82), (53, 91), (36, 87), (26, 75), (19, 72))
@@ -155,7 +165,7 @@ def maren():
 
 def cael():
     p = Portrait()
-    p.mantle(RUST, 4, 2)
+    p.mantle(NAVY, 4, 2)
     p.head(SKIN)
     p.shape(INK, (23, 56), (20, 39), (22, 25), (28, 19), (37, 16), (49, 17),
             (55, 20), (61, 27), (64, 35), (62, 46), (57, 39), (56, 31),
@@ -167,7 +177,7 @@ def cael():
     p.dots(SKIN[5], (51, 39), (49, 44))
     p.line(SKIN[0], (33, 42), (38, 42), (43, 45), width=2)
     p.line("#69483b", (33, 62), (37, 68), (44, 71), (50, 71), (55, 67))
-    p.shape(RUST[0], (26, 76), (33, 72), (38, 79), (47, 84), (57, 74), (63, 78),
+    p.shape(NAVY[0], (26, 76), (33, 72), (38, 79), (47, 84), (57, 74), (63, 78),
             (58, 91), (47, 97), (37, 91))
     for x, y in [(22, 82), (63, 82)]:
         p.shape(INK, (x - 12, y + 5), (x - 8, y - 2), (x + 5, y - 5),
@@ -184,7 +194,7 @@ def cael():
 
 def guard():
     p = Portrait()
-    p.mantle(OCHRE, 2)
+    p.mantle(NAVY, 2)
     p.head(SKIN)
     p.shape(INK, (14, 39), (17, 33), (23, 31), (25, 23), (32, 17), (45, 14),
             (55, 17), (63, 23), (66, 31), (71, 35), (73, 41), (70, 46),
@@ -209,12 +219,12 @@ def guard():
 
 def traveler():
     p = Portrait()
-    p.mantle(OCHRE, 1)
-    p.hood(OCHRE)
+    p.mantle(PLUM, 1)
+    p.hood(PLUM)
     p.head(("#4c3129", "#754b38", "#986448", "#b47f54", "#d69e66", "#e5b17d"))
-    p.shape(OCHRE[0], (25, 47), (26, 36), (30, 28), (43, 22), (53, 22), (61, 27),
+    p.shape(PLUM[0], (25, 47), (26, 36), (30, 28), (43, 22), (53, 22), (61, 27),
             (63, 39), (58, 36), (52, 32), (42, 32), (31, 37))
-    p.hood_edge(OCHRE)
+    p.hood_edge(PLUM)
     p.line("#78553b", (39, 64), (43, 68), (51, 70), (55, 66))
     p.line(GOLD[1], (20, 88), (28, 90), (35, 96), (38, 103), width=2)
     p.line(GOLD[2], (20, 88), (28, 91), (33, 95))
@@ -301,14 +311,150 @@ def patch():
     return p
 
 
+def replace_colors(p, before, after):
+    colors = dict(zip(map(ImageColor.getrgb, before), map(ImageColor.getrgb, after)))
+    pixels = p.image.load()
+    for y in range(p.image.height):
+        for x in range(p.image.width):
+            red, green, blue, alpha = pixels[x, y]
+            color = colors.get((red, green, blue))
+            if color:
+                pixels[x, y] = (*color, alpha)
+    return p
+
+
+def keep_guard():
+    p = replace_colors(guard(), NAVY, RUST)
+    p.shape(STEEL[0], (26.5, 39), (30, 22), (40, 16), (37, 30), (38, 39))
+    p.line(STEEL[3], (29, 34), (32, 23), (37, 19), width=0.75)
+    p.line(GOLD[2], (34, 29), (33, 34), width=0.65)
+    p.line("#74483c", (47, 56), (47, 61), (44, 66), width=0.7)
+    return p
+
+
+def lise():
+    p = replace_colors(traveler(), PLUM, OCHRE)
+    p.shape(SILVER[2], (26, 40), (34, 31), (44, 29), (51, 34), (43, 33),
+            (36, 38), (31, 50), (26, 57))
+    p.line(SILVER[3], (29, 42), (34, 36), (42, 32), width=0.65)
+    p.line(ELDER[1], (34, 53), (37, 54), (40, 53), width=0.5)
+    p.line(ELDER[1], (53, 53), (56, 55), (57, 59), width=0.5)
+    return p
+
+
+def reedcutter():
+    p = replace_colors(traveler(), PLUM, TEAL)
+    p.shape(OCHRE[1], (19, 40), (28, 32), (40, 27), (58, 27), (68, 29), (73, 34),
+            (58, 34), (40, 34), (27, 39))
+    p.line(OCHRE[4], (25, 36), (42, 29), (58, 29), (68, 31), width=0.65)
+    p.line(OCHRE[3], (31, 36), (42, 33), (61, 32), width=0.6)
+    return p
+
+
+def keep_innkeep():
+    p = replace_colors(innkeep(), RUST, PLUM)
+    p.shape(SILVER[1], (25, 38), (31, 31), (42, 28), (51, 31), (58, 36),
+            (54, 34), (44, 33), (35, 35), (29, 42), (28, 49))
+    p.line(SILVER[3], (29, 36), (37, 31), (46, 31), width=0.6)
+    p.line(ELDER[1], (32, 51), (35, 53), (39, 52), width=0.52)
+    return p
+
+
+def chandler():
+    p = replace_colors(shopkeep(), TEAL, NAVY)
+    p.shape(OCHRE[0], (30, 60), (36, 63), (43, 64), (49, 62), (53, 63), (59, 61),
+            (57, 68), (49, 74), (42, 73), (35, 68))
+    p.line(OCHRE[2], (37, 66), (43, 70), (49, 71), (55, 67), width=0.65)
+    p.shape(GOLD[0], (54, 83), (59, 82), (63, 87), (59, 93), (55, 90))
+    p.line(GOLD[3], (56, 85), (58, 84), (61, 87), (59, 91), width=0.55)
+    return p
+
+
+def rowan():
+    p = Portrait()
+    p.mantle(OCHRE, 3, 1)
+    p.head(SKIN, eyes="#403827")
+    p.shape(INK, (22, 52), (20, 38), (23, 28), (31, 21), (45, 17), (56, 21),
+            (63, 28), (65, 40), (60, 45), (52, 33), (43, 30), (35, 36),
+            (28, 40), (26, 52))
+    p.shape("#7a5539", (22, 39), (25, 30), (35, 23), (46, 20), (57, 24),
+            (62, 31), (53, 28), (42, 26), (31, 31))
+    p.line("#aa784e", (26, 32), (32, 26), (43, 23), (52, 24), width=0.7)
+    p.shape(MOSS[1], (25, 79), (34, 74), (45, 84), (54, 80), (59, 75),
+            (65, 80), (59, 91), (47, 96), (35, 88))
+    p.line(MOSS[4], (29, 79), (35, 78), (45, 87), (53, 85), width=0.75)
+    p.line(GOLD[2], (39, 89), (46, 94), (54, 90), width=0.65)
+    p.clasp(47, 96)
+    return p
+
+
+def finish_portrait(p, role):
+    """Add native-resolution edges and material marks inside the drawn silhouette."""
+    # The half-unit strokes render directly into the selected native canvas.
+    seam = (("#859693", "#39434c") if role in {"maren", "cael", "guard"}
+            else ("#ab9273", "#554237"))
+    for side in (0, 1):
+        x = 17 if side == 0 else 64
+        step = 1 if side == 0 else -1
+        for n in range(11):
+            y = 91 + n * 0.86
+            p.line(seam[n % 2], (x - n * 0.32 * step, y), (x + (1.2 - n * 0.32) * step, y - 0.7), width=0.33)
+    if role == "maren":
+        for n in range(11):
+            y = 48 + n * 3.55
+            x = 60 - max(0, n - 4) * 0.82
+            p.line(SILVER[0], (x - 2, y), (x, y + 1.2), (x + 2, y + 0.3), width=0.36)
+            p.line(SILVER[4], (x - 2.7, y - 0.55), (x - 0.8, y + 0.4), width=0.34)
+        p.line(ELDER[1], (34.2, 38.5), (38.2, 37.6), (42.4, 37.9), width=0.4)
+        p.line(ELDER[2], (33.7, 51), (36.1, 52.1), (40.2, 51.5), width=0.36)
+    elif role in {"cael", "guard"}:
+        for x, y in [(19.5, 86), (62, 85)]:
+            for n in range(4):
+                p.line(STEEL[1], (x + n * 1.1, y - n * 0.37), (x + n * 1.1 + 0.7, y + 0.6 - n * 0.37), width=0.4)
+        p.line(SKIN[4], (49, 57.9), (51, 57.3), (52.2, 55.6), width=0.36)
+    elif role == "innkeep":
+        for x, y in [(33.5, 53.7), (35.1, 55), (36.8, 53.6), (55, 54.2), (55.9, 55.7), (57.2, 53.8)]:
+            p.dots("#8e6150", (x, y))
+        for n in range(8):
+            p.line("#a58764", (34 + n * 2.5, 99.5), (35 + n * 2.5, 98.8), width=0.34)
+    elif role == "shopkeep":
+        p.line("#ae8b5c", (28, 36.2), (42, 33.8), (53, 33.2), width=0.4)
+        for n in range(5):
+            p.line("#3d302a", (39 + n * 3.5, 61.8), (40 + n * 3.5, 60.6), width=0.34)
+
+    # Weave and pigment accents are clipped to their individual materials, so
+    # the lithographic detail cannot dirty eyes, edges or transparent pixels.
+    textiles = {ImageColor.getrgb(color) for palette in (NAVY, PLUM, MOSS, RUST, TEAL, OCHRE)
+                for color in palette[1:4]}
+    pixels = p.image.load()
+    for y in range(round(SIZE[1] * 0.82), SIZE[1]):
+        for x in range(SIZE[0]):
+            red, green, blue, alpha = pixels[x, y]
+            if not alpha or (red, green, blue) not in textiles:
+                continue
+            if (x + 3 * y) % 13 == 0:
+                pixels[x, y] = (red + 7, green + 5, blue + 4, alpha)
+            elif (x + 5 * y) % 19 == 0:
+                pixels[x, y] = (red - 5, green - 4, blue - 3, alpha)
+
+
 def main():
-    drawings = (maren, cael, guard, traveler, innkeep, shopkeep, patch)
+    global UNIT, SIZE
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--scale", choices=(2, 3), type=int, default=3)
+    parser.add_argument("--out", type=Path, default=OUT)
+    args = parser.parse_args()
+    UNIT = args.scale
+    SIZE = (80 * UNIT, 104 * UNIT)
+    drawings = (maren, cael, guard, keep_guard, traveler, lise, reedcutter,
+                innkeep, keep_innkeep, shopkeep, chandler, patch, rowan)
     source_sha256 = hashlib.sha256(Path(__file__).read_text(encoding="utf-8").encode()).hexdigest()
-    OUT.mkdir(parents=True, exist_ok=True)
+    args.out.mkdir(parents=True, exist_ok=True)
     assets = []
     for draw_portrait in drawings:
         portrait = draw_portrait()
-        path = OUT / f"{draw_portrait.__name__}.png"
+        finish_portrait(portrait, draw_portrait.__name__)
+        path = args.out / f"{draw_portrait.__name__}.png"
         portrait.image.save(path, "PNG", compress_level=9)
         assets.append({
             "id": draw_portrait.__name__,
@@ -320,11 +466,11 @@ def main():
     manifest = {
         "source": "scripts/draw-elderhall-portraits.py",
         "sourceSha256": source_sha256,
-        "method": "Original hand-placed pixel clusters and limited palettes rasterized directly to transparent PNG with Pillow.",
+        "method": "Original pixel clusters and native-resolution material strokes rendered directly to transparent PNG with Pillow. The 160×208 comparison is rendered separately with --scale 2.",
         "rightsBasis": "Drawn for Reliquary under the repository owner's delegated original-art authorization. Character identities follow Reliquary's existing dialogue roster.",
         "assets": assets,
     }
-    (OUT / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
+    (args.out / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
 
 
 if __name__ == "__main__":

@@ -5,7 +5,7 @@ import "./app-status.css";
 const labels: Record<PwaStatus, string> = {
   checking: "Checking offline availability…",
   unsupported: "Offline play unavailable in this browser.",
-  downloading: "Caching for offline…",
+  downloading: "Preparing offline play…",
   ready: "Available offline",
   updating: "Updating…",
   blocked: "Update paused — the save could not be written. This session is kept; make storage available and it will retry.",
@@ -18,7 +18,10 @@ function usePwaStatus() {
   return useSyncExternalStore(subscribePwaStatus, getPwaStatus, () => "checking" as const);
 }
 
-export function AppStatus({ showReadyToast = true }: { showReadyToast?: boolean } = {}) {
+export function AppStatus({ showReadyToast = true, showDownloadProgress = true }: {
+  showReadyToast?: boolean;
+  showDownloadProgress?: boolean;
+} = {}) {
   const status = usePwaStatus();
   const previous = useRef(status);
   const [showNotice, setShowNotice] = useState(false);
@@ -36,8 +39,18 @@ export function AppStatus({ showReadyToast = true }: { showReadyToast?: boolean 
   }, [status, showReadyToast]);
 
   if (status === "checking" || status === "unsupported" ||
+    (status === "downloading" && !showDownloadProgress) ||
     (status === "ready" && !(showReadyToast && showNotice))) return null;
   return <p className="app-status app-status-backed" role="status">{labels[status]}</p>;
+}
+
+export function TitleOfflineProgress({ worldReady }: { worldReady: boolean }) {
+  const status = usePwaStatus();
+  return (
+    <p className="title-offline-progress" role="status">
+      {worldReady && status === "downloading" ? labels.downloading : null}
+    </p>
+  );
 }
 
 export function OfflineMenuStatus() {
