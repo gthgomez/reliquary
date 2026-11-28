@@ -59,6 +59,13 @@ test("an unaffordable skill stays inspectable and explains the MP gap", () => {
   assert.match(details.note ?? "", /does not spend MP/i);
 });
 
+test("damage previews describe the actual foe matchup without implying healing has a foe", () => {
+  assert.match(skillDetails("nip", 10, ["gale"]).description, /^Strong against this foe/);
+  assert.match(skillDetails("nip", 10, ["ember"]).description, /^Resisted by this foe/);
+  assert.match(skillDetails("nip", 10, ["gale", "ember"]).description, /^Resisted by this foe/);
+  assert.doesNotMatch(skillDetails("mossmend", 10, ["tide"]).description, /this foe/);
+});
+
 test("skills submenu resolves the selected row, not the root command", () => {
   const skills = ["nip", "rootgrasp"];
   const details = resolveBattleActionDetails(input({ phase: "skills", menuIndex: 1, skillIds: skills }));
@@ -86,6 +93,12 @@ test("Bind with no sigils reports the empty pack without pretending it is illega
   const details = commandDetails("Bind", input({ bindIds: [], inventory: {} }));
   assert.equal(details.availability, "no-effect");
   assert.match(details.note ?? "", /No binding sigils/i);
+});
+
+test("Bind counts inventory quantities rather than sigil types", () => {
+  const detail = commandDetails("Bind", input({ inventory: { common_sigil: 3 } }));
+  assert.match(detail.description, /weaken a wild beast/i);
+  assert.ok(detail.meta.some((entry) => entry.label === "Sigils" && entry.value === "3"));
 });
 
 test("Party communicates a forced switch after a knockout", () => {

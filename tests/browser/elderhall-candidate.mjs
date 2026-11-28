@@ -42,7 +42,7 @@ export const VIEWPOINTS = [
   { id: "west-approach", x: 1, y: 10 },
   { id: "grove-arrival", map: "grove", x: 13, y: 7 },
 ];
-const DIALOGUE_NPCS = ["maren", "cael_hall", "guard", "villager", "innkeep", "shopkeep", "goblin_trader"];
+const DIALOGUE_NPCS = [...new Set(Object.values(MAPS).flatMap((map) => map.npcs.map((npc) => npc.id)))];
 const APPROACHES = [
   { dx: 0, dy: -1, key: "KeyS", yaw: 0 },
   { dx: -1, dy: 0, key: "KeyD", yaw: -Math.PI / 2 },
@@ -170,8 +170,8 @@ async function captureDialogue(page, viewport, npcId) {
     { mapId: map.id, x: npc.x + approach.dx, y: npc.y + approach.dy });
   await faceDirection(page, approach.key, approach.yaw);
   await page.keyboard.press("KeyZ");
-  const vendor = npc.id === "shopkeep";
-  const dialog = page.getByRole("dialog", { name: vendor ? "Chandler" : npc.name, exact: true });
+  const vendor = npc.talk === "shopkeep";
+  const dialog = page.getByRole("dialog", { name: vendor ? map.name : npc.name, exact: true });
   const img = dialog.locator(vendor ? ".shop-portrait" : ".dialog-portrait img");
   await img.waitFor({ timeout: 8_000 });
   const key = resolveNpcPortrait(npc.id, npc.sprite);
@@ -180,7 +180,7 @@ async function captureDialogue(page, viewport, npcId) {
     await image.decode();
     return { width: image.naturalWidth, height: image.naturalHeight, scale: getComputedStyle(image).imageRendering };
   });
-  assert.deepEqual(decoded, { width: 80, height: 104, scale: "pixelated" });
+  assert.deepEqual(decoded, { width: 240, height: 312, scale: "pixelated" });
   const action = vendor ? dialog.getByRole("button", { name: "Leave", exact: true }) : dialog.locator(".dialog-next");
   await action.waitFor();
   const geometry = await dialog.evaluate((node) => {

@@ -80,3 +80,36 @@ test("the Grove's rounded joins stay inside the walkable clearing and clear of s
     { x: 5, y: 8, dx: 1, dy: -1 },
   ]);
 });
+
+test("woodland terrain marks only active encounter ground and removes square edge accents", () => {
+  const map = {
+    ...MAPS.briar_road!,
+    ground: ["p,.", "p,,"],
+    encounterRegions: [{ id: "safe", x: 2, y: 1, w: 1, h: 1, tiles: [","], rate: 0, encounters: [] }],
+    decorations: [],
+  };
+  const active: number[][] = [];
+  const original: number[][] = [];
+  const overlays: string[] = [];
+  bakeMapTerrain({ map, tileSize: 32,
+    woodlandTerrain: { drawEncounter: (x, y) => active.push([x, y]) },
+    drawTile: () => {}, drawOverlay: (style) => overlays.push(style), drawDecoration: () => {} });
+  bakeMapTerrain({ map, tileSize: 32, drawTile: () => {}, drawOverlay: () => {},
+    drawDecoration: (_sprite, x, y) => original.push([x, y]) });
+  assert.deepEqual(active, [[32, 0], [32, 32]]);
+  assert.deepEqual(original, [[32, 0], [32, 32], [64, 32]]);
+  assert.equal(overlays.includes("edge"), false);
+});
+
+test("Mirefen's clipped trail joins both ends of the plank bridge", () => {
+  const pathMasks = new Map<number, number>();
+  const overlays: string[] = [];
+  bakeMapTerrain({ map: MAPS.mirefen!, tileSize: 32, chapterRouteTerrain: true,
+    drawTile: (name, x, y, _variant, mask) => {
+      if (name === "dirt" && y === 7 * 32 && mask !== undefined) pathMasks.set(x / 32, mask);
+    },
+    drawOverlay: (style) => overlays.push(style), drawDecoration: () => {} });
+  assert.ok((pathMasks.get(7) ?? 0) & 2, "west trail connects east into the bridge");
+  assert.ok((pathMasks.get(12) ?? 0) & 8, "east trail connects west into the bridge");
+  assert.equal(overlays.includes("edge"), false, "hand-painted shore has no dark square overlay");
+});

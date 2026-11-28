@@ -25,7 +25,6 @@ export function isOccupied(map: MapDef, flags: Record<string, boolean>, x: numbe
   if (BLOCKED.has(row[x]!)) return true;
   for (const o of map.objects) {
     if (!isObjectSolidAt(o, flags, x, y)) continue;
-    if (flags.starter && o.id.startsWith("st_")) continue;
     return true;
   }
   for (const n of map.npcs) if (n.x === x && n.y === y) return true;

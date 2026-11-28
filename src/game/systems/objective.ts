@@ -12,7 +12,7 @@ export function currentObjective(flags: ObjectiveFlags): string | null {
     return "Speak a pact at the Binding Grove, west of Elderhall.";
   }
   if (!flags.trial) {
-    return "Bind companions as you travel, then take the Wildwood north to Warden Cael in Thornkeep.";
+    return "Travel from Briar Road through the Wildwood to Warden Cael in Thornkeep.";
   }
   return "Rest. Bind who you wish. The Hollow Crown waits beyond the ash.";
 }
@@ -20,12 +20,12 @@ export function currentObjective(flags: ObjectiveFlags): string | null {
 export function objectivePreview(flags: ObjectiveFlags, mapId: string): string | null {
   if (!flags.starter) {
     if (mapId === "home") return "Leave the cottage";
-    if (mapId === "elderhall") return "Find the Binding Grove";
+    if (mapId === "elderhall") return "Go west to Binding Grove";
     if (mapId === "grove") return "Make a pact";
     return "Find the Binding Grove";
   }
   if (!flags.trial) {
-    if (mapId === "grove") return "Return to Elderhall";
+    if (mapId === "grove") return "Return east to Elderhall";
     if (mapId === "thornkeep" || mapId === "warden_hall") return "Find Warden Cael";
     if (mapId === "briar_road" || mapId === "wildwood") return "Continue north to Thornkeep";
     return "Travel north to Thornkeep";
@@ -48,7 +48,7 @@ export function objectiveHint(flags: ObjectiveFlags, place: string): string | nu
   if (!flags.trial) {
     if (place === "Binding Grove") return "Return east to Elderhall. The northern road leads onward.";
     if (place === "Elderhall") return "Follow the road north out of the village to Briar Road. Open Party in the Lantern to see your companion.";
-    if (place === "Briar Road") return "Follow the road north toward the Wildwood. Be ready for wild encounters along the way.";
+    if (place === "Briar Road") return "Follow the road north to the Wildwood. Tall grass can hide wild beasts. Weaken one before using Bind with a sigil.";
     if (place === "Wildwood") return "Continue north through the Wildwood to Thornkeep.";
     if (place === "Thornkeep") return "Find Warden Cael in the keep or the Warden's Hall.";
     return null;

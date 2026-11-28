@@ -206,6 +206,15 @@ try {
 
     // First activation only asks; repeated clicks stay on the question.
     await openConsentWithRepeatedActivation(page);
+    const stage = await page.locator(".title-screen").boundingBox();
+    const panel = await page.getByRole("alertdialog").boundingBox();
+    assert.ok(stage && panel);
+    if (process.env.RELIQUARY_TITLE_CAPTURE) {
+      await page.screenshot({ path: process.env.RELIQUARY_TITLE_CAPTURE });
+    }
+    const centerOffset = Math.abs(panel.y + panel.height / 2 - (stage.y + stage.height / 2));
+    assert.ok(centerOffset <= stage.height * 0.05,
+      `portrait confirmation is centered in the usable title stage (offset ${centerOffset.toFixed(1)} px)`);
     await page.keyboard.press("Tab");
     assert.equal(await page.evaluate(() => document.activeElement?.textContent?.trim()), "Begin new game",
       "Tab advances between the confirmation actions");

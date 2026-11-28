@@ -144,7 +144,7 @@ async function verifyOfflineShell(): Promise<boolean> {
       ...modules,
       ...styles,
       ...collectGameAssets().filter((entry) => entry.required).map((entry) => entry.url),
-      ...Object.values(PORTRAITS).map((entry) => entry.src),
+      ...Object.values(PORTRAITS).flatMap(({ src }) => src ? [src] : []),
     ];
     return modules.length > 0 && required.every((entry) => {
       const url = new URL(entry, scope);

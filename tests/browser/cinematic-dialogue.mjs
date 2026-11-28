@@ -6,6 +6,7 @@ import { measureTargetVisibility, startStaticServer, withBrowser, waitForGameBoo
 const captures = process.env.RELIQUARY_DIALOGUE_CAPTURES;
 if (captures) mkdirSync(captures, { recursive: true });
 const evidence = [];
+const onlyViewport = process.env.RELIQUARY_DIALOGUE_VIEWPORT;
 const viewports = [
   { width: 1440, height: 900 },
   { width: 390, height: 844, mobile: true },
@@ -17,7 +18,8 @@ const viewports = [
   { width: 568, height: 320, mobile: true },
   { width: 568, height: 320, mobile: true, classic: true },
   { width: 844, height: 390, mobile: true, classic: true, safe: true },
-];
+].filter(({ width, height }) => !onlyViewport || onlyViewport === `${width}x${height}`);
+assert.ok(viewports.length > 0, `Unsupported cinematic dialogue viewport: ${onlyViewport}`);
 const { server, baseUrl } = await startStaticServer(0);
 const candidateManifestResponse = await fetch(new URL("/game/elderhall/manifest.json", baseUrl));
 assert.ok(
@@ -58,6 +60,27 @@ async function closePages(page) {
     await page.locator(".dialog-next").click();
   }
   await page.waitForSelector(".dialog", { state: "detached" });
+}
+
+async function starterAnchors(page) {
+  return page.evaluate(() => {
+    const anchors = {};
+    for (const selector of [".dialog", ".dialog-species", ".dialog-name", ".dialog-next", ".dialog-back"]) {
+      const box = document.querySelector(selector)?.getBoundingClientRect();
+      if (!box?.width || !box.height) throw new Error(`Starter control is not laid out: ${selector}`);
+      anchors[selector] = [box.x, box.y, box.width, box.height];
+    }
+    return anchors;
+  });
+}
+
+async function assertStableStarterAnchors(page, initial) {
+  const current = await starterAnchors(page);
+  for (const [selector, box] of Object.entries(initial)) {
+    assert.ok(current[selector].every((value, index) => Math.abs(value - box[index]) <= 1),
+      `starter ${selector} moved between pages: ${JSON.stringify({ initial: box, current: current[selector] })}`);
+  }
+  assert.ok((await measureTargetVisibility(page.locator(".dialog-next"))).hitOk, "starter primary action stays reachable");
 }
 
 async function checkLayout(page, label, shot = false) {
@@ -253,7 +276,15 @@ try {
         assert.equal(await page.locator(".dialog-back").evaluate((button) => document.activeElement === button), true,
           "reverse tab reaches Back when it is available");
         await page.keyboard.press("Tab");
-        await checkLayout(page, `${prefix}-maren-page2`);
+        const marenSecond = await checkLayout(page, `${prefix}-maren-page2`, true);
+        if (v.mobile && v.height > v.width) {
+          for (const part of ["panel", "portrait", "next"]) {
+            for (const metric of ["left", "top", "width", "height"]) {
+              assert.ok(Math.abs(maren[part][metric] - marenSecond[part][metric]) <= 1,
+                `${prefix}: Maren ${part} ${metric} remains fixed across pages`);
+            }
+          }
+        }
         if (v.mobile) {
           await page.getByRole("button", { name: "B — Back", exact: true }).tap();
           assert.match(await page.locator(".dialog-text").textContent(), /Crown cracked/);
@@ -274,10 +305,26 @@ try {
         );
         assert.equal(await page.locator(".hud-menu").isVisible(), true);
 
+        if (v.width === 390 && v.height === 844 && !v.classic) {
+          await page.evaluate(() => document.documentElement.style.fontSize = "200%");
+          await speak(page, "grove", 4, 7);
+          const largeStarter = await starterAnchors(page);
+          await page.locator(".dialog-next").click();
+          await assertStableStarterAnchors(page, largeStarter);
+          await page.locator(".dialog-back").click();
+          await assertStableStarterAnchors(page, largeStarter);
+          await page.locator(".dialog-next").click();
+          await page.locator(".dialog-next").click();
+          await assertStableStarterAnchors(page, largeStarter);
+          await page.locator(".dialog-back").click();
+          await page.evaluate(() => document.documentElement.style.removeProperty("font-size"));
+        }
         await speak(page, "grove", 4, 7);
         assert.equal(await page.locator(".dialog-portrait").count(), 0, "starter uses species art instead of an NPC portrait");
         const starterSprite = page.locator(".dialog-species");
+        const inspection = await starterAnchors(page);
         for (const [primary, secondary] of [["Next", "Cancel"], ["Next", "Back"], ["Bind Emberkit", "Cancel"]]) {
+          await assertStableStarterAnchors(page, inspection);
           assert.equal(await starterSprite.getAttribute("src"), "/game/sprites/emberkit.png");
           await starterSprite.evaluate((image) => image.decode());
           assert.ok(await starterSprite.evaluate((image) => image.complete && image.naturalWidth > 0), "shipped species sprite loads");
@@ -290,6 +337,13 @@ try {
           await page.locator(".dialog-next").click();
         }
         const namingInput = page.getByRole("textbox", { name: "Creature name", exact: true });
+        const namingPanel = page.getByRole("dialog", { name: "Name your creature" });
+        assert.equal(await namingPanel.locator("img").getAttribute("src"), "/game/sprites/emberkit.png");
+        assert.match(await namingPanel.textContent(), /\+3 common sigils · \+40 crowns/);
+        const submitName = page.getByRole("button", { name: "Confirm name" });
+        assert.equal(await submitName.isDisabled(), true, "the default name is the initial action");
+        await namingInput.fill("");
+        assert.equal(await submitName.isDisabled(), true, "blank text cannot commit a nickname");
         await namingInput.fill("Sparks");
         if (v.width === 390 && v.height === 844 && !v.classic) {
           const visibleTop = 63;
@@ -312,7 +366,7 @@ try {
             const targets = [
               heading,
               namingInput,
-              page.getByRole("button", { name: "Call them this" }),
+              submitName,
               page.getByRole("button", { name: "Keep Emberkit" }),
             ];
             for (const target of targets) {
@@ -356,14 +410,14 @@ try {
             "the focused name remains in the viewport after rotation at 200% text");
           assert.equal(await page.getByRole("button", { name: "North", exact: true }).count(), 0,
             "walking controls do not compete with the naming modal");
-          const submit = await measureTargetVisibility(page.getByRole("button", { name: "Call them this" }));
+          const submit = await measureTargetVisibility(submitName);
           assert.equal(submit.hitOk, true, `the naming submit is reached in short landscape: ${JSON.stringify(submit)}`);
           assert.equal(await namingInput.inputValue(), "Sparks", "rotation preserves the draft name");
           await page.setViewportSize({ width: v.width, height: v.height });
           await page.evaluate(() => document.documentElement.style.removeProperty("font-size"));
         }
         await page.keyboard.press("Tab");
-        assert.equal(await page.getByRole("button", { name: "Call them this" })
+        assert.equal(await submitName
           .evaluate((button) => document.activeElement === button), true);
         await page.keyboard.press("Shift+Tab");
         assert.equal(await namingInput.count(), 1, "reverse Tab does not dismiss naming");
@@ -374,11 +428,8 @@ try {
         assert.equal(await page.getByRole("button", { name: "Keep Emberkit" })
           .evaluate((button) => document.activeElement === button), true, "name focus wraps within its controls");
         await page.getByRole("button", { name: "Keep Emberkit" }).click();
-        assert.equal(
-          await page.locator(".dialog").getAttribute("data-portrait"),
-          "elder-maren",
-          "starter callback identity",
-        );
+        assert.equal(await page.getByRole("dialog", { name: "Rowan" }).locator(".dialog-species").getAttribute("src"),
+          "/game/sprites/emberkit.png", "Rowan addresses the companion in the Grove");
         await closePages(page);
 
         await speak(page, "thornkeep", 11, 7);
@@ -427,7 +478,7 @@ try {
           ["briar_camp", 4, 6, "patch", "Patch"],
           ["guild_in", 6, 7, "elder-maren", "Elder Maren"],
           ["warden_hall", 7, 5, "warden-cael", "Warden Cael"],
-          ["keep_inn", 4, 5, "innkeep", "Innmother"],
+          ["keep_inn", 4, 5, "keep-innkeep", "Innmother"],
         ]) {
           await speak(page, map, x, y);
           const m = await checkLayout(
@@ -437,7 +488,7 @@ try {
           );
           assert.equal(m.portraitKey, key);
           assert.equal(m.nameContent, name);
-          if (key === "innkeep") {
+          if (key === "keep-innkeep") {
             await page.locator(".dialog-next").evaluate((button) => {
               button.click();
               button.click();

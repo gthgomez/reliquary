@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { SPECIES } from "../../content.ts";
+import { ELEMENTS, SPECIES } from "../../content.ts";
 import type { Beast, Stats } from "../../types.ts";
 import { STATUS_NAMES } from "../../systems/status.ts";
 import { HeartIcon, ManaIcon } from "./BattleIcons.tsx";
@@ -42,11 +42,13 @@ function PercentBar({
 export function BattleStatusCard({ side, beast, stats, showMana = true }: BattleStatusCardProps) {
   const species = SPECIES[beast.speciesId];
   const displayName = side === "foe" ? species?.name ?? beast.nickname : beast.nickname;
-  const [portraitBroken, setPortraitBroken] = useState(false);
+  const elements = species?.elements.map((element) => ELEMENTS[element].name).join(" · ");
+  const [failedPortrait, setFailedPortrait] = useState<string | null>(null);
   const status = beast.status ? STATUS_NAMES[beast.status] : null;
   const low = stats.hp > 0 && beast.hp / stats.hp <= 0.25;
   const label = [
     `${displayName}, level ${beast.level}`,
+    elements,
     `Health ${beast.hp} of ${stats.hp}`,
     showMana ? `Mana ${beast.mp} of ${stats.mp}` : null,
     status ? `Status ${status}` : null,
@@ -55,7 +57,7 @@ export function BattleStatusCard({ side, beast, stats, showMana = true }: Battle
   return (
     <article className={`battle-status-card battler ${side === "foe" ? "foe" : "me"}${low ? " is-low-health" : ""}`} aria-label={label}>
       <div className="battle-portrait" aria-hidden>
-        {portraitBroken ? (
+        {failedPortrait === beast.speciesId ? (
           <span className="battle-portrait-fallback">{(displayName[0] ?? "?").toUpperCase()}</span>
         ) : (
           <img
@@ -63,7 +65,7 @@ export function BattleStatusCard({ side, beast, stats, showMana = true }: Battle
             alt=""
             draggable={false}
             onError={() => {
-              setPortraitBroken(true);
+              setFailedPortrait(beast.speciesId);
               console.warn(`[battle] missing portrait for species ${beast.speciesId}`);
             }}
           />
@@ -74,6 +76,7 @@ export function BattleStatusCard({ side, beast, stats, showMana = true }: Battle
           <h2 className="battle-status-name" title={displayName}>{displayName}</h2>
           <span className="battle-status-level">Lv {beast.level}</span>
         </header>
+        {elements ? <span className="battle-status-elements">{elements}</span> : null}
         <div className="battle-status-rows">
           <div className="battle-stat-row">
             <span className="battle-stat-icon hp" aria-hidden><HeartIcon size={17} /></span>

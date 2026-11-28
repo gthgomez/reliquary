@@ -43,6 +43,14 @@ export function makeElderhallCandidate(base: MapDef, geometry?: Record<string, V
       : npc.id === "villager" ? { ...npc, x: 19, y: 11 } : npc),
     decorations: [
       ...(base.decorations ?? []).filter((deco) => deco.sprite !== "elderhall-flowers"),
+      { sprite: "quiet-lantern-sign", x: 17.8, y: 3.05, w: 1, h: 2, layer: "canopy" },
+      { sprite: "calders-stock-awning", x: 16, y: 8.04, w: 3, h: 1, layer: "canopy" },
+      { sprite: "elderhall-verge-grass", x: 6.10, y: 8.10, w: 1.7, h: 0.83, layer: "ground" },
+      { sprite: "elderhall-verge-grass", x: 13.10, y: 7.18, w: 1.5, h: 0.73, layer: "ground" },
+      { sprite: "elderhall-verge-grass", x: 16.3, y: 10.95, w: 1.95, h: 0.95, layer: "ground" },
+      { sprite: "elderhall-road-wear", x: 10.08, y: 8.65, w: 1.55, h: 0.65, layer: "ground" },
+      { sprite: "elderhall-road-wear", x: 13.02, y: 10.85, w: 1.7, h: 0.71, layer: "ground" },
+      { sprite: "elderhall-road-wear", x: 5.25, y: 15.83, w: 1.9, h: 0.79, layer: "ground" },
       // Sparse clusters leave the grass and path silhouettes visible. These
       // are ground dressing, not colliders, and sit outside interaction tiles.
       { sprite: "elderhall-flowers", x: 7.2, y: 7.3, w: 0.8, h: 0.4, layer: "ground" },

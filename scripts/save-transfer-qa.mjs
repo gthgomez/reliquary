@@ -49,14 +49,24 @@ try {
   await page.getByRole("button", { name: "Start", exact: true }).click();
   await page.locator(".dialog-next").first().click();
   await dismissDialogs();
-  await page.waitForTimeout(300);
+  // The browser-test shell exposes the asynchronous Web Locks result. Wait
+  // for its single fresh tab to hold the writer before exercising Save.
+  await page.waitForFunction(() =>
+    !window.__reliquary?.canWriteSave || window.__reliquary.canWriteSave());
 
   // A run worth losing: save it, then hand it out as a file.
   await page.keyboard.press("KeyM");
   await page.getByRole("button", { name: "Save", exact: true }).click();
-  await page.waitForTimeout(250);
+  const status = page.locator(".toast[role=status]");
+  await status.waitFor();
+  const visibleStatus = await status.innerText();
   const before = await readSave();
-  check(!!before, "a run is stored before exporting");
+  report.firstSave = { visibleStatus, stored: !!before };
+  if (!before) {
+    await page.screenshot({ path: join(output, "0-save-failed.png") });
+    throw new Error(`The first Save left no durable run. Visible status: ${visibleStatus}`);
+  }
+  check(true, "a run is stored before exporting");
 
   await page.keyboard.press("KeyM");
   const [download] = await Promise.all([
@@ -140,10 +150,12 @@ try {
   check((await hudGold()) === 777, "an impossible-but-well-formed record is refused too");
   await dismissDialogs();
   await page.screenshot({ path: join(output, "5-final.png") });
+} catch (error) {
+  report.failures.push(String(error?.stack ?? error));
 } finally {
   await browser.close();
+  writeFileSync(join(output, "save-transfer.json"), JSON.stringify(report, null, 2), "utf8");
 }
 
-writeFileSync(join(output, "save-transfer.json"), JSON.stringify(report, null, 2), "utf8");
 console.log(JSON.stringify(report, null, 2));
 process.exitCode = report.failures.length ? 1 : 0;

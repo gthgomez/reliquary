@@ -118,12 +118,12 @@ try {
   for (const key of ["gold", "flags", "inventory", "playerName", "party", "box", "caught", "seen"]) {
     assert.deepEqual(upgraded[key], fixture[key], `Upgrade changed ${key}`);
   }
-  assert.equal(await page.evaluate(async (url) => {
+  assert.deepEqual(await page.evaluate(async (url) => {
     const image = new Image();
     image.src = url;
     await image.decode();
-    return image.naturalWidth;
-  }, candidateImage), 80);
+    return [image.naturalWidth, image.naturalHeight];
+  }, candidateImage), [240, 312]);
   report.steps.push({ name: "Same-origin upgrade and offline save migration", worldRevision: 5, x: upgraded.x, y: upgraded.y, gold: upgraded.gold });
 
   const backupBytes = await readSavedBytes();

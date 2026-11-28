@@ -2,12 +2,12 @@
  * Keyboard, pointer and touch parity for the battle command surface:
  * preview updates the highlight and details without spending a turn, the
  * logical grid matches the visible slots, unavailable commands stay inert,
- * and the Details sheet never changes combat phase.
+ * and opening the battle log never changes combat phase.
  */
 import assert from "node:assert/strict";
 import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
-import { startStaticServer, waitForGameBoot, withBrowser } from "./helpers.mjs";
+import { measureTargetVisibility, startStaticServer, waitForGameBoot, withBrowser } from "./helpers.mjs";
 
 const SAVE = {
   version: 3,
@@ -90,6 +90,17 @@ try {
     assert.equal(await selected(page), "Strike", "engine selection starts on Strike");
     assert.equal(await title(page), "Strike");
 
+    assert.match(await page.locator(".battle-status-card.me").innerText(), /Verdant/);
+    assert.match(await page.locator(".battle-status-card.foe").innerText(), /Gale/);
+    assert.match(await page.locator(".battle-status-card.me").getAttribute("aria-label"), /Verdant/);
+    await page.keyboard.press("h");
+    const openingLog = page.getByRole("region", { name: "Battle log" });
+    await openingLog.waitFor({ timeout: 3_000 });
+    assert.match(await openingLog.innerText(), /Galeskip/i, "the opening encounter should be in the log");
+    await page.keyboard.press("Escape");
+    await openingLog.waitFor({ state: "hidden" });
+    assert.equal(await command(page, "Strike").evaluate((el) => el === document.activeElement), true);
+
     // Spatial navigation follows the visible 3x2 grid.
     await page.keyboard.press("ArrowRight");
     assert.equal(await selected(page), "Skill");
@@ -120,7 +131,7 @@ try {
     const recapCount = await page.locator(".battle-controls-body .battle-recap li, #battle-recap-panel .battle-recap li").count();
     assert.ok(recapCount <= 8, `recap bounded: ${recapCount}`);
 
-    // Details opens without changing phase, Escape closes it without cancelling battle.
+    // The log opens without changing phase. Escape closes it without cancelling battle.
     await page.evaluate(() => window.__reliquary.setBattlePhase("command"));
     await page.waitForSelector(".battle-controls[data-battle-phase='command']");
     await page.keyboard.press("h");
@@ -219,21 +230,41 @@ try {
     console.log("[battle-input-parity] ok submenu keyboard scroll");
   });
 
-  // Touch family: tap targets actuate and the footer shows touch guidance.
+  // Touch family: tap targets actuate and the log is available immediately.
   await withBrowser(async (page) => {
     await page.setViewportSize({ width: 390, height: 844 });
     const context = page.context();
     await context.addInitScript(() => { Math.random = () => 0.5; });
     await bootBattle(page);
-    assert.equal(await page.locator(".battle-touch-hint").isVisible(), true, "touch hint visible");
     assert.equal(await page.locator(".battle-key-hints").isVisible(), false, "keyboard hints hidden on touch");
+    const log = page.getByRole("button", { name: "Battle log" });
+    const logBounds = await log.boundingBox();
+    assert.ok(logBounds && logBounds.width >= 44 && logBounds.height >= 44, "battle log is a comfortable touch target");
+    await log.tap();
+    assert.equal(await phase(page), "command", "opening the log with touch must preserve the current turn");
+    await page.getByRole("button", { name: "Close" }).tap();
+    assert.equal(await log.evaluate((el) => el === document.activeElement), true);
     await page.locator('[data-command="Skill"]').tap();
     await page.waitForSelector(".battle-controls[data-battle-phase='skills']");
     assert.equal(await phase(page), "skills");
+    assert.match(await page.locator(".battle-details-copy").innerText(), /Strong against this foe/i);
     await page.locator(".battle-back").tap();
     await page.waitForSelector(".battle-controls[data-battle-phase='command']");
     console.log("[battle-input-parity] ok touch tap targets and hints");
   }, { context: { hasTouch: true } });
+
+  await withBrowser(async (page) => {
+    await page.setViewportSize({ width: 320, height: 568 });
+    await bootBattle(page);
+    for (const control of await page.locator(".battle-action, .battle-details-toggle").all()) {
+      const appearance = await measureTargetVisibility(control);
+      assert.ok(appearance.fullyVisible && appearance.hitOk && appearance.box.height >= 44,
+        `control must remain reachable at 200% text: ${await control.innerText()} ${JSON.stringify(appearance)}`);
+    }
+    assert.equal(await page.locator(".battle-status-elements").count(), 2);
+    await checkVerticalNavigation(page, "Item", "battle-command-narrow-200");
+    console.log("[battle-input-parity] ok narrow double-text controls and focus");
+  }, { textScale: 2, context: { hasTouch: true, reducedMotion: "reduce" } });
 
   console.log("[battle-input-parity] parity complete");
 } finally {

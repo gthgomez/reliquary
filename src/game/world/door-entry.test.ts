@@ -5,6 +5,7 @@ import { makeBeast } from "../content.ts";
 import { MAPS } from "../maps.ts";
 import { ELDERHALL_WORLD_REVISION } from "../build-flags.ts";
 import { isOccupied } from "./movement.ts";
+import { starterPactFlag } from "./object-state.ts";
 
 async function withGame(run: (game: ReliquaryGame, frame: (ts: number) => void) => void) {
   const globals = globalThis as Record<string, unknown>;
@@ -184,7 +185,7 @@ test("starting forward movement clears a stationary interaction hint immediately
   });
 });
 
-test("completed starter choices lose the hint without changing confirm behavior", async () => {
+test("legacy starter saves hide absent creatures while new pacts allow observation", async () => {
   await withGame((game, frame) => {
     game.flags.starter = true;
     game.party = [makeBeast("emberkit", 5, { random: () => 0.5 })];
@@ -201,8 +202,17 @@ test("completed starter choices lose the hint without changing confirm behavior"
     assert.equal(game.dir, 3, "the player is still facing the completed starter object");
     assert.equal(game.getSnapshot().interactionHint, null, "completed starter objects are not advertised");
     game.confirm();
+    assert.equal(game.getSnapshot().dialog, null, "an invisible starter cannot open a dialogue");
+
+    game.party = [makeBeast("mirewhelp", 5, { random: () => 0.5 })];
+    game.flags[starterPactFlag("mirewhelp")] = true;
+    game.setKeys(["KeyW"]);
+    frame(256);
+    game.setKeys([]);
+    assert.match(game.getSnapshot().interactionHint ?? "", /^Observe Emberkit/);
+    game.confirm();
     assert.match(game.getSnapshot().dialog?.text ?? "", /pact is already spoken/i,
-      "confirm retains the existing completed-choice response");
+      "the still-present companion has an observation response");
   });
 });
 

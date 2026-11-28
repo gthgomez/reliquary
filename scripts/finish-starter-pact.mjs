@@ -40,7 +40,7 @@ export async function finishStarterPact(page, options = {}) {
       if (nickname) {
         const input = page.locator(".name-prompt input");
         await input.fill(nickname);
-        await page.getByRole("button", { name: "Call them this" }).click();
+        await page.getByRole("button", { name: "Confirm name" }).click();
       } else {
         const keepBtn = page.locator(".name-prompt button").filter({ hasText: /Keep/ });
         await keepBtn.click();

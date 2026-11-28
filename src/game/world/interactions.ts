@@ -41,6 +41,8 @@ export const SIGN_TEXTS: Record<string, string> = {
 	sign_road: "BRIAR ROAD — north to Wildwood, east to Mirefen. Bind what you must.",
 	sign_grove: "BINDING GROVE — first pacts are spoken here.",
 	sign_grove_inner: "Choose with care. A first pact is a first name.",
+	sign_inn: "THE QUIET LANTERN — warm beds, a whole lantern, fifteen crowns.",
+	sign_shop: "CALDER'S SUNDRIES — tonics, sigils, and road gear. Ask for Calder.",
 	sign_briar: "Keep to the path after dusk. The grass remembers hunger.",
 	sign_wildwood: "WILDWOOD — Ashenbarrow in the stone. Thornkeep beyond the trees.",
 	sign_mire: "MIREFEN — watch your step. The peat is older than the keep.",
@@ -226,7 +228,7 @@ export function wardenTeamLevels(strongestLevel: number): number[] {
 }
 
 /** Cael's advisory pages, kept here so the content stays in the content layer. */
-export function wardenPages(ctx: DialogContext): string[] {
+export function wardenPages(ctx: DialogContext, approach: "square" | "hall"): string[] {
 	const pages = ["Warden Cael. I keep Thornkeep's road."];
 	if (ctx.strongestLevel < 12) {
 		pages.push(
@@ -235,7 +237,9 @@ export function wardenPages(ctx: DialogContext): string[] {
 	} else {
 		pages.push("Show me the compact is not a hobby. Three of mine against yours — Iron. Chapel. Drake. Bind or break.");
 	}
-	pages.push("(A begin · B later)");
+	pages.push(approach === "square"
+		? "We'll put your pact to the test inside Warden's Hall."
+		: "When you're ready, we'll begin here in the hall.");
 	return pages;
 }
 

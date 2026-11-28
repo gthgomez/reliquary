@@ -1,4 +1,5 @@
 import type { MapObj } from "../types.ts";
+import { SPECIAL_INTERACTIONS } from "./interactions.ts";
 
 /** Objects hidden after story flags (boss removed, chest opened, etc.). */
 const HIDE_WHEN_FLAG: Record<string, string> = {
@@ -7,11 +8,25 @@ const HIDE_WHEN_FLAG: Record<string, string> = {
 };
 
 const OPEN_CHEST_PREFIX = "chest_";
+const STARTER_SPECIES = Object.values(SPECIAL_INTERACTIONS).flatMap(
+  (interaction) => interaction.kind === "starter" ? [interaction.speciesId] : [],
+);
+
+export function starterPactFlag(speciesId: string): string {
+  return `starter_pact_${speciesId}`;
+}
 
 export function objectHidden(obj: MapObj, flags: Record<string, boolean>): boolean {
   const hideFlag = HIDE_WHEN_FLAG[obj.id];
   if (hideFlag && flags[hideFlag]) return true;
   if (obj.interact?.startsWith(OPEN_CHEST_PREFIX) && flags[obj.interact]) return true;
+  if (flags.starter && obj.id.startsWith("st_")) {
+    const chosen = STARTER_SPECIES.filter((speciesId) => flags[starterPactFlag(speciesId)]);
+    // Existing saves have no recorded choice. Keep their established Grove layout.
+    if (chosen.length !== 1) return true;
+    const interaction = obj.interact ? SPECIAL_INTERACTIONS[obj.interact] : undefined;
+    return interaction?.kind === "starter" && interaction.speciesId === chosen[0];
+  }
   return false;
 }
 

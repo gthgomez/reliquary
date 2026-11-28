@@ -13,11 +13,11 @@ import {
   TEMPERAMENTS,
 } from "../content";
 import type { ReliquaryGame } from "../engine";
-import { ROOT_MENU } from "../engine";
+import { ROOT_MENU, STARTER_PACT_REWARD } from "../engine";
 import type { Beast, DialogView, NamePromptView, Snapshot } from "../types";
 import { OverlayPanel } from "./OverlayPanel";
 import { DialogScene } from "./DialogScene";
-import { OfflineMenuStatus } from "./AppStatus";
+import { OfflineMenuStatus, TitleOfflineProgress } from "./AppStatus";
 import { useOverlayFocusTrap } from "./useOverlayFocusTrap.ts";
 import {
   leadActionHint,
@@ -176,6 +176,7 @@ export function TitleScreen({ game, snap }: { game: ReliquaryGame; snap: Snapsho
             )}
           </div>
         )}
+        {!confirmingReplace ? <TitleOfflineProgress worldReady={snap.worldAssetsReady} /> : null}
         {(game.hasNewerSave || game.hasArchivedSave) && !confirmingReplace ? (
           <div className="title-save-recovery">
             {game.hasNewerSave ? <>
@@ -335,9 +336,15 @@ export function DialogBox({ dialog, game }: { dialog: DialogView; game: Reliquar
 }
 
 export function NamePrompt({ game, prompt }: { game: ReliquaryGame; prompt: NamePromptView }) {
-  const [name, setName] = useState(prompt.speciesName);
+  const [name, setName] = useState(prompt.draft);
+  const customName = name.trim() !== "" && name.trim() !== prompt.speciesName;
   const formRef = useRef<HTMLFormElement>(null);
   useOverlayFocusTrap(formRef, true);
+  useLayoutEffect(() => {
+    const form = formRef.current;
+    const target = window.matchMedia("(pointer: coarse)").matches ? form : form?.querySelector("input");
+    target?.focus({ preventScroll: true });
+  }, []);
   useLayoutEffect(() => {
     const form = formRef.current;
     const stage = form?.parentElement;
@@ -372,28 +379,40 @@ export function NamePrompt({ game, prompt }: { game: ReliquaryGame; prompt: Name
       aria-modal="true"
       aria-label="Name your creature"
       aria-describedby="creature-name-instructions"
+      tabIndex={-1}
       onSubmit={(event) => {
         event.preventDefault();
-        if (!name.trim()) return;
+        if (!customName) return;
         game.submitCreatureName(name);
       }}
     >
-      <p id="creature-name-instructions">What will you call {prompt.speciesName}?</p>
+      <div className="name-prompt-companion">
+        <img src={`/game/sprites/${prompt.speciesId}.png`} alt="" draggable={false} />
+        <div>
+          <p id="creature-name-instructions">What will you call <strong>{prompt.speciesName}</strong>?</p>
+          {prompt.kind === "starter" ? (
+            <p className="name-prompt-reward">First pact kept · +{STARTER_PACT_REWARD.sigils} common sigils · +{STARTER_PACT_REWARD.crowns} crowns</p>
+          ) : null}
+        </div>
+      </div>
       <label>
         Creature name
         <input
           aria-label="Creature name"
           value={name}
           maxLength={40}
-          autoFocus
-          onChange={(event) => setName(event.target.value)}
+          onChange={(event) => {
+            const draft = event.target.value;
+            setName(draft);
+            game.updateCreatureNameDraft(draft);
+          }}
         />
       </label>
-      <div className="name-prompt-actions">
-        <button type="submit" className="btn-ghost" disabled={!name.trim()}>
-          Call them this
+      <div className="dialog-actions name-prompt-actions">
+        <button type="submit" className={customName ? "dialog-next" : "dialog-back"} disabled={!customName}>
+          Confirm name
         </button>
-        <button type="button" className="btn-ghost" onClick={() => game.submitCreatureName(null)}>
+        <button type="button" className={customName ? "dialog-back" : "dialog-next"} onClick={() => game.submitCreatureName(null)}>
           Keep {prompt.speciesName}
         </button>
       </div>
@@ -858,6 +877,9 @@ export function Meter({
 
 export function ShopPanel({ game, snap }: { game: ReliquaryGame; snap: Snapshot }) {
   const [portraitFailed, setPortraitFailed] = useState(false);
+  const elderhallVendor = game.mapId === "shop_in";
+  const namedVendor = elderhallVendor || game.mapId === "keep_shop";
+  const vendor = elderhallVendor ? "Calder" : "Chandler";
   const list =
     snap.shopMode === "buy"
       ? snap.shopStock
@@ -868,14 +890,14 @@ export function ShopPanel({ game, snap }: { game: ReliquaryGame; snap: Snapshot 
 
   return (
     <OverlayPanel
-      title="Chandler"
-      subtitle={`${snap.gold} crowns in purse`}
+      title={namedVendor ? snap.mapName : "Chandler"}
+      subtitle={`${namedVendor ? `${vendor} · ` : ""}${snap.gold} crowns in purse`}
       onClose={() => game.cancel()}
       closeLabel="Leave"
     >
       <div className="shop-tabs">
         {isElderhallCandidateBuild() && !portraitFailed ? (
-          <img className="shop-portrait" src={portraitSource("shopkeep", true)} alt=""
+          <img className="shop-portrait" src={portraitSource(elderhallVendor ? "shopkeep" : "chandler", true)} alt=""
             width={40} height={52} onError={() => setPortraitFailed(true)} />
         ) : null}
         <button

@@ -63,6 +63,7 @@
 }
 .dialog-actions button {
   position: static;
+  min-width: 44px;
   min-height: 44px;
   padding: 3px 0.7rem;
   border: 1px solid #745131;
@@ -90,6 +91,44 @@
 }
 .dialog-scene .dialog-name {
   color: #68452f;
+}
+.dialog-scene-starter .dialog {
+  height: min(16rem, 58dvh);
+}
+.dialog-starter-heading {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding-bottom: 0.3rem;
+  border-bottom: 1px solid #ac8b66;
+}
+.dialog-starter-heading .dialog-species {
+  width: clamp(60px, 22vw, 94px);
+}
+.dialog-starter-heading .dialog-name {
+  margin: 0;
+  font-size: 1.12rem;
+}
+.dialog-scene-starter .dialog-content {
+  flex: 1 1 auto;
+}
+.dialog-scene-starter .dialog-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1.65fr);
+}
+.dialog-scene-starter .dialog-actions button {
+  min-height: max(44px, 3.9em);
+  padding-inline: 0.35rem;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+}
+.dialog-scene-starter .dialog-page-count {
+  margin: 0;
+}
+@media (orientation: landscape) and (max-height: 420px) {
+  .dialog-starter-heading .dialog-species {
+    width: clamp(40px, 14dvh, 60px);
+  }
 }
 .dialog-scene-npc {
   display: grid;
@@ -199,13 +238,13 @@
   .dialog-portrait {
     overflow: hidden;
   }
-  :is([data-npc-id="maren"], [data-npc-id="maren2"]) .dialog-portrait img {
-    width: 76%;
-    height: 84%;
+  .dialog-scene-pixel .dialog-portrait img {
+    width: min(68%, 210px);
+    height: min(80%, 270px);
   }
-  .dialog-scene-pixel[data-npc-id] .dialog-portrait img {
-    width: min(82%, 240px);
-    height: 100%;
+  .dialog-scene-npc:not(.dialog-scene-pixel):is([data-npc-id="maren"], [data-npc-id="maren2"]) .dialog-portrait img {
+    width: min(76%, 240px);
+    height: 84%;
   }
   .dialog-scene-pixel .dialog.dialog-panel {
     max-height: min(52dvh, 20rem);
@@ -220,6 +259,29 @@
   .dialog-panel .dialog-text {
     font-size: 0.96rem;
     line-height: 1.45;
+  }
+  :is(.dialog-scene-pixel, .dialog-scene-npc:is([data-npc-id="maren"], [data-npc-id="maren2"])) {
+    .dialog-panel {
+      height: min(13rem, 52dvh);
+    }
+    .dialog-content {
+      flex: 1 1 auto;
+    }
+    .dialog-actions:has(.dialog-page-count) {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    }
+    .dialog-actions button {
+      overflow-wrap: anywhere;
+    }
+    .dialog-page-count {
+      grid-column: 2;
+      margin-inline: 0;
+    }
+    .dialog-actions:has(.dialog-page-count) .dialog-next {
+      grid-column: 3;
+      margin-inline: 0;
+    }
   }
 }
 @media (orientation: landscape) and (max-height: 520px) {

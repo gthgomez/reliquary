@@ -5,6 +5,7 @@ import {
   computeBattleLayout,
   drawBattleFoeSprite,
   drawBattlePlayerSprite,
+  paintBattleBackdrop,
   spritesClearUiBand,
   spriteFeetY,
   stableBattleUiReserveTop,
@@ -101,10 +102,12 @@ function recordingContext(): {
   const ctx = {
     fillStyle: "",
     createRadialGradient: () => gradient,
+    createLinearGradient: () => gradient,
     beginPath() {},
     ellipse() {},
     arc() {},
     fill() {},
+    fillRect() {},
     save() {},
     restore() {},
     translate() {},
@@ -115,6 +118,28 @@ function recordingContext(): {
   } as unknown as CanvasRenderingContext2D;
   return { ctx, drawImage };
 }
+
+test("Briar Road keeps the authored verge and creature footing aligned without stretching", () => {
+  const image = { naturalWidth: 960, naturalHeight: 768 } as HTMLImageElement;
+  for (const [width, height] of [[390, 844], [640, 320]]) {
+    const layout = computeBattleLayout(width, height, stableBattleUiReserveTop(width, height));
+    const { ctx, drawImage } = recordingContext();
+    paintBattleBackdrop(ctx, width, height, layout, "grass", image, "roadside");
+    assert.equal(drawImage.length, 1);
+    const [source, x, y, drawnWidth, drawnHeight] = drawImage[0] as [
+      HTMLImageElement, number, number, number, number, ...number[],
+    ];
+    assert.equal(source, image);
+    assert.ok(x <= 0 && x + drawnWidth >= width - 0.001);
+    assert.ok(y <= 0 && y + drawnHeight >= height - 0.001);
+    assert.ok(Math.abs(drawnWidth / drawnHeight - image.naturalWidth / image.naturalHeight) < 0.001);
+    assert.ok(Math.abs(y + drawnHeight * (432 / 768) - layout.groundY) < 0.001);
+  }
+
+  const { ctx, drawImage } = recordingContext();
+  paintBattleBackdrop(ctx, 390, 844, computeBattleLayout(390, 844, 460), "grass", image);
+  assert.equal(drawImage[0].length, 5, "other grass battles keep their scenic plate");
+});
 
 const SQUARE_LAYOUT: BattleLayout = {
   presentation: "desktop",
